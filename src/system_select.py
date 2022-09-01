@@ -10,7 +10,7 @@
 
 ############################################################################
 
-from scipy.stats import qmc
+
 import numpy as np
 
 def random_system(num):
@@ -24,22 +24,23 @@ def random_system(num):
     }
 
     # create array of limits, then run LHS
-    param_names      = list(system_dict.keys())                                    # variable names. IMPORTANT: Ordered by insertion
-    param_limits     = np.asarray(list(system_dict.values()), dtype=np.float64).T  # variable bounds
+    # variable names. IMPORTANT: Ordered by insertion
+    param_names = list(system_dict.keys())       
+    # variable bounds                            
+    param_limits = np.asarray(list(system_dict.values()), dtype=np.float64).T  
     
     lBounds = param_limits[0,]
     uBounds = param_limits[1,]
     
     dimVars = len(system_dict)
-    sampler = qmc.LatinHypercube(d=dimVars, seed=985)
-    sample = sampler.integers(l_bounds=lBounds, u_bounds=uBounds,
-                              n=num,endpoint=True) 
-    param_set = sample.integers(l_bounds=lBounds,
-        u_bounds=uBounds, n=num)
+    
+    for bounds in system_dict.values():
+        a = np.random.randint(bounds[0], high=bounds[1]+1, size=num)
+        print(a)
 
-    return(param_names, param_set)
+    return(param_names)
 
 if __name__ == '__main__':
 
-    names, inputs       = random_system(50)
-    print(inputs.shape)
+    names       = random_system(5)
+    #print(inputs.shape)
