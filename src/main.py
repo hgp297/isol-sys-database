@@ -40,7 +40,7 @@ def empty_directory(path):
     for i in glob.glob(os.path.join(path, '*')):
         remove_thing(i)
 
-empty_directory('outputs')
+empty_directory('../outputs')
 
 ############################################################################
 #              Perform runs
