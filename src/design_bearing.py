@@ -12,15 +12,16 @@
 
 ############################################################################
 
-T_m = 4.0
-zeta_m = 0.1
+T_m = 3.0
+zeta_m = 0.15
 W_tot = 3530
 r_init = 10
 S_1 = 1.017
 N_rb = 12
 N_Pb = 4
+t_r = 10.0
 
-# def design_LRB(T_m, zeta_m, W_tot, r_init, S_1, N_rb, N_Pb):
+# def design_LRB(T_m, zeta_m, W_tot, r_init, S_1, t_r, N_rb, N_Pb):
 
 from numpy import interp
 inch = 1.0
@@ -70,8 +71,8 @@ K_r = (K_eff - Q_d / D_m)/ N_rb
 
 # 60 psi rubber
 # select thickness
-t_r = 10*inch
-G_r = 0.060 * kip
+
+G_r = 0.060 * kip # ksi
 A_r = K_r * t_r / G_r
 d_r = (4*A_r/pi)**(0.5)
 
@@ -82,6 +83,32 @@ zeta_e = W_e/(2*pi*K_e*D_m**2)
 
 # check slenderness
 # check lead vs main bearing ratio
+
+# buckling check
+
+# shape factor
+t = t_r/12
+S = (d_r/2)/(2*t)
+
+# assume small strain G is 75% larger
+G_ss = 1.75*G_r
+# incompressibility
+K_inc = 290 # ksi
+E_c = (6*G_ss*S**2*K_inc)/(6*G_ss*S**2 + K_inc)
+
+# assume shim is half inch less than rubber diameter
+I = pi/4 *((d_r - 0.5)/2)**4
+A_s = pi/4 * (d_r - 0.5)**2
+
+P_crit = pi/t_r * ((E_c * I/3)*G_r*A_s)**(0.5)
+
+# shear check
+gamma_c = P_crit / (G_r * A_r * S)
+limit_aashto = 0.5*7
+gamma_s_limit = limit_aashto - gamma_c
+
+# slenderness check
+slen_ratio = d_r / d_Pb
 
 
 
