@@ -8,7 +8,8 @@
 
 # Description:  
 
-# Open issues:  (1) 
+# Open issues:  (1) checks not done yet
+#               (2) design shims
 
 ############################################################################
 
@@ -51,11 +52,12 @@ Q_d = W_D/(4*D_m) # kip
 err = 1.0
 tol = 0.001
 
-# converge Q_d, K_2, D_y
+# converge Q_d, K_2, D_y, r_init = K1/K2
 while err > tol:
     K_2 = K_eff - Q_d/D_m
     D_y = Q_d/((r_init-1)*K_2)
-    Q_d_new = W_D/(4*D_m)
+    Q_d_new = pi*K_eff*D_m**2*zeta_m/(2*(D_m-D_y))
+    #Q_d_new = W_D/(4*D_m)
 
     err = abs(Q_d_new - Q_d)/Q_d
 
@@ -65,6 +67,10 @@ while err > tol:
 f_y_Pb = 1.5 # ksi
 A_Pb = (Q_d/f_y_Pb) / N_Pb # in^2
 d_Pb = (4*A_Pb/pi)**(0.5)
+
+# yielding force
+K_1 = r_init * K_2
+F_y = K_1*D_y
 
 # rubber stiffness per bearing
 K_r = (K_eff - Q_d / D_m)/ N_rb
@@ -109,7 +115,6 @@ gamma_s_limit = limit_aashto - gamma_c
 
 # slenderness check
 slen_ratio = d_r / d_Pb
-
 
 
 # if __name__ == '__main__':
