@@ -75,6 +75,52 @@ def get_story_forces(D_m, K_e, W_tot, W, n_frames, zeta_e, R_y, T_fb):
     
     return(wx, hx, hCol, hsx, wLoad, Fx)
 
+def get_MRF_element_forces(wx, hsx, Fx, R_y, n_bays):
+    nFloor      = len(wx)
+    Cd          = R_y
+
+    thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
+    delx        = thetaMax*hsx
+    delxe       = delx*(1/Cd)   # assumes Ie = 1.0
+
+    # element lateral force
+    Q           = np.empty(nFloor)
+    Q[-1]       = Fx[-1]
+
+    for i in range(nFloor-2, -1, -1):
+        Q[i] = Fx[i] + Q[i+1]
+
+    q           = Q/n_bays
+
+    return(delxe, q)
+
+def get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad, E, Fy, Fu):
+    # beam-column relationships
+    alpha       = 0.8           # strain ratio
+    dcdb        = 0.5           # depth ratio
+    beta        = dcdb/alpha
+
+    # required I
+    ksi = 1.0
+    E           = 29000*ksi
+    # story beams
+    Ib          = q*hCol**2/(12*delxe*E)*(hCol/beta + L_bay)                             
+    Ib[-1]      = q[-1]*hsx[-1]**2/(12*delxe[-1]*E)*(hsx[-1]/(2*beta) + L_bay)
+    # roof beams, using hsx since flexibility method assumes h = full column
+    Ic          = Ib*beta
+
+    # required Z
+    Fy              = 50*ksi
+    Fu              = 65*ksi
+    MGrav           = wLoad*L_bay**2/12
+    VGravStory      = max(wLoad*L_bay/2)
+    VGravRoof       = wLoad[-1]*L_bay/2
+    MEq             = q*hCol/2
+    Mu              = MEq + MGrav
+    Zb              = Mu/(0.9*Fy)
+
+    return(Ib, Ic, Iz)
+
 # def design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y, T_fb,
 #               n_bays, L_bay):
     
@@ -93,43 +139,12 @@ wx, hx, hCol, hsx, wLoad, Fx = get_story_forces(D_m, K_e, W_tot, W_s, n_frames,
 #              ASCE 7-16: Steel moment frame design
 ############################################################################
 
+delxe, q = get_MRF_element_forces(wx, hsx, Fx, R_y, n_bays)
 
-nFloor      = len(wx)
-Cd          = R_y
+Fy = 50.0
+Fu = 65.0
 
-thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
-delx        = thetaMax*hsx
-delxe       = delx*(1/Cd)   # assumes Ie = 1.0
-
-# element lateral force
-Q           = np.empty(nFloor)
-Q[-1]       = Fx[-1]
-
-for i in range(nFloor-2, -1, -1):
-    Q[i] = Fx[i] + Q[i+1]
-
-q           = Q/n_bays
-
-# beam-column relationships
-alpha       = 0.8           # strain ratio
-dcdb        = 0.5           # depth ratio
-beta        = dcdb/alpha
-
-# required I
-E           = 29000*ksi
-Ib          = q*hCol**2/(12*delxe*E)*(hCol/beta + L_bay)                             # story beams
-Ib[-1]      = q[-1]*hsx[-1]**2/(12*delxe[-1]*E)*(hsx[-1]/(2*beta) + L_bay)           # roof beams, using hsx since flexibility method assumes h = full column
-Ic          = Ib*beta
-
-# required Z
-Fy              = 50*ksi
-Fu              = 65*ksi
-MGrav           = wLoad*L_bay**2/12
-VGravStory      = max(wLoad*L_bay/2)
-VGravRoof       = wLoad[-1]*L_bay/2
-MEq             = q*hCol/2
-Mu              = MEq + MGrav
-Zb              = Mu/(0.9*Fy)
+Ib, Ic, Iz = get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad, E, Fy, Fu)
 
 ############################################################################
 #              ASCE 7-16: Import shapes
