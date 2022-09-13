@@ -39,7 +39,7 @@ def get_properties(shape):
     tf      = float(shape.iloc[0]['tf'])
     return(Ag, bf, tf, Ix, Zx)
 
-def calculate_strength(shape, VGrav, L_bay):
+def calculate_strength(shape, L_bay):
     # returns critical moments and shears given shape
     Zx      = float(shape.iloc[0]['Zx'])
 
@@ -53,8 +53,7 @@ def calculate_strength(shape, VGrav, L_bay):
     Mn          = Zx*Fy
     Mpr         = Mn*Ry_ph*Cpr
     Vpr         = 2*Mpr/L_bay
-    beamVGrav   = 2*VGrav
-    return(Mn, Mpr, Vpr, beamVGrav)
+    return(Mn, Mpr, Vpr)
 
 # from Table 12.8-2
 def get_Ct(frame_type):
@@ -74,6 +73,9 @@ def get_x_Tfb(frame_type):
     }.get(frame_type, 0.75)
 
 def get_story_forces(D_m, K_e, W_tot, W, n_frames, zeta_e, R_y, struct_type):
+    kip = 1.0
+    ft = 12.0
+    
     wx      = np.array([810.0*kip, 810.0*kip, 607.5*kip])           # Floor seismic weights
     hx      = np.array([13.0*ft, 26.0*ft, 39.0*ft])                 # Floor elevations
     hCol    = np.array([13.0*ft, 13.0*ft, 7.5*ft])                  # Column moment arm heights
@@ -104,8 +106,8 @@ def get_story_forces(D_m, K_e, W_tot, W, n_frames, zeta_e, R_y, struct_type):
     
     return(wx, hx, hCol, hsx, wLoad, Fx)
 
-def get_MRF_element_forces(wx, hsx, Fx, R_y, n_bays):
-    nFloor      = len(wx)
+def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
+    nFloor      = len(hsx)
     Cd          = R_y
 
     thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
@@ -166,12 +168,12 @@ wx, hx, hCol, hsx, wLoad, Fx = get_story_forces(D_m, K_e, W_tot, W_s, n_frames,
 #              ASCE 7-16: Steel moment frame design
 ############################################################################
 
-delxe, q = get_MRF_element_forces(wx, hsx, Fx, R_y, n_bays)
+delxe, q = get_MRF_element_forces(hsx, Fx, R_y, n_bays)
 
 Fy = 50.0
 Fu = 65.0
 
-Ib, Ic, Zb = get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad, E, Fy, Fu)
+Ib, Ic, Zb = get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad)
 
 ############################################################################
 #              ASCE 7-16: Import shapes
@@ -199,10 +201,6 @@ sorted_cols      = col_shapes.sort_values(by=['Ix'])
 ############################################################################
 #              Floor beams
 
-# # select beams that qualify Ix requirement
-# qualifiedIx     = sortedBeams[sortedBeams['Ix'] > IBeamReq] # eliminate all shapes with insufficient Ix
-# sortedWeight    = qualifiedIx.sort_values(by=['W'])         # select lightest from list     
-# selectedBeam    = sortedWeight.iloc[:1]
 
 def select_member(member_list, req_var, req_val):
     # req_var is string 'Ix' or 'Zx'
@@ -220,21 +218,12 @@ selected_beam, passed_Ix_beams = select_member(beam_shapes, 'Ix', I_beam_req)
 
 # Zx check
 
-# (beamAg, beambf, beamtf, beamIx, beamZx) = get_properties(selectedBeam)
-
-# if(beamZx < ZBeamReq):
-#     # print("The beam does not meet Zx requirement. Reselecting...")
-#     # qualifiedZx         = qualifiedIx[qualifiedIx['Zx'] > ZBeamReq]  # narrow list further down to only sufficient Zx
-#     # sortedWeight        = qualifiedZx.sort_values(by=['W'])          # select lightest from list
-#     # selectedBeam        = sortedWeight.iloc[:1]
-#     selected_beam = select_member(beam_shapes, 'Zx', Z_beam_req)
-#     (beamAg, beambf, beamtf, beamIx, beamZx) = get_properties(selectedBeam)
 
 def zx_check(current_member, member_list, Z_beam_req):
     (beam_Ag, beam_bf, beam_tf, 
         beam_Ix, beam_Zx) = get_properties(current_member)
 
-    if(beamZx < ZBeamReq):
+    if(beam_Zx < Z_beam_req):
         selected_member, qualified_list = select_member(member_list, 
             'Zx', Z_beam_req)
     else:
@@ -257,16 +246,13 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
     Ry_ph = 1.1
     Cpr = (Fy + Fu)/(2*Fy)
 
-    V_grav_single      = max(line_load*L_bay/2)
-
-    (M_n, M_pr, V_pr, V_grav) = calculate_strength(current_member, 
-        V_grav_single, L_bay)
+    (M_n, M_pr, V_pr) = calculate_strength(current_member, L_bay)
 
     ph_VGrav = line_load*L_bay/2
     ph_VBeam = 2*M_pr/(0.9*L_bay)  # 0.9L_bay for plastic hinge length
     ph_location = ph_VBeam > ph_VGrav
 
-    if False in ph_location:
+    if not np.all(ph_location):
         # print('Detected plastic hinge away from ends. Reselecting...')
         Z_beam_ph_req = max(line_load*L_bay**2/(4*Fy*Ry_ph*Cpr))
         selected_member, ph_list = select_member(member_list, 
@@ -279,8 +265,7 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
     # beam shear
     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_member)
 
-    (M_n, M_pr, V_pr, V_grav) = calculate_strength(selected_member, 
-        V_grav_single, L_bay)
+    (M_n, M_pr, V_pr) = calculate_strength(selected_member, L_bay)
 
     A_web        = A_g - 2*(t_f*b_f)
     V_n          = 0.9*A_web*0.6*Fy
@@ -304,57 +289,9 @@ story_loads = wLoad[:-1]
 
 
 selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
-    passed_Zx, story_loads, L_bay)
+    passed_Zx_beams, story_loads, L_bay)
 
-# Ry_ph  = 1.1
-# Cpr             = (Fy + Fu)/(2*Fy)
 
-# (beamMn, beamMpr, beamVpr, beamVGrav)   = calculate_strength(selectedBeam,
-#     VGravStory)
-
-# phVGrav         = wLoad[:-1]*L_bay/2
-# phVBeam         = 2*beamMpr/(0.9*L_bay)  # 0.9L_bay for plastic hinge length
-# phLocation      = phVBeam > phVGrav
-
-# if False in phLocation:
-#     # print('Detected plastic hinge away from ends. Reselecting...')
-#     ZBeamPHReq          = max(wLoad*L_bay**2/(4*Fy*Ry_ph*Cpr))
-#     qualifiedZx         = qualifiedIx[qualifiedIx['Zx'] > ZBeamPHReq] # narrow list further down to only sufficient Zx
-#     sortedWeight        = qualifiedZx.sort_values(by=['W'])           # select lightest from list
-#     selectedBeam        = sortedWeight.iloc[:1]
-#     (beamAg, beambf, beamtf, beamIx, beamZx)    = get_properties(selectedBeam)
-#     (beamMn, beamMpr, beamVpr, beamVGrav) = calculate_strength(selectedBeam,
-#         VGravStory)
-
-# beam shear
-
-# beamAweb        = beamAg - 2*(beamtf*beambf)
-# beamVn          = 0.9*beamAweb*0.6*Fy
-
-# beamShearFail   = beamVn < beamVpr
-
-# while beamShearFail:
-#     # print('Beam shear check failed. Reselecting...')
-#     AgReq               = 2*beamVpr/(0.9*0.6*Fy)                                # Assume web is half of gross area
-
-#     if 'qualifiedZx' in dir():
-#         qualifiedAg         = qualifiedZx[qualifiedZx['A'] > AgReq]             # narrow Zx list down to sufficient Ag
-#     else:
-#         qualifiedAg         = qualifiedIx[qualifiedIx['A'] > AgReq]             # if Zx check wasn't done previously, use Ix list
-
-#     sortedWeight        = qualifiedAg.sort_values(by=['W'])                     # select lightest from list
-#     selectedBeam        = sortedWeight.iloc[:1]
-
-#     # recheck beam shear
-#     (beamAg, beambf, beamtf, beamIx, beamZx) = get_properties(selectedBeam)
-    
-#     beamAweb        = beamAg - 2*(beamtf*beambf)
-#     beamVn          = 0.9*beamAweb*0.6*Fy
-
-#     (beamMn, beamMpr, beamVpr, beamVGrav) = calculate_strength(selectedBeam,
-#         VGravStory)
-    
-#     beamShearFail   = beamVn < beamVpr
 
 ############################################################################
 #              Roof beams
@@ -370,134 +307,85 @@ roof_load = wLoad[-1]
 selected_roof_beam, passed_checks_roof_beams = ph_shear_check(selected_roof_beam, 
     passed_Zx_roof_beams, roof_load, L_bay)
 
-# # select beams that qualify Ix requirement
-# qualifiedIx         = sortedBeams[sortedBeams['Ix'] > IBeamRoofReq]         # eliminate all shapes with insufficient Ix
-# sortedWeight        = qualifiedIx.sort_values(by=['W'])                     # select lightest from list     
-# selectedRoofBeam    = sortedWeight.iloc[:1]
 
 # ############################################################################
 # #              Roof beam checks
 
-# # Zx check
-# (roofBeamAg, roofBeambf, roofBeamtf, roofBeamIx, roofBeamZx) = get_properties(selectedRoofBeam)
 
-# if(roofBeamZx < ZBeamRoofReq):
-#     # print("The beam does not meet Zx requirement. Reselecting...")
-#     qualifiedZx         = qualifiedIx[qualifiedIx['Zx'] > ZBeamRoofReq]         # narrow list further down to only sufficient Zx
-#     sortedWeight        = qualifiedZx.sort_values(by=['W'])                     # select lightest from list
-#     selectedRoofBeam        = sortedWeight.iloc[:1]
-#     (roofBeamAg, roofBeambf, roofBeamtf, roofBeamIx, roofBeamZx) = get_properties(selectedRoofBeam)
-
-# (roofBeamMn, roofBeamMpr, roofBeamVpr, roofBeamVGrav)   = calculate_strength(selectedRoofBeam,
-#     VGravRoof)
-
-# # PH location check
-# phVGravRoof         = wLoad[-1]*L_bay/2
-# phVBeamRoof         = 2*roofBeamMpr/(0.9*L_bay)                                  # 0.9L_bay for plastic hinge length
-# phLocationRoof      = phVBeamRoof > phVGravRoof
-
-# if not phLocationRoof:
-#     # print('Detected plastic hinge away from ends. Reselecting...')
-#     ZBeamPHReq          = wLoad[-1]*L_bay**2/(4*Fy*Ry*Cpr)
-#     qualifiedZx         = qualifiedIx[qualifiedIx['Zx'] > ZBeamPHReq]               # narrow list further down to only sufficient Zx
-#     sortedWeight        = qualifiedZx.sort_values(by=['W'])                         # select lightest from list
-#     selectedRoofBeam        = sortedWeight.iloc[:1]
-#     (roofBeamAg, roofBeambf, roofBeamtf, roofBeamIx, roofBeamZx)    = get_properties(selectedRoofBeam)
-#     (roofBeamMn, roofBeamMpr, roofBeamVpr, roofBeamVGrav)           = calculate_strength(selectedRoofBeam, VGravRoof)
-
-# # roof beam shear check
-# roofBeamAweb        = roofBeamAg - 2*(roofBeamtf*roofBeambf)
-# roofBeamVn          = 0.9*roofBeamAweb*0.6*Fy
-
-# roofBeamShearFail   = roofBeamVn < roofBeamVpr
-
-# while roofBeamShearFail:
-#     # print('Beam shear check failed. Reselecting...')
-#     roofAgReq               = 2*roofBeamVpr/(0.9*0.6*Fy)                        # Assume web is half of gross area
-
-#     if 'qualifiedZx' in dir():
-#         qualifiedAg         = qualifiedZx[qualifiedZx['A'] > roofAgReq]         # narrow Zx list down to sufficient Ag
-#     else:
-#         qualifiedAg         = qualifiedIx[qualifiedIx['A'] > roofAgReq]         # if Zx check wasn't done previously, use Ix list
-
-#     sortedWeight        = qualifiedAg.sort_values(by=['W'])                     # select lightest from list
-#     selectedRoofBeam        = sortedWeight.iloc[:1]
-
-#     # recheck beam shear
-#     (roofBeamAg, roofBeambf, roofBeamtf, roofBeamIx, roofBeamZx)    = get_properties(selectedRoofBeam)
-#     (roofBeamMn, roofBeamMpr, roofBeamVpr, roofBeamVGrav) = calculate_strength(selectedRoofBeam,
-#         VGravRoof)
-    
-#     roofBeamAweb        = roofBeamAg - 2*(roofBeamtf*roofBeambf)
-#     roofBeamVn          = 0.9*roofBeamAweb*0.6*Fy
-    
-#     roofBeamShearFail   = roofBeamVn < roofBeamVpr
 
 ############################################################################
 #              Columns
 
 # SCWB design
 
-Pr              = np.empty(nFloor)
-Pr[-1]          = beamVpr + roofBeamVGrav
+def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list, 
+    I_col_req, I_beam_req):
 
-for i in range(nFloor-2, -1, -1):
-    Pr[i] = beamVGrav + beamVpr + Pr[i + 1]
+    ksi = 1.0
+    Fy = 50.0*ksi
+    # V_grav = 2 * wx * L / 2 (shear induced by both beams on column)
+    V_grav      = wLoad*L_bay
 
-# guess: use columns that has similar Ix to beam
-qualifiedIx     = sortedCols[sortedCols['Ix'] > IBeamReq]                               # eliminate all shapes with insufficient Ix
-selectedCol     = qualifiedIx.iloc[(qualifiedIx['Ix'] - IBeamReq).abs().argsort()[:1]]  # select the first few that qualifies Ix
+    nFloor = len(wLoad)
 
-(colAg, colbf, coltf, colIx, colZx) = get_properties(selectedCol)
+    (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
+    (M_n_roof, M_pr_roof, V_pr_roof) = calculate_strength(current_roof, L_bay)
 
-colMpr          = colZx*(Fy - Pr/colAg)
+    # find axial demands
+    Pr              = np.empty(nFloor)
+    Pr[-1]          = V_pr_beam + V_grav[-1]
+    for i in range(nFloor-2, -1, -1):
+        Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
 
-# find required Zx for SCWB to be true
-scwbZReq        = np.max(beamMpr/(Fy - Pr[:-1]/colAg))
+    # initial guess: use columns that has similar Ix to beam
+    qualified_Ix = col_list[col_list['Ix'] > I_beam_req]
+    selected_col = qualified_Ix.iloc[(qualified_Ix['Ix'] - I_beam_req).abs().argsort()[:1]]  # select the first few that qualifies Ix
 
-# select column based on SCWB
-qualifiedIx     = sortedCols[sortedCols['Ix'] > IColReq]            # eliminate all shapes with insufficient Ix
-qualifiedZx     = qualifiedIx[qualifiedIx['Zx'] > scwbZReq]         # eliminate all shapes with insufficient Z for SCWB
-sortedWeight    = qualifiedZx.sort_values(by=['W'])                 # select lightest from list
-selectedCol     = sortedWeight.iloc[:1]
+    (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
+    M_pr = Z_x*(Fy - Pr/A_g)
 
-(colAg, colbf, coltf, colIx, colZx) = get_properties(selectedCol)
+    # find required Zx for SCWB to be true
+    scwb_Z_req        = np.max(M_pr_beam/(Fy - Pr[:-1]/A_g))
 
-colMpr          = colZx*(Fy - Pr/colAg)
+    # select column based on SCWB
+    selected_col, passed_Ix_cols = select_member(col_list, 
+        'Ix', I_col_req)
+    selected_col, passed_Zx_cols = select_member(passed_Ix_cols, 
+        'Zx', scwb_Z_req)
 
-# check final SCWB
-ratio           = np.empty(nFloor-1)
-for i in range(nFloor-2, -1, -1):
-    ratio[i] = (colMpr[i+1] + colMpr[i])/(2*beamMpr)
-    if (ratio[i] < 1.0):
-        print('SCWB check failed at floor ' + str(nFloor+1) + ".")
-
-# column shear
-colAweb         = colAg - 2*(coltf*colbf)
-colVn           = 0.9*colAweb*0.6*Fy
-colVpr          = max(colMpr/hCol)
-
-colShearFail    = colVn < colVpr
-
-while colShearFail:
-    # print('Column shear check failed. Reselecting...')
-    AgReq       = 2*colVpr/(0.9*0.6*Fy)                                     # Assume web is half of gross area
-
-    qualifiedAg         = qualifiedZx[qualifiedZx['A'] > AgReq]             # narrow Zx list down to sufficient Ag
-
-    sortedWeight        = qualifiedAg.sort_values(by=['W'])                 # select lightest from list
-    selectedCol         = sortedWeight.iloc[:1]
-
-    # recheck column shear
-    (colAg, colbf, coltf, colIx, colZx) = get_properties(selectedCol)
+    (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
+    M_pr = Z_x*(Fy - Pr/A_g)
     
-    colAweb         = colAg - 2*(coltf*colbf)
-    colVn           = 0.9*colAweb*0.6*Fy
 
-    colMpr          = colZx*(Fy - Pr/colAg)
-    colVpr          = max(colMpr/hCol)
+    # check final SCWB
+    ratio           = np.empty(nFloor-1)
     
-    colShearFail    = colVn < colVpr
+    for i in range(nFloor-2, -1, -1):
+        ratio[i] = (M_pr[i+1] + M_pr[i])/(2*M_pr_beam)
+        if (ratio[i] < 1.0):
+            print('SCWB check failed at floor ' + str(nFloor+1) + ".")
+
+    A_web = A_g - 2*(t_f*b_f)
+    V_n  = 0.9*A_web*0.6*Fy
+    V_pr = max(M_pr/h_col)
+    col_shear_fail   = V_n < V_pr
+
+    if col_shear_fail:
+        # print('Column shear check failed. Reselecting...')
+        Ag_req   = 2*V_pr/(0.9*0.6*Fy)    # Assume web is half of gross area
+
+        selected_col, shear_list = select_member(passed_Zx_cols, 
+            'A', Ag_req)
+
+    else:
+        shear_list = passed_Zx_cols
+
+    return(selected_col, shear_list)
+
+selected_column, passed_check_cols = select_column(wLoad, L_bay, 
+    hCol, selected_beam, selected_roof_beam, sorted_cols, 
+    I_col_req, I_beam_req)
+
 
 # if __name__ == '__main__':
 #     design_LRB()
