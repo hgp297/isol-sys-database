@@ -12,21 +12,7 @@
 
 ############################################################################
 
-kip = 1.0
-ft = 12.0
-ksi = 1.0
 
-D_m = 22.12
-K_e = 40.073
-zeta_e = 0.15
-W_tot = 3530
-n_frames = 2
-W_s = 2227.5
-R_y = 1.0
-
-
-n_bays = 3
-L_bay = 30*ft
 
 
 def get_properties(shape):
@@ -72,7 +58,9 @@ def get_x_Tfb(frame_type):
         'SW' : 0.75
     }.get(frame_type, 0.75)
 
-def get_story_forces(D_m, K_e, W_tot, W, n_frames, zeta_e, R_y, struct_type):
+def get_story_forces(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y, struct_type):
+    import numpy as np
+    
     kip = 1.0
     ft = 12.0
     
@@ -107,6 +95,8 @@ def get_story_forces(D_m, K_e, W_tot, W, n_frames, zeta_e, R_y, struct_type):
     return(wx, hx, hCol, hsx, wLoad, Fx)
 
 def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
+    import numpy as np
+    
     nFloor      = len(hsx)
     Cd          = R_y
 
@@ -142,65 +132,12 @@ def get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad):
 
     # required Z
     Fy              = 50*ksi
-    Fu              = 65*ksi
     MGrav           = wLoad*L_bay**2/12
     MEq             = q*hCol/2
     Mu              = MEq + MGrav
     Zb              = Mu/(0.9*Fy)
 
     return(Ib, Ic, Zb)
-
-# def design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y, T_fb,
-#               n_bays, L_bay):
-    
-
-import numpy as np
-import pandas as pd
-
-############################################################################
-#              ASCE 7-16: Story forces
-############################################################################
-
-wx, hx, hCol, hsx, wLoad, Fx = get_story_forces(D_m, K_e, W_tot, W_s, n_frames, 
-                                                zeta_e, R_y, 'SMRF')
-
-############################################################################
-#              ASCE 7-16: Steel moment frame design
-############################################################################
-
-delxe, q = get_MRF_element_forces(hsx, Fx, R_y, n_bays)
-
-Fy = 50.0
-Fu = 65.0
-
-Ib, Ic, Zb = get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad)
-
-############################################################################
-#              ASCE 7-16: Import shapes
-############################################################################
-
-I_beam_req        = Ib.max()
-I_col_req         = Ic.max()
-Z_beam_req        = Zb.max()
-
-I_roof_beam_req    = Ib[-1]
-Z_roof_beam_req    = Zb[-1]
-
-beam_shapes      = pd.read_csv('../inputs/beamShapes.csv',
-    index_col=None, header=0)
-sorted_beams     = beam_shapes.sort_values(by=['Ix'])
-
-col_shapes       = pd.read_csv('../inputs/colShapes.csv',
-    index_col=None, header=0)
-sorted_cols      = col_shapes.sort_values(by=['Ix'])
-
-############################################################################
-#              ASCE 7-16: Capacity design
-############################################################################
-
-############################################################################
-#              Floor beams
-
 
 def select_member(member_list, req_var, req_val):
     # req_var is string 'Ix' or 'Zx'
@@ -209,12 +146,6 @@ def select_member(member_list, req_var, req_val):
     sorted_weight = qualified_list.sort_values(by=['W'])
     selected_member = sorted_weight.iloc[:1]
     return(selected_member, qualified_list)
-
-
-selected_beam, passed_Ix_beams = select_member(beam_shapes, 'Ix', I_beam_req)
-
-############################################################################
-#              Beam checks
 
 # Zx check
 
@@ -232,11 +163,12 @@ def zx_check(current_member, member_list, Z_beam_req):
 
     return(selected_member, qualified_list)
 
-selected_beam, passed_Zx_beams = zx_check(selected_beam, passed_Ix_beams, Z_beam_req)
-
 # PH location check
 
 def ph_shear_check(current_member, member_list, line_load, L_bay):
+    
+    import numpy as np
+    
     ksi = 1.0
     Fy = 50.0*ksi
     Fu = 65.0*ksi
@@ -284,43 +216,12 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
 
     return(selected_member, shear_list)
 
-
-story_loads = wLoad[:-1]
-
-
-selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
-    passed_Zx_beams, story_loads, L_bay)
-
-
-
-############################################################################
-#              Roof beams
-
-selected_roof_beam, passed_Ix_roof_beams = select_member(beam_shapes, 
-    'Ix', I_roof_beam_req)
-
-selected_roof_beam, passed_Zx_roof_beams = zx_check(selected_roof_beam, 
-    passed_Ix_roof_beams, Z_roof_beam_req)
-
-roof_load = wLoad[-1]
-
-selected_roof_beam, passed_checks_roof_beams = ph_shear_check(selected_roof_beam, 
-    passed_Zx_roof_beams, roof_load, L_bay)
-
-
-# ############################################################################
-# #              Roof beam checks
-
-
-
-############################################################################
-#              Columns
-
 # SCWB design
-
 def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list, 
     I_col_req, I_beam_req):
 
+    import numpy as np
+    
     ksi = 1.0
     Fy = 50.0*ksi
     # V_grav = 2 * wx * L / 2 (shear induced by both beams on column)
@@ -382,10 +283,102 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
 
     return(selected_col, shear_list)
 
-selected_column, passed_check_cols = select_column(wLoad, L_bay, 
-    hCol, selected_beam, selected_roof_beam, sorted_cols, 
-    I_col_req, I_beam_req)
+############################################################################
+#              ASCE 7-16: Capacity design
+############################################################################
+    
+def design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y,
+              n_bays, L_bay, struct_type):
+    
+    import pandas as pd
+
+    # ASCE 7-16: Story forces
+    wx, hx, hCol, hsx, wLoad, Fx = get_story_forces(D_m, K_e, W_tot, W_s, 
+                                                    n_frames, zeta_e, 
+                                                    R_y, struct_type)
+
+    delxe, q = get_MRF_element_forces(hsx, Fx, R_y, n_bays)
+    
+    # get required section specs
+    Ib, Ic, Zb = get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad)
+
+    I_beam_req        = Ib.max()
+    I_col_req         = Ic.max()
+    Z_beam_req        = Zb.max()
+    
+    I_roof_beam_req    = Ib[-1]
+    Z_roof_beam_req    = Zb[-1]
+    
+    # import shapes 
+    
+    beam_shapes      = pd.read_csv('../inputs/beamShapes.csv',
+        index_col=None, header=0)
+    sorted_beams     = beam_shapes.sort_values(by=['Ix'])
+    
+    col_shapes       = pd.read_csv('../inputs/colShapes.csv',
+        index_col=None, header=0)
+    sorted_cols      = col_shapes.sort_values(by=['Ix'])
 
 
+
+    # Floor beams
+
+    selected_beam, passed_Ix_beams = select_member(sorted_beams, 
+                                                   'Ix', I_beam_req)
+
+    selected_beam, passed_Zx_beams = zx_check(selected_beam, 
+                                              passed_Ix_beams, Z_beam_req)
+
+    story_loads = wLoad[:-1]
+    selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
+                                                        passed_Zx_beams, 
+                                                        story_loads, L_bay)
+
+
+    # Roof beams
+
+    selected_roof_beam, passed_Ix_roof_beams = select_member(sorted_beams, 
+        'Ix', I_roof_beam_req)
+    
+    selected_roof_beam, passed_Zx_roof_beams = zx_check(selected_roof_beam, 
+        passed_Ix_roof_beams, Z_roof_beam_req)
+    
+    roof_load = wLoad[-1]
+    
+    selected_roof_beam, passed_checks_roof_beams = ph_shear_check(selected_roof_beam, 
+        passed_Zx_roof_beams, roof_load, L_bay)
+
+
+    
+    # columns
+    selected_column, passed_check_cols = select_column(wLoad, L_bay, 
+        hCol, selected_beam, selected_roof_beam, sorted_cols, 
+        I_col_req, I_beam_req)
+    
+    return(selected_beam, selected_roof_beam, selected_column)
+
+def main():
+    ft = 12.0
+
+    D_m = 22.12
+    K_e = 40.073
+    zeta_e = 0.15
+    W_tot = 3530
+    n_frames = 2
+    W_s = 2227.5
+    R_y = 1.0
+
+
+    n_bays = 3
+    L_bay = 30*ft
+    
+    frame_type = 'SMRF'
+    
+    beam, roof, col = design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y,
+                  n_bays, L_bay, frame_type)
+    
+    return(beam, roof, col)
+    
+beam, roof, col = main()
 # if __name__ == '__main__':
 #     design_LRB()
