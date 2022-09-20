@@ -58,6 +58,7 @@ def get_x_Tfb(frame_type):
         'SW' : 0.75
     }.get(frame_type, 0.75)
 
+# returns the required story forces per frame per floor
 def get_story_forces(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y, struct_type):
     import numpy as np
     
@@ -92,7 +93,7 @@ def get_story_forces(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y, struct_type):
 
     Fx      = Cvx*Vs
     
-    return(wx, hx, hCol, hsx, wLoad, Fx)
+    return(wx, hx, hCol, hsx, wLoad, Fx, Vs)
 
 def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
     import numpy as np
@@ -293,7 +294,7 @@ def design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y,
     import pandas as pd
 
     # ASCE 7-16: Story forces
-    wx, hx, hCol, hsx, wLoad, Fx = get_story_forces(D_m, K_e, W_tot, W_s, 
+    wx, hx, hCol, hsx, wLoad, Fx, Vs = get_story_forces(D_m, K_e, W_tot, W_s, 
                                                     n_frames, zeta_e, 
                                                     R_y, struct_type)
 
