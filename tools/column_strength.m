@@ -12,7 +12,6 @@ clc
 %Generate constants
 %All units in psi, inches
 
-%This script assumes Fy = 36ksi. This changes yield strain
 
 %==========================MAIN==============================
 n_step = 1000;
@@ -43,7 +42,7 @@ Ast = 0.025*Ag; %from ACI 318, App. A, currently No. 10's
 
 As = zeros(1,3); %similar to d
 As(1) = 8*.31;
-As(2) = 0.025*0.6*Ag;
+As(2) = 0.0025*0.6*Ag;
 As(3) = 8*.31;
 
 %ACI 318-14 Method for ultimate resistance
