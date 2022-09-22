@@ -380,6 +380,6 @@ def main():
     
     return(beam, roof, col)
     
-beam, roof, col = main()
+# beam, roof, col = main()
 # if __name__ == '__main__':
 #     design_LRB()
