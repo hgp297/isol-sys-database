@@ -80,12 +80,14 @@ def PM_section_analyze(P, d, f_y, As, f_prime_c, alpha, beta_1, b, h):
     E_s = 29000000.0
     eps_y = f_y/E_s
 
+    # find neutral axis
     from scipy.optimize import minimize_scalar
     res = minimize_scalar(check_axial_neutral_axis, args=(P, d, f_y, As,
         f_prime_c, alpha, beta_1, b), bounds=(0.01, h), method='bounded')
     
     c = res.x
     
+    # calculate reduced moment capacity
     S_s, eps_s, Cc = get_section_forces(c, d, f_y, As, f_prime_c, alpha, beta_1, b)
 
     phi = 0.65 + (eps_s[-1] - eps_y)/(0.005 - eps_y)*0.250
@@ -125,7 +127,6 @@ wx, hx, hCol, hsx, wLoad, Fx, V_s = get_story_forces(D_m, K_e, W_tot, W_s,
 wx = wx*kip
 wLoad = wLoad*kip/ft
 #wLoad = np.array([0.93, 0.93, 0.71])*kip/ft
-print(Fx)
 Fx = Fx*kip
 V_u = V_s*kip
 
@@ -146,6 +147,15 @@ f_c = 4000.0*psi
 f_yc = 60000.0*psi
 f_ys = 60000.0*psi
 
+# # required area
+# # all assuming normalweight concrete
+# A_cv = V_u / (4*(f_c**(0.5)))
+# b_w = max(h_w/16, ceil(A_cv / l_w))
+
+h_u = min(l_w, min(hsx))
+b_w = max(ceil(h_u/25.0), 4.0)
+
+
 # minimum reinforcement?
 # bar spacing
 # design spec: try changing s_t as a function of b_w or l_w
@@ -153,7 +163,7 @@ f_ys = 60000.0*psi
 
 # transverse
 bar_t = 4
-b_w = 10.0
+# b_w = 10.0
 s_t = 16.0
 rho_t = max((2*get_bar_area(bar_t))/(s_t*b_w), 0.0025)
 print('Transv reinf:', rho_t)
@@ -166,13 +176,6 @@ rho_l_min = max(0.0025+0.5*(2.5-b_w/l_w)*(rho_t - 0.0025), 0.0025)
 
 rho_l = max(rho_l, rho_l_min)
 print('Longi reinf:', rho_l)
-
-
-# required area
-# all assuming normalweight concrete
-# A_cv = V_u / (4*(f_c**(0.5)))
-# b_w = ceil(A_cv / l_w)
-
 
 
 # nominal shear strength and transverse steel
@@ -194,7 +197,7 @@ s_t = min(2*get_bar_area(bar_t)/(rho_t*b_w), 18.0)
 V_n = (alpha_c * (f_c**(0.5)) + rho_t*f_ys)*l_w*b_w
 
 # max shear strength check
-shear_upper_combined = 8*b_w*l_w*(f_c**(0.5)) < n_frames*V_n
+shear_upper_combined = 8*n_frames*b_w*l_w*(f_c**(0.5)) < n_frames*V_n
 shear_upper_indiv = 10*b_w*l_w*(f_c**(0.5)) < V_n
 if shear_upper_combined:
     print('Upper limit shear strength exceeded by combined walls')
@@ -222,9 +225,15 @@ A_s2_req = T_s2_req/f_ys
 
 bar_be = 5
 num_be = ceil(A_s2_req/get_bar_area(bar_be))
-A_s2 = num_be*get_bar_area(bar_be)
+
 s_be_temp = (0.2*l_w)/(num_be/2)
-s_be = min(s_be_temp, 18.0)
+rho_be_min = 6*(f_c**(0.5))/f_ys
+s_be_min = 2*get_bar_area(bar_be)/(rho_be_min*b_w)
+s_be = min(s_be_temp, 18.0, s_be_min)
+rho_be = 2*get_bar_area(bar_be)/(s_be*b_w)
+print('Boundary reinf:', rho_be)
+
+A_s2 = num_be*get_bar_area(bar_be)
 
 # now use section analysis to check P-M strength. Compare against M_u, P_u
 # use matlab code as template
@@ -232,6 +241,12 @@ d = np.array([0.1*l_w, 0.5*l_w, 0.9*l_w])
 A_s = np.array([A_s2, A_s1, A_s2])
 beta_1 = 0.85 - (0.05)*(f_c - 4000.0)/1000.0
 M_r, c = PM_section_analyze(P_u, d, f_ys, A_s, f_yc, 0.85, beta_1, b_w, l_w)
+
+moment_fail = M_r < M_u
+
+# if failure, try adding distributed reinforcement (rho_l)
+if moment_fail:
+    print('Moment capacity failed.')
 
 
 # 
