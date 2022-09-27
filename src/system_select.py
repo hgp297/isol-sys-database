@@ -9,7 +9,8 @@
 # Description:  
 
 ############################################################################
-
+# structural systems: 1 - MF, 2 - BF, 3 - BRB, 4 - SW
+# isolator systems: 1 - TFP, 2 - LRB
 
 def random_system(num):
     
@@ -19,7 +20,12 @@ def random_system(num):
     system_dict   = {
         'structural_system' : [1, 4],
         'isolator_system' : [1, 2],
-        'num_bays' : [3, 8]
+        'num_bays' : [3, 8],
+        'S1' : [0.8, 1.3],
+        'Tm' : [2.5, 4.0],
+        'zetaM' : [0.10, 0.20],
+        'moatAmpli' : [0.3, 1.8],
+        'Ry' : [0.5, 2.0]
     }
 
     # generate random integers within the bounds and place into array
@@ -37,21 +43,20 @@ def random_system(num):
 
     return(param_names, system_selection)
 
-def random_params(num):
+def random_params(num, isol_sys):
     from scipy.stats import qmc
     import numpy as np
 
     # range of desired inputs
     # currently, this is approx'd to match MCER level (no site mod)
-    inputDict   = {
-        'S1'            : [0.8, 1.3],
-        'Tm'            : [2.5, 4.0],
-        'zetaM'         : [0.10, 0.20],
-        'mu1'           : [0.01, 0.05],
-        'R1'            : [15, 45],
-        'moatAmpli'     : [0.3, 1.8],
-        'Ry'            : [0.5, 2.0]
-    }
+    inputDict   = {}
+
+    if isol_sys==1:
+        inputDict['mu1'] = [0.01, 0.05]
+        inputDict['R1'] = [15.0, 45.0]
+    else:
+        inputDict['r_init'] = [8.0, 11.0]
+        inputDict['t_r'] = [8.0, 12.0]
 
     # create array of limits, then run LHS
     paramNames      = list(inputDict.keys())
@@ -71,5 +76,6 @@ def random_params(num):
 if __name__ == '__main__':
 
     system_names, systems       = random_system(50)
-    param_names, params = random_params(50)
+    param_names_tfp, param_vals_tfp = random_params(50, 1)
+    param_names_lrb, param_vals_lrb = random_params(50, 2)
     print(systems.shape)
