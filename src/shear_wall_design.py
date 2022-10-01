@@ -131,7 +131,7 @@ Fx = Fx*kip
 V_u = V_s*kip
 
 L_bay = 22.5*ft
-l_w = L_bay
+l_w = 19.0*ft
 
 
 from math import ceil
@@ -187,7 +187,7 @@ elif (h_w/l_w >= 2.0):
 else:
     alpha_c = np.interp(h_w/l_w, [1.5, 2.5], [3.0, 2.0])
 
-phi = 0.6 # specific to squat wall shear
+phi = 0.75 # specific to slender wall shear
 rho_t_v = 1/f_ys * (V_u/(phi*l_w*b_w) - alpha_c * (f_c**(0.5)))
 rho_t = max(rho_t_v, 0.0025)
 
@@ -216,7 +216,8 @@ M_n = M_u / 0.90 # phi for tension controlled
 P_u = np.sum(wLoad)*(90*ft)
 beta_1 = 0.85 # ACI 318-19, T 22.2.2.4.3
 
-rho_l = max(0.0025, rho_t)
+# rho_l = max(0.0025, rho_t)
+rho_l = 0.0025
 
 A_s1 = (0.6*l_w)*b_w*rho_l
 T_s1 = A_s1*f_ys
