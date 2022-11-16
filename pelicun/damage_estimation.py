@@ -60,6 +60,5 @@ all_demands = pd.read_csv('engineering_demands_TFP.csv')
 # 
 # The location and direction numbers need to be in line with the component definitions presented later.
 
-
-
-
+# initialize a pelicun Assessment
+PAL = Assessment({"PrintLog": True, "Seed": 985,})
