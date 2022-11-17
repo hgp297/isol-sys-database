@@ -4,10 +4,6 @@ import pandas as pd
 idx = pd.IndexSlice
 pd.options.display.max_rows = 100
 
-# and for plotting
-from plotly import graph_objects as go
-from plotly.subplots import make_subplots
-import seaborn as sns
 
 from pelicun.assessment import Assessment
 

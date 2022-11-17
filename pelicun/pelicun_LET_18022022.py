@@ -29,30 +29,8 @@
 
 # # Setting up the environment
 
-# In[1]:
 
 
-get_ipython().system('pip install pelicun==3.1.b2')
-get_ipython().system('pip install plotly')
-get_ipython().system('pip install seaborn')
-
-
-# In[2]:
-
-
-# add the python package install directories to the system Path
-import sys
-sys.path.insert(0, '/home/jupyter/.local/lib/python3.9/site-packages')
-sys.path.insert(0, '/opt/conda/lib/python3.9/site-packages')
-
-
-# In[3]:
-
-
-# suppress all warnings
-# this is generally not recommended, but useful for the LET to suppress numpy warning messages from the output
-import warnings
-warnings.filterwarnings('ignore')
 
 
 # In[4]:
@@ -68,10 +46,14 @@ pd.options.display.max_rows = 100
 # and for plotting
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
+
+import plotly.io as pio
+pio.renderers.default='browser'
+
 import seaborn as sns
 
 # and import pelicun classes and methods
-from pelicun.base import set_options, convert_to_MultiIndex
+from pelicun.base import convert_to_MultiIndex
 from pelicun.assessment import Assessment
 
 
@@ -90,7 +72,7 @@ from pelicun.assessment import Assessment
 # In[5]:
 
 
-raw_demands = pd.read_csv('demand_data.csv', index_col=0)
+raw_demands = pd.read_csv('./demand_data.csv', index_col=0)
 raw_demands
 
 
@@ -129,6 +111,7 @@ raw_demands
 
 # convert index to MultiIndex to make it easier to slice the data
 raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
+raw_demands
 raw_demands.index.names = ['stripe','type','loc','dir']
 raw_demands.tail(30)
 
@@ -387,13 +370,19 @@ demand_sample_ext.T.insert(0, 'Units',"")
 demand_sample_ext.loc['Units', ['PFA', 'SA_1.13']] = 'g'
 demand_sample_ext.loc['Units',['PID', 'RID']] = 'rad'
 
-display(demand_sample_ext)
+demand_sample_ext
 
 PAL.demand.load_sample(demand_sample_ext)
 
 
 # In[17]:
 
+import plotly.express as px
+
+
+df = px.data.gapminder().query("country=='Canada'")
+fig = px.line(df, x="year", y="lifeExp", title='Life expectancy in Canada')
+fig.show()
 
 # demands are ready, we can move on to damage calculation
 
@@ -415,7 +404,7 @@ PAL.demand.load_sample(demand_sample_ext)
 
 
 # First, we need a component configuration
-cmp_marginals = pd.read_csv('CMP_marginals_LET.csv', index_col=0)
+cmp_marginals = pd.read_csv('./CMP_marginals.csv', index_col=0)
 
 cmp_marginals
 
@@ -441,7 +430,7 @@ PAL.asset.load_cmp_model({'marginals': cmp_marginals})
 
 # let's take a look at the generated marginal parameters
 
-PAL.asset.cmp_marginal_params.loc['B1041.002a',:]
+PAL.asset.cmp_marginal_params.loc['B.10.41.002a',:]
 
 
 # In[21]:
@@ -485,7 +474,7 @@ cmp_sample
 
 P58_data = PAL.get_default_data('fragility_DB_FEMA_P58_2nd')
 
-display(P58_data.head(3))
+P58_data.head(3)
 
 print(P58_data['Incomplete'].sum(),' incomplete component fragility definitions')
 
@@ -500,7 +489,7 @@ cmp_list = cmp_marginals.index.unique().values[:-3]
 
 P58_data_for_this_assessment = P58_data.loc[cmp_list,:].sort_values('Incomplete', ascending=False)
 
-display(P58_data_for_this_assessment)
+P58_data_for_this_assessment
 
 
 # Now take those components that are incomplete, and add the missing information
@@ -515,33 +504,33 @@ additional_fragility_db = P58_data_for_this_assessment.loc[
 
 # D2022.013a, 023a, 023b - Heating, hot water piping and bracing
 # dispersion values are missing, we use 0.5
-additional_fragility_db.loc[['D2022.013a','D2022.023a','D2022.023b'],
+additional_fragility_db.loc[['D.20.22.013a','D.20.22.023a','D.20.22.023b'],
                             [('LS1','Theta_1'),('LS2','Theta_1')]] = 0.5
 
 # D2031.013b - Sanitary Waste piping
 # dispersion values are missing, we use 0.5
-additional_fragility_db.loc['D2031.013b',('LS1','Theta_1')] = 0.5
+additional_fragility_db.loc['D.20.31.013b',('LS1','Theta_1')] = 0.5
 
 # D2061.013b - Steam piping
 # dispersion values are missing, we use 0.5
-additional_fragility_db.loc['D2061.013b',('LS1','Theta_1')] = 0.5
+additional_fragility_db.loc['D.20.61.013b',('LS1','Theta_1')] = 0.5
 
 # D3031.013i - Chiller
 # use a placeholder of 1.5|0.5
-additional_fragility_db.loc['D3031.013i',('LS1','Theta_0')] = 1.5 #g
-additional_fragility_db.loc['D3031.013i',('LS1','Theta_1')] = 0.5
+additional_fragility_db.loc['D.30.31.013i',('LS1','Theta_0')] = 1.5 #g
+additional_fragility_db.loc['D.30.31.013i',('LS1','Theta_1')] = 0.5
 
 # D3031.023i - Cooling Tower
 # use a placeholder of 1.5|0.5
-additional_fragility_db.loc['D3031.023i',('LS1','Theta_0')] = 1.5 #g
-additional_fragility_db.loc['D3031.023i',('LS1','Theta_1')] = 0.5
+additional_fragility_db.loc['D.30.31.023i',('LS1','Theta_0')] = 1.5 #g
+additional_fragility_db.loc['D.30.31.023i',('LS1','Theta_1')] = 0.5
 
 # D3052.013i - Air Handling Unit
 # use a placeholder of 1.5|0.5
-additional_fragility_db.loc['D3052.013i',('LS1','Theta_0')] = 1.5 #g
-additional_fragility_db.loc['D3052.013i',('LS1','Theta_1')] = 0.5
+additional_fragility_db.loc['D.30.52.013i',('LS1','Theta_0')] = 1.5 #g
+additional_fragility_db.loc['D.30.52.013i',('LS1','Theta_1')] = 0.5
 
-additional_fragility_db
+# additional_fragility_db
 
 
 # Besides the P58 component fragilities, we need to add three new models:
@@ -636,14 +625,15 @@ dmg_process = {
     }
 }
 
-
+dmg_process
 # ### Damage calculation
 
 # In[30]:
 
 
 # Now we can run the calculation
-PAL.damage.calculate(sample_size, dmg_process=dmg_process)
+#PAL.damage.calculate(sample_size, dmg_process=dmg_process)
+PAL.damage.calculate(dmg_process=dmg_process)
 
 
 # In[31]:
@@ -660,7 +650,7 @@ damage_sample
 
 #/damage_sample.describe().loc['max',:]
 
-damage_sample.describe().T.loc['C1011.001a',:]
+damage_sample.describe().T.loc['C.10.11.001a',:]
 
 
 # ## Losses - repair consequences
@@ -721,7 +711,7 @@ P58_data_for_this_assessment = P58_data.loc[cmp_list,:]
 
 print(P58_data_for_this_assessment['Incomplete'].sum(), ' components have incomplete consequence models assigned.')
 
-display(P58_data_for_this_assessment)
+P58_data_for_this_assessment
 
 
 # Now we need to define the replacement consequence.
@@ -741,7 +731,7 @@ additional_consequences = pd.DataFrame(
         ('replacement','Cost'), ('replacement','Time')])
 )
 
-additional_consequences.loc[('replacement', 'Cost')] = [0, '1 EA', 'US$_2011', 21600000]
+additional_consequences.loc[('replacement', 'Cost')] = [0, '1 EA', 'USD_2011', 21600000]
 additional_consequences.loc[('replacement', 'Time')] = [0, '1 EA', 'worker_day', 8400]  
 # both values are based on the example in the background documentation of FEMA P58 
 # replacement time: 400 days x 0.001 worker/ft2 x 21600 ft2
@@ -765,7 +755,7 @@ PAL.bldg_repair.load_model(
 
 
 # and run the calculations
-PAL.bldg_repair.calculate(sample_size)
+PAL.bldg_repair.calculate()
 
 
 # In[38]:
@@ -799,7 +789,7 @@ agg_DF.describe()
 sns.set(font_scale=2)
 sns.set_style('whitegrid')
 
-display(agg_DF.describe([0.01,0.1,0.5,0.9,0.99]).T)
+agg_DF.describe([0.01,0.1,0.5,0.9,0.99]).T
 
 # get only the results that describe repairable damage
 agg_DF_ = agg_DF.loc[agg_DF['repair_cost'] < 2.0e7]
