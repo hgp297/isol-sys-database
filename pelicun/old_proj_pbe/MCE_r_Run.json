@@ -1,0 +1,859 @@
+{
+    "Applications": {
+        "DL": {
+            "Application": "pelicun",
+            "ApplicationData": {
+                "filenameEDP": "X:/Documents/bezerkeley/courses/20_s/ce_227/Project/MCEr_EDP.csv"
+            }
+        },
+        "EDP": {
+            "Application": "StandardEarthquakeEDP",
+            "ApplicationData": {
+            }
+        },
+        "Events": [
+            {
+                "Application": "StochasticGroundMotion",
+                "ApplicationData": {
+                    "modelName": "VlachosSiteSpecificEQ",
+                    "seed": "None"
+                },
+                "EventClassification": "Earthquake"
+            }
+        ],
+        "Modeling": {
+            "Application": "MDOF_BuildingModel",
+            "ApplicationData": {
+            }
+        },
+        "Simulation": {
+            "Application": "OpenSees-Simulation",
+            "ApplicationData": {
+            }
+        },
+        "UQ": {
+            "Application": "Dakota-UQ",
+            "ApplicationData": {
+            }
+        }
+    },
+    "DamageAndLoss": {
+        "CollapseModes": [
+        ],
+        "ComponentDataFolder": "X:/SimCenter/PBE_Windows_Download/PBE/applications/performDL/pelicun/pelicunPBE/resources/FEMA P58 second edition/DL json",
+        "Components": {
+            "B1033.101b": [
+                {
+                    "cov": "0",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "2",
+                    "unit": "ea"
+                }
+            ],
+            "B1033.111b": [
+                {
+                    "cov": "0",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "2",
+                    "unit": "ea"
+                }
+            ],
+            "B1035.031": [
+                {
+                    "cov": "0",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "11",
+                    "unit": "ea"
+                }
+            ],
+            "B2022.001": [
+                {
+                    "cov": "0.6",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "1702",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0.6",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "638",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0.8",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "785",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0.8",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "295",
+                    "unit": "ft2"
+                }
+            ],
+            "B2022.002": [
+                {
+                    "cov": "0.8",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "900",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0.8",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "337.5",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0.6",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "1472.72",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0.6",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "552.27",
+                    "unit": "ft2"
+                }
+            ],
+            "B2022.011": [
+                {
+                    "cov": "0.8",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "785.45",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0.8",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "294.54",
+                    "unit": "ft2"
+                }
+            ],
+            "B3011.011": [
+                {
+                    "cov": "1.3",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "1053",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0.01",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "882",
+                    "unit": "ft2"
+                }
+            ],
+            "C1011.001a": [
+                {
+                    "cov": "0.2",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "567",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.2",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "213",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.2",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "445",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.2",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "167",
+                    "unit": "ft"
+                }
+            ],
+            "C2011.001a": [
+                {
+                    "cov": "0",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "1",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "1",
+                    "unit": "ea"
+                }
+            ],
+            "C3011.001a": [
+                {
+                    "cov": "0.7",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "42.9",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.7",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "16.1",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.8",
+                    "direction": "1",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "26.4",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.8",
+                    "direction": "2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "9.9",
+                    "unit": "ft"
+                }
+            ],
+            "C3027.001": [
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "2925",
+                    "unit": "ft2"
+                }
+            ],
+            "C3032.001a": [
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "3510",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "195",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "117",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "78",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "3060",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "180",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "288",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "72",
+                    "unit": "ft2"
+                }
+            ],
+            "C3032.003a": [
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "3506.25",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "206.25",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "330",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "82.5",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "3037.5",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "168.75",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "101.25",
+                    "unit": "ft2"
+                },
+                {
+                    "cov": "0",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "67.5",
+                    "unit": "ft2"
+                }
+            ],
+            "C3034.001": [
+                {
+                    "cov": "0.3",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "58.5",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.3",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "58.5",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "54",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "54",
+                    "unit": "ea"
+                }
+            ],
+            "D1014.011": [
+                {
+                    "cov": "0.7",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "0.5",
+                    "unit": "ea"
+                }
+            ],
+            "D2021.011a": [
+                {
+                    "cov": "0.7",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "163.8",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.3",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "216",
+                    "unit": "ft"
+                }
+            ],
+            "D2021.013a": [
+                {
+                    "cov": "0.3",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "247.5",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.7",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "141.75",
+                    "unit": "ft"
+                }
+            ],
+            "D3031.011a": [
+                {
+                    "cov": "0.1",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "0.913",
+                    "unit": "ea"
+                }
+            ],
+            "D3031.021a": [
+                {
+                    "cov": "0.1",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "0.913",
+                    "unit": "ea"
+                }
+            ],
+            "D3041.011a": [
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "292.5",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "360",
+                    "unit": "ft"
+                }
+            ],
+            "D3041.012a": [
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "78",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.3",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "180",
+                    "unit": "ft"
+                }
+            ],
+            "D3041.031a": [
+                {
+                    "cov": "0.5",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "35.1",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "57.6",
+                    "unit": "ea"
+                }
+            ],
+            "D3041.041a": [
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "18",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.5",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "7.8",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "7.2",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.7",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "1.1",
+                    "unit": "ea"
+                }
+            ],
+            "D3052.011a": [
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "5.42",
+                    "unit": "ea"
+                }
+            ],
+            "D4011.021a": [
+                {
+                    "cov": "0.1",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "720",
+                    "unit": "ft"
+                },
+                {
+                    "cov": "0.1",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "780",
+                    "unit": "ft"
+                }
+            ],
+            "D4011.031a": [
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "36",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.2",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "35.1",
+                    "unit": "ea"
+                }
+            ],
+            "D5012.021a": [
+                {
+                    "cov": "0.4",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "4.5",
+                    "unit": "ea"
+                }
+            ],
+            "D5092.031a": [
+                {
+                    "cov": "0.7",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "0.216",
+                    "unit": "ea"
+                }
+            ],
+            "E2022.102a": [
+                {
+                    "cov": "0.6",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "7.8",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.5",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "10.8",
+                    "unit": "ea"
+                }
+            ],
+            "E2022.112a": [
+                {
+                    "cov": "0.6",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "3.1",
+                    "unit": "ea"
+                },
+                {
+                    "cov": "0.3",
+                    "direction": "1,2",
+                    "distribution": "lognormal",
+                    "location": "all",
+                    "median_quantity": "1.1",
+                    "unit": "ea"
+                }
+            ]
+        },
+        "DamageModel": {
+            "CollapseLimits": {
+                "PFA": "",
+                "PID": "0.05"
+            },
+            "CollapseProbability": {
+                "BasisOfEstimate": "sampled EDP",
+                "Value": "estimated"
+            }
+        },
+        "Dependencies": {
+            "CostAndTime": false,
+            "Fragilities": "per ATC recommendation",
+            "Injuries": "Independent",
+            "InjurySeverities": false,
+            "Quantities": "Independent",
+            "ReconstructionCosts": "Independent",
+            "ReconstructionTimes": "Independent",
+            "RedTagProbabilities": "Independent"
+        },
+        "LossModel": {
+            "DecisionVariables": {
+                "Injuries": true,
+                "ReconstructionCost": true,
+                "ReconstructionTime": true,
+                "RedTag": true
+            },
+            "Inhabitants": {
+                "OccupancyType": "Research Laboratories",
+                "PeakPopulation": "45"
+            },
+            "ReplacementCost": "7650000",
+            "ReplacementTime": "700"
+        },
+        "ResponseModel": {
+            "AdditionalUncertainty": {
+                "GroundMotion": "0.64",
+                "Modeling": "0.4716"
+            },
+            "DetectionLimits": {
+                "PFA": "",
+                "PID": ""
+            },
+            "ResponseDescription": {
+                "BasisOfEDP_Distribution": "all results",
+                "CoupledAssessment": false,
+                "EDPDataFile": "X:/Documents/bezerkeley/courses/20_s/ce_227/Project/MCEr_EDP.csv",
+                "EDP_Distribution": "lognormal",
+                "Realizations": "10000"
+            }
+        },
+        "_method": "FEMA P58"
+    },
+    "EDP": {
+    },
+    "Events": [
+        {
+            "EventClassification": "Earthquake",
+            "modelName": "Vlachos et al. (2018)",
+            "momentMagnitude": "RV.",
+            "ruptureDist": "RV.",
+            "seed": "None",
+            "type": "StochasticMotion",
+            "vs30": "RV."
+        }
+    ],
+    "GeneralInformation": {
+        "depth": 0,
+        "height": 0,
+        "location": {
+            "latitude": 37.426,
+            "longitude": -122.171
+        },
+        "name": "ucMerced",
+        "planArea": 2160000,
+        "stories": 3,
+        "units": {
+            "force": "kips",
+            "length": "in",
+            "temperature": "C",
+            "time": "sec"
+        },
+        "width": 0
+    },
+    "Simulation": {
+        "Application": "OpenSees-Simulation",
+        "algorithm": "Newton",
+        "convergenceTest": "NormUnbalance",
+        "dampingRatio": 0.02,
+        "integration": "Newmark 0.5 0.25",
+        "tolerance": 0.01
+    },
+    "StructuralInformation": {
+        "Bx": 0.1,
+        "By": 0.1,
+        "Fyx": 10,
+        "Fyy": 10,
+        "Krz": 1000000000000000,
+        "Kx": 100,
+        "Ky": 100,
+        "ModelData": [
+            {
+                "Fyx": 10,
+                "Fyy": 10,
+                "Ktheta": 1000000000000000,
+                "bx": 0.1,
+                "by": 0.1,
+                "height": 48,
+                "kx": 100,
+                "ky": 100,
+                "weight": 144
+            },
+            {
+                "Fyx": 10,
+                "Fyy": 10,
+                "Ktheta": 1000000000000000,
+                "bx": 0.1,
+                "by": 0.1,
+                "height": 48,
+                "kx": 100,
+                "ky": 100,
+                "weight": 144
+            },
+            {
+                "Fyx": 10,
+                "Fyy": 10,
+                "Ktheta": 1000000000000000,
+                "bx": 0.1,
+                "by": 0.1,
+                "height": 48,
+                "kx": 100,
+                "ky": 100,
+                "weight": 144
+            }
+        ],
+        "height": 144,
+        "massX": 0,
+        "massY": 0,
+        "numStories": 3,
+        "randomVar": [
+        ],
+        "responseX": 0,
+        "responseY": 0,
+        "type": "MDOF_BuildingModel",
+        "weight": 144
+    },
+    "UQ_Method": {
+        "samplingMethodData": {
+            "method": "LHS",
+            "samples": 20,
+            "seed": 51
+        },
+        "uqEngine": "Dakota",
+        "uqType": "Forward Propagation"
+    },
+    "localAppDir": "X:/SimCenter/PBE_Windows_Download/PBE",
+    "randomVariables": [
+    ],
+    "remoteAppDir": "X:/SimCenter/PBE_Windows_Download/PBE",
+    "runType": "local",
+    "workingDir": "{Current_Dir}/C:/Users/Huy/Documents/PBE/LocalWorkDir"
+}
