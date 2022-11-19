@@ -89,6 +89,8 @@ import pprint
 # and for plotting
 from plotly import graph_objects as go
 import plotly.express as px
+import plotly.io as pio
+pio.renderers.default='browser'
 
 # and import pelicun classes and methods
 from pelicun.base import convert_to_MultiIndex
@@ -124,7 +126,7 @@ from pelicun.assessment import Assessment
 # initialize a pelicun Assessment
 PAL = Assessment({
     "PrintLog": True, 
-    "Seed": 415,
+    "Seed": 985,
     "Verbose": False,
 })
 
@@ -317,7 +319,7 @@ demand_sample_ext.describe().T
 
 # plot two demands from the sample
 
-demands = ['PID-1-1', 'RID-1-1']
+demands = ['PID-1-1', 'PFA-1-1']
 
 fig = go.Figure()
 

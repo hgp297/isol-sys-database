@@ -1,4 +1,4 @@
-ID,Location(s),Direction(s),Median Quantity,Unit,Distribution,COV
+,Location,Direction,Theta_0,Units,Family,Theta_1
 B2022.001,all,1,1702,ft2,lognormal,0.6
 B2022.001,all,2,638,ft2,lognormal,0.6
 B2022.001,all,1,785,ft2,lognormal,0.8
