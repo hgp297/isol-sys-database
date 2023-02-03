@@ -35,7 +35,7 @@ class Database:
         # moat_ampli: moat gap
         # RI: building strength
         
-        self.variable_ranges   = {
+        self.param_ranges   = {
             'S_1' : [0.8, 1.3],
             'T_m' : [2.5, 4.0],
             'zeta_M' : [0.10, 0.20],
@@ -47,22 +47,21 @@ class Database:
         }
 
         # create array of limits, then run LHS
-        var_names      = list(self.variable_ranges.keys())
-        var_bounds     = np.asarray(list(self.variable_ranges.values()),
+        self.param_names      = list(self.param_ranges.keys())
+        param_bounds     = np.asarray(list(self.param_ranges.values()),
                                     dtype=np.float64).T
         
-        l_bounds = var_bounds[0,]
-        u_bounds = var_bounds[1,]
+        l_bounds = param_bounds[0,]
+        u_bounds = param_bounds[1,]
         
-        dim_vars = len(self.variable_ranges)
-        sampler = qmc.LatinHypercube(d=dim_vars, seed=seed)
+        dim_params = len(self.param_ranges)
+        sampler = qmc.LatinHypercube(d=dim_params, seed=seed)
         sample = sampler.random(n=n_points)
         
-        self.input_list = var_names
-        self.input_values = qmc.scale(sample, l_bounds, u_bounds)
+        self.param_values = qmc.scale(sample, l_bounds, u_bounds)
         
         ######################################################################
-        # system selection variables
+        # system selection params
         ######################################################################
         
         config_dict   = {'num_bays' : [3, 8],
@@ -91,6 +90,25 @@ class Database:
         isols = random.choices(isol_sys_list, k=n_points)
         self.system_selection = np.array([structs, isols]).T
         self.system_names = ['superstructure_system', 'isolator_system']
+        
+        all_inputs = np.concatenate((self.system_selection,
+                                     self.config_selection,
+                                     self.param_values), axis=1)
+        self.input_df = pd.DataFrame(all_inputs)
+        self.input_df.columns = self.system_names + self.config_names + self.param_names
+        
+###############################################################################
+# Designing isolation systems
+###############################################################################
+
+        
+    def design_bearings(self):
+        df_in = self.input_df
+        
+        # separate df into isolator systems
+        df_tfp = df_in[df_in['isolator_system'] == 'TFP']
+        df_lrb = df_in[df_in['isolator_system'] == 'LRB']
+        
     
     # units are kips, ft
     def define_gravity_loads(self, D_load=None, L_load=None,
