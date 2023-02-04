@@ -150,6 +150,7 @@ def design_TFP(T_m, zeta_M, S_1, Q, T_2, rho_k):
     
     # guess
     import random
+    random.seed(985)
     R_1 = random.uniform(30.0, 60.0)
     u_y = 0.01
     
@@ -162,10 +163,21 @@ def design_TFP(T_m, zeta_M, S_1, Q, T_2, rho_k):
     k_2 = (2*pi/T_2)**2 * (1/g)
     R_2 = 1/(2*k_2)
     
-    # from rho_k
-    k_a = rho_k * k_2
-    u_a = 2*mu_1*R_1/(2*k_a*R_1 - 1)
-    mu_2 = u_a * k_a
+    aa = (-2/R_1)
+    bb = 4*(1/(2*R_1) - k_2)*D_m
+    cc = 4*mu_1 - W_m
+    
+    up = (-bb + (bb**2 - 4*aa*cc) / (2*aa))
+    un = (-bb - (bb**2 - 4*aa*cc) / (2*aa))
+    
+    u_a = max(up, un)
+    
+    mu_2 = mu_1 + 1/(2*R_1)*u_a
+    
+    # # from rho_k
+    # k_a = rho_k * k_2
+    # u_a = 2*mu_1*R_1/(2*k_a*R_1 - 1)
+    # mu_2 = u_a * k_a
     
     # need to figure out how to ensure design reaches W_m
     a = 1/(2*R_1)
@@ -183,12 +195,12 @@ def design_TFP(T_m, zeta_M, S_1, Q, T_2, rho_k):
     
     
 if __name__ == '__main__':
-    T_m = 3.5
+    T_m = 4.5
     T_2 = 6.5
     zeta_M = 0.15
     S_1 = 1.017
     Q = 0.02
-    rho_k = 10.0
+    rho_k = 300.0
     mus, Rs = design_TFP(T_m, zeta_M, S_1, Q, T_2, rho_k)
     print(mus)
     print(Rs)
