@@ -153,8 +153,6 @@ class Database:
         
         df_lrb = df_in[df_in['isolator_system'] == 'LRB']
         
-        #T_m, S_1, Q, rho_k, n_bays, W_tot
-        
         # attempt to design all LRBs
         t_rb = 10.0
         t0 = time.time()
