@@ -14,6 +14,6 @@
 
 from structure_database import Database
 
-main_obj = Database(200)
+main_obj = Database(5000)
 
-main_obj.define_gravity_loads()
+main_obj.design_bearings()

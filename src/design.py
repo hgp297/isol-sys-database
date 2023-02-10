@@ -1,12 +1,12 @@
 ############################################################################
-#               Bearing design algorithm
+#               Design algorithms
 
 # Created by:   Huy Pham
 #               University of California, Berkeley
 
 # Date created: September 2022
 
-# Description:  
+# Description:  Main design algorithm for bearings and superstructure frames
 
 # Open issues:  (1) checks not done yet
 #               (2) for LRB case, check the load division/bearing layout effects
@@ -52,7 +52,7 @@ def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
 
 # rho_k is not important in rubber bearings
 # how to divide force among bearings?
-def design_LRB(T_m, S_1, Q, rho_k, n_bays, W_tot):
+def design_LRB(T_m, S_1, Q, rho_k, n_bays, W_tot, t_r=10.0):
     
     # number of LRBs vs non LRBs
     N_lb, N_sl = get_layout(n_bays)
@@ -92,7 +92,6 @@ def design_LRB(T_m, S_1, Q, rho_k, n_bays, W_tot):
     # select thickness
     
     G_r = 0.060 # ksi
-    t_r = 8.0
     A_r = k_2 * t_r / (G_r * N_lb)
     d_r = (4*A_r/pi)**(0.5)
     
@@ -106,10 +105,38 @@ def design_LRB(T_m, S_1, Q, rho_k, n_bays, W_tot):
     W_e = 4*Q_L*(D_m - D_y)
     zeta_E = W_e/(2*pi*k_e*D_m**2)
     
-    print('Effective period:', T_e)
-    print('Effective damping:', zeta_E)
+    flag = 0
     
-    return(d_r, d_Pb)
+    # shape factor
+    t = t_r/12
+    S = (d_r/2)/(2*t)
+    
+    # assume small strain G is 75% larger
+    G_ss = 1.75*G_r
+    # incompressibility
+    K_inc = 290 # ksi
+    E_c = (6*G_ss*S**2*K_inc)/(6*G_ss*S**2 + K_inc)
+    
+    # assume shim is half inch less than rubber diameter
+    I = pi/4 *((d_r - 0.5)/2)**4
+    A_s = pi/4 * (d_r - 0.5)**2
+    
+    # buckling check
+    P_crit = pi/t_r * ((E_c * I/3)*G_r*A_s)**(0.5)
+    P_estimate = W_tot/(N_lb + N_sl)
+    
+    if P_estimate/P_crit > 1.0:
+        flag = 1
+    
+    # # shear check
+    # gamma_c = P_crit / (G_r * A_r * S)
+    # limit_aashto = 0.5*7
+    # gamma_s_limit = limit_aashto - gamma_c
+    
+    # print('Effective period:', T_e)
+    # print('Effective damping:', zeta_E)
+    
+    return(d_r, d_Pb, T_e, k_e, zeta_E, flag)
     
 
 # def design_LR(T_m, zeta_m, W_tot, r_init, S_1, t_r, N_rb, N_Pb):
@@ -327,13 +354,10 @@ def design_TFP(T_m, S_1, Q, rho_k):
     # u_a = 2*mu_1*R_1/(2*k_a*R_1 - 1)
     # mu_2 = u_a * k_a
     
-    print('Effective period:', T_e)
-    print('Effective damping:', zeta_E)
+    # print('Effective period:', T_e)
+    # print('Effective damping:', zeta_E)
     
-    mu_list = [mu_1, mu_2, mu_2]
-    R_list = [R_1, R_2, R_2]
-    
-    return(mu_list, R_list)
+    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_E)
     
 if __name__ == '__main__':
     print('====== sample TFP design ======')
@@ -341,9 +365,9 @@ if __name__ == '__main__':
     S_1 = 1.017
     Q = 0.06
     rho_k = 7.0
-    mus, Rs = design_TFP(T_m, S_1, Q, rho_k)
-    print(mus)
-    print(Rs)
+    mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_E = design_TFP(T_m, S_1, Q, rho_k)
+    print('Friction coefficients:', mu_1, mu_2)
+    print('Radii of curvature:', R_1, R_2)
     
     print('====== sample LRB design ======')
     T_m = 2.5
@@ -352,8 +376,9 @@ if __name__ == '__main__':
     rho_k = 21.0
     n_bay = 3
     W_sample = 3000.0
-    d_r, d_L = design_LRB(T_m, S_1, Q, rho_k, n_bay, W_sample)
-    print(d_r)
-    print(d_L)
+    d_r, d_Pb, T_e, k_e, zeta_E, checks = design_LRB(T_m, S_1, Q, rho_k,
+                                                     n_bay, W_sample,t_r=10.0)
+    print('Bearing diameter:', d_r)
+    print('Lead core diameter:', d_Pb)
     
     # design_LRB()
