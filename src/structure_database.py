@@ -101,8 +101,10 @@ class Database:
 # Designing isolation systems
 ###############################################################################
 
+    # use filter_designs=True if only realistic/physically sensible designs are
+    # retained. This may result in the LHS distribution being uneven.
         
-    def design_bearings(self):
+    def design_bearings(self, filter_designs=True):
         import time
         import pandas as pd
         
@@ -135,11 +137,14 @@ class Database:
         all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
                                    'T_e', 'k_e', 'zeta_e']
         
-        # keep the designs that look sensible
-        tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
-                                          (all_tfp_designs['R_1'] <= 50.0) &
-                                          (all_tfp_designs['R_2'] <= 200.0) &
-                                          (all_tfp_designs['zeta_e'] <= 0.30)]
+        if filter_designs == False:
+            tfp_designs = all_tfp_designs
+        else:
+            # keep the designs that look sensible
+            tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
+                                              (all_tfp_designs['R_1'] <= 50.0) &
+                                              (all_tfp_designs['R_2'] <= 200.0) &
+                                              (all_tfp_designs['zeta_e'] <= 0.30)]
         
         tp = time.time() - t0
         
@@ -169,15 +174,19 @@ class Database:
         all_lrb_designs.columns = ['d_bearing', 'd_lead', 
                                    'T_e', 'k_e', 'zeta_e', 'buckling_fail']
         
-        # keep the designs that look sensible
-        lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
-                                           3*all_lrb_designs['d_lead']) &
-                                          (all_lrb_designs['d_bearing'] <=
-                                           6*all_lrb_designs['d_lead']) &
-                                          (all_lrb_designs['d_lead'] <= t_rb) &
-                                          (all_lrb_designs['buckling_fail'] == 0)]
-        
-        lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
+        if filter_designs == False:
+            lrb_designs = all_lrb_designs
+        else:
+            # keep the designs that look sensible
+            lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
+                                               3*all_lrb_designs['d_lead']) &
+                                              (all_lrb_designs['d_bearing'] <=
+                                               6*all_lrb_designs['d_lead']) &
+                                              (all_lrb_designs['d_lead'] <= t_rb) &
+                                              (all_lrb_designs['buckling_fail'] == 0)]
+            
+            lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
+            
         tp = time.time() - t0
         
         print("Designs completed for %d LRBs in %.2f s" %
