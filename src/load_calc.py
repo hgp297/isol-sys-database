@@ -12,6 +12,9 @@
 
 ############################################################################
 
+# length units are in ft
+# load units are in kips
+
 def define_gravity_loads(D_load=None, L_load=None,
                          S_s=2.282, S_1 = 1.017,
                          n_floors=3, n_bays=3, L_bay=30.0, h_story=13.0,

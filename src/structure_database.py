@@ -103,6 +103,8 @@ class Database:
 
     # use filter_designs=True if only realistic/physically sensible designs are
     # retained. This may result in the LHS distribution being uneven.
+    
+    # loads are also defined here
         
     def design_bearings(self, filter_designs=True):
         import time
