@@ -12,6 +12,10 @@
 # Open issues:  (1) 
 ############################################################################
 
+###############################################################################
+#              Node and element numberer for frames
+###############################################################################
+
 def numberer(frame_type, n_bays, n_stories):
     # larger than 8 bays is not supported
     assert n_bays < 9
@@ -111,17 +115,88 @@ def numberer(frame_type, n_bays, n_stories):
     wall_id = 8000
     wall_elems = [nd+wall_id for nd in wall_nodes]
     
+    # TODO: clean up outputs
     return(base_nodes, wall_nodes, floor_nodes, leaning_nodes, spring_nodes,
            col_elems, lc_elems, beam_elems,
            truss_elems, diaph_elems, isol_elems, spring_elems, wall_elems)
 
 ###############################################################################
+#              Steel dimensions and parameters
+###############################################################################
+
+# get shape properties
+def get_properties(shape):
+    Ag      = float(shape.iloc[0]['A'])
+    Ix      = float(shape.iloc[0]['Ix'])
+    Iy      = float(shape.iloc[0]['Iy'])
+    Zx      = float(shape.iloc[0]['Zx'])
+    Sx      = float(shape.iloc[0]['Sx'])
+    d       = float(shape.iloc[0]['d'])
+    bf      = float(shape.iloc[0]['bf'])
+    tf      = float(shape.iloc[0]['tf'])
+    tw      = float(shape.iloc[0]['tw'])
+    return(Ag, Ix, Iy, Zx, Sx, d, bf, tf, tw)
+
+###############################################################################
+#              Bilinear deteriorating model parameters
+###############################################################################
+
+def modified_IK_params(shape, L):
+    # reference Lignos & Krawinkler (2011)
+    Fy = 50 # ksi
+    Es = 29000 # ksi
+
+    Sx = float(shape['Sx'])
+    Iz = float(shape['Ix'])
+    d = float(shape['d'])
+    htw = float(shape['h/tw'])
+    bftf = float(shape['bf/2tf'])
+    ry = float(shape['ry'])
+    c1 = 25.4
+    c2 = 6.895
+
+    My = Fy * Sx
+    thy = My/(6*Es*Iz/L)
+    Ke = My/thy
+    # consider using Lb = 0 for beams bc of slab?
+    Lb = L
+    kappa = 0.4
+    thu = 0.055
+
+    if d > 21.0:
+        Lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
+            *(Lb/ry)**(-0.130)*(c2*Fy/355)**(-0.291))
+        thp = (0.318*(htw)**(-0.550)*(bftf)**(-0.345)
+            *(Lb/ry)**(-0.0230)*(L/d)**(0.090)*(c1*d/533)**(-0.330)*
+            (c2*Fy/355)**(-0.130))
+        thpc = (7.50*(htw)**(-0.610)*(bftf)**(-0.710)
+            *(Lb/ry)**(-0.110)*(c1*d/533)**(-0.161)*
+            (c2*Fy/355)**(-0.320))
+    else:
+        Lam = 495*(htw)**(-1.34)*(bftf)**(-0.595)*(c2*Fy/355)**(-0.360)
+        thp = (0.0865*(htw)**(-0.365)*(bftf)**(-0.140)
+            *(L/d)**(0.340)*(c1*d/533)**(-0.721)*
+            (c2*Fy/355)**(-0.230))
+        thpc = (5.63*(htw)**(-0.565)*(bftf)**(-0.800)
+            *(c1*d/533)**(-0.280)*(c2*Fy/355)**(-0.430))
+
+    # Lam = 1000
+    # thp = 0.025
+    # thpc = 0.3
+    thu = 0.4
+
+    return(Ke, My, Lam, thp, thpc, kappa, thu)
+
+###############################################################################
 #              Start model and make nodes
 ###############################################################################
 
-def define_nodes(L_bay, h_story, w_floor, p_lc,
+# TODO: clean up inputs (aggregate into df?)
+
+def build_model(L_bay, h_story, w_floor, p_lc,
                  base_nodes, wall_nodes, floor_nodes,
-                 leaning_nodes, spring_nodes):
+                 leaning_nodes, spring_nodes,
+                 selected_col, selected_beam, selected_roof):
     
     # import OpenSees and libraries
     import openseespy.opensees as ops
@@ -145,7 +220,7 @@ def define_nodes(L_bay, h_story, w_floor, p_lc,
     ops.model('basic', '-ndm', 3, '-ndf', 6)
     
     # model gravity masses corresponding to the frame placed on building edge
-    # CHECK if this should be 1.0D + 0.5L
+    # TODO: check if this should be 1.0D + 0.5L
     m_grav_inner = w_floor * L_bay / g
     m_grav_outer = w_floor * L_bay / 2 /g
     m_lc = p_lc / g
@@ -215,8 +290,128 @@ def define_nodes(L_bay, h_story, w_floor, p_lc,
         ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
         
     print('Nodes placed.')
+    
+################################################################################
+# _tags
+################################################################################
+
+    # General elastic section (non-plastic beam columns, leaning columns)
+    lc_spring_mat_tag = 51
+    elastic_mat_tag = 52
+
+    # Steel material tag
+    steel_col_tag = 31
+    steel_beam_tag = 32
+    steel_roof_tag = 33
+
+    # Isolation layer tags
+    friction_1_tag = 41
+    friction_2_tag = 42
+    friction_3_tag = 43
+    fps_vert_tag = 44
+    fps_rot_tag = 45
+    
+    # Impact material tags
+    impact_mat_tag = 91
+    
+################################################################################
+# define materials
+################################################################################
+
+    # define material: steel
+    Es  = 29000*ksi     # initial elastic tangent
+    nu  = 0.2          # Poisson's ratio
+    Gs  = Es/(1 + nu) # Torsional stiffness modulus
+    J   = 1e10          # Set large torsional stiffness
+
+    # Frame link (stiff elements)
+    A_rigid = 1000.0         # define area of truss section
+    I_rigid = 1e6        # moment of inertia for p-delta columns
+    ops.uniaxial_material('Elastic', elastic_mat_tag, Es)
+
+################################################################################
+# define beams and columns
+################################################################################
+
+    # TODO: link this to shape database
         
+    (Ag_col, Iz_col, Iy_col,
+     Zx_col, Sx_col, d_col,
+     bf_col, tf_col, tw_col) = get_properties(selected_col)
+    (Ag_beam, Iz_beam, Iy_beam,
+     Zx_beam, Sx_beam, d_beam,
+     bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
+    (Ag_roof, Iz_roof, Iy_roof,
+     Zx_roof, Sx_roof, d_roof,
+     bf_roof, tf_roof, tw_roof) = get_properties(selected_roof)
+    
+    # Modified IK steel
+    cIK = 1.0
+    DIK = 1.0
+    (Ke_col, My_col, lam_col,
+     thp_col, thpc_col, kappa_col, thu_col) = modified_IK_params(selected_col, L_col)
+    (Ke_beam, My_beam, lam_beam,
+     thp_beam, thpc_beam, kappa_beam, thu_beam) = modified_IK_params(selected_beam, L_beam)
+    (Ke_roof, My_roof, lam_roof,
+     thp_roof, thpc_roof, kappa_roof, thu_roof) = modified_IK_params(selected_roof, L_beam)
+
+    # calculate modified section properties to account for spring stiffness being in series with the elastic element stiffness
+    # Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
+    n = 10 # stiffness multiplier for rotational spring
+
+    Iz_col_mod = Iz_col*(n+1)/n
+    Iz_beam_mod = Iz_beam*(n+1)/n
+    Iz_roof_mod = Iz_roof*(n+1)/n
+
+    Iy_col_mod = Iy_col*(n+1)/n
+    Iy_beam_mod = Iy_beam*(n+1)/n
+    Iy_roof_mod = Iy_roof*(n+1)/n
+
+    Ke_col = n*6.0*Es*Iz_col/(0.8*L_col)
+    Ke_beam = n*6.0*Es*Iz_beam/(0.8*L_beam)
+    Ke_roof = n*6.0*Es*Iz_roof/(0.8*L_beam)
+
+    McMy = 1.05 # ratio of capping moment to yield moment, Mc / My
+    a_mem_col = (n+1.0)*(My_col*(McMy-1.0))/(Ke_col*thp_col)
+    b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
+
+    a_mem_beam = (n+1.0)*(My_col*(McMy-1.0))/(Ke_beam*thp_beam)
+    b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
+
+    ops.uniaxial_material('Bilin', steel_col_tag, Ke_col, b_col, b_col, My_col, -My_col, lam_col, 
+        0, 0, 0, cIK, cIK, cIK, cIK, thp_col, thp_col, thpc_col, thpc_col, 
+        kappa_col, kappa_col, thu_col, thu_col, DIK, DIK)
+
+    ops.uniaxial_material('Bilin', steel_beam_tag, Ke_beam, b_beam, b_beam, My_beam, -My_beam, lam_beam, 
+        0, 0, 0, cIK, cIK, cIK, cIK, thp_beam, thp_beam, thpc_beam, thpc_beam, 
+        kappa_beam, kappa_beam, thu_beam, thu_beam, DIK, DIK)
+
+    ops.uniaxial_material('Bilin', steel_roof_tag, Ke_roof, b_beam, b_beam, My_roof, -My_roof, lam_roof, 
+        0, 0, 0, cIK, cIK, cIK, cIK, thp_roof, thp_roof, thpc_roof, thpc_roof, 
+        kappa_roof, kappa_roof, thu_roof, thu_roof, DIK, DIK)
+
+    # Create springs at column and beam ends
+    # Springs follow Modified Ibarra Krawinkler model
+    def rotSpringModIK(eleID, matID, nodeI, nodeJ, mem_tag):
+        # columns
+        if mem_tag == 1:
+            ops.element('zeroLength', eleID, nodeI, nodeJ,
+                '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
+                elastic_mat_tag, elastic_mat_tag, matID, 
+                '-dir', 1, 2, 3, 4, 5, 6,
+                '-orient', 0, 0, 1, 1, 0, 0,
+                '-doRayleigh', 1)           # Create zero length element (spring), rotations allowed about local z axis
+        # beams
+        if mem_tag == 2:
+            ops.element('zeroLength', eleID, nodeI, nodeJ,
+                '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
+                elastic_mat_tag, elastic_mat_tag, matID, 
+                '-dir', 1, 2, 3, 4, 5, 6, 
+                '-orient', 1, 0, 0, 0, 0, 1,
+                '-doRayleigh', 1)           # Create zero length element (spring), rotations allowed about local z axis
+        # ops.equalDOF(nodeI, nodeJ, 1, 2, 3, 4, 6)     
     return()
+    
     
 
 if __name__ == '__main__':
@@ -245,7 +440,7 @@ if __name__ == '__main__':
                                            n_floors=ns, n_bays=nb, 
                                            L_bay=L_bay, h_story=h_stories,
                                            n_frames=2)
-    define_nodes(L_bay, h_stories, w_fl, P_lc,
+    build_model(L_bay, h_stories, w_fl, P_lc,
                  base_nodes, wall_nodes, floor_nodes,
                  lc_nodes, spring_nodes)
     
