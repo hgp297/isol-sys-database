@@ -68,7 +68,52 @@ def numberer(frame_type, n_bays, n_stories):
     
     spring_nodes = s_spr + w_spr + n_spr + e_spr + lc_spr
     
-    return(base_nodes, wall_nodes, floor_nodes, leaning_nodes, spring_nodes)
+    # column elements, series 100
+    col_id = 100
+    # make column if not the top floor
+    col_elems = [nd+col_id for nd in floor_nodes 
+                 if (int(nd%100/10) != n_stories+1)]
+    
+    # leaning column elements 
+    lc_elems = [nd+col_id for nd in leaning_nodes 
+                 if (int(nd%100/10) != n_stories+1)]
+    
+    # beam elements, series 200
+    beam_id = 200
+    # make beam if not the last bay and not the bottom floor
+    beam_elems = [nd+beam_id for nd in floor_nodes 
+                 if (int(nd%10) != n_bays) and (int(nd%100/10) != 1)]
+    
+    # truss elements, series 300
+    truss_id = 300
+    # make truss on the last bay for all floors
+    truss_elems = [nd+truss_id for nd in floor_nodes 
+                   if (int(nd%10) == n_bays)]
+    
+    # diaphragm elements, series 400
+    diaph_id = 400
+    # make diaphragm if not the last bay on the bottom floor
+    diaph_elems = [nd+diaph_id for nd in floor_nodes 
+                   if (int(nd%100/10) == 1) and (int(nd%10) != n_bays)]
+    
+    # isolator elements, series 1000
+    isol_id = 1000
+    # make isolators above base nodes
+    isol_elems = [nd+isol_id for nd in base_nodes]
+    
+    
+    
+    # spring elements, series 5000
+    spring_id = 5000
+    spring_elems = [nd+spring_id for nd in spring_nodes]
+    
+    # wall elements, series 8000
+    wall_id = 8000
+    wall_elems = [nd+wall_id for nd in wall_nodes]
+    
+    return(base_nodes, wall_nodes, floor_nodes, leaning_nodes, spring_nodes,
+           col_elems, lc_elems, beam_elems,
+           truss_elems, diaph_elems, isol_elems, spring_elems, wall_elems)
 
 ###############################################################################
 #              Start model and make nodes
@@ -178,7 +223,10 @@ if __name__ == '__main__':
     # run an example of a frame
     nb = 3
     ns = 3
-    base_nodes, wall_nodes, floor_nodes, lc_nodes, spring_nodes = numberer('TFP', nb, ns)
+    [base_nodes, wall_nodes, floor_nodes, lc_nodes, spring_nodes,
+     col_elems, lc_elems, beam_elems,
+     truss_elems, diaph_elems, isol_elems,
+     spring_elems, wall_elems] = numberer('TFP', nb, ns)
     print('base nodes:', base_nodes)
     print('floor nodes:', floor_nodes)
     print('moat nodes:', wall_nodes)
