@@ -54,51 +54,51 @@ def numberer(frame_type, n_bays, n_stories):
     
     # make south node if not on bottom floor
     s_spr = [nd*10+6 for nd in floor_nodes
-             if (int(nd%100/10) != 1)]
+             if ((nd//10)%10 != 1)]
     # make west node if not on the leftmost column and bottom floor
     w_spr = [nd*10+7 for nd in floor_nodes
-             if (nd%10) != 0 and (int(nd%100/10) != 1)]
+             if (nd%10) != 0 and ((nd//10)%10 != 1)]
     # make north node if not on top floor
     n_spr = [nd*10+8 for nd in floor_nodes
-             if (int(nd%100/10) != n_stories+1)]
+             if ((nd//10)%10 != n_stories+1)]
     # make east node if not on rightmost column and bottom floor
     e_spr = [nd*10+9 for nd in floor_nodes
-             if (nd%10) != n_bays and (int(nd%100/10) != 1)]
+             if (nd%10) != n_bays and ((nd//10)%10 != 1)]
     
     # repeat for leaning columns, only N-S
-    lc_spr = [nd*10+6 for nd in leaning_nodes
-             if (int(nd%100/10) != 1)] + [nd*10+8 for nd in leaning_nodes
-                                          if (int(nd%100/10) != n_stories+1)]
+    lc_spr_nodes = [nd*10+6 for nd in leaning_nodes
+                    if ((nd//10)%10 != 1)] + [nd*10+8 for nd in leaning_nodes
+                                              if ((nd//10)%10 != n_stories+1)]
     
-    spring_nodes = s_spr + w_spr + n_spr + e_spr + lc_spr
+    spring_nodes = s_spr + w_spr + n_spr + e_spr
     
     # column elements, series 100
     col_id = 100
     # make column if not the top floor
     col_elems = [nd+col_id for nd in floor_nodes 
-                 if (int(nd%100/10) != n_stories+1)]
+                 if ((nd//10)%10 != n_stories+1)]
     
     # leaning column elements 
     lc_elems = [nd+col_id for nd in leaning_nodes 
-                 if (int(nd%100/10) != n_stories+1)]
+                 if ((nd//10)%10 != n_stories+1)]
     
     # beam elements, series 200
     beam_id = 200
     # make beam if not the last bay and not the bottom floor
     beam_elems = [nd+beam_id for nd in floor_nodes 
-                 if (int(nd%10) != n_bays) and (int(nd%100/10) != 1)]
+                 if (nd%10 != n_bays) and ((nd//10)%10 != 1)]
     
     # truss elements, series 300
     truss_id = 300
     # make truss on the last bay for all floors
     truss_elems = [nd+truss_id for nd in floor_nodes 
-                   if (int(nd%10) == n_bays)]
+                   if (nd%10 == n_bays)]
     
     # diaphragm elements, series 400
     diaph_id = 400
     # make diaphragm if not the last bay on the bottom floor
     diaph_elems = [nd+diaph_id for nd in floor_nodes 
-                   if (int(nd%100/10) == 1) and (int(nd%10) != n_bays)]
+                   if ((nd//10)%10 == 1) and (nd%10 != n_bays)]
     
     # isolator elements, series 1000
     isol_id = 1000
@@ -110,6 +110,7 @@ def numberer(frame_type, n_bays, n_stories):
     # spring elements, series 5000
     spring_id = 5000
     spring_elems = [nd+spring_id for nd in spring_nodes]
+    lc_spr_elems = [nd+spring_id for nd in lc_spr_nodes]
     
     # wall elements, series 8000
     wall_id = 8000
@@ -117,8 +118,8 @@ def numberer(frame_type, n_bays, n_stories):
     
     # TODO: clean up outputs
     return(base_nodes, wall_nodes, floor_nodes, leaning_nodes, spring_nodes,
-           col_elems, lc_elems, beam_elems,
-           truss_elems, diaph_elems, isol_elems, spring_elems, wall_elems)
+           lc_spr_nodes, col_elems, lc_elems, beam_elems,
+           truss_elems, diaph_elems, isol_elems, spring_elems, lc_spr_elems, wall_elems)
 
 ###############################################################################
 #              Steel dimensions and parameters
@@ -195,7 +196,7 @@ def modified_IK_params(shape, L):
 
 def build_model(L_bay, h_story, w_floor, p_lc,
                  base_nodes, wall_nodes, floor_nodes,
-                 leaning_nodes, spring_nodes,
+                 leaning_nodes, spring_nodes, lc_spr_nodes,
                  selected_col, selected_beam, selected_roof):
     
     # import OpenSees and libraries
@@ -246,8 +247,8 @@ def build_model(L_bay, h_story, w_floor, p_lc,
     for nd in floor_nodes:
         
         # get multiplier for location from node number
-        bay = int(nd%10)
-        fl = int(nd%100/10) - 1
+        bay = nd%10
+        fl = (nd//10)%10 - 1
         ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
         
         # assign masses, in direction of motion and stiffness
@@ -267,7 +268,7 @@ def build_model(L_bay, h_story, w_floor, p_lc,
     for nd in leaning_nodes:
         
         # get multiplier for location from node number
-        floor = int(nd%100/10) - 1
+        floor = (nd//10)%10 - 1
         ops.node(nd, (n_bays+1)*L_beam, 0.0*ft, floor*L_col)
         m_nd = m_lc[floor]
         ops.mass(nd, m_nd, m_nd, m_nd,
@@ -292,7 +293,7 @@ def build_model(L_bay, h_story, w_floor, p_lc,
     print('Nodes placed.')
     
 ################################################################################
-# _tags
+# tags
 ################################################################################
 
     # General elastic section (non-plastic beam columns, leaning columns)
@@ -330,7 +331,7 @@ def build_model(L_bay, h_story, w_floor, p_lc,
     ops.uniaxial_material('Elastic', elastic_mat_tag, Es)
 
 ################################################################################
-# define beams and columns
+# define spring materials
 ################################################################################
 
     # TODO: link this to shape database
@@ -349,11 +350,14 @@ def build_model(L_bay, h_story, w_floor, p_lc,
     cIK = 1.0
     DIK = 1.0
     (Ke_col, My_col, lam_col,
-     thp_col, thpc_col, kappa_col, thu_col) = modified_IK_params(selected_col, L_col)
+     thp_col, thpc_col,
+     kappa_col, thu_col) = modified_IK_params(selected_col, L_col)
     (Ke_beam, My_beam, lam_beam,
-     thp_beam, thpc_beam, kappa_beam, thu_beam) = modified_IK_params(selected_beam, L_beam)
+     thp_beam, thpc_beam,
+     kappa_beam, thu_beam) = modified_IK_params(selected_beam, L_beam)
     (Ke_roof, My_roof, lam_roof,
-     thp_roof, thpc_roof, kappa_roof, thu_roof) = modified_IK_params(selected_roof, L_beam)
+     thp_roof, thpc_roof,
+     kappa_roof, thu_roof) = modified_IK_params(selected_roof, L_beam)
 
     # calculate modified section properties to account for spring stiffness being in series with the elastic element stiffness
     # Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
@@ -378,21 +382,28 @@ def build_model(L_bay, h_story, w_floor, p_lc,
     a_mem_beam = (n+1.0)*(My_col*(McMy-1.0))/(Ke_beam*thp_beam)
     b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
 
-    ops.uniaxial_material('Bilin', steel_col_tag, Ke_col, b_col, b_col, My_col, -My_col, lam_col, 
+    ops.uniaxial_material('Bilin', steel_col_tag, Ke_col, b_col, b_col,
+                          My_col, -My_col, lam_col, 
         0, 0, 0, cIK, cIK, cIK, cIK, thp_col, thp_col, thpc_col, thpc_col, 
         kappa_col, kappa_col, thu_col, thu_col, DIK, DIK)
 
-    ops.uniaxial_material('Bilin', steel_beam_tag, Ke_beam, b_beam, b_beam, My_beam, -My_beam, lam_beam, 
+    ops.uniaxial_material('Bilin', steel_beam_tag, Ke_beam, b_beam, b_beam,
+                          My_beam, -My_beam, lam_beam, 
         0, 0, 0, cIK, cIK, cIK, cIK, thp_beam, thp_beam, thpc_beam, thpc_beam, 
         kappa_beam, kappa_beam, thu_beam, thu_beam, DIK, DIK)
 
-    ops.uniaxial_material('Bilin', steel_roof_tag, Ke_roof, b_beam, b_beam, My_roof, -My_roof, lam_roof, 
+    ops.uniaxial_material('Bilin', steel_roof_tag, Ke_roof, b_beam, b_beam,
+                          My_roof, -My_roof, lam_roof, 
         0, 0, 0, cIK, cIK, cIK, cIK, thp_roof, thp_roof, thpc_roof, thpc_roof, 
         kappa_roof, kappa_roof, thu_roof, thu_roof, DIK, DIK)
 
+################################################################################
+# define springs
+################################################################################
+
     # Create springs at column and beam ends
     # Springs follow Modified Ibarra Krawinkler model
-    def rotSpringModIK(eleID, matID, nodeI, nodeJ, mem_tag):
+    def rot_spring_bilin(eleID, matID, nodeI, nodeJ, mem_tag):
         # columns
         if mem_tag == 1:
             ops.element('zeroLength', eleID, nodeI, nodeJ,
@@ -409,7 +420,89 @@ def build_model(L_bay, h_story, w_floor, p_lc,
                 '-dir', 1, 2, 3, 4, 5, 6, 
                 '-orient', 1, 0, 0, 0, 0, 1,
                 '-doRayleigh', 1)           # Create zero length element (spring), rotations allowed about local z axis
-        # ops.equalDOF(nodeI, nodeJ, 1, 2, 3, 4, 6)     
+        # ops.equalDOF(nodeI, nodeJ, 1, 2, 3, 4, 6)
+        
+    # spring elements: #5xxx, xxx is the spring node
+    spring_id = 5000
+    for elem_tag in spring_elems:
+        spr_nd = elem_tag - spring_id
+        parent_nd = floor(spr_nd/10)
+        
+        # if last digit is 6 or 8, assign column transformations
+        if (spr_nd%10)%2 == 0:
+            mem_tag = 1
+        else:
+            mem_tag = 2
+            
+        rot_spring_bilin(elem_tag, steel_col_tag, parent_nd, spr_nd, mem_tag)
+  
+################################################################################
+# define beams
+################################################################################
+
+    # geometric transformation for beam-columns
+    # command: geomTransf('Linear', transfTag, *vecxz, '-jntOffset', *dI, *dJ) for 3d
+    beam_transf_tag   = 1
+    col_transf_tag    = 2
+
+    ops.geomTransf('Linear', beam_transf_tag, 0, -1, 0) #beams
+    ops.geomTransf('Corotational', col_transf_tag, 0, -1, 0) #columns
+    
+    # outside of concentrated plasticity zones, use elastic beam columns
+    
+    # define the columns
+    col_id = 100
+    for elem_tag in col_elems:
+        i_nd = (elem_tag - col_id)*10 + 8
+        j_nd = (elem_tag - col_id + 10)*10 + 6
+        ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                    Ag_col, Es, Gs, J, Iy_col_mod, Iz_col_mod, col_transf_tag)
+    
+    # define the beams
+    beam_id = 200
+    # get the digit corresponding to top floor
+    n_fl_id = (max(beam_elems)//10)%10
+    for elem_tag in beam_elems:
+        i_nd = (elem_tag - beam_id)*10 + 9
+        j_nd = (elem_tag - beam_id + 1)*10 + 7
+        
+        # if beam is on top floor, use roof beam
+        if (elem_tag//10)%10 == n_fl_id:
+            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                        Ag_roof, Es, Gs, J, Iy_roof_mod, Iz_roof_mod, 
+                        beam_transf_tag)
+        else:
+            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                        Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
+                        beam_transf_tag)
+            
+################################################################################
+# define leaning column
+################################################################################
+
+    # Rotational hinge at leaning column joints via zeroLength elements
+    k_lc = 1e-9*kip/inch
+
+    # Create the material (spring)
+    ops.uniaxialMaterial('Elastic', lc_spring_mat_tag, k_lc)
+    
+    # define leaning column
+    for elem_tag in lc_elems:
+        i_nd = (elem_tag - col_id)*10 + 8
+        j_nd = (elem_tag - col_id + 10)*10 + 6
+        
+        # create elastic members
+        ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                    A_rigid, Es, Gs, J, I_rigid, I_rigid, col_transf_tag)
+        
+    for elem_tag in lc_spr_elems:
+        
+        # create zero length element (spring), rotations allowed about local Z axis
+        ops.element('zeroLength', elem_tag, i_nd, j_nd,
+            '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
+            elastic_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
+            '-dir', 1, 2, 3, 4, 5, 6, '-orient', 0, 0, 1, 1, 0, 0)         
+        
     return()
     
     
@@ -419,9 +512,9 @@ if __name__ == '__main__':
     nb = 3
     ns = 3
     [base_nodes, wall_nodes, floor_nodes, lc_nodes, spring_nodes,
-     col_elems, lc_elems, beam_elems,
+     lc_spr_nodes, col_elems, lc_elems, beam_elems,
      truss_elems, diaph_elems, isol_elems,
-     spring_elems, wall_elems] = numberer('TFP', nb, ns)
+     spring_elems, lc_spr_elems, wall_elems] = numberer('TFP', nb, ns)
     print('base nodes:', base_nodes)
     print('floor nodes:', floor_nodes)
     print('moat nodes:', wall_nodes)
@@ -442,5 +535,5 @@ if __name__ == '__main__':
                                            n_frames=2)
     build_model(L_bay, h_stories, w_fl, P_lc,
                  base_nodes, wall_nodes, floor_nodes,
-                 lc_nodes, spring_nodes)
+                 lc_nodes, spring_nodes, lc_spr_nodes)
     
