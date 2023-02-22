@@ -192,7 +192,7 @@ def modified_IK_params(shape, L):
 #              Start model and make nodes
 ###############################################################################
 
-# TODO: clean up inputs (aggregate into df?)
+# TODO: clean up inputs (aggregate into df? tuple?)
 
 def build_model(L_bay, h_story, w_floor, p_lc,
                  base_nodes, wall_nodes, floor_nodes,
@@ -460,14 +460,12 @@ def build_model(L_bay, h_story, w_floor, p_lc,
     
     # define the beams
     beam_id = 200
-    # get the digit corresponding to top floor
-    n_fl_id = (max(beam_elems)//10)%10
     for elem_tag in beam_elems:
         i_nd = (elem_tag - beam_id)*10 + 9
         j_nd = (elem_tag - beam_id + 1)*10 + 7
         
         # if beam is on top floor, use roof beam
-        if (elem_tag//10)%10 == n_fl_id:
+        if (elem_tag//10)%10 == n_floors + 1:
             ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         Ag_roof, Es, Gs, J, Iy_roof_mod, Iz_roof_mod, 
                         beam_transf_tag)
@@ -494,18 +492,37 @@ def build_model(L_bay, h_story, w_floor, p_lc,
         # create elastic members
         ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                     A_rigid, Es, Gs, J, I_rigid, I_rigid, col_transf_tag)
-        
+    
+    # TODO: check that bottom node above the roller
     for elem_tag in lc_spr_elems:
+        spr_nd = elem_tag - spring_id
+        parent_nd = floor(spr_nd/10)
         
         # create zero length element (spring), rotations allowed about local Z axis
-        ops.element('zeroLength', elem_tag, i_nd, j_nd,
+        ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
             '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
             elastic_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
             '-dir', 1, 2, 3, 4, 5, 6, '-orient', 0, 0, 1, 1, 0, 0)         
+     
+################################################################################
+# Trusses and diaphragms
+################################################################################
+    truss_id = 300
+    for elem_tag in truss_elems:
+        i_nd = elem_tag - truss_id
+        j_nd = elem_tag - truss_id + 1
+        ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
+        
+    diaph_id = 600
+    for elem_tag in diaph_elems:
+        i_nd = elem_tag - diaph_id
+        j_nd = elem_tag - diaph_id + 1
+        ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                    A_rigid, Es, Gs, J, I_rigid, I_rigid, beam_transf_tag)
         
     return()
     
-    
+    # TODO: isolators and walls
 
 if __name__ == '__main__':
     # run an example of a frame
