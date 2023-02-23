@@ -13,8 +13,6 @@
 ############################################################################
 
 
-
-
 def get_properties(shape):
     if (len(shape) == 0):
         raise IndexError('No shape fits the requirements.')
@@ -312,11 +310,11 @@ def design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y,
     
     # import shapes 
     
-    beam_shapes      = pd.read_csv('../inputs/beamShapes.csv',
+    beam_shapes      = pd.read_csv('../resource/beamShapes.csv',
         index_col=None, header=0)
     sorted_beams     = beam_shapes.sort_values(by=['Ix'])
     
-    col_shapes       = pd.read_csv('../inputs/colShapes.csv',
+    col_shapes       = pd.read_csv('../resource/colShapes.csv',
         index_col=None, header=0)
     sorted_cols      = col_shapes.sort_values(by=['Ix'])
 
@@ -380,6 +378,6 @@ def main():
     
     return(beam, roof, col)
     
-# beam, roof, col = main()
+beam, roof, col = main()
 # if __name__ == '__main__':
 #     design_LRB()

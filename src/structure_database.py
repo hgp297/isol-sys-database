@@ -105,7 +105,8 @@ class Database:
     # retained. This may result in the LHS distribution being uneven.
     
     # loads are also defined here
-        
+    # TODO: assertions
+    
     def design_bearings(self, filter_designs=True):
         import time
         import pandas as pd
@@ -113,15 +114,15 @@ class Database:
         df_in = self.raw_input
         
         # get loading conditions
-        from load_calc import define_gravity_loads
+        from loads import define_gravity_loads
         loading_df = df_in.apply(lambda row: define_gravity_loads(S_1=row['S_1'],
                                                       n_floors=row['num_stories'],
                                                       n_bays=row['num_bays']),
                                  axis='columns', result_type='expand')
         
-        loading_df.columns = ['seismic_weight', 'w_floor', 'P_leaning_col']
+        loading_df.columns = ['seismic_weight', 'W_s', 'w_floor', 'P_leaning_col']
         
-        df_in = pd.concat([df_in, loading_df['seismic_weight']], axis=1)
+        df_in = pd.concat([df_in, loading_df], axis=1)
         
         # separate df into isolator systems
         import design as ds
@@ -137,7 +138,7 @@ class Database:
                                        axis='columns', result_type='expand')
         
         all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
-                                   'T_e', 'k_e', 'zeta_e']
+                                   'T_e', 'k_e', 'zeta_e', 'D_m']
         
         if filter_designs == False:
             tfp_designs = all_tfp_designs
@@ -174,7 +175,7 @@ class Database:
         
         
         all_lrb_designs.columns = ['d_bearing', 'd_lead', 
-                                   'T_e', 'k_e', 'zeta_e', 'buckling_fail']
+                                   'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
         
         if filter_designs == False:
             lrb_designs = all_lrb_designs
@@ -197,3 +198,31 @@ class Database:
         b = df_lrb[df_lrb.index.isin(lrb_designs.index)]
         
         self.lrb_designs = pd.concat([b, lrb_designs], axis=1)
+        
+    def design_structure(self):
+        import pandas as pd
+        
+        # combine both set of isolator designs
+        df_in = pd.concat([self.tfp_designs, self.lrb_designs], axis=0)
+        
+        from loads import define_lateral_forces
+        
+        # TODO: check n_frames, current defaults: n_frames = 2, 30ft bay, 13 ft stories
+        
+        # TODO: use named tuples to pass long args
+        ld_df = df_in.apply(lambda row: define_lateral_forces(D_m=row['D_m'],
+                                                              K_e=row['k_e'],
+                                                              zeta_e=row['zeta_e'],
+                                                              R_y=row['RI'], 
+                                                              struct_type=row['superstructure_system'],
+                                                              S_1 = row['S_1'], 
+                                                              n_floors=row['num_stories'],
+                                                              n_bays=row['num_bays']),
+                            axis='columns', result_type='expand')
+        
+        ld_df.columns = ['wx', 'hx', 'h_col', 'hsx', 'Fx', 'Vs']
+        # separate by superstructure systems
+        smrf_df = df_in[df_in['superstructure_system'] == 'MF']
+        cbf_df = df_in[df_in['superstructure_system'] == 'CBF']
+        
+        

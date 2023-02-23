@@ -38,6 +38,7 @@ def define_gravity_loads(D_load=None, L_load=None,
     
     # seismic weight: ASCE 7-22, Ch. 12.7.2
     W_seis = np.sum(D_load*A_bldg)
+    W_super = np.sum(D_load[1:]*A_bldg)
     
     # assume lateral frames are placed on the edge
     trib_width_lat = L_bay/2
@@ -83,4 +84,86 @@ def define_gravity_loads(D_load=None, L_load=None,
                                     P_case_6,
                                     P_case_7])
     
-    return(W_seis, w_on_frame, P_on_leaning_column)
+    return(W_seis, W_super, w_on_frame, P_on_leaning_column)
+
+# from Table 12.8-2
+def get_Ct(frame_type):
+    return {
+        'MF': 0.028,
+        'CBF' : 0.03,
+        'BRB' : 0.03, 
+        'SW' : 0.02
+    }.get(frame_type, 0.02)
+
+def get_x_Tfb(frame_type):
+    return {
+        'MF': 0.8,
+        'CBF' : 0.75,
+        'BRB' : 0.75, 
+        'SW' : 0.75
+    }.get(frame_type, 0.75)
+
+# returns the required story forces per frame per floor
+# units are kips and inches
+def define_lateral_forces(D_m, K_e, zeta_e, R_y, 
+                          struct_type, D_load=None, L_load=None, 
+                          S_s=2.282, S_1 = 1.017, 
+                          n_floors=3, n_bays=3, n_frames=2,
+                          L_bay=30.0, h_story=13.0):
+    
+    import numpy as np
+    
+    # assuming 100 psf D and 50 psf L for floors 
+    # assume that D already includes structural members
+    if D_load is None:
+        D_load = np.repeat(100.0/1000, n_floors+1)
+    if L_load is None:
+        L_load = np.repeat(50.0/1000, n_floors+1)
+        
+    # roof loading is lighter
+    D_load[-1] = 75.0/1000
+    L_load[-1] = 20.0/1000
+    
+    # assuming square building
+    A_bldg = (L_bay*n_bays)**2
+    
+    # seismic weight: ASCE 7-22, Ch. 12.7.2
+    W_tot = np.sum(D_load*A_bldg)
+    W_s = np.sum(D_load[1:]*A_bldg)
+    
+    # assuming square building
+    A_bldg = (L_bay*n_bays)**2
+    
+    ft = 12.0
+    
+    wx = D_load*A_bldg                          # Floor seismic weights
+    hsx = np.repeat(h_story*ft, n_floors+1)     # Column heights
+    hx = np.arange(1, n_floors+2) * hsx         # Floor elevations
+    h_col = hsx                                 # Column moment arm heights
+    h_col[-1] = h_story/2*ft
+
+    # unnormalize stiffness
+    K = K_e * W_tot
+    Vb = (D_m * K)/n_frames
+    Vst = (Vb*(W_s/W_tot)**(1 - 2.5*zeta_e))
+    Vs = (Vst/R_y)
+    F1 = (Vb - Vst)/R_y
+
+    # approximate fixed based fundamental period
+    Ct = get_Ct(struct_type)
+    x_Tfb = get_x_Tfb(struct_type)
+    h_n = np.sum(hsx)/12.0
+    T_fb = Ct*(h_n**x_Tfb)
+
+    k       = 14*zeta_e*T_fb
+
+    hxk     = hx**k
+
+    CvNum   = wx*hxk
+    CvDen   = np.sum(CvNum)
+
+    Cvx     = CvNum/CvDen
+
+    Fx      = Cvx*Vs
+    
+    return(wx, hx, h_col, hsx, Fx, Vs)
