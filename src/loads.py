@@ -15,10 +15,18 @@
 # length units are in ft
 # load units are in kips
 
-def define_gravity_loads(D_load=None, L_load=None,
-                         S_s=2.282, S_1 = 1.017,
-                         n_floors=3, n_bays=3, L_bay=30.0, h_story=13.0,
-                         n_frames=2):
+# def define_gravity_loads(D_load=None, L_load=None,
+#                          S_s=2.282, S_1 = 1.017,
+#                          n_floors=3, n_bays=3, L_bay=30.0, h_story=13.0,
+#                          n_frames=2):
+    
+def define_gravity_loads(config_df, D_load=None, L_load=None):
+    
+    n_floors = config_df['num_stories']
+    L_bay = config_df['L_bay']
+    n_bays = config_df['num_bays']
+    S_s = config_df['S_s']
+    n_frames = config_df['num_frames']
     
     import numpy as np
     
@@ -105,11 +113,20 @@ def get_x_Tfb(frame_type):
 
 # returns the required story forces per frame per floor
 # units are kips and inches
-def define_lateral_forces(D_m, K_e, zeta_e, R_y, 
-                          struct_type, D_load=None, L_load=None, 
-                          S_s=2.282, S_1 = 1.017, 
-                          n_floors=3, n_bays=3, n_frames=2,
-                          L_bay=30.0, h_story=13.0):
+def define_lateral_forces(input_df, D_load=None, L_load=None):
+    
+    D_m = input_df['D_m']
+    K_e = input_df['k_e']
+    zeta_e = input_df['zeta_e']
+    R_y = input_df['RI']
+    struct_type = input_df['superstructure_system']
+    S_1 = input_df['S_1']
+    S_s = input_df['S_s']
+    n_floors = input_df['num_stories']
+    n_bays = input_df['num_bays']
+    n_frames = input_df['num_frames']
+    L_bay = input_df['L_bay']
+    h_story = input_df['h_story']
     
     import numpy as np
     

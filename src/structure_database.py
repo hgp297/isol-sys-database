@@ -64,8 +64,10 @@ class Database:
         # system selection params
         ######################################################################
         
-        config_dict   = {'num_bays' : [3, 6],
-            'num_stories' : [3, 6]
+        config_dict   = {
+            'num_bays' : [3, 6],
+            'num_stories' : [3, 6],
+            'num_frames' : [2, 2]
         }
 
         # generate random integers within the bounds and place into array
@@ -97,6 +99,12 @@ class Database:
                                    param_selection], axis=1)
         self.raw_input.columns = system_names + config_names + param_names
         
+        # temp add in for constants
+        
+        self.raw_input['L_bay'] = 30.0
+        self.raw_input['h_story'] = 13.0
+        self.raw_input['S_s'] = 2.2815
+        
 ###############################################################################
 # Designing isolation systems
 ###############################################################################
@@ -111,30 +119,24 @@ class Database:
         import time
         import pandas as pd
         
-        df_in = self.raw_input
+        df_raw = self.raw_input
         
         # get loading conditions
         from loads import define_gravity_loads
-        loading_df = df_in.apply(lambda row: define_gravity_loads(S_1=row['S_1'],
-                                                      n_floors=row['num_stories'],
-                                                      n_bays=row['num_bays']),
-                                 axis='columns', result_type='expand')
-        
-        loading_df.columns = ['seismic_weight', 'W_s', 'w_floor', 'P_leaning_col']
-        
-        df_in = pd.concat([df_in, loading_df], axis=1)
+        df_raw[['W', 
+               'W_s', 
+               'w_fl', 
+               'P_lc']] = df_raw.apply(lambda row: define_gravity_loads(row),
+                                       axis='columns', result_type='expand')
         
         # separate df into isolator systems
         import design as ds
-        df_tfp = df_in[df_in['isolator_system'] == 'TFP']
+        df_tfp = df_raw[df_raw['isolator_system'] == 'TFP']
         
         
         # attempt to design all TFPs
         t0 = time.time()
-        all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP(row['T_m'],
-                                                             row['S_1'],
-                                                             row['Q'],
-                                                             row['k_ratio']),
+        all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP(row),
                                        axis='columns', result_type='expand')
         
         all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
@@ -159,17 +161,12 @@ class Database:
         
         self.tfp_designs = pd.concat([a, tfp_designs], axis=1)
         
-        df_lrb = df_in[df_in['isolator_system'] == 'LRB']
+        df_lrb = df_raw[df_raw['isolator_system'] == 'LRB']
         
         # attempt to design all LRBs
         t_rb = 10.0
         t0 = time.time()
-        all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row['T_m'],
-                                                                 row['S_1'],
-                                                                 row['Q'],
-                                                                 row['k_ratio'],
-                                                                 row['num_bays'],
-                                                                 row['seismic_weight'],
+        all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row,
                                                                  t_r=t_rb),
                                        axis='columns', result_type='expand')
         
@@ -199,8 +196,9 @@ class Database:
         
         self.lrb_designs = pd.concat([b, lrb_designs], axis=1)
         
-    def design_structure(self):
+    def design_structure(self, filter_designs=True):
         import pandas as pd
+        import time
         
         # combine both set of isolator designs
         df_in = pd.concat([self.tfp_designs, self.lrb_designs], axis=0)
@@ -208,21 +206,33 @@ class Database:
         from loads import define_lateral_forces
         
         # TODO: check n_frames, current defaults: n_frames = 2, 30ft bay, 13 ft stories
+        df_in[['wx', 
+               'hx', 
+               'h_col', 
+               'hsx', 
+               'Fx', 
+               'Vs']] = df_in.apply(lambda row: define_lateral_forces(row),
+                                    axis='columns', result_type='expand')
         
-        # TODO: use named tuples to pass long args
-        ld_df = df_in.apply(lambda row: define_lateral_forces(D_m=row['D_m'],
-                                                              K_e=row['k_e'],
-                                                              zeta_e=row['zeta_e'],
-                                                              R_y=row['RI'], 
-                                                              struct_type=row['superstructure_system'],
-                                                              S_1 = row['S_1'], 
-                                                              n_floors=row['num_stories'],
-                                                              n_bays=row['num_bays']),
-                            axis='columns', result_type='expand')
-        
-        ld_df.columns = ['wx', 'hx', 'h_col', 'hsx', 'Fx', 'Vs']
         # separate by superstructure systems
         smrf_df = df_in[df_in['superstructure_system'] == 'MF']
         cbf_df = df_in[df_in['superstructure_system'] == 'CBF']
         
+        # attempt to design all moment frames
+        t0 = time.time()
+        import design as ds
         
+        smrf_df[['beam',
+                 'roof',
+                 'column',
+                 'flag']] = smrf_df.apply(lambda row: ds.design_MF(row),
+                                               axis='columns', 
+                                               result_type='expand')
+        tp = time.time() - t0
+      
+        self.mf_designs = smrf_df
+        
+        # TODO: filter out bad designs (scwb)
+        
+        print("Designs completed for %d moment frames in %.2f s" %
+              (smrf_df.shape[0], tp))

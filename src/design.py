@@ -52,7 +52,15 @@ def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
 
 # rho_k is not important in rubber bearings
 # how to divide force among bearings?
-def design_LRB(T_m, S_1, Q, rho_k, n_bays, W_tot, t_r=10.0):
+def design_LRB(param_df, t_r=10.0):
+    
+    # read in parameters
+    T_m = param_df['T_m']
+    S_1 = param_df['S_1']
+    Q = param_df['Q']
+    rho_k = param_df['k_ratio']
+    n_bays = param_df['num_bays']
+    W_tot = param_df ['W']
     
     # number of LRBs vs non LRBs
     N_lb, N_sl = get_layout(n_bays)
@@ -279,7 +287,13 @@ def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
     
     return(err)
     
-def design_TFP(T_m, S_1, Q, rho_k):
+def design_TFP(param_df):
+    
+    # read in parameters
+    T_m = param_df['T_m']
+    S_1 = param_df['S_1']
+    Q = param_df['Q']
+    rho_k = param_df['k_ratio']
     
     # guess
     import random
@@ -363,8 +377,8 @@ def design_TFP(T_m, S_1, Q, rho_k):
     return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_E, D_m)
 
 def get_properties(shape):
-    if (len(shape) == 0):
-        raise IndexError('No shape fits the requirements.')
+    # if (len(shape) == 0):
+    #     raise IndexError('No shape fits the requirements.')
     Zx      = float(shape.iloc[0]['Zx'])
     Ag      = float(shape.iloc[0]['A'])
     Ix      = float(shape.iloc[0]['Ix'])
@@ -411,6 +425,7 @@ def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
 
 def get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad):
     # beam-column relationships
+    # ensure units are in inches
     alpha       = 0.8           # strain ratio
     dcdb        = 0.5           # depth ratio
     beta        = dcdb/alpha
@@ -437,6 +452,11 @@ def select_member(member_list, req_var, req_val):
     # req_var is string 'Ix' or 'Zx'
     # req_val is value
     qualified_list = member_list[member_list[req_var] > req_val]
+    
+    from numpy import nan
+    if len(qualified_list) < 1:
+        return(nan, nan)
+    
     sorted_weight = qualified_list.sort_values(by=['W'])
     selected_member = sorted_weight.iloc[:1]
     return(selected_member, qualified_list)
@@ -445,6 +465,11 @@ def select_member(member_list, req_var, req_val):
 
 
 def zx_check(current_member, member_list, Z_beam_req):
+    
+    from numpy import nan
+    if len(current_member) < 1:
+        return(nan, nan)
+    
     (beam_Ag, beam_bf, beam_tf, 
         beam_Ix, beam_Zx) = get_properties(current_member)
 
@@ -463,6 +488,10 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
     
     import numpy as np
     
+    from numpy import nan
+    if len(current_member) < 1:
+        return(nan, nan)
+    
     ksi = 1.0
     Fy = 50.0*ksi
     Fu = 65.0*ksi
@@ -480,14 +509,14 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
 
     if not np.all(ph_location):
         # print('Detected plastic hinge away from ends. Reselecting...')
-        Z_beam_ph_req = max(line_load*L_bay**2/(4*Fy*Ry_ph*Cpr))
+        Z_beam_ph_req = np.max(line_load*L_bay**2/(4*Fy*Ry_ph*Cpr))
         selected_member, ph_list = select_member(member_list, 
             'Zx', Z_beam_ph_req)
 
     else:
         selected_member = current_member
         ph_list = member_list
-
+    
     # beam shear
     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_member)
 
@@ -516,6 +545,9 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
 
     import numpy as np
     
+    if (current_beam is np.nan) or (current_roof is np.nan):
+        return(np.nan, np.nan, False)
+    
     ksi = 1.0
     Fy = 50.0*ksi
     # V_grav = 2 * wx * L / 2 (shear induced by both beams on column)
@@ -534,6 +566,9 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
 
     # initial guess: use columns that has similar Ix to beam
     qualified_Ix = col_list[col_list['Ix'] > I_beam_req]
+    from numpy import nan
+    if len(qualified_Ix) < 1:
+        return (nan, nan, False)
     selected_col = qualified_Ix.iloc[(qualified_Ix['Ix'] - I_beam_req).abs().argsort()[:1]]  # select the first few that qualifies Ix
 
     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
@@ -547,22 +582,26 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
         'Ix', I_col_req)
     selected_col, passed_Zx_cols = select_member(passed_Ix_cols, 
         'Zx', scwb_Z_req)
-
-    (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
+    
+    import pandas as pd
+    if isinstance(selected_col, pd.DataFrame):
+        (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
     M_pr = Z_x*(Fy - Pr/A_g)
     
 
     # check final SCWB
     ratio           = np.empty(nFloor-1)
     
+    scwb_flag = False
     for i in range(nFloor-2, -1, -1):
         ratio[i] = (M_pr[i+1] + M_pr[i])/(2*M_pr_beam)
         if (ratio[i] < 1.0):
-            print('SCWB check failed at floor ' + str(nFloor+1) + ".")
+            # print('SCWB check failed at floor ' + str(nFloor+1) + ".")
+            scwb_flag = True
 
     A_web = A_g - 2*(t_f*b_f)
     V_n  = 0.9*A_web*0.6*Fy
-    V_pr = max(M_pr/h_col)
+    V_pr = np.max(M_pr/h_col)
     col_shear_fail   = V_n < V_pr
 
     if col_shear_fail:
@@ -575,15 +614,23 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     else:
         shear_list = passed_Zx_cols
 
-    return(selected_col, shear_list)
+    return(selected_col, shear_list, scwb_flag)
 
 ############################################################################
 #              ASCE 7-16: Capacity design
 ############################################################################
     
-def design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y,
-              n_bays, L_bay, struct_type,
-              wx, hx, hCol, hsx, wLoad, Fx, Vs):
+def design_MF(input_df, db_string='../resource/'):
+    
+    # ensure everything is in inches, kip/in
+    ft = 12.0
+    R_y = input_df['RI']
+    n_bays = input_df['num_bays']
+    L_bay = input_df['L_bay']*ft 
+    hsx = input_df['hsx']
+    Fx = input_df['Fx']
+    h_col = input_df['h_col']
+    w_load = input_df['w_fl']/ft
     
     import pandas as pd
 
@@ -592,7 +639,7 @@ def design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y,
     delxe, q = get_MRF_element_forces(hsx, Fx, R_y, n_bays)
     
     # get required section specs
-    Ib, Ic, Zb = get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad)
+    Ib, Ic, Zb = get_required_modulus(q, h_col, hsx, delxe, L_bay, w_load)
 
     I_beam_req        = Ib.max()
     I_col_req         = Ic.max()
@@ -603,24 +650,23 @@ def design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y,
     
     # import shapes 
     
-    beam_shapes      = pd.read_csv('../resource/beamShapes.csv',
+    beam_shapes      = pd.read_csv(db_string+'beamShapes.csv',
         index_col=None, header=0)
     sorted_beams     = beam_shapes.sort_values(by=['Ix'])
     
-    col_shapes       = pd.read_csv('../resource/colShapes.csv',
+    col_shapes       = pd.read_csv(db_string+'colShapes.csv',
         index_col=None, header=0)
     sorted_cols      = col_shapes.sort_values(by=['Ix'])
 
 
     # Floor beams
-
     selected_beam, passed_Ix_beams = select_member(sorted_beams, 
                                                    'Ix', I_beam_req)
 
     selected_beam, passed_Zx_beams = zx_check(selected_beam, 
                                               passed_Ix_beams, Z_beam_req)
 
-    story_loads = wLoad[:-1]
+    story_loads = w_load[:-1]
     selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
                                                         passed_Zx_beams, 
                                                         story_loads, L_bay)
@@ -633,17 +679,25 @@ def design_MF(D_m, K_e, W_tot, W_s, n_frames, zeta_e, R_y,
     selected_roof_beam, passed_Zx_roof_beams = zx_check(selected_roof_beam, 
         passed_Ix_roof_beams, Z_roof_beam_req)
     
-    roof_load = wLoad[-1]
+    roof_load = w_load[-1]
     
     selected_roof_beam, passed_checks_roof_beams = ph_shear_check(selected_roof_beam, 
         passed_Zx_roof_beams, roof_load, L_bay)
     
     # columns
-    selected_column, passed_check_cols = select_column(wLoad, L_bay, 
-        hCol, selected_beam, selected_roof_beam, sorted_cols, 
+    selected_column, passed_check_cols, scwb_flag = select_column(w_load, L_bay, 
+        h_col, selected_beam, selected_roof_beam, sorted_cols, 
         I_col_req, I_beam_req)
     
-    return(selected_beam, selected_roof_beam, selected_column)
+    # return only string to keep data management clean
+    if isinstance(selected_beam, pd.DataFrame):
+        selected_beam = selected_beam.iloc[0]['AISC_Manual_Label']
+    if isinstance(selected_roof_beam, pd.DataFrame):
+        selected_roof_beam = selected_roof_beam.iloc[0]['AISC_Manual_Label']
+    if isinstance(selected_column, pd.DataFrame):
+        selected_column = selected_column.iloc[0]['AISC_Manual_Label']
+    
+    return(selected_beam, selected_roof_beam, selected_column, scwb_flag)
     
 if __name__ == '__main__':
     print('====== sample TFP design ======')
