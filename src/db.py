@@ -14,8 +14,15 @@
 
 from structure_database import Database
 
-main_obj = Database(5000)
+main_obj = Database(100)
 
 main_obj.design_bearings(filter_designs=True)
 
 main_obj.design_structure()
+
+test_mf = main_obj.mf_designs.iloc[0]
+
+# test build one building (MF, TFP only)
+from building import Building
+mf_bldg = Building(test_mf)
+mf_bldg.model_frame()

@@ -222,17 +222,26 @@ class Database:
         t0 = time.time()
         import design as ds
         
-        smrf_df[['beam',
-                 'roof',
-                 'column',
-                 'flag']] = smrf_df.apply(lambda row: ds.design_MF(row),
-                                               axis='columns', 
-                                               result_type='expand')
+        all_mf_designs = smrf_df.apply(lambda row: ds.design_MF(row),
+                                       axis='columns', 
+                                       result_type='expand')
+        
+        all_mf_designs.columns = ['beam', 'roof', 'column', 'flag']
+        
+        if filter_designs == False:
+            mf_designs = all_mf_designs
+        else:
+            # keep the designs that look sensible
+            mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
+            
         tp = time.time() - t0
       
-        self.mf_designs = smrf_df
+        # get the design params of those bearings
+        a = smrf_df[smrf_df.index.isin(mf_designs.index)]
         
-        # TODO: filter out bad designs (scwb)
+        self.mf_designs = pd.concat([a, mf_designs], axis=1)
         
         print("Designs completed for %d moment frames in %.2f s" %
               (smrf_df.shape[0], tp))
+        
+        # TODO: method to retain only flat n points
