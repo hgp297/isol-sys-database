@@ -378,18 +378,21 @@ class Building:
     
         ops.uniaxialMaterial('Bilin', steel_col_tag, Ke_col, b_col, b_col,
                               My_col, -My_col, lam_col, 
-            0, 0, 0, cIK, cIK, cIK, cIK, thp_col, thp_col, thpc_col, thpc_col, 
-            kappa_col, kappa_col, thu_col, thu_col, DIK, DIK)
+                              0, 0, 0, cIK, cIK, cIK, cIK, 
+                              thp_col, thp_col, thpc_col, thpc_col, 
+                              kappa_col, kappa_col, thu_col, thu_col, DIK, DIK)
     
         ops.uniaxialMaterial('Bilin', steel_beam_tag, Ke_beam, b_beam, b_beam,
                               My_beam, -My_beam, lam_beam, 
-            0, 0, 0, cIK, cIK, cIK, cIK, thp_beam, thp_beam, thpc_beam, thpc_beam, 
-            kappa_beam, kappa_beam, thu_beam, thu_beam, DIK, DIK)
+                              0, 0, 0, cIK, cIK, cIK, cIK, 
+                              thp_beam, thp_beam, thpc_beam, thpc_beam, 
+                              kappa_beam, kappa_beam, thu_beam, thu_beam, DIK, DIK)
     
         ops.uniaxialMaterial('Bilin', steel_roof_tag, Ke_roof, b_beam, b_beam,
                               My_roof, -My_roof, lam_roof, 
-            0, 0, 0, cIK, cIK, cIK, cIK, thp_roof, thp_roof, thpc_roof, thpc_roof, 
-            kappa_roof, kappa_roof, thu_roof, thu_roof, DIK, DIK)
+                              0, 0, 0, cIK, cIK, cIK, cIK, 
+                              thp_roof, thp_roof, thpc_roof, thpc_roof, 
+                              kappa_roof, kappa_roof, thu_roof, thu_roof, DIK, DIK)
         
 ################################################################################
 # define springs
@@ -426,10 +429,18 @@ class Building:
             # if last digit is 6 or 8, assign column transformations
             if (spr_nd%10)%2 == 0:
                 mem_tag = 1
+                rot_spring_bilin(elem_tag, steel_col_tag, 
+                                 parent_nd, spr_nd, mem_tag)
             else:
                 mem_tag = 2
                 
-            rot_spring_bilin(elem_tag, steel_col_tag, parent_nd, spr_nd, mem_tag)
+                # if beam is on top floor, use roof beam springs
+                if (parent_nd//10) == n_floors + 1:
+                    rot_spring_bilin(elem_tag, steel_roof_tag, 
+                                     parent_nd, spr_nd, mem_tag)
+                else:
+                    rot_spring_bilin(elem_tag, steel_beam_tag, 
+                                     parent_nd, spr_nd, mem_tag)
             
 ################################################################################
 # define beams
