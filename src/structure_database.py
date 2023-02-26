@@ -149,7 +149,7 @@ class Database:
             tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
                                               (all_tfp_designs['R_1'] <= 50.0) &
                                               (all_tfp_designs['R_2'] <= 200.0) &
-                                              (all_tfp_designs['zeta_e'] <= 0.30)]
+                                              (all_tfp_designs['zeta_e'] <= 0.35)]
         
         tp = time.time() - t0
         

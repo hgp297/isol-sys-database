@@ -569,8 +569,9 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     from numpy import nan
     if len(qualified_Ix) < 1:
         return (nan, nan, False)
-    selected_col = qualified_Ix.iloc[(qualified_Ix['Ix'] - I_beam_req).abs().argsort()[:1]]  # select the first few that qualifies Ix
-
+    selected_col = qualified_Ix.loc[[(qualified_Ix.Ix - 
+                                       I_beam_req).abs().idxmin()]] # select the first few that qualifies Ix
+    
     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
     M_pr = Z_x*(Fy - Pr/A_g)
 
