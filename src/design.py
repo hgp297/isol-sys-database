@@ -115,22 +115,35 @@ def design_LRB(param_df, t_r=10.0):
     
     flag = 0
     
-    # shape factor
+    # shape factor (circular)
     t = t_r/12
-    S = (d_r/2)/(2*t)
+    a = d_Pb/2
+    b = d_r/2
+    S = (b)/(2*t)
     
     # assume small strain G is 75% larger
     G_ss = 1.75*G_r
     # incompressibility
     K_inc = 290 # ksi
-    E_c = (6*G_ss*S**2*K_inc)/(6*G_ss*S**2 + K_inc)
+    
+    # shape factor adjusts for annular shape
+    from math import log
+    lam = (b**2 + a**2 - ((b**2 - a**2)/(log(b/a))))/((b - a)**2)
+    E_pc = 6*lam*G_ss*S**2
+    E_c = (E_pc*K_inc)/(E_pc + K_inc)
     
     # assume shim is half inch less than rubber diameter
-    I = pi/4 *((d_r - 0.5)/2)**4
-    A_s = pi/4 * (d_r - 0.5)**2
+    # buckling values are calculated for rubber area overlapping with shims
+    # the following values are annular
+    b_s = d_r - 0.5
+    I = pi/4 * (b_s**4 - a**4)
+    A = pi*(b_s**2 - a**2)
+    # h = t_r + 2.0 # 1 inch cover plates
     
     # buckling check
-    P_crit = pi/t_r * ((E_c * I/3)*G_r*A_s)**(0.5)
+    # P_crit = sqrt(P_s  P_E), which is simplified to the following
+    # already accounts for A_s effective shear area
+    P_crit = pi/t_r * ((E_c * I/3)*G_ss*A)**(0.5)
     P_estimate = W_tot/(N_lb + N_sl)
     
     if P_estimate/P_crit > 1.0:
