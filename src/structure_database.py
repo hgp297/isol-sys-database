@@ -64,6 +64,7 @@ class Database:
         # system selection params
         ######################################################################
         
+        # FEMA P-695 studies for bay length selection
         config_dict   = {
             'num_bays' : [3, 6],
             'num_stories' : [3, 6],
@@ -148,8 +149,8 @@ class Database:
             # keep the designs that look sensible
             tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
                                               (all_tfp_designs['R_1'] <= 50.0) &
-                                              (all_tfp_designs['R_2'] <= 200.0) &
-                                              (all_tfp_designs['zeta_e'] <= 0.35)]
+                                              (all_tfp_designs['R_2'] <= 180.0) &
+                                              (all_tfp_designs['zeta_e'] <= 0.25)]
         
         tp = time.time() - t0
         

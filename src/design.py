@@ -273,6 +273,10 @@ def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
     B_m = interp(zeta_guess, zetaRef, BmRef)
     D_m = g*S_1*T_m/(4*pi**2*B_m)
     
+    # specify sliders
+    h_1 = 1.0
+    h_2 = 4.0
+    
     k_M = (2*pi/T_m)**2 * (1/g)
     
     u_y = 0.01
@@ -281,13 +285,13 @@ def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
     
     # from Q and D_m
     k_2 = (k_M*D_m - Q)/D_m
-    R_2 = 1/(2*k_2)
+    R_2 = 1/(2*k_2) + h_2
     
     # from rho_k
     u_a = Q/(k_2*(rho_k-1))
     k_a = rho_k*k_2
     mu_2 = u_a*k_a
-    R_1 = u_a/(2*(mu_2-mu_1))
+    R_1 = u_a/(2*(mu_2-mu_1)) + h_1
     
     # effective design values
     a = 1/(2*R_1)
@@ -337,6 +341,10 @@ def design_TFP(param_df):
     
     k_M = (2*pi/T_m)**2 * (1/g)
     
+    # specify sliders
+    h_1 = 1.0
+    h_2 = 4.0
+    
     # W_m = zeta_M*(2*pi*k_M*D_m**2)
     
     u_y = 0.01
@@ -345,13 +353,13 @@ def design_TFP(param_df):
     
     # from Q and D_m
     k_2 = (k_M*D_m - Q)/D_m
-    R_2 = 1/(2*k_2)
+    R_2 = 1/(2*k_2) + h_2
     
     # from rho_k
     u_a = Q/(k_2*(rho_k-1))
     k_a = rho_k*k_2
     mu_2 = u_a*k_a
-    R_1 = u_a/(2*(mu_2-mu_1))
+    R_1 = u_a/(2*(mu_2-mu_1)) + h_1
     
     # effective design values
     a = 1/(2*R_1)
@@ -360,6 +368,8 @@ def design_TFP(param_df):
     W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
     zeta_E   = W_e/(2*pi*k_e*D_m**2)
     T_e = 2*pi*(1/(g*k_e))**0.5
+    
+    # T_2 use as a sanity check for R_2
     
     # u_a = (4*Q*D_m - W_m)/(4*(Q - mu_1))
     # mu_2 = Q + u_a/(2*R_2)

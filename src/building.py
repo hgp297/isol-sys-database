@@ -549,6 +549,8 @@ class Building:
             d2      = 37.5*inch - dSlider2
             h1      = 1*inch                # half-height of sliders
             h2      = 4*inch
+            
+            # TODO: effective height of bearing
             L1      = R1 - h1
             L2      = R2 - h2
     
