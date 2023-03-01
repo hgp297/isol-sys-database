@@ -66,7 +66,7 @@ class Database:
         
         # FEMA P-695 studies for bay length selection
         config_dict   = {
-            'num_bays' : [3, 6],
+            'num_bays' : [3, 8],
             'num_stories' : [3, 6],
             'num_frames' : [2, 2]
         }
@@ -165,25 +165,27 @@ class Database:
         df_lrb = df_raw[df_raw['isolator_system'] == 'LRB']
         
         # attempt to design all LRBs
-        t_rb = 10.0
         t0 = time.time()
-        all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row,
-                                                                 t_r=t_rb),
+        all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row),
                                        axis='columns', result_type='expand')
         
         
-        all_lrb_designs.columns = ['d_bearing', 'd_lead', 
+        all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r',
                                    'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
         
         if filter_designs == False:
             lrb_designs = all_lrb_designs
         else:
             # keep the designs that look sensible
+            # limits from design example CE 223
             lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
                                                3*all_lrb_designs['d_lead']) &
                                               (all_lrb_designs['d_bearing'] <=
                                                6*all_lrb_designs['d_lead']) &
-                                              (all_lrb_designs['d_lead'] <= t_rb) &
+                                              (all_lrb_designs['d_lead'] <= 
+                                                all_lrb_designs['t_r']) &
+                                              # (all_lrb_designs['t_r'] >= 8.0) &
+                                              (all_lrb_designs['t_r'] <= 20.0) &
                                               (all_lrb_designs['buckling_fail'] == 0)]
             
             lrb_designs = lrb_designs.drop(columns=['buckling_fail'])

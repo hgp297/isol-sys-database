@@ -199,8 +199,8 @@ class Building:
         m_lc = p_lc / g
         
         # load for isolators vertical
-        p_outer = sum(w_floor)*L_bay/2*ft
-        p_inner = sum(w_floor)*L_bay/ft
+        p_outer = sum(w_floor)*L_bay/2
+        p_inner = sum(w_floor)*L_bay
         
         # nominal change
         L_beam = L_bay

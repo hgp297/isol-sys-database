@@ -14,9 +14,11 @@
 ############################################################################
 
 def get_layout(n_bays):
+    # place bearings on edge
     num_bearings = (n_bays+1)**2
-    from numpy import ceil
-    num_lb = ceil(0.4*num_bearings / 2.)*2
+    # from numpy import ceil
+    num_lb = 4*n_bays
+    # num_lb = ceil(0.4*num_bearings / 2.)*2
     num_rb = num_bearings - num_lb
     return(int(num_lb), int(num_rb))
 
@@ -50,9 +52,33 @@ def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
     
     return(err)
 
-# rho_k is not important in rubber bearings
+# from specified parameters, find the height that converges on lead height
+# (and rubber height) that achieves the k_1 specified
+def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
+    k_2 = (k_M*D_m - Q_L)/D_m
+    
+    # required area of lead per bearing
+    f_y_Pb = 1.5 # ksi, shear yield strength
+    A_Pb = (Q_L/f_y_Pb) / N_lb # in^2
+    
+    # 60 psi rubber
+    # select thickness
+    
+    G_r = 0.060 # ksi, shear modulus
+    A_r = k_2 * tr_guess / (G_r * N_lb)
+    
+    # yielding force
+    k_1 = rho_k * k_2
+    # assume lead has shear modulus of 150 MPa ~ 21 ksi
+    G_Pb = 21.0 # ksi
+    h_Pb = (G_Pb * A_Pb + A_r * G_r)*N_lb/k_1
+    
+    err = (h_Pb - tr_guess)**2
+    
+    return(err)
+
 # how to divide force among bearings?
-def design_LRB(param_df, t_r=10.0):
+def design_LRB(param_df):
     
     # read in parameters
     T_m = param_df['T_m']
@@ -89,17 +115,22 @@ def design_LRB(param_df, t_r=10.0):
     D_m = g*S_1*T_m/(4*pi**2*B_m)
     k_M = (2*pi/T_m)**2 * (W_tot/g)
     
+    # converge on t_r necessary to achieve rho_k
+    res = minimize_scalar(iterate_bearing_height, args=(D_m, k_M, Q_L, rho_k, N_lb))
+    t_r = res.x
+    
     k_2 = (k_M*D_m - Q_L)/D_m
     
     # required area of lead per bearing
-    f_y_Pb = 1.5 # ksi
+    f_y_Pb = 1.5 # ksi, shear yield strength
     A_Pb = (Q_L/f_y_Pb) / N_lb # in^2
     d_Pb = (4*A_Pb/pi)**(0.5)
+    
     
     # 60 psi rubber
     # select thickness
     
-    G_r = 0.060 # ksi
+    G_r = 0.060 # ksi, shear modulus
     A_r = k_2 * t_r / (G_r * N_lb)
     d_r = (4*A_r/pi)**(0.5)
     
@@ -113,9 +144,12 @@ def design_LRB(param_df, t_r=10.0):
     W_e = 4*Q_L*(D_m - D_y)
     zeta_E = W_e/(2*pi*k_e*D_m**2)
     
+    # TODO: check entire buckling check for annular
+    
     flag = 0
     
     # shape factor (circular)
+    # assumes 12 layers
     t = t_r/12
     a = d_Pb/2
     b = d_r/2
@@ -135,129 +169,38 @@ def design_LRB(param_df, t_r=10.0):
     # assume shim is half inch less than rubber diameter
     # buckling values are calculated for rubber area overlapping with shims
     # the following values are annular
-    b_s = d_r - 0.5
+    b_s = (d_r - 0.5)/2
     I = pi/4 * (b_s**4 - a**4)
     A = pi*(b_s**2 - a**2)
-    # h = t_r + 2.0 # 1 inch cover plates
+    h = t_r + 2.0 # 1 inch cover plates
     
     # buckling check
-    # P_crit = sqrt(P_s  P_E), which is simplified to the following
-    # already accounts for A_s effective shear area
-    P_crit = pi/t_r * ((E_c * I/3)*G_ss*A)**(0.5)
-    P_estimate = W_tot/(N_lb + N_sl)
+    # full unsimplified equation
+    P_S = G_ss*A*h/t_r
+    P_E = pi**2/(h**2)/3*E_c*I*h/t_r
+    P_crit = (-P_S + (P_S**2 + 4*P_S*P_E)**0.5)/2
+    P_test = pi**2*G_ss*(b_s**2 - a**2)**2/(2*2**0.5*t_r*t)
+    
+    # # P_crit = sqrt(P_s  P_E), which is simplified to the following
+    # # already accounts for A_s effective shear area
+    # P_crit = pi/t_r * ((E_c * I/3)*G_ss*A)**(0.5)
+    
+    # bearing always sits on edge frame
+    w_floor = param_df['w_fl'] # k/ft
+    L_bay = param_df['L_bay'] # kip
+    P_estimate = sum(w_floor)*L_bay
+    # P_estimate = W_tot/(N_lb + N_sl)
     
     if P_estimate/P_crit > 1.0:
         flag = 1
     
-    # # shear check
-    # gamma_c = P_crit / (G_r * A_r * S)
-    # limit_aashto = 0.5*7
-    # gamma_s_limit = limit_aashto - gamma_c
-    
-    # print('Effective period:', T_e)
-    # print('Effective damping:', zeta_E)
-    
     # normalize stiffness by weight
     k_e_norm = k_e/W_tot
     
-    return(d_r, d_Pb, T_e, k_e_norm, zeta_E, D_m, flag)
+    return(d_r, d_Pb, t_r, T_e, k_e_norm, zeta_E, D_m, flag)
     
 
-# def design_LR(T_m, zeta_m, W_tot, r_init, S_1, t_r, N_rb, N_Pb):
 
-#     from numpy import interp
-#     inch = 1.0
-#     kip = 1.0
-#     ft = 12.0*inch
-#     g  = 386.4
-#     pi = 3.14159
-    
-#     # from ASCE Ch. 17, get damping multiplier
-#     zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
-#     BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
-    
-#     B_m      = interp(zeta_m, zetaRef, BmRef)
-    
-#     # design displacement
-#     D_m = g*S_1*T_m/(4*pi**2*B_m)
-    
-#     # stiffness
-#     K_eff = (2*pi/T_m)**2 * W_tot/g # k/in
-    
-#     # EDC
-#     W_D = 2*pi*K_eff*D_m**2*zeta_m
-    
-#     # first guess
-#     Q_d = W_D/(4*D_m) # kip
-    
-#     err = 1.0
-#     tol = 0.001
-    
-#     # converge Q_d, K_2, D_y, r_init = K1/K2
-#     while err > tol:
-#         K_2 = K_eff - Q_d/D_m
-#         D_y = Q_d/((r_init-1)*K_2)
-#         Q_d_new = pi*K_eff*D_m**2*zeta_m/(2*(D_m-D_y))
-#         #Q_d_new = W_D/(4*D_m)
-    
-#         err = abs(Q_d_new - Q_d)/Q_d
-    
-#         Q_d = Q_d_new
-    
-#     # required area of lead per bearing
-#     f_y_Pb = 1.5 # ksi
-#     A_Pb = (Q_d/f_y_Pb) / N_Pb # in^2
-#     d_Pb = (4*A_Pb/pi)**(0.5)
-    
-#     # yielding force
-#     K_1 = r_init * K_2
-#     F_y = K_1*D_y
-    
-#     # rubber stiffness per bearing
-#     K_r = (K_eff - Q_d / D_m)/ N_rb
-    
-#     # 60 psi rubber
-#     # select thickness
-    
-#     G_r = 0.060 * kip # ksi
-#     A_r = K_r * t_r / G_r
-#     d_r = (4*A_r/pi)**(0.5)
-    
-#     # final values
-#     K_e = N_rb * K_r + Q_d/D_m
-#     W_e = 4*Q_d*(D_m - D_y)
-#     zeta_e = W_e/(2*pi*K_e*D_m**2)
-    
-#     # check slenderness
-#     # check lead vs main bearing ratio
-    
-#     # buckling check
-    
-#     # shape factor
-#     t = t_r/12
-#     S = (d_r/2)/(2*t)
-    
-#     # assume small strain G is 75% larger
-#     G_ss = 1.75*G_r
-#     # incompressibility
-#     K_inc = 290 # ksi
-#     E_c = (6*G_ss*S**2*K_inc)/(6*G_ss*S**2 + K_inc)
-    
-#     # assume shim is half inch less than rubber diameter
-#     I = pi/4 *((d_r - 0.5)/2)**4
-#     A_s = pi/4 * (d_r - 0.5)**2
-    
-#     P_crit = pi/t_r * ((E_c * I/3)*G_r*A_s)**(0.5)
-    
-#     # shear check
-#     gamma_c = P_crit / (G_r * A_r * S)
-#     limit_aashto = 0.5*7
-#     gamma_s_limit = limit_aashto - gamma_c
-    
-#     # slenderness check
-#     slen_ratio = d_r / d_Pb
-    
-#     return(d_Pb, d_r)
 
 # perform one iteration of TFP design to return a damping coefficient
 def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
@@ -368,34 +311,6 @@ def design_TFP(param_df):
     W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
     zeta_E   = W_e/(2*pi*k_e*D_m**2)
     T_e = 2*pi*(1/(g*k_e))**0.5
-    
-    # T_2 use as a sanity check for R_2
-    
-    # u_a = (4*Q*D_m - W_m)/(4*(Q - mu_1))
-    # mu_2 = Q + u_a/(2*R_2)
-    # R_1 = u_a/(2*(mu_2 - mu_1))
-    
-    # u_a = D_m - W_m/(4*Q)
-    # mu_2 = Q + u_a/(2*R_2)
-    
-    # aa = (-2/R_1)
-    # bb = 4*(1/(2*R_1) - k_2)*D_m
-    # cc = 4*mu_1 - W_m
-    
-    # up = (-bb + (bb**2 - 4*aa*cc) / (2*aa))
-    # un = (-bb - (bb**2 - 4*aa*cc) / (2*aa))
-    
-    # u_a = max(up, un)
-    
-    # mu_2 = mu_1 + 1/(2*R_1)*u_a
-    
-    # # from rho_k
-    # k_a = rho_k * k_2
-    # u_a = 2*mu_1*R_1/(2*k_a*R_1 - 1)
-    # mu_2 = u_a * k_a
-    
-    # print('Effective period:', T_e)
-    # print('Effective damping:', zeta_E)
     
     return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_E, D_m)
 
