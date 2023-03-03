@@ -139,8 +139,10 @@ class Database:
         df_raw[['W', 
                'W_s', 
                'w_fl', 
-               'P_lc']] = df_raw.apply(lambda row: define_gravity_loads(row),
-                                       axis='columns', result_type='expand')
+               'P_lc',
+               'all_w_cases',
+               'all_Plc_cases']] = df_raw.apply(lambda row: define_gravity_loads(row),
+                                                axis='columns', result_type='expand')
         
         # separate df into isolator systems
         import design as ds
@@ -258,5 +260,10 @@ class Database:
         
         print("Designs completed for %d moment frames in %.2f s" %
               (smrf_df.shape[0], tp))
+        
+        
+        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
+                                       axis='columns', 
+                                       result_type='expand')
         
         # TODO: method to retain only flat n points

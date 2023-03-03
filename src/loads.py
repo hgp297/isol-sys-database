@@ -87,7 +87,20 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
                                     P_case_6,
                                     P_case_7])
     
-    return(W_seis, W_super, w_on_frame, P_on_leaning_column)
+    all_w_cases = {
+        '1.4D': w_case_1,
+        '1.2D+1.6L': w_case_2,
+        '1.2D+0.5L': w_case_6,
+        '0.9D': w_case_7}
+    
+    all_plc_cases = {
+        '1.4D': P_case_1,
+        '1.2D+1.6L': P_case_2,
+        '1.2D+0.5L': P_case_6,
+        '0.9D': P_case_7}
+    
+    return(W_seis, W_super, w_on_frame, P_on_leaning_column,
+           all_w_cases, all_plc_cases)
 
 # from Table 12.8-2
 def get_Ct(frame_type):

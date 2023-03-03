@@ -569,6 +569,8 @@ def design_MF(input_df, db_string='../resource/'):
     hsx = input_df['hsx']
     Fx = input_df['Fx']
     h_col = input_df['h_col']
+    
+    # TODO: switch this to 1.2D+0.5L or 0.9 case?
     w_load = input_df['w_fl']/ft
     
     import pandas as pd
@@ -641,13 +643,13 @@ def design_MF(input_df, db_string='../resource/'):
 ############################################################################
 #              ASCE 7-22: Capacity design for braced frame
 ############################################################################
-def get_CBF_element_forces(hsx, Fx, R_y, n_bays):
+def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
     import numpy as np
     
     nFloor      = len(hsx)
     Cd          = R_y
 
-    thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
+    thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits (risk cat III)
     delx        = thetaMax*hsx
     delxe       = delx*(1/Cd)   # assumes Ie = 1.0
 
@@ -658,10 +660,26 @@ def get_CBF_element_forces(hsx, Fx, R_y, n_bays):
     for i in range(nFloor-2, -1, -1):
         Q[i] = Fx[i] + Q[i+1]
 
-    q           = Q/n_bays
+    q           = Q/n_bay_braced
 
     return(delxe, q)
 
+def get_brace_area(Fx, del_xe, q, h_story, L_bay):
+    
+    # angle
+    from math import atan, cos, sin
+    theta = atan(h_story/(L_bay/2))
+    
+    # required axial stiffness of braces for each bay at each level
+    E = 29000.0 # ksi
+    A_req = q/(2*cos(theta)**2) * (L_bay)/(del_xe * E)
+    # required stress capacity for buckling
+    F_cr = q / A_req # ksi
+    del_buckling = F_cr*L_bay / (E*cos(theta))
+    
+    return(del_buckling)
+
+# TODO: cbf design in progress
 def design_CBF(input_df, db_string='../resource/'):
     
     # ensure everything is in inches, kip/in
@@ -673,12 +691,18 @@ def design_CBF(input_df, db_string='../resource/'):
     Fx = input_df['Fx']
     h_col = input_df['h_col']
     w_load = input_df['w_fl']/ft
+    h_story = input_df['h_story']*ft
     
     import pandas as pd
 
     # ASCE 7-22: Story forces
-
-    delxe, q = get_CBF_element_forces(hsx, Fx, R_y, n_bays)
+    # currently, design only two bays of braces
+    n_braced = 2
+    delxe, q = get_CBF_element_forces(hsx, Fx, R_y, n_braced)
+    
+    db = get_brace_area(Fx, delxe, q, h_story, L_bay)
+    
+    return(input_df)
     
     
 if __name__ == '__main__':
