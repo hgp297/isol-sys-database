@@ -41,7 +41,9 @@ class Database:
             'k_ratio' :[3.0, 30.0],
             'Q': [0.05, 0.12],
             'moat_ampli' : [0.8, 1.8],
-            'RI' : [0.5, 2.0]
+            'RI' : [0.5, 2.0],
+            'L_bldg': [75.0, 270.0],
+            'h_bldg': [30.0, 80.0]
         }
 
         # create array of limits, then run LHS
@@ -58,7 +60,7 @@ class Database:
         
         params = qmc.scale(sample, l_bounds, u_bounds)
         param_selection = pd.DataFrame(params)
-        
+        param_selection.columns = param_names
         
         ######################################################################
         # system selection params
@@ -66,8 +68,6 @@ class Database:
         
         # FEMA P-695 studies for bay length selection
         config_dict   = {
-            'num_bays' : [3, 8],
-            'num_stories' : [3, 6],
             'num_frames' : [2, 2]
         }
 
@@ -85,6 +85,8 @@ class Database:
                                                                size=n_points)
         config_selection = pd.DataFrame(config_selection)
         
+        
+        
         import random
         random.seed(seed)
         struct_sys_list = ['MF', 'CBF']
@@ -101,9 +103,19 @@ class Database:
         self.raw_input.columns = system_names + config_names + param_names
         
         # temp add in for constants
+        from numpy import ceil, floor
         
-        self.raw_input['L_bay'] = 30.0
-        self.raw_input['h_story'] = 13.0
+        # find the number of bay (try to keep around 3 to 8)
+        self.raw_input['num_bays'] = self.raw_input.apply(lambda row: ceil(row['L_bldg']/30.0) 
+                                                          if row['L_bldg'] < 185.0
+                                                          else floor(row['L_bldg']/30.0),
+                                                          axis=1)
+        self.raw_input['num_stories'] = self.raw_input.apply(lambda row: ceil(row['h_bldg']/14.0) 
+                                                          if row['h_bldg'] < 55.0
+                                                          else floor(row['h_bldg']/14.0),
+                                                          axis=1)
+        self.raw_input['L_bay'] = self.raw_input['L_bldg'] / self.raw_input['num_bays']
+        self.raw_input['h_story'] = self.raw_input['h_bldg'] / self.raw_input['num_stories']
         self.raw_input['S_s'] = 2.2815
         
 ###############################################################################

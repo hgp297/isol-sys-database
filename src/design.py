@@ -556,7 +556,7 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     return(selected_col, shear_list, scwb_flag)
 
 ############################################################################
-#              ASCE 7-16: Capacity design
+#              ASCE 7-22: Capacity design for moment frame
 ############################################################################
     
 def design_MF(input_df, db_string='../resource/'):
@@ -573,7 +573,7 @@ def design_MF(input_df, db_string='../resource/'):
     
     import pandas as pd
 
-    # ASCE 7-16: Story forces
+    # ASCE 7-22: Story forces
 
     delxe, q = get_MRF_element_forces(hsx, Fx, R_y, n_bays)
     
@@ -637,6 +637,49 @@ def design_MF(input_df, db_string='../resource/'):
         selected_column = selected_column.iloc[0]['AISC_Manual_Label']
     
     return(selected_beam, selected_roof_beam, selected_column, scwb_flag)
+
+############################################################################
+#              ASCE 7-22: Capacity design for braced frame
+############################################################################
+def get_CBF_element_forces(hsx, Fx, R_y, n_bays):
+    import numpy as np
+    
+    nFloor      = len(hsx)
+    Cd          = R_y
+
+    thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
+    delx        = thetaMax*hsx
+    delxe       = delx*(1/Cd)   # assumes Ie = 1.0
+
+    # element lateral force
+    Q           = np.empty(nFloor)
+    Q[-1]       = Fx[-1]
+
+    for i in range(nFloor-2, -1, -1):
+        Q[i] = Fx[i] + Q[i+1]
+
+    q           = Q/n_bays
+
+    return(delxe, q)
+
+def design_CBF(input_df, db_string='../resource/'):
+    
+    # ensure everything is in inches, kip/in
+    ft = 12.0
+    R_y = input_df['RI']
+    n_bays = input_df['num_bays']
+    L_bay = input_df['L_bay']*ft 
+    hsx = input_df['hsx']
+    Fx = input_df['Fx']
+    h_col = input_df['h_col']
+    w_load = input_df['w_fl']/ft
+    
+    import pandas as pd
+
+    # ASCE 7-22: Story forces
+
+    delxe, q = get_CBF_element_forces(hsx, Fx, R_y, n_bays)
+    
     
 if __name__ == '__main__':
     print('====== sample TFP design ======')
