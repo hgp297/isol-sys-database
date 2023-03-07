@@ -35,6 +35,14 @@ class Database:
         # moat_ampli: moat gap
         # RI: building strength
         
+        # LRB
+            # T_m = [ < 4.0]
+            # k_ratio = [ < 10.0]
+            
+        # TFP (find documentation in books)
+            # T_m = 
+            # k_ratio = [ < 100.0]
+            
         self.param_ranges   = {
             'S_1' : [0.8, 1.3],
             'T_m' : [2.5, 5.0],
@@ -106,9 +114,9 @@ class Database:
         from numpy import ceil, floor
         
         # find the number of bay (try to keep around 3 to 8)
-        self.raw_input['num_bays'] = self.raw_input.apply(lambda row: ceil(row['L_bldg']/30.0) 
+        self.raw_input['num_bays'] = self.raw_input.apply(lambda row: ceil(row['L_bldg']/25.0) 
                                                           if row['L_bldg'] < 185.0
-                                                          else floor(row['L_bldg']/30.0),
+                                                          else floor(row['L_bldg']/25.0),
                                                           axis=1)
         self.raw_input['num_stories'] = self.raw_input.apply(lambda row: ceil(row['h_bldg']/14.0) 
                                                           if row['h_bldg'] < 55.0
@@ -198,8 +206,8 @@ class Database:
                                                6*all_lrb_designs['d_lead']) &
                                               (all_lrb_designs['d_lead'] <= 
                                                 all_lrb_designs['t_r']) &
-                                              # (all_lrb_designs['t_r'] >= 8.0) &
-                                              (all_lrb_designs['t_r'] <= 20.0) &
+                                              (all_lrb_designs['t_r'] > 0.0) &
+                                              (all_lrb_designs['t_r'] < 20.0) &
                                               (all_lrb_designs['buckling_fail'] == 0)]
             
             lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
@@ -222,7 +230,7 @@ class Database:
         
         from loads import define_lateral_forces
         
-        # TODO: check n_frames, current defaults: n_frames = 2, 30ft bay, 13 ft stories
+        # TODO: check n_frames, current defaults: n_frames = 2
         df_in[['wx', 
                'hx', 
                'h_col', 

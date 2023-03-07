@@ -73,7 +73,11 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
     G_Pb = 21.0 # ksi
     h_Pb = (G_Pb * A_Pb + A_r * G_r)*N_lb/k_1
     
-    err = (h_Pb - tr_guess)**2
+    # assume 12 layers (11 shims at 0.1 inch thickness)
+    # assume lead core goes 0.5 inch into each endplate
+    t_req = h_Pb - (11*0.1) - 1.0
+    
+    err = (t_req - tr_guess)**2
     
     return(err)
 
@@ -116,7 +120,9 @@ def design_LRB(param_df):
     k_M = (2*pi/T_m)**2 * (W_tot/g)
     
     # converge on t_r necessary to achieve rho_k
-    res = minimize_scalar(iterate_bearing_height, args=(D_m, k_M, Q_L, rho_k, N_lb))
+    res = minimize_scalar(iterate_bearing_height,
+                          args=(D_m, k_M, Q_L, rho_k, N_lb),
+                          bounds=(0.01, 1e3), method='bounded')
     t_r = res.x
     
     k_2 = (k_M*D_m - Q_L)/D_m
@@ -164,22 +170,36 @@ def design_LRB(param_df):
     from math import log
     lam = (b**2 + a**2 - ((b**2 - a**2)/(log(b/a))))/((b - a)**2)
     E_pc = 6*lam*G_ss*S**2
-    E_c = (E_pc*K_inc)/(E_pc + K_inc)
+    E_c = (E_pc*K_inc)/(E_pc + K_inc) # this seems to adjusts for incompressibility but is ad hoc
     
     # assume shim is half inch less than rubber diameter
     # buckling values are calculated for rubber area overlapping with shims
     # the following values are annular
     b_s = (d_r - 0.5)/2
     I = pi/4 * (b_s**4 - a**4)
+    rho = a/b_s
     A = pi*(b_s**2 - a**2)
-    h = t_r + 2.0 # 1 inch cover plates
+    h = t_r + 11*0.1 # 11x0.1 in thick shims
+    
+    # # from Kelly & Konstantinidis
+    # # first calculate the incompressible case
+    # S_pad = (b_s - a)/(2*t)
+    # EI_eff_inc = 2*G_ss*S_pad**2*I*(1 + rho)**2/(1 + rho**2)
+    
+    # assume 1.0 inch cover plates
+    # height of lead core
+    # h_Pb = t_r + 11*0.1 + 1.0
     
     # buckling check
     # full unsimplified equation
     P_S = G_ss*A*h/t_r
     P_E = pi**2/(h**2)/3*E_c*I*h/t_r
-    P_crit = (-P_S + (P_S**2 + 4*P_S*P_E)**0.5)/2
-    P_test = pi**2*G_ss*(b_s**2 - a**2)**2/(2*2**0.5*t_r*t)
+    
+    # Naeim & Kelly
+    # P_crit = (-P_S + (P_S**2 + 4*P_S*P_E)**0.5)/2
+    
+    # Kelly & Konstantinidis
+    P_crit = pi**2*G_ss*(b_s**2 - a**2)**2/(2*(2**0.5)*t_r*t)
     
     # # P_crit = sqrt(P_s  P_E), which is simplified to the following
     # # already accounts for A_s effective shear area
@@ -570,8 +590,13 @@ def design_MF(input_df, db_string='../resource/'):
     Fx = input_df['Fx']
     h_col = input_df['h_col']
     
-    # TODO: switch this to 1.2D+0.5L or 0.9 case?
-    w_load = input_df['w_fl']/ft
+    load_cases = input_df['all_w_cases']
+    case_1 = load_cases['1.2D+0.5L+1.0E']/12
+    case_2 = load_cases['0.9D-1.0E']/12
+    
+    import numpy as np
+    w_load = np.maximum(case_1, case_2)
+    # w_load = input_df['w_fl']/ft
     
     import pandas as pd
 
@@ -690,8 +715,14 @@ def design_CBF(input_df, db_string='../resource/'):
     hsx = input_df['hsx']
     Fx = input_df['Fx']
     h_col = input_df['h_col']
-    w_load = input_df['w_fl']/ft
     h_story = input_df['h_story']*ft
+    
+    load_cases = input_df['all_w_cases']
+    case_1 = load_cases['1.2D+0.5L+1.0E']/12
+    case_2 = load_cases['0.9D-1.0E']/12
+    
+    import numpy as np
+    w_load = np.maximum(case_1, case_2)
     
     import pandas as pd
 

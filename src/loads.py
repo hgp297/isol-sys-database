@@ -57,6 +57,7 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     # case 4 and 5 do not control (wind)
     w_case_6 = 1.2*w_D + w_Ev + 0.5*w_L
     w_case_7 = 0.9*w_D - w_Ev
+    w_case_NLTH = 1.0*w_D + 0.5*w_L
     
     w_on_frame = np.maximum.reduce([w_case_1,
                                     w_case_2,
@@ -81,6 +82,7 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     # case 4 and 5 do not control (wind)
     P_case_6 = 1.2*P_D + P_Ev + 0.5*P_L
     P_case_7 = 0.9*P_D - P_Ev
+    P_case_NLTH = 1.0*P_D + 0.5*P_L
     
     P_on_leaning_column = np.maximum.reduce([P_case_1,
                                     P_case_2,
@@ -90,14 +92,16 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     all_w_cases = {
         '1.4D': w_case_1,
         '1.2D+1.6L': w_case_2,
-        '1.2D+0.5L': w_case_6,
-        '0.9D': w_case_7}
+        '1.2D+0.5L+1.0E': w_case_6,
+        '0.9D-1.0E': w_case_7,
+        '1.0D+0.5L': w_case_NLTH}
     
     all_plc_cases = {
         '1.4D': P_case_1,
         '1.2D+1.6L': P_case_2,
-        '1.2D+0.5L': P_case_6,
-        '0.9D': P_case_7}
+        '1.2D+0.5L+1.0E': P_case_6,
+        '0.9D-1.0E': P_case_7,
+        '1.0D+0.5L': P_case_NLTH}
     
     return(W_seis, W_super, w_on_frame, P_on_leaning_column,
            all_w_cases, all_plc_cases)
