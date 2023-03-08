@@ -364,6 +364,11 @@ def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
     import numpy as np
     
     nFloor      = len(hsx)
+    # take ratio of Cd -> Ry from Table 12.2-1
+    Cd_code = 5.5
+    Ry_code = 8.0
+    Cd          = (Cd_code/Ry_code)*R_y
+    
     Cd          = R_y
 
     thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
@@ -672,7 +677,10 @@ def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
     import numpy as np
     
     nFloor      = len(hsx)
-    Cd          = R_y
+    # take ratio of Cd -> Ry from Table 12.2-1
+    Cd_code = 5.0
+    Ry_code = 6.0
+    Cd          = (Cd_code/Ry_code)*R_y
 
     thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits (risk cat III)
     delx        = thetaMax*hsx
@@ -689,21 +697,97 @@ def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
 
     return(delxe, q)
 
-def get_brace_area(Fx, del_xe, q, h_story, L_bay):
+def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
     
     # angle
-    from math import atan, cos, sin
+    from math import atan, sin, cos
     theta = atan(h_story/(L_bay/2))
     
     # required axial stiffness of braces for each bay at each level
     E = 29000.0 # ksi
-    A_req = q/(2*cos(theta)**2) * (L_bay)/(del_xe * E)
+    A_brace_req = q/(2*cos(theta)**2) * (L_bay)/(del_xe * E)
     # required stress capacity for buckling
-    F_cr = q / A_req # ksi
+    F_cr = q / A_brace_req # ksi
     del_buckling = F_cr*L_bay / (E*cos(theta))
     
-    return(del_buckling)
+    # w1 is 1.2D+0.5L, w2 is 0.9D
+    C_1 = w_1/sin(theta)
+    C_2 = w_2/sin(theta)
+    C_E = Fx/cos(theta)
+    
+    C_max = C_1 + C_E
+    T_max = C_2 - C_E
+    
+    return(A_brace_req, C_max, T_max, del_buckling)
 
+def compressive_brace_loss(x, C, h, L):
+    phi_Pn = compressive_brace_strength(x[0], x[1], h, L)
+    
+    # we minimize the distance to true desired strength
+    # we also seek to minimize Ag and ry to keep the shape size as small as possible
+    loss = (phi_Pn - C)**2 + (x[0]**2 + x[1]**2)**(0.5)
+    return(loss)
+
+def compressive_brace_strength(Ag, ry, h, L):
+    # unbraced length
+    k_brace = 1.0 # for pinned-pinned connection, steel manual Table C-A-7.1
+    Lc = (h**2 + (L/2)**2)**(0.5)/k_brace
+    Lc_r = Lc/ry
+    Ry_hss = 1.4
+    
+    E = 29000.0 # ksi
+    pi = 3.14159
+    Fy = 50.0 # ksi for ASTM A500 brace
+    Fy_pr = Fy*Ry_hss
+    
+    Fe = pi**2*E/(Lc_r**2)
+    
+    if (Lc_r <= 4.71*(E/Fy)**0.5):
+        F_cr = 0.658**(Fy_pr/Fe)*Fy_pr
+    else:
+        F_cr = 0.877*Fe
+        
+    phi = 0.9
+    phi_Pn = phi * Ag * F_cr
+    return(phi_Pn)
+    
+def capacity_brace_design(current_brace, h_story, L_bay, C_max, member_list):
+    
+    import numpy as np
+    if current_brace is np.nan:
+        return np.nan
+    
+    # # TODO: incorporate slenderness
+    # # AISC 341-16 slenderness check for SCBF Eqn F2-1
+    # if (Lc_r > 200.0):
+    #     print('Too slender.')
+    
+    Ag = current_brace['A'].iloc[0]
+    rad_gy = current_brace['ry'].iloc[0]
+    phi_Pn = compressive_brace_strength(Ag, rad_gy, h_story, L_bay)
+    
+    if max(C_max) > phi_Pn:
+        import numpy as np
+        from scipy.optimize import minimize
+        x0 = np.array([Ag, rad_gy])
+        res = minimize(compressive_brace_loss, x0, method='nelder-mead',
+                       args=(max(C_max), h_story, L_bay))
+        ans = res.x
+        
+        Ag_req_est = ans[0]
+        ry_req_est = ans[1]
+        selected_brace, passed_A_braces = select_member(member_list, 
+                                                        'A', Ag_req_est)
+        
+        selected_brace, passed_ry_braces = select_member(passed_A_braces, 
+                                                         'ry', ry_req_est)
+        
+        Ag = selected_brace['A'].iloc[0]
+        ry = selected_brace['ry'].iloc[0]
+        phi_Pn = compressive_brace_strength(Ag, ry, h_story, L_bay)
+        
+    return(phi_Pn)
+    
 # TODO: cbf design in progress
 def design_CBF(input_df, db_string='../resource/'):
     
@@ -731,7 +815,29 @@ def design_CBF(input_df, db_string='../resource/'):
     n_braced = 2
     delxe, q = get_CBF_element_forces(hsx, Fx, R_y, n_braced)
     
-    db = get_brace_area(Fx, delxe, q, h_story, L_bay)
+    
+    
+    A_brace, C_max, T_max, del_b = get_brace_demands(Fx, delxe, q, 
+                                                     h_story, L_bay,
+                                                     case_1, case_2)
+    
+    A_brace_req = A_brace.max()
+    
+    # import shapes 
+    
+    brace_shapes      = pd.read_csv(db_string+'squareHSS.csv',
+        index_col=None, header=0)
+    sorted_braces     = brace_shapes.sort_values(by=['A'])
+
+
+    # Braces
+    # TODO: move compressive design to here (with optimization for guess)
+    selected_brace, passed_A_braces = select_member(sorted_braces, 
+                                                    'A', A_brace_req)
+    
+   
+    phi_pn = capacity_brace_design(selected_brace, h_story, L_bay, 
+                                   C_max, passed_A_braces)
     
     return(input_df)
     
