@@ -181,16 +181,37 @@ def design_LRB(param_df):
     A = pi*(b_s**2 - a**2)
     h = t_r + 11*0.1 # 11x0.1 in thick shims
     
-    # # from Kelly & Konstantinidis
-    # # first calculate the incompressible case
-    # S_pad = (b_s - a)/(2*t)
-    # EI_eff_inc = 2*G_ss*S_pad**2*I*(1 + rho)**2/(1 + rho**2)
+    # from Kelly & Konstantinidis: bending behavior
+    # first calculate the incompressible case
+    S_pad = (b_s - a)/(2*t)
+    EI_eff_inc = 2*G_ss*S_pad**2*I*(1 + rho)**2/(1 + rho**2)
+    
+    # modified Bessel functions
+    from scipy.special import kv, i1, iv
+    
+    eta = a/b_s
+    th = (48*G_ss/K_inc)**(0.5)*S_pad/(1 - eta)
+    
+    B1p = (4/(th*(1 - eta**4)) * 
+            (-kv(1, eta*th) + eta*kv(1,th)) / 
+            (i1(eta*th)*kv(1, th) - i1(th)*kv(1,eta*th)))
+    
+    B2p = (4/(th*(1 - eta**4)) * 
+            (i1(eta*th) - eta*i1(th)) / 
+            (i1(eta*th)*kv(1, th) - i1(th)*kv(1,eta*th)))
+    
+    EI_comp_ratio = (K_inc/(2*G_ss*S_pad**2) * 
+                      (1 + eta**2)/((1 + eta)**2) * 
+                      (1 - B1p*(iv(2, th) - eta**2*iv(2, eta*th)) +
+                      B2p*(kv(2, th) - eta**2*kv(2, eta*th))))
+    
+    EI_eff_comp = EI_eff_inc * EI_comp_ratio
     
     # assume 1.0 inch cover plates
     # height of lead core
     # h_Pb = t_r + 11*0.1 + 1.0
     
-    # buckling check
+    # global buckling check
     # full unsimplified equation
     P_S = G_ss*A*h/t_r
     P_E = pi**2/(h**2)/3*E_c*I*h/t_r
@@ -931,8 +952,6 @@ def design_CBF(input_df, db_string='../resource/'):
                                                     L_bay, 
                                                     C_max)
         
-    # phi_pn = capacity_brace_design(selected_brace, h_story, L_bay, 
-    #                                C_max, passed_A_braces)
     
     selected_beam, qualified_beams = capacity_CBF_design(selected_brace, Q_per_bay, w_grav, 
                                                          h_story, L_bay, n_bays,
