@@ -81,7 +81,7 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
     
     return(err)
 
-# how to divide force among bearings?
+# TODO: how to divide force among bearings?
 def design_LRB(param_df):
     
     # read in parameters
@@ -150,27 +150,21 @@ def design_LRB(param_df):
     W_e = 4*Q_L*(D_m - D_y)
     zeta_E = W_e/(2*pi*k_e*D_m**2)
     
-    # TODO: check entire buckling check for annular
+    #################################################
+    # buckling checks
+    #################################################
     
     flag = 0
+    # assume small strain G is 75% larger
+    G_ss = 1.75*G_r
+    # incompressibility
+    K_inc = 290 # ksi
     
     # shape factor (circular)
     # assumes 12 layers
     t = t_r/12
     a = d_Pb/2
     b = d_r/2
-    S = (b)/(2*t)
-    
-    # assume small strain G is 75% larger
-    G_ss = 1.75*G_r
-    # incompressibility
-    K_inc = 290 # ksi
-    
-    # shape factor adjusts for annular shape
-    from math import log
-    lam = (b**2 + a**2 - ((b**2 - a**2)/(log(b/a))))/((b - a)**2)
-    E_pc = 6*lam*G_ss*S**2
-    E_c = (E_pc*K_inc)/(E_pc + K_inc) # this seems to adjusts for incompressibility but is ad hoc
     
     # assume shim is half inch less than rubber diameter
     # buckling values are calculated for rubber area overlapping with shims
@@ -179,18 +173,50 @@ def design_LRB(param_df):
     I = pi/4 * (b_s**4 - a**4)
     rho = a/b_s
     A = pi*(b_s**2 - a**2)
-    h = t_r + 11*0.1 # 11x0.1 in thick shims
-    
-    # from Kelly & Konstantinidis: bending behavior
-    # first calculate the incompressible case
+    h = t_r + 11*0.1 # 11x0.1 in thick shim
     S_pad = (b_s - a)/(2*t)
-    EI_eff_inc = 2*G_ss*S_pad**2*I*(1 + rho)**2/(1 + rho**2)
-    
-    # modified Bessel functions
-    from scipy.special import kv, i1, iv
-    
     eta = a/b_s
     th = (48*G_ss/K_inc)**(0.5)*S_pad/(1 - eta)
+    
+    # modified Bessel functions
+    from scipy.special import kv, i1, iv, i0
+    
+    #################################################
+    # compressive behavior
+    #################################################
+    
+    # shape factor adjusts for annular shape
+    from math import log
+    lam = (b**2 + a**2 - ((b**2 - a**2)/(log(b/a))))/((b - a)**2)
+    E_pc = 6*lam*G_ss*S_pad**2
+    
+    # this seems to adjusts for incompressibility but is ad hoc
+    # E_c = (E_pc*K_inc)/(E_pc + K_inc) 
+    
+    # full solution from Kelly & Konstantinidis
+    C1p = ((1/((12*G_ss/K_inc)**0.5*(1 + eta)*S_pad)) * 
+           (kv(0, th) - kv(0, eta*th)) / 
+           (i0(th)*kv(0, eta*th) - i0(eta*th)*kv(0, th)))
+    
+    C2p = ((1/((12*G_ss/K_inc)**0.5*(1 + eta)*S_pad)) * 
+           (i0(th) - i0(eta*th)) / 
+           (i0(th)*kv(0, eta*th) - i0(eta*th)*kv(0, th)))
+    
+    E_c = (K_inc*(1 + C1p*(iv(1, th) - eta*iv(1,eta*th)) +
+                  C2p*(kv(1, th) - eta*kv(1, eta*th))))
+    
+    #################################################
+    # bending behavior
+    #################################################
+    
+    # from Kelly & Konstantinidis
+    # first calculate the incompressible case
+    
+    # for an annular pad
+    # this is equivalent to pi*G/8 *(b**2 - a**2)**3/t**2
+    EI_eff_inc = 2*G_ss*S_pad**2*I*(1 + rho)**2/(1 + rho**2)
+    
+    
     
     B1p = (4/(th*(1 - eta**4)) * 
             (-kv(1, eta*th) + eta*kv(1,th)) / 
@@ -211,26 +237,28 @@ def design_LRB(param_df):
     # height of lead core
     # h_Pb = t_r + 11*0.1 + 1.0
     
+    # TODO: why is EI_eff != 1/3*E_c*I
     # global buckling check
     # full unsimplified equation
     P_S = G_ss*A*h/t_r
     P_E = pi**2/(h**2)/3*E_c*I*h/t_r
     
-    # Naeim & Kelly
-    # P_crit = (-P_S + (P_S**2 + 4*P_S*P_E)**0.5)/2
+    # full solution critical load
+    P_crit = (-P_S + (P_S**2 + 4*P_S*P_E)**0.5)/2
     
-    # Kelly & Konstantinidis
-    P_crit = pi**2*G_ss*(b_s**2 - a**2)**2/(2*(2**0.5)*t_r*t)
+    # # truncated solution for sqrt(P_S P_E) assuming that S > 5
+    # P_crit = pi**2*G_ss*(b_s**2 - a**2)**2/(2*(2**0.5)*t_r*t)
     
-    # # P_crit = sqrt(P_s  P_E), which is simplified to the following
     # # already accounts for A_s effective shear area
     # P_crit = pi/t_r * ((E_c * I/3)*G_ss*A)**(0.5)
     
+    # TODO: which axial load to check against?
     # bearing always sits on edge frame
-    w_floor = param_df['w_fl'] # k/ft
-    L_bay = param_df['L_bay'] # kip
-    P_estimate = sum(w_floor)*L_bay
-    # P_estimate = W_tot/(N_lb + N_sl)
+    # w_floor = param_df['w_fl'] # k/ft
+    # L_bay = param_df['L_bay'] # kip
+    # P_estimate = sum(w_floor)*L_bay/(N_lb + N_sl)
+    
+    P_estimate = W_tot/(N_lb + N_sl)
     
     if P_estimate/P_crit > 1.0:
         flag = 1
@@ -238,6 +266,7 @@ def design_LRB(param_df):
     # normalize stiffness by weight
     k_e_norm = k_e/W_tot
     
+    # TODO: single layer not checked?
     return(d_r, d_Pb, t_r, T_e, k_e_norm, zeta_E, D_m, flag)
     
 
@@ -839,7 +868,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     # TODO: check if this is 0.9x?
     M_seis = Fv_braces * L_bay / 4 # kip-in 
     
-    M_max = M_grav + M_seis
+    M_max = M_grav + 0.9*M_seis
     
     # find required Zx that satisfies M_max
     Z_req = np.max(M_max/Fy)
