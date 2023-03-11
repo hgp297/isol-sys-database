@@ -27,3 +27,7 @@ test_cbf = main_obj.tfp_designs.iloc[3]
 from building import Building
 mf_bldg = Building(test_mf)
 mf_bldg.model_frame()
+
+sample_lrb = main_obj.lrb_designs.loc[87]
+from design import design_LRB
+test = design_LRB(sample_lrb)

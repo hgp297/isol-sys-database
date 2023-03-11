@@ -64,7 +64,7 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
     # 60 psi rubber
     # select thickness
     
-    G_r = 0.060 # ksi, shear modulus
+    G_r = 0.060 # ksi, shear modulus 
     A_r = k_2 * tr_guess / (G_r * N_lb)
     
     # yielding force
@@ -118,13 +118,7 @@ def design_LRB(param_df):
     # design displacement
     D_m = g*S_1*T_m/(4*pi**2*B_m)
     k_M = (2*pi/T_m)**2 * (W_tot/g)
-    
-    # converge on t_r necessary to achieve rho_k
-    res = minimize_scalar(iterate_bearing_height,
-                          args=(D_m, k_M, Q_L, rho_k, N_lb),
-                          bounds=(0.01, 1e3), method='bounded')
-    t_r = res.x
-    
+
     k_2 = (k_M*D_m - Q_L)/D_m
     
     # required area of lead per bearing
@@ -132,13 +126,18 @@ def design_LRB(param_df):
     A_Pb = (Q_L/f_y_Pb) / N_lb # in^2
     d_Pb = (4*A_Pb/pi)**(0.5)
     
+    # converge on t_r necessary to achieve rho_k
+    res = minimize_scalar(iterate_bearing_height,
+                          args=(D_m, k_M, Q_L, rho_k, N_lb),
+                          bounds=(0.01, 1e3), method='bounded')
+    t_r = res.x
     
     # 60 psi rubber
     # select thickness
     
     G_r = 0.060 # ksi, shear modulus
     A_r = k_2 * t_r / (G_r * N_lb)
-    d_r = (4*A_r/pi)**(0.5)
+    d_r = (4*(A_r + A_Pb)/pi)**(0.5)
     
     # yielding force
     k_1 = rho_k * k_2
@@ -171,7 +170,6 @@ def design_LRB(param_df):
     # the following values are annular
     b_s = (d_r - 0.5)/2
     I = pi/4 * (b_s**4 - a**4)
-    rho = a/b_s
     A = pi*(b_s**2 - a**2)
     h = t_r + 11*0.1 # 11x0.1 in thick shim
     S_pad = (b_s - a)/(2*t)
@@ -214,7 +212,7 @@ def design_LRB(param_df):
     
     # for an annular pad
     # this is equivalent to pi*G/8 *(b**2 - a**2)**3/t**2
-    EI_eff_inc = 2*G_ss*S_pad**2*I*(1 + rho)**2/(1 + rho**2)
+    EI_eff_inc = 2*G_ss*S_pad**2*I*(1 + eta)**2/(1 + eta**2)
     
     
     
@@ -238,10 +236,15 @@ def design_LRB(param_df):
     # h_Pb = t_r + 11*0.1 + 1.0
     
     # TODO: why is EI_eff != 1/3*E_c*I
-    # global buckling check
+    # global buckling check, uses EI_s = 1/3 E_c I h/tr
     # full unsimplified equation
     P_S = G_ss*A*h/t_r
-    P_E = pi**2/(h**2)/3*E_c*I*h/t_r
+    
+    # # is this specific to circular only?
+    # P_E = pi**2/(h**2)/3*E_c*I*h/t_r
+    
+    # annular
+    P_E = pi**2*EI_eff_comp*h/t_r/(h**2)
     
     # full solution critical load
     P_crit = (-P_S + (P_S**2 + 4*P_S*P_E)**0.5)/2
