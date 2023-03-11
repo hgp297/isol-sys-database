@@ -986,8 +986,8 @@ def design_CBF(input_df, db_string='../resource/'):
         
     
     selected_beam, qualified_beams = capacity_CBF_design(selected_brace, Q_per_bay, w_grav, 
-                                                         h_story, L_bay, n_bays,
-                                                         sorted_beams, sorted_cols)
+                                                          h_story, L_bay, n_bays,
+                                                          sorted_beams, sorted_cols)
     
     
     return(input_df)

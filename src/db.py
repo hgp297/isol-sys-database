@@ -31,3 +31,8 @@ mf_bldg.model_frame()
 sample_lrb = main_obj.lrb_designs.loc[87]
 from design import design_LRB
 test = design_LRB(sample_lrb)
+
+# import seaborn as sns
+# lrbs = main_obj.lrb_designs
+# tfps = main_obj.tfp_designs
+# sns.histplot(data=tfps, x="T_m")
