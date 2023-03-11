@@ -14,7 +14,7 @@
 
 from structure_database import Database
 
-main_obj = Database(500)
+main_obj = Database(5000)
 
 main_obj.design_bearings(filter_designs=True)
 
@@ -28,11 +28,29 @@ from building import Building
 mf_bldg = Building(test_mf)
 mf_bldg.model_frame()
 
-sample_lrb = main_obj.lrb_designs.loc[87]
-from design import design_LRB
-test = design_LRB(sample_lrb)
+# sample_lrb = main_obj.lrb_designs.loc[87]
+# from design import design_LRB
+# test = design_LRB(sample_lrb)
 
-# import seaborn as sns
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
-# sns.histplot(data=tfps, x="T_m")
+#%%
+# plot distribution of parameters
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+fig, axs = plt.subplots(2, 2, figsize=(13, 13))
+
+lrbs = main_obj.lrb_designs
+tfps = main_obj.tfp_designs
+
+sns.histplot(data=lrbs, x="Q", kde=True, label="LRB", ax=axs[0, 0])
+sns.histplot(data=lrbs, x="k_ratio", kde=True, label="LRB", ax=axs[0, 1])
+sns.histplot(data=lrbs, x="T_m", kde=True, label="LRB", ax=axs[1, 0])
+sns.histplot(data=lrbs, x="zeta_e", kde=True, label="LRB", ax=axs[1, 1])
+
+sns.histplot(data=tfps, x="Q", kde=True, label="TFP", ax=axs[0, 0])
+sns.histplot(data=tfps, x="k_ratio", kde=True, label="TFP", ax=axs[0, 1])
+sns.histplot(data=tfps, x="T_m", kde=True, label="TFP", ax=axs[1, 0])
+sns.histplot(data=tfps, x="zeta_e", kde=True, label="TFP", ax=axs[1, 1])
+
+plt.legend()
+plt.show()

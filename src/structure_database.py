@@ -172,7 +172,7 @@ class Database:
             tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
                                               (all_tfp_designs['R_1'] <= 50.0) &
                                               (all_tfp_designs['R_2'] <= 180.0) &
-                                              (all_tfp_designs['zeta_e'] <= 0.25)]
+                                              (all_tfp_designs['zeta_e'] <= 0.5)]
         
         tp = time.time() - t0
         
@@ -270,8 +270,8 @@ class Database:
               (smrf_df.shape[0], tp))
         
         
-        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
-                                       axis='columns', 
-                                       result_type='expand')
+        # all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
+        #                                axis='columns', 
+        #                                result_type='expand')
         
         # TODO: method to retain only flat n points
