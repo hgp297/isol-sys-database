@@ -270,8 +270,8 @@ class Database:
               (smrf_df.shape[0], tp))
         
         
-        # all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
-        #                                axis='columns', 
-        #                                result_type='expand')
+        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
+                                        axis='columns', 
+                                        result_type='expand')
         
         # TODO: method to retain only flat n points

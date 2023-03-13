@@ -28,9 +28,9 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     # assuming 100 psf D and 50 psf L for floors 
     # assume that D already includes structural members
     if D_load is None:
-        D_load = np.repeat(100.0/1000, n_floors+1)
+        D_load = np.repeat(100.0/1000, n_floors)
     if L_load is None:
-        L_load = np.repeat(50.0/1000, n_floors+1)
+        L_load = np.repeat(50.0/1000, n_floors)
         
     # roof loading is lighter
     D_load[-1] = 75.0/1000
@@ -145,9 +145,9 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
     # assuming 100 psf D and 50 psf L for floors 
     # assume that D already includes structural members
     if D_load is None:
-        D_load = np.repeat(100.0/1000, n_floors+1)
+        D_load = np.repeat(100.0/1000, n_floors)
     if L_load is None:
-        L_load = np.repeat(50.0/1000, n_floors+1)
+        L_load = np.repeat(50.0/1000, n_floors)
         
     # roof loading is lighter
     D_load[-1] = 75.0/1000
@@ -166,9 +166,9 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
     ft = 12.0
     
     wx = D_load*A_bldg                          # Floor seismic weights
-    hsx = np.repeat(h_story*ft, n_floors+1)     # Column heights
-    hx = np.arange(1, n_floors+2) * hsx         # Floor elevations
-    h_col = hsx                                 # Column moment arm heights
+    hsx = np.repeat(h_story*ft, n_floors)     # Column heights
+    hx = np.arange(1, n_floors+1) * hsx         # Floor elevations
+    h_col = np.repeat(h_story*ft, n_floors)   # Column moment arm heights
     h_col[-1] = h_story/2*ft
 
     # unnormalize stiffness

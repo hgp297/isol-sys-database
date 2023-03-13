@@ -194,9 +194,15 @@ class Building:
         
         # model gravity masses corresponding to the frame placed on building edge
         # TODO: check if this should be 1.0D + 0.5L
+        # TODO: check if "base" level should have mass
+        import numpy as np
         m_grav_inner = w_floor * L_bay / g
         m_grav_outer = w_floor * L_bay / 2 /g
         m_lc = p_lc / g
+        # prepend mass onto the "ground" level
+        m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
+        m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
+        m_lc = np.insert(m_lc, 0 , m_lc[0])
         
         # load for isolators vertical
         p_outer = sum(w_floor)*L_bay/2
