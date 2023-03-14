@@ -60,12 +60,17 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
     # required area of lead per bearing
     f_y_Pb = 1.5 # ksi, shear yield strength
     A_Pb = (Q_L/f_y_Pb) / N_lb # in^2
+    pi = 3.14159
+    d_Pb = (4*A_Pb/pi)**(0.5)
+    a = d_Pb/2
     
     # 60 psi rubber
     # select thickness
     
     G_r = 0.060 # ksi, shear modulus 
     A_r = k_2 * tr_guess / (G_r * N_lb)
+    d_r = (4*(A_r + A_Pb)/pi)**(0.5)
+    b_s = (d_r - 0.5)/2
     
     # yielding force
     k_1 = rho_k * k_2
@@ -73,11 +78,19 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
     G_Pb = 21.0 # ksi
     h_Pb = (G_Pb * A_Pb + A_r * G_r)*N_lb/k_1
     
+    # try for shape factor of 15
+    S_pad_trial = 15.0
+    t_pad_req = (b_s - a)/(2*S_pad_trial)
+    
+    from math import floor
+    n_layers = floor(tr_guess/t_pad_req)
+    n_shims = n_layers - 1
+    
     # assume 12 layers (11 shims at 0.1 inch thickness)
     # assume lead core goes 0.5 inch into each endplate
-    t_req = h_Pb - (11*0.1) - 1.0
+    tr_req = h_Pb - (n_shims*0.1) - 1.0
     
-    err = (t_req - tr_guess)**2
+    err = (tr_req - tr_guess)**2
     
     return(err)
 
@@ -159,19 +172,29 @@ def design_LRB(param_df):
     # incompressibility
     K_inc = 290 # ksi
     
+    
     # shape factor (circular)
     # assumes 12 layers
-    t = t_r/12
     a = d_Pb/2
     b = d_r/2
+    b_s = (d_r - 0.5)/2
+    
+    # try for shape factor of 15
+    S_pad_trial = 15.0
+    t_pad_req = (b_s - a)/(2*S_pad_trial)
+    
+    from math import floor
+    n_layers = floor(t_r/t_pad_req)
+    n_shims = n_layers - 1
+    t = t_r/n_layers
     
     # assume shim is half inch less than rubber diameter
     # buckling values are calculated for rubber area overlapping with shims
     # the following values are annular
-    b_s = (d_r - 0.5)/2
+    
     I = pi/4 * (b_s**4 - a**4)
     A = pi*(b_s**2 - a**2)
-    h = t_r + 11*0.1 # 11x0.1 in thick shim
+    h = t_r + n_shims*0.1 # 11x0.1 in thick shim
     S_pad = (b_s - a)/(2*t)
     eta = a/b_s
     th = (48*G_ss/K_inc)**(0.5)*S_pad/(1 - eta)
@@ -257,11 +280,11 @@ def design_LRB(param_df):
     
     # TODO: which axial load to check against?
     # bearing always sits on edge frame
-    # w_floor = param_df['w_fl'] # k/ft
-    # L_bay = param_df['L_bay'] # kip
-    # P_estimate = sum(w_floor)*L_bay/(N_lb + N_sl)
+    w_floor = param_df['w_fl'] # k/ft
+    L_bay = param_df['L_bay'] # ft
+    P_estimate = sum(w_floor)*L_bay
     
-    P_estimate = W_tot/(N_lb + N_sl)
+    # P_estimate = W_tot/(N_lb + N_sl)
     
     if P_estimate/P_crit > 1.0:
         flag = 1
@@ -269,8 +292,14 @@ def design_LRB(param_df):
     # normalize stiffness by weight
     k_e_norm = k_e/W_tot
     
+    # shortcut for circular bearing 
+    # compare the strength with an equivalent circular bearing
+    p_crit_compare = P_crit/(pi*b_s**2)
+    S_2 = b_s/t_r
+    p_crit_circ = G_ss*pi*S_pad*S_2/(2*2**0.5)
+    
     # TODO: single layer not checked?
-    return(d_r, d_Pb, t_r, T_e, k_e_norm, zeta_E, D_m, flag)
+    return(d_r, d_Pb, t_r, n_layers, T_e, k_e_norm, zeta_E, D_m, flag)
     
 
 

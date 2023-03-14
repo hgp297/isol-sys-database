@@ -45,8 +45,8 @@ class Database:
             
         self.param_ranges   = {
             'S_1' : [0.8, 1.3],
-            'T_m' : [2.5, 5.0],
-            'k_ratio' :[3.0, 30.0],
+            'T_m' : [2.0, 5.0],
+            'k_ratio' :[3.0, 60.0],
             'Q': [0.05, 0.12],
             'moat_ampli' : [0.8, 1.8],
             'RI' : [0.5, 2.0],
@@ -192,7 +192,7 @@ class Database:
                                        axis='columns', result_type='expand')
         
         
-        all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r',
+        all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 'n_layers',
                                    'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
         
         if filter_designs == False:
@@ -270,8 +270,8 @@ class Database:
               (smrf_df.shape[0], tp))
         
         
-        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
-                                        axis='columns', 
-                                        result_type='expand')
+        # all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
+        #                                 axis='columns', 
+        #                                 result_type='expand')
         
         # TODO: method to retain only flat n points

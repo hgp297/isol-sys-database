@@ -544,6 +544,7 @@ class Building:
 
         if self.isolator_system == 'TFP':
             
+            # TFP system
             # TODO: check displacement capacities
             # Isolator parameters
             R1 = self.R_1
@@ -597,7 +598,43 @@ class Building:
                             L1, L2, L2, d1, d2, d2,
                             p_vert, uy, kvt, minFv, 1e-5)
         else:
-            print('LRB not yet implemented. Write it.')
+            # LRB modeling
+            
+            # dimensions. Material parameters should not be edited without 
+            # modifying design script
+            K_bulk = 290.0*ksi
+            G_r = 0.060*ksi
+            D_inner = self.d_lead
+            D_outer = self.d_bearing
+            t_shim = 0.1*inch
+            t_rubber_whole = self.t_r
+            n_layers = int(self.n_layers)
+            t_layer = t_rubber_whole/n_layers
+            
+            # calculate yield strength. this assumes design was done correctly
+            Q_L = self.Q * self.W
+            alpha = 1.0/self.k_ratio
+            Fy_LRB = Q_L/(1 - alpha)
+            
+            # define 2-D isolation layer 
+            isol_id = self.elem_ids['isolator']
+            base_id = self.elem_ids['base']
+            isol_elems = self.elem_tags['isolator']
+            
+            for elem_tag in isol_elems:
+                i_nd = elem_tag - isol_id
+                j_nd = elem_tag - isol_id - base_id + 10
+                
+                # if top node is furthest left or right, vertical force is outer
+                if (j_nd == 0) or (j_nd%10 == n_bays):
+                    p_vert = p_outer
+                else:
+                    p_vert = p_inner
+                    
+                # TODO: change temp coefficients to imperial units
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                            G_r, K_bulk, D_inner, D_outer,
+                            t_shim, t_layer, n_layers)
   
 ################################################################################
 # Walls
