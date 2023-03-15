@@ -50,8 +50,8 @@ class Database:
             'Q': [0.05, 0.12],
             'moat_ampli' : [0.8, 1.8],
             'RI' : [0.5, 2.0],
-            'L_bldg': [75.0, 270.0],
-            'h_bldg': [30.0, 80.0]
+            'L_bldg': [75.0, 250.0],
+            'h_bldg': [30.0, 100.0]
         }
 
         # create array of limits, then run LHS
@@ -111,16 +111,14 @@ class Database:
         self.raw_input.columns = system_names + config_names + param_names
         
         # temp add in for constants
-        from numpy import ceil, floor
+        # from numpy import ceil, floor
         
         # find the number of bay (try to keep around 3 to 8)
-        self.raw_input['num_bays'] = self.raw_input.apply(lambda row: ceil(row['L_bldg']/25.0) 
-                                                          if row['L_bldg'] < 185.0
-                                                          else floor(row['L_bldg']/25.0),
+        target_Lbay = 30.0
+        target_hstory = 14.0
+        self.raw_input['num_bays'] = self.raw_input.apply(lambda row: round(row['L_bldg']/target_Lbay),
                                                           axis=1)
-        self.raw_input['num_stories'] = self.raw_input.apply(lambda row: ceil(row['h_bldg']/14.0) 
-                                                          if row['h_bldg'] < 55.0
-                                                          else floor(row['h_bldg']/14.0),
+        self.raw_input['num_stories'] = self.raw_input.apply(lambda row: round(row['h_bldg']/target_hstory),
                                                           axis=1)
         self.raw_input['L_bay'] = self.raw_input['L_bldg'] / self.raw_input['num_bays']
         self.raw_input['h_story'] = self.raw_input['h_bldg'] / self.raw_input['num_stories']
@@ -269,9 +267,22 @@ class Database:
         print("Designs completed for %d moment frames in %.2f s" %
               (smrf_df.shape[0], tp))
         
+        t0 = time.time()
+        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
+                                        axis='columns', 
+                                        result_type='expand')
         
-        # all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
-        #                                 axis='columns', 
-        #                                 result_type='expand')
+        all_cbf_designs.columns = ['brace', 'beam', 'column']
+        tp = time.time() - t0
+        
+        # retain all for now
+        cbf_designs = all_cbf_designs
+        
+        # get the design params of those bearings
+        a = cbf_df[cbf_df.index.isin(cbf_designs.index)]
+        self.cbf_designs = pd.concat([a, cbf_designs], axis=1)
+        
+        print("Designs completed for %d braced frames in %.2f s" %
+              (cbf_df.shape[0], tp))
         
         # TODO: method to retain only flat n points
