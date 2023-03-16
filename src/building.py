@@ -56,6 +56,13 @@ class Building:
         nds = [[nd for nd in range (fl, fl+n_bays+1)] for fl in floor_id]
         leaning_nodes = [(fl+n_bays+1) for fl in floor_id]
         
+        # for braced frames, additional nodes are needed
+        if frame_type == 'CBF':
+            n_braced = round(n_bays/2.25)
+            
+            # start from first interior bay
+            
+        
         ###### Spring node system ######
         # Spring support nodes have the coordinates XYA, XY being the parent node
         # A is 6,7,8,9 for S,W,N,E respectively
