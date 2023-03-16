@@ -752,6 +752,7 @@ def design_MF(input_df, db_string='../resource/'):
 ############################################################################
 #              ASCE 7-22: Capacity design for braced frame
 ############################################################################
+
 def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
     import numpy as np
     
@@ -761,6 +762,7 @@ def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
     Ry_code = 6.0
     Cd          = (Cd_code/Ry_code)*R_y
 
+    # TODO: do we still use drift to generate design force for designing CBFs?
     thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits (risk cat III)
     delx        = thetaMax*hsx
     delxe       = delx*(1/Cd)   # assumes Ie = 1.0
@@ -1020,7 +1022,8 @@ def design_CBF(input_df, db_string='../resource/'):
 
     # ASCE 7-22: Story forces
     # currently, design only two bays of braces
-    n_braced = 2
+    n_braced = round(n_bays/2.25)
+    # n_braced = 2
     delxe, Q_per_bay = get_CBF_element_forces(hsx, Fx, R_y, n_braced)
     
     
