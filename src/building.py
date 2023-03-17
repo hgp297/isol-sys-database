@@ -191,8 +191,13 @@ class Building:
         
         L_bay = self.L_bay * ft     # ft to in
         h_story = self.h_story * ft
-        w_floor = self.w_fl / ft    # kip/ft to kip/in
-        p_lc = self.P_lc
+        w_cases = self.all_w_cases
+        plc_cases = self.all_Plc_cases
+        
+        w_floor = w_cases['1.0D+0.5L'] / ft
+        p_lc = plc_cases['1.0D+0.5L'] / ft
+        # w_floor = self.w_fl / ft    # kip/ft to kip/in
+        # p_lc = self.P_lc
         
         # set modelbuilder
         # x = horizontal, y = in-plane, z = vertical
@@ -200,7 +205,6 @@ class Building:
         ops.model('basic', '-ndm', 3, '-ndf', 6)
         
         # model gravity masses corresponding to the frame placed on building edge
-        # TODO: check if this should be 1.0D + 0.5L
         # TODO: check if "base" level should have mass
         import numpy as np
         m_grav_inner = w_floor * L_bay / g
@@ -464,8 +468,8 @@ class Building:
         beam_transf_tag   = 1
         col_transf_tag    = 2
     
-        ops.geomTransf('Linear', beam_transf_tag, 0, -1, 0) #beams
-        ops.geomTransf('Corotational', col_transf_tag, 0, -1, 0) #columns
+        ops.geomTransf('Linear', beam_transf_tag, 0, -1, 0) # beams
+        ops.geomTransf('Corotational', col_transf_tag, 0, -1, 0) # columns
         
         # outside of concentrated plasticity zones, use elastic beam columns
         

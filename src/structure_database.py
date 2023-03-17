@@ -190,7 +190,7 @@ class Database:
                                        axis='columns', result_type='expand')
         
         
-        all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 'n_layers',
+        all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
                                    'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
         
         if filter_designs == False:

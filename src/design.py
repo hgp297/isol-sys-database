@@ -54,7 +54,7 @@ def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
 
 # from specified parameters, find the height that converges on lead height
 # (and rubber height) that achieves the k_1 specified
-def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
+def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb, S_des=15.0):
     k_2 = (k_M*D_m - Q_L)/D_m
     
     # required area of lead per bearing
@@ -79,10 +79,10 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
     h_Pb = (G_Pb * A_Pb + A_r * G_r)*N_lb/k_1
     
     # try for shape factor of 15
-    S_pad_trial = 15.0
-    t_pad_req = (b_s - a)/(2*S_pad_trial)
+    t_pad_req = b_s / (2*S_des)
+    # t_pad_req = (b_s - a)/(2*S_pad_trial)
     
-    # TODO: check shape factor and thickness of single layer
+    # TODO: check shape factor and thickness of single layer, hPb req too high?
     from math import floor
     n_layers = floor(tr_guess/t_pad_req)
     n_shims = n_layers - 1
@@ -140,8 +140,9 @@ def design_LRB(param_df):
     d_Pb = (4*A_Pb/pi)**(0.5)
     
     # converge on t_r necessary to achieve rho_k
+    S_pad_trial = 15.0
     res = minimize_scalar(iterate_bearing_height,
-                          args=(D_m, k_M, Q_L, rho_k, N_lb),
+                          args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
                           bounds=(0.01, 1e3), method='bounded')
     t_r = res.x
     
@@ -180,8 +181,9 @@ def design_LRB(param_df):
     b_s = (d_r - 0.5)/2
     
     # try for shape factor of 15
-    S_pad_trial = 15.0
-    t_pad_req = (b_s - a)/(2*S_pad_trial)
+    # S_pad_trial = 30.0
+    # t_pad_req = (b_s - a)/(2*S_pad_trial)
+    t_pad_req = b_s/(2*S_pad_trial)
     
     from math import floor
     n_layers = floor(t_r/t_pad_req)
@@ -195,7 +197,8 @@ def design_LRB(param_df):
     I = pi/4 * (b_s**4 - a**4)
     A = pi*(b_s**2 - a**2)
     h = t_r + n_shims*0.1 # 11x0.1 in thick shim
-    S_pad = (b_s - a)/(2*t)
+    # S_pad = (b_s - a)/(2*t)
+    S_pad = b_s/(2*t)
     eta = a/b_s
     th = (48*G_ss/K_inc)**(0.5)*S_pad/(1 - eta)
     
@@ -294,7 +297,7 @@ def design_LRB(param_df):
     p_crit_compare = P_crit/(pi*b_s**2)
     S_2 = b_s/t_r
     p_crit_circ = G_ss*pi*S_pad*S_2/(2*2**0.5)
-    return(d_r, d_Pb, t_r, n_layers, T_e, k_e_norm, zeta_E, D_m, flag)
+    return(d_r, d_Pb, t_r, t, n_layers, T_e, k_e_norm, zeta_E, D_m, flag)
     
 
 
