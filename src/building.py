@@ -56,11 +56,25 @@ class Building:
         nds = [[nd for nd in range (fl, fl+n_bays+1)] for fl in floor_id]
         leaning_nodes = [(fl+n_bays+1) for fl in floor_id]
         
+        # flatten list to get all nodes
+        floor_nodes = [nd for fl in nds for nd in fl]
+            
         # for braced frames, additional nodes are needed
         if frame_type == 'CBF':
-            n_braced = round(n_bays/2.25)
+            n_braced = int(round(n_bays/2.25))
             
+            # roughly center braces around middle
+            n_start = round(n_bays/2 - n_braced/2)
             # start from first interior bay
+            # no ground floor included
+            brace_mids = [nd*10+1 for nd in floor_nodes 
+                          if ((nd//10)%10 != 1) and
+                          (nd%10 >= n_start) and (nd%10 < n_start+n_braced)]
+            
+            # bottom brace supports, none on top floor
+            brace_bottoms = [nd for nd in floor_nodes
+                             if ((nd//10)%10 != n_stories+1) and
+                             (nd%10 >= n_start) and (nd%10 <= n_start+n_braced)]
             
         
         ###### Spring node system ######
@@ -68,9 +82,23 @@ class Building:
         # A is 6,7,8,9 for S,W,N,E respectively
         ################################
         
-        # flatten list to get all nodes
-        floor_nodes = [nd for fl in nds for nd in fl]
-        
+        if frame_type == 'CBF':
+            br_inner_se = [nd*10+1 for nd in brace_mids]
+            br_inner_sw = [nd*10+2 for nd in brace_mids]
+            br_mid_east = [nd*10+3 for nd in brace_mids]
+            br_mid_west = [nd*10+4 for nd in brace_mids]
+            br_outer_se = [nd*10+5 for nd in brace_mids]
+            br_outer_sw = [nd*10+6 for nd in brace_mids]
+            
+            br_mid_spr = (br_inner_se + br_inner_sw + 
+                          br_mid_east + br_mid_west + 
+                          br_outer_se + br_outer_sw)
+            
+            br_bot_inner = [nd*100+1 for nd in brace_bottoms]
+            br_bot_outer = [nd*100+2 for nd in brace_bottoms]
+            
+            br_bot_spr = br_bot_inner + br_bot_outer
+            
         # make south node if not on bottom floor
         s_spr = [nd*10+6 for nd in floor_nodes
                  if ((nd//10)%10 != 1)]
@@ -172,6 +200,10 @@ class Building:
 ###############################################################################
 #              Start model and make nodes
 ###############################################################################
+
+    #TODO: distinguish frame types in builder
+    # model frame(frame_type), if CBF -> run model_CBF, else run model_MF()
+    
     def model_frame(self):
         
         # import OpenSees and libraries
@@ -223,11 +255,11 @@ class Building:
         L_beam = L_bay
         L_col = h_story
         
+        self.number_nodes()
+        
         selected_col = get_shape(self.column, 'column')
         selected_beam = get_shape(self.beam, 'beam')
         selected_roof = get_shape(self.roof, 'beam')
-        
-        self.number_nodes()
         
         # base nodes
         base_nodes = self.node_tags['base']
