@@ -161,6 +161,21 @@ class Building:
         wall_id = 8000
         wall_elems = [nd+wall_id for nd in wall_nodes]
         
+        # brace springs, springs 50000, actual brace 900
+        if frame_type == 'CBF':
+            brace_spr_id = 50000
+            brace_mid_elems = [brace_spr_id+nd for nd in br_mid_spr]
+            brace_bot_elems = [brace_spr_id+nd for nd in br_bot_spr]
+            brace_spr_elems = brace_bot_elems + brace_mid_elems
+            
+            brace_id = 900
+            brace_elems = [brace_id + nd for nd in brace_bottoms]
+            
+            brace_beams_id = 2000
+            br_east_elems = [brace_beams_id+nd for nd in brace_mids]
+            br_west_elems = [brace_beams_id+(nd//10) for nd in brace_mids]
+            brace_beam_elems = br_east_elems + br_west_elems
+        
         self.node_tags = {
             'base': base_nodes,
             'wall': wall_nodes,
@@ -169,6 +184,12 @@ class Building:
             'spring': spring_nodes,
             'lc_spring': lc_spr_nodes
             }
+        
+        if frame_type == 'CBF':
+            self.node_tags['brace_midspan'] = brace_mids
+            self.node_tags['brace_corner'] = brace_bottoms
+            self.node_tags['brace_mid_spring'] = br_mid_spr
+            self.node_tags['brace_corner_spring'] = br_bot_spr
         
         self.elem_tags = {
             'col': col_elems, 
@@ -182,6 +203,13 @@ class Building:
             'wall': wall_elems
             }
         
+        
+        if frame_type == 'CBF':
+            self.elem_tags['brace'] = brace_elems
+            self.elem_tags['brace_spring'] = brace_spr_elems
+            self.elem_tags['brace_beams'] = brace_beam_elems
+            
+            
         self.elem_ids = {
             'col': col_id, 
             'leaning': col_id, 
@@ -195,7 +223,10 @@ class Building:
             'base': base_id
             }
 
-
+        if frame_type == 'CBF':
+            self.elem_ids['brace'] = brace_id
+            self.elem_ids['brace_spring'] = brace_spr_id
+            
       
 ###############################################################################
 #              Start model and make nodes
