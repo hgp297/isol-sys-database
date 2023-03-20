@@ -769,7 +769,8 @@ def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
     thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits (risk cat III)
     delx        = thetaMax*hsx
     delxe       = delx*(1/Cd)   # assumes Ie = 1.0
-
+    # TODO: check stiffness against delxe
+    
     # element lateral force
     Q           = np.empty(nFloor)
     Q[-1]       = Fx[-1]
@@ -905,7 +906,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     # shear/moment demand on beam
     M_grav = w_grav*L_bay**2/8 # kip-in
     Fv_braces = (Tpr - Cpr_pr)*sin(theta)
-    # TODO: check if this is 0.9x?
+    # TODO: check if this is 0.9x? load combo
     M_seis = Fv_braces * L_bay / 4 # kip-in 
     
     M_max = M_grav + 0.9*M_seis
@@ -919,7 +920,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     
     Mn_beam, Mpr_beam, Vpr_beam = calculate_strength(selected_beam, L_bay)
     
-    # TODO: does CBF require plastic hinge location check
+    # TODO: does CBF require plastic hinge location check, no
     
     # shear check
     # beam shear
