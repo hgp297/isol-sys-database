@@ -901,16 +901,14 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     Q_beam = q_distr * L_bay # axial force felt in each beam
     Fh_braces = (Tpr + Cpr) * cos(theta) # horizontal force from brace action
     
-    # TODO: check beam axial?
     Pu_beam = Fh_braces - Q_beam
     
     # shear/moment demand on beam
     M_grav = w_grav*L_bay**2/8 # kip-in
     Fv_braces = (Tpr - Cpr_pr)*sin(theta)
-    # TODO: check if this is 0.9x? load combo
     M_seis = Fv_braces * L_bay / 4 # kip-in 
     
-    M_max = M_grav + 0.9*M_seis
+    M_max = M_grav + M_seis
     
     # find required Zx that satisfies M_max
     Z_req = np.max(M_max/Fy)
@@ -920,6 +918,21 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
         'Zx', Z_req)
     
     Mn_beam, Mpr_beam, Vpr_beam = calculate_strength(selected_beam, L_bay)
+    
+    # axial check
+    rad_gy_beam = selected_beam['ry'].iloc[0]
+    Ag_beam = selected_beam['A'].iloc[0]
+    Lc_r_beam = L_bay/2 / rad_gy_beam
+    Pn_beam = compressive_brace_strength(Ag_beam, rad_gy_beam, Lc_r_beam)
+    
+    P_beam_des = np.max(Pu_beam)
+    
+    if P_beam_des > Pn_beam:
+        selected_beam, passed_axial_beams = select_compression_member(passed_Zx_beams, 
+                                                                      L_bay/2.0, 
+                                                                      P_beam_des)
+    else:
+        passed_axial_beams = passed_Zx_beams
     
     # shear check
     # beam shear
@@ -934,10 +947,10 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
         # print('Beam shear check failed. Reselecting...')
         Ag_req   = 2*Vpr_beam/(0.9*0.6*Fy)    # Assume web is half of gross area
 
-        selected_beam, beam_shear_list = select_member(passed_Zx_beams, 
+        selected_beam, beam_shear_list = select_member(passed_axial_beams, 
                                                        'A', Ag_req)
     else:
-        beam_shear_list = passed_Zx_beams   
+        beam_shear_list = passed_axial_beams
     
     P_col_grav = w_grav * L_bay
     P_case_T = P_col_grav + Fv_braces/2
