@@ -228,14 +228,19 @@ class Building:
             self.elem_ids['brace_spring'] = brace_spr_id
             
       
+
+
+    def model_frame(self):
+        if self.superstructure_system == 'MF':
+            self.model_moment_frame()
+        else:
+            print('CBF not implemented yet.')
+    
 ###############################################################################
-#              Start model and make nodes
+#              MOMENT FRAME OPENSEES MODELING
 ###############################################################################
 
-    #TODO: distinguish frame types in builder
-    # model frame(frame_type), if CBF -> run model_CBF, else run model_MF()
-    
-    def model_frame(self):
+    def model_moment_frame(self):
         
         # import OpenSees and libraries
         import openseespy.opensees as ops
@@ -437,6 +442,8 @@ class Building:
         # Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
         n = 10 # stiffness multiplier for rotational spring
     
+        # TODO: reduce the elastic section strength to account for bilin spring?
+        
         Iz_col_mod = Iz_col*(n+1)/n
         Iz_beam_mod = Iz_beam*(n+1)/n
         Iz_roof_mod = Iz_roof*(n+1)/n
@@ -762,6 +769,7 @@ class Building:
         
         print('Elements placed.')
         # ops.printModel('-file', './test.log')
+        
 ###############################################################################
 #              Steel dimensions and parameters
 ###############################################################################
