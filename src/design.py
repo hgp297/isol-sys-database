@@ -54,7 +54,7 @@ def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
 
 # from specified parameters, find the height that converges on lead height
 # (and rubber height) that achieves the k_1 specified
-def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
+def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb, S_des=15.0):
     k_2 = (k_M*D_m - Q_L)/D_m
     
     # required area of lead per bearing
@@ -79,17 +79,16 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb):
     h_Pb = (G_Pb * A_Pb + A_r * G_r)*N_lb/k_1
     
     # try for shape factor of 15
-    S_pad_trial = 15.0
-    t_pad_req = (b_s - a)/(2*S_pad_trial)
+    t_pad_req = b_s / (2*S_des)
+    # t_pad_req = (b_s - a)/(2*S_pad_trial)
     
-    # TODO: check shape factor and thickness of single layer
     from math import floor
     n_layers = floor(tr_guess/t_pad_req)
     n_shims = n_layers - 1
     
-    # assume 12 layers (11 shims at 0.1 inch thickness)
+    # assume 12 layers (11 shims at ~3.5mm thickness)
     # assume lead core goes 0.5 inch into each endplate
-    tr_req = h_Pb - (n_shims*0.1) - 1.0
+    tr_req = h_Pb - (n_shims*0.13) - 1.0
     
     err = (tr_req - tr_guess)**2
     
@@ -140,8 +139,9 @@ def design_LRB(param_df):
     d_Pb = (4*A_Pb/pi)**(0.5)
     
     # converge on t_r necessary to achieve rho_k
+    S_pad_trial = 20.0
     res = minimize_scalar(iterate_bearing_height,
-                          args=(D_m, k_M, Q_L, rho_k, N_lb),
+                          args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
                           bounds=(0.01, 1e3), method='bounded')
     t_r = res.x
     
@@ -180,11 +180,17 @@ def design_LRB(param_df):
     b_s = (d_r - 0.5)/2
     
     # try for shape factor of 15
-    S_pad_trial = 15.0
-    t_pad_req = (b_s - a)/(2*S_pad_trial)
+    # S_pad_trial = 30.0
+    # t_pad_req = (b_s - a)/(2*S_pad_trial)
+    t_pad_req = b_s/(2*S_pad_trial)
     
     from math import floor
     n_layers = floor(t_r/t_pad_req)
+    
+    # if nonsense n_layers reach, stop calculations now (to be discarded)
+    if n_layers < 1:
+        return(1.0, 1.0, 1.0, 1.0, 1, T_e, k_e, zeta_E, D_m, 1)
+    
     n_shims = n_layers - 1
     t = t_r/n_layers
     
@@ -194,8 +200,9 @@ def design_LRB(param_df):
     
     I = pi/4 * (b_s**4 - a**4)
     A = pi*(b_s**2 - a**2)
-    h = t_r + n_shims*0.1 # 11x0.1 in thick shim
-    S_pad = (b_s - a)/(2*t)
+    h = t_r + n_shims*0.13 # 11x0.1 in thick shim
+    # S_pad = (b_s - a)/(2*t)
+    S_pad = b_s/(2*t)
     eta = a/b_s
     th = (48*G_ss/K_inc)**(0.5)*S_pad/(1 - eta)
     
@@ -294,7 +301,7 @@ def design_LRB(param_df):
     p_crit_compare = P_crit/(pi*b_s**2)
     S_2 = b_s/t_r
     p_crit_circ = G_ss*pi*S_pad*S_2/(2*2**0.5)
-    return(d_r, d_Pb, t_r, n_layers, T_e, k_e_norm, zeta_E, D_m, flag)
+    return(d_r, d_Pb, t_r, t, n_layers, T_e, k_e_norm, zeta_E, D_m, flag)
     
 
 
@@ -604,7 +611,7 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     for i in range(nFloor-2, -1, -1):
         Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
         
-    # TODO: check column axial capacity
+    # TODO: check SMRF column axial capacity
 
     # initial guess: use columns that has similar Ix to beam
     qualified_Ix = col_list[col_list['Ix'] > I_beam_req]
@@ -762,11 +769,11 @@ def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
     Ry_code = 6.0
     Cd          = (Cd_code/Ry_code)*R_y
 
-    # TODO: do we still use drift to generate design force for designing CBFs?
     thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits (risk cat III)
     delx        = thetaMax*hsx
     delxe       = delx*(1/Cd)   # assumes Ie = 1.0
-
+    # TODO: check stiffness against delxe
+    
     # element lateral force
     Q           = np.empty(nFloor)
     Q[-1]       = Fx[-1]
@@ -793,7 +800,7 @@ def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
     
     # w1 is 1.2D+0.5L, w2 is 0.9D
     # w is already for edge frame (kip/ft)
-    # TODO: check these assumptions
+    
     # assuming frame is inner bay of edge frame
     # assuming col-brace-col is simply supported beam
     C_1 = w_1*(L_bay/2)/sin(theta)
@@ -824,7 +831,6 @@ def compressive_brace_strength(Ag, ry, Lc_r):
     
     Fe = pi**2*E/(Lc_r**2)
     
-    # TODO: check this with AISC 341 specific to braced frame design
     if (Lc_r <= 4.71*(E/Fy)**0.5):
         F_cr = 0.658**(Fy_pr/Fe)*Fy_pr
     else:
@@ -833,8 +839,7 @@ def compressive_brace_strength(Ag, ry, Lc_r):
     phi = 0.9
     phi_Pn = phi * Ag * F_cr
     return(phi_Pn)
-    
-# TODO: change this to compression member in general (parameter k_bra)
+
 def select_compression_member(mem_list, Lc, C_design):
     
     import numpy as np
@@ -884,8 +889,8 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     Ry_hss = 1.4
     Fy = 50.0 #ksi
     
-    # probable capacities for compr, tension, buckled compr
-    Cpr = compressive_brace_strength(Ag, rad_gy, Lc_r) / 0.9
+    # probable capacities for compr, tension, buckled compr 
+    Cpr = compressive_brace_strength(Ag, rad_gy, Lc_r) / 0.9 / 0.877
     Tpr = Ag * Fy * Ry_hss
     Cpr_pr = Cpr * 0.3
     
@@ -896,16 +901,14 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     Q_beam = q_distr * L_bay # axial force felt in each beam
     Fh_braces = (Tpr + Cpr) * cos(theta) # horizontal force from brace action
     
-    # TODO: check beam axial?
     Pu_beam = Fh_braces - Q_beam
     
     # shear/moment demand on beam
     M_grav = w_grav*L_bay**2/8 # kip-in
     Fv_braces = (Tpr - Cpr_pr)*sin(theta)
-    # TODO: check if this is 0.9x?
     M_seis = Fv_braces * L_bay / 4 # kip-in 
     
-    M_max = M_grav + 0.9*M_seis
+    M_max = M_grav + M_seis
     
     # find required Zx that satisfies M_max
     Z_req = np.max(M_max/Fy)
@@ -916,7 +919,20 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     
     Mn_beam, Mpr_beam, Vpr_beam = calculate_strength(selected_beam, L_bay)
     
-    # TODO: does CBF require plastic hinge location check
+    # axial check
+    rad_gy_beam = selected_beam['ry'].iloc[0]
+    Ag_beam = selected_beam['A'].iloc[0]
+    Lc_r_beam = L_bay/2 / rad_gy_beam
+    Pn_beam = compressive_brace_strength(Ag_beam, rad_gy_beam, Lc_r_beam)
+    
+    P_beam_des = np.max(Pu_beam)
+    
+    if P_beam_des > Pn_beam:
+        selected_beam, passed_axial_beams = select_compression_member(passed_Zx_beams, 
+                                                                      L_bay/2.0, 
+                                                                      P_beam_des)
+    else:
+        passed_axial_beams = passed_Zx_beams
     
     # shear check
     # beam shear
@@ -931,12 +947,10 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
         # print('Beam shear check failed. Reselecting...')
         Ag_req   = 2*Vpr_beam/(0.9*0.6*Fy)    # Assume web is half of gross area
 
-        selected_beam, beam_shear_list = select_member(passed_Zx_beams, 
+        selected_beam, beam_shear_list = select_member(passed_axial_beams, 
                                                        'A', Ag_req)
     else:
-        beam_shear_list = passed_Zx_beams        
-        
-    # TODO: design column
+        beam_shear_list = passed_axial_beams
     
     P_col_grav = w_grav * L_bay
     P_case_T = P_col_grav + Fv_braces/2
@@ -967,7 +981,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     
     T_des_col = np.sum(Tu_col)
     C_des_col = np.sum(Pu_col)
-    k_col = 1.0 # TODO: is assuming pinned-pinned to conservative?
+    k_col = 1.0 
     Lc_col = h_story/k_col
     selected_col, col_compr_list = select_compression_member(col_list, Lc, C_des_col)
     
@@ -995,8 +1009,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     #     ry = selected_brace['ry'].iloc[0]
     #     phi_Pn = compressive_brace_strength(Ag, ry, h_story, L_bay)
         
-    
-# TODO: cbf design in progress
+
 def design_CBF(input_df, db_string='../resource/'):
     
     # ensure everything is in inches, kip/in

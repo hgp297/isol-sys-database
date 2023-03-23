@@ -46,7 +46,7 @@ class Database:
         self.param_ranges   = {
             'S_1' : [0.8, 1.3],
             'T_m' : [2.0, 5.0],
-            'k_ratio' :[3.0, 60.0],
+            'k_ratio' :[5.0, 18.0],
             'Q': [0.05, 0.12],
             'moat_ampli' : [0.8, 1.8],
             'RI' : [0.5, 2.0],
@@ -170,7 +170,7 @@ class Database:
             tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
                                               (all_tfp_designs['R_1'] <= 50.0) &
                                               (all_tfp_designs['R_2'] <= 180.0) &
-                                              (all_tfp_designs['zeta_e'] <= 0.5)]
+                                              (all_tfp_designs['zeta_e'] <= 0.25)]
         
         tp = time.time() - t0
         
@@ -190,7 +190,7 @@ class Database:
                                        axis='columns', result_type='expand')
         
         
-        all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 'n_layers',
+        all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
                                    'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
         
         if filter_designs == False:
@@ -204,9 +204,10 @@ class Database:
                                                6*all_lrb_designs['d_lead']) &
                                               (all_lrb_designs['d_lead'] <= 
                                                 all_lrb_designs['t_r']) &
-                                              (all_lrb_designs['t_r'] > 0.0) &
-                                              (all_lrb_designs['t_r'] < 20.0) &
-                                              (all_lrb_designs['buckling_fail'] == 0)]
+                                              (all_lrb_designs['t_r'] > 4.0) &
+                                              (all_lrb_designs['t_r'] < 35.0) &
+                                              (all_lrb_designs['buckling_fail'] == 0) &
+                                              (all_lrb_designs['zeta_e'] <= 0.25)]
             
             lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
             
@@ -228,7 +229,6 @@ class Database:
         
         from loads import define_lateral_forces
         
-        # TODO: check n_frames, current defaults: n_frames = 2
         df_in[['wx', 
                'hx', 
                'h_col', 

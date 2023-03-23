@@ -14,14 +14,14 @@
 
 from structure_database import Database
 
-main_obj = Database(1000)
+main_obj = Database(100)
 
 main_obj.design_bearings(filter_designs=True)
 
 main_obj.design_structure()
 
 test_mf_tfp = main_obj.mf_designs.iloc[0]
-test_cbf = main_obj.tfp_designs.iloc[3]
+test_cbf = main_obj.cbf_designs.iloc[0]
 test_mf_lrb = main_obj.mf_designs.iloc[-1]
 
 # # test build one building (MF, TFP only)
@@ -29,10 +29,21 @@ test_mf_lrb = main_obj.mf_designs.iloc[-1]
 # mf_tfp_bldg = Building(test_mf_tfp)
 # mf_tfp_bldg.model_frame()
 
-# test build one building (MF, LRB)
+
+#%%
+
 from building import Building
+from bearing import Bearing
+tfp_example = Bearing(test_mf_tfp)
+
+# test build one building (MF, LRB)
 mf_lrb_bldg = Building(test_mf_lrb)
 mf_lrb_bldg.model_frame()
+
+# test build CBF
+cbf_bldg = Building(test_cbf)
+cbf_bldg.model_frame()
+
 
 # sample_lrb = main_obj.lrb_designs.iloc[0]
 # from design import design_LRB
@@ -60,5 +71,5 @@ mf_lrb_bldg.model_frame()
 # sns.histplot(data=df_plot, x="zeta_e", kde=True, 
 #               hue='isolator_system',ax=axs[1, 1])
 
-# plt.legend()
+# # plt.legend()
 # plt.show()
