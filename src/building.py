@@ -65,9 +65,11 @@ class Building:
             
             # roughly center braces around middle
             n_start = round(n_bays/2 - n_braced/2)
+            
             # start from first interior bay
             # no ground floor included
-            brace_mids = [nd*10+1 for nd in floor_nodes 
+            t_brace_id = 1
+            brace_tops = [nd*10+t_brace_id for nd in floor_nodes 
                           if ((nd//10)%10 != 1) and
                           (nd%10 >= n_start) and (nd%10 < n_start+n_braced)]
             
@@ -76,6 +78,14 @@ class Building:
                              if ((nd//10)%10 != n_stories+1) and
                              (nd%10 >= n_start) and (nd%10 <= n_start+n_braced)]
             
+            
+            # create two mid-brace nodes for each top brace nodes
+            r_brace_id = 7
+            r_brace_nodes = [nd*10+r_brace_id for nd in brace_tops]
+            l_brace_id = 8
+            l_brace_nodes = [nd*10+l_brace_id for nd in brace_tops]
+            brace_mids = l_brace_nodes + r_brace_nodes
+            
         
         ###### Spring node system ######
         # Spring support nodes have the coordinates XYA, XY being the parent node
@@ -83,21 +93,31 @@ class Building:
         ################################
         
         if frame_type == 'CBF':
-            br_inner_se = [nd*10+1 for nd in brace_mids]
-            br_inner_sw = [nd*10+2 for nd in brace_mids]
-            br_mid_east = [nd*10+3 for nd in brace_mids]
-            br_mid_west = [nd*10+4 for nd in brace_mids]
-            br_outer_se = [nd*10+5 for nd in brace_mids]
-            br_outer_sw = [nd*10+6 for nd in brace_mids]
+            br_top_e_inner = [nd*10+1 for nd in brace_tops]
+            br_top_w_inner = [nd*10+2 for nd in brace_tops]
+            br_top_west = [nd*10+3 for nd in brace_tops]
+            br_top_east = [nd*10+4 for nd in brace_tops]
+            br_top_e_outer = [nd*10+5 for nd in brace_tops]
+            br_top_w_outer = [nd*10+6 for nd in brace_tops]
             
-            br_mid_spr = (br_inner_se + br_inner_sw + 
-                          br_mid_east + br_mid_west + 
-                          br_outer_se + br_outer_sw)
+            br_top_spr = (br_top_e_inner + br_top_w_inner + 
+                          br_top_e_outer + br_top_w_outer)
             
-            br_bot_inner = [nd*100+1 for nd in brace_bottoms]
-            br_bot_outer = [nd*100+2 for nd in brace_bottoms]
+            br_beam_spr = br_top_west + br_top_east 
             
-            br_bot_spr = br_bot_inner + br_bot_outer
+            br_bot_w_inner = [nd*100+1 for nd in brace_bottoms
+                              if (nd%10 != n_start)]
+            
+            br_bot_w_outer = [nd*100+2 for nd in brace_bottoms
+                              if (nd%10 != n_start)]
+            
+            br_bot_e_inner = [nd*100+3 for nd in brace_bottoms
+                              if (nd%10 != n_start+n_braced)]
+            br_bot_e_outer = [nd*100+4 for nd in brace_bottoms
+                              if (nd%10 != n_start+n_braced)]
+            
+            br_bot_spr = (br_bot_w_inner + br_bot_w_outer + 
+                          br_bot_e_inner + br_bot_e_outer)
             
         # make south node if not on bottom floor
         s_spr = [nd*10+6 for nd in floor_nodes
@@ -164,16 +184,19 @@ class Building:
         # brace springs, springs 50000, actual brace 900
         if frame_type == 'CBF':
             brace_spr_id = 50000
-            brace_mid_elems = [brace_spr_id+nd for nd in br_mid_spr]
+            brace_top_elems = [brace_spr_id+nd for nd in br_top_spr]
             brace_bot_elems = [brace_spr_id+nd for nd in br_bot_spr]
-            brace_spr_elems = brace_bot_elems + brace_mid_elems
+            br_beam_spr_elems = [brace_spr_id+nd for nd in br_beam_spr]
             
-            brace_id = 900
-            brace_elems = [brace_id + nd for nd in brace_bottoms]
+            brace_id = 90000
+            brace_end_nodes = (br_top_w_outer + br_top_e_outer + 
+                               br_bot_w_outer + br_bot_e_outer)
+            
+            brace_elems = [brace_id + nd for nd in brace_end_nodes]
             
             brace_beams_id = 2000
-            br_east_elems = [brace_beams_id+nd for nd in brace_mids]
-            br_west_elems = [brace_beams_id+(nd//10) for nd in brace_mids]
+            br_east_elems = [brace_beams_id+nd for nd in brace_tops]
+            br_west_elems = [brace_beams_id+(nd//10) for nd in brace_tops]
             brace_beam_elems = br_east_elems + br_west_elems
         
         self.node_tags = {
@@ -186,10 +209,12 @@ class Building:
             }
         
         if frame_type == 'CBF':
-            self.node_tags['brace_midspan'] = brace_mids
-            self.node_tags['brace_corner'] = brace_bottoms
-            self.node_tags['brace_mid_spring'] = br_mid_spr
-            self.node_tags['brace_corner_spring'] = br_bot_spr
+            self.node_tags['brace_top'] = brace_tops
+            self.node_tags['brace_mid'] = brace_mids
+            self.node_tags['brace_bottom'] = brace_bottoms
+            self.node_tags['brace_beam_spring'] = br_beam_spr
+            self.node_tags['brace_top_spring'] = br_top_spr
+            self.node_tags['brace_bottom_spring'] = br_bot_spr
         
         self.elem_tags = {
             'col': col_elems, 
@@ -206,7 +231,9 @@ class Building:
         
         if frame_type == 'CBF':
             self.elem_tags['brace'] = brace_elems
-            self.elem_tags['brace_spring'] = brace_spr_elems
+            self.elem_tags['brace_top_springs'] = brace_top_elems
+            self.elem_tags['brace_bot_springs'] = brace_bot_elems
+            self.elem_tags['brace_beam_springs'] = br_beam_spr_elems
             self.elem_tags['brace_beams'] = brace_beam_elems
             
             
@@ -226,15 +253,14 @@ class Building:
         if frame_type == 'CBF':
             self.elem_ids['brace'] = brace_id
             self.elem_ids['brace_spring'] = brace_spr_id
+            self.elem_ids['brace_beam'] = brace_beams_id
             
-      
-
 
     def model_frame(self):
         if self.superstructure_system == 'MF':
             self.model_moment_frame()
         else:
-            print('CBF not implemented yet.')
+            self.model_braced_frame()
     
 ###############################################################################
 #              MOMENT FRAME OPENSEES MODELING
@@ -770,6 +796,121 @@ class Building:
         print('Elements placed.')
         # ops.printModel('-file', './test.log')
         
+    def model_braced_frame(self):
+        # import OpenSees and libraries
+        import openseespy.opensees as ops
+        
+        # remove existing model
+        ops.wipe()
+
+        # units: in, kip, s
+        # dimensions
+        inch    = 1.0
+        ft      = 12.0*inch
+        sec     = 1.0
+        g       = 386.4*inch/(sec**2)
+        kip     = 1.0
+        ksi     = kip/(inch**2)
+        
+        L_bay = self.L_bay * ft     # ft to in
+        h_story = self.h_story * ft
+        w_cases = self.all_w_cases
+        plc_cases = self.all_Plc_cases
+        
+        w_floor = w_cases['1.0D+0.5L'] / ft
+        p_lc = plc_cases['1.0D+0.5L'] / ft
+        # w_floor = self.w_fl / ft    # kip/ft to kip/in
+        # p_lc = self.P_lc
+        
+        # set modelbuilder
+        # x = horizontal, y = in-plane, z = vertical
+        # command: model('basic', '-ndm', ndm, '-ndf', ndf=ndm*(ndm+1)/2)
+        ops.model('basic', '-ndm', 3, '-ndf', 6)
+        
+        self.number_nodes()
+        
+        # model gravity masses corresponding to the frame placed on building edge
+        # TODO: check if "base" level should have mass
+        import numpy as np
+        m_grav_inner = w_floor * L_bay / g
+        m_grav_outer = w_floor * L_bay / 2 /g
+        m_lc = p_lc / g
+        # prepend mass onto the "ground" level
+        m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
+        m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
+        m_lc = np.insert(m_lc, 0 , m_lc[0])
+        
+        # load for isolators vertical
+        p_outer = sum(w_floor)*L_bay/2
+        p_inner = sum(w_floor)*L_bay
+        
+        # nominal change
+        L_beam = L_bay
+        L_col = h_story
+        
+        self.number_nodes()
+        
+        selected_col = get_shape(self.column, 'column')
+        selected_beam = get_shape(self.beam, 'beam')
+        selected_roof = get_shape(self.brace, 'brace')
+        
+        # base nodes
+        base_nodes = self.node_tags['base']
+        for idx, nd in enumerate(base_nodes):
+            ops.node(nd, idx*L_beam, 0.0*ft, -1.0*ft)
+            ops.fix(nd, 1, 1, 1, 1, 1, 1)
+        
+        # wall nodes (should only be two)
+        n_bays = int(self.num_bays)
+        n_floors = int(self.num_stories)
+        
+        wall_nodes = self.node_tags['wall']
+        ops.node(wall_nodes[0], 0.0*ft, 0.0*ft, 0.0*ft)
+        ops.node(wall_nodes[1], n_bays*L_beam, 0.0*ft, 0.0*ft)
+        for nd in wall_nodes:
+            ops.fix(nd, 1, 1, 1, 1, 1, 1)
+        
+        # structure nodes
+        floor_nodes = self.node_tags['floor']
+        for nd in floor_nodes:
+            
+            # get multiplier for location from node number
+            bay = nd%10
+            fl = (nd//10)%10 - 1
+            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            
+            # assign masses, in direction of motion and stiffness
+            # DOF list: X, Y, Z, rotX, rotY, rotZ
+            if (bay == n_bays) or (bay == 0):
+                m_nd = m_grav_outer[fl]
+            else:
+                m_nd = m_grav_inner[fl]
+            negligible = 1e-15
+            ops.mass(nd, m_nd, m_nd, m_nd,
+                     negligible, negligible, negligible)
+            
+            # restrain out of plane motion
+            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            
+        # leaning column nodes
+        leaning_nodes = self.node_tags['leaning']
+        for nd in leaning_nodes:
+            
+            # get multiplier for location from node number
+            floor = (nd//10)%10 - 1
+            ops.node(nd, (n_bays+1)*L_beam, 0.0*ft, floor*L_col)
+            m_nd = m_lc[floor]
+            ops.mass(nd, m_nd, m_nd, m_nd,
+                     negligible, negligible, negligible)
+            
+            # bottom is roller, otherwise, restrict OOP motion
+            if floor == 0:
+                ops.fix(nd, 0, 1, 1, 1, 0, 1)
+            else:
+                ops.fix(nd, 0, 1, 0, 1, 0, 1)
+        
+        print('Nodes numbered.')
+        
 ###############################################################################
 #              Steel dimensions and parameters
 ###############################################################################
@@ -848,3 +989,105 @@ def modified_IK_params(shape, L):
     thu = 0.4
 
     return(Ke, My, Lam, thp, thpc, kappa, thu)  
+
+###############################################################################
+#              Brace geometry
+###############################################################################
+
+def bot_gp_coord(nd, L_bay, h_story, offset=0.1):
+    # from node number, get the parent node it's attached to
+    bot_nd = nd//100
+    
+    # get the bottom node's coordinates
+    bot_x_coord = (bot_nd%10)*L_bay
+    bot_y_coord = (bot_nd//10 - 1)*h_story
+    
+    # if last number is 1 or 2, brace connects ne
+    # if last number is 3 or 4, brace connects nw
+    goes_ne = [1, 2]
+    if (nd%10 in goes_ne):
+        x_offset = offset/2*L_bay/2
+    else:
+        x_offset = -offset/2*L_bay/2
+    
+    y_offset = offset/2 * h_story
+    gp_x_coord = bot_x_coord + x_offset
+    gp_y_coord = bot_y_coord + y_offset
+    
+    return(gp_x_coord, gp_y_coord)
+
+
+def top_gp_coord(nd, L_bay, h_story, offset=0.1):
+    # from node number, get the parent node it's attached to
+    top_node = nd//100
+    
+    # extract their corresponding coordinates from the node numbers
+    top_x_coord = (top_node%10 + 0.5)*L_bay
+    top_y_coord = (top_node//10 - 1)*h_story
+    
+    # if last number is 1 or 5, brace connects se
+    # if last number is 2 or 6, brace connects sw
+    if (nd % 10)%2 == 0:
+        x_offset = -offset/2*L_bay/2
+    else:
+        x_offset = offset/2*L_bay/2
+    
+    y_offset = -offset/2 * h_story
+    gp_x_coord = top_x_coord + x_offset
+    gp_y_coord = top_y_coord + y_offset
+    
+    return(gp_x_coord, gp_y_coord)
+    
+
+def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.1):
+    # from mid brace number, get the corresponding top and bottom node numbers
+    top_node = nd//100
+    
+    # extract their corresponding coordinates from the node numbers
+    top_x_coord = (top_node%10 + 0.5)*L_bay
+    top_y_coord = (top_node//10 - 1)*h_story
+    
+    # if the last number is 8, the brace connects sw
+    # if the last number is 7, the brace connects se
+    
+    if (nd % 10)%2 == 0:
+        bot_node = top_node - 10
+        x_offset = offset/2 * L_bay/2
+    else:
+        bot_node = top_node - 9
+        x_offset = - offset/2 * L_bay/2
+    
+    # get the bottom node's coordinates
+    bot_x_coord = (bot_node%10)*L_bay
+    bot_y_coord = (bot_node//10 - 1)*h_story
+    
+    # effective length is 90% of the diagonal (gusset plate offset)
+    br_x = abs(top_x_coord - bot_x_coord)
+    br_y = abs(top_y_coord - bot_y_coord)
+    L_eff = 0.9*(br_x**2 + br_y**2)**0.5
+    
+    # angle from horizontal up to brace vector
+    from math import atan, asin, sin, cos
+    theta = atan(h_story/(L_bay/2))
+    
+    # angle from the brace vector up to camber
+    beta = asin(camber)
+    
+    # angle from horizontal up to camber
+    gamma  = theta + beta
+    
+    # origin is bottom node, adjusted for gusset plate
+    # offset is the shift (+/-) of the bottom gusset plate
+    # terminus is top node, adjusted for gusset plate (gusset placed opposite direction)
+    x_origin = bot_x_coord + x_offset
+    x_terminus = top_x_coord - x_offset
+    
+    y_offset = offset/2 * h_story
+    y_origin = bot_y_coord + y_offset
+    y_terminus = top_y_coord - y_offset
+    
+    mid_x_coord = x_origin + L_eff/2 * cos(gamma)
+    mid_y_coord = y_origin + L_eff/2 * sin(gamma)
+    
+    return(mid_x_coord, mid_y_coord)
+    
