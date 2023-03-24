@@ -379,23 +379,22 @@ class Building:
                 ops.fix(nd, 0, 1, 0, 1, 0, 1)
         
         # spring nodes
-        from math import floor
         spring_nodes = self.node_tags['spring']
         for nd in spring_nodes:
-            parent_nd = floor(nd/10)
+            parent_nd = nd//10
             
             # get multiplier for location from node number
-            bay = int(parent_nd%10)
-            fl = int(parent_nd%100/10) - 1
+            bay = parent_nd%10
+            fl = parent_nd//10 - 1
             ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
             
         lc_spr_nodes = self.node_tags['lc_spring']
         for nd in lc_spr_nodes:
-            parent_nd = floor(nd/10)
+            parent_nd = nd//10
             
             # get multiplier for location from node number
-            bay = int(parent_nd%10)
-            fl = int(parent_nd%100/10) - 1
+            bay = parent_nd%10
+            fl = parent_nd//10 - 1
             ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
             
         print('Nodes placed.')
@@ -415,7 +414,6 @@ class Building:
         # Isolation layer tags
         friction_1_tag = 41
         friction_2_tag = 42
-        friction_3_tag = 43
         fps_vert_tag = 44
         fps_rot_tag = 45
         
@@ -537,7 +535,7 @@ class Building:
         spring_elems = self.elem_tags['spring']
         for elem_tag in spring_elems:
             spr_nd = elem_tag - spring_id
-            parent_nd = floor(spr_nd/10)
+            parent_nd = spr_nd//10
             
             # if last digit is 6 or 8, assign column transformations
             if (spr_nd%10)%2 == 0:
@@ -619,7 +617,7 @@ class Building:
         lc_spr_elems = self.elem_tags['lc_spring']
         for elem_tag in lc_spr_elems:
             spr_nd = elem_tag - spring_id
-            parent_nd = floor(spr_nd/10)
+            parent_nd = spr_nd//10
             
             # create zero length element (spring), rotations allowed about local Z axis
             ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
@@ -834,10 +832,14 @@ class Building:
         import numpy as np
         m_grav_inner = w_floor * L_bay / g
         m_grav_outer = w_floor * L_bay / 2 /g
+        m_grav_brace = w_floor * L_bay / 2 /g
+        m_grav_br_col = w_floor * L_bay * 3/4 /g
         m_lc = p_lc / g
         # prepend mass onto the "ground" level
+        m_grav_brace = np.insert(m_grav_brace, 0 , m_grav_brace[0])
         m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
         m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
+        m_grav_br_col = np.insert(m_grav_br_col, 0 , m_grav_br_col[0])
         m_lc = np.insert(m_lc, 0 , m_lc[0])
         
         # load for isolators vertical
@@ -852,7 +854,7 @@ class Building:
         
         selected_col = get_shape(self.column, 'column')
         selected_beam = get_shape(self.beam, 'beam')
-        selected_roof = get_shape(self.brace, 'brace')
+        selected_brace = get_shape(self.brace, 'brace')
         
         # base nodes
         base_nodes = self.node_tags['base']
@@ -863,6 +865,9 @@ class Building:
         # wall nodes (should only be two)
         n_bays = int(self.num_bays)
         n_floors = int(self.num_stories)
+        n_braced = int(round(n_bays/2.25))
+        # roughly center braces around middle
+        n_start = round(n_bays/2 - n_braced/2)
         
         wall_nodes = self.node_tags['wall']
         ops.node(wall_nodes[0], 0.0*ft, 0.0*ft, 0.0*ft)
@@ -872,6 +877,8 @@ class Building:
         
         # structure nodes
         floor_nodes = self.node_tags['floor']
+        brace_bot_nodes = self.node_tags['brace_bottom']
+        brace_top_nodes = self.node_tags['brace_top']
         for nd in floor_nodes:
             
             # get multiplier for location from node number
@@ -883,6 +890,8 @@ class Building:
             # DOF list: X, Y, Z, rotX, rotY, rotZ
             if (bay == n_bays) or (bay == 0):
                 m_nd = m_grav_outer[fl]
+            elif (bay == n_start) or (bay == n_start+n_braced):
+                m_nd = m_grav_br_col[fl]
             else:
                 m_nd = m_grav_inner[fl]
             negligible = 1e-15
@@ -908,8 +917,169 @@ class Building:
                 ops.fix(nd, 0, 1, 1, 1, 0, 1)
             else:
                 ops.fix(nd, 0, 1, 0, 1, 0, 1)
+                
+        # brace nodes
+        brace_top_nodes = self.node_tags['brace_top']
+        for nd in brace_top_nodes:
+            parent_node = nd // 10
+            
+            # extract their corresponding coordinates from the node numbers
+            fl = parent_node//10 - 1
+            x_coord = (parent_node%10 + 0.5)*L_beam
+            z_coord = fl*L_col
+            
+            m_nd = m_grav_brace[fl]
+            ops.node(nd, x_coord, 0.0*ft, z_coord)
+            ops.mass(nd, m_nd, m_nd, m_nd,
+                     negligible, negligible, negligible)
+            
+        # mid brace node adjusted to have camber of 0.1% L_eff
+        # L_eff is defined as 0.9*L_diagonal
+        brace_mid_nodes = self.node_tags['brace_mid']
+        for nd in brace_mid_nodes:
+            
+            # values returned are already in inches
+            x_coord, z_coord = mid_brace_coord(nd, L_beam, L_col)
+            ops.node(nd, x_coord, 0.0*ft, z_coord)
         
-        print('Nodes numbered.')
+        
+        # spring nodes
+        spring_nodes = self.node_tags['spring']
+        for nd in spring_nodes:
+            parent_nd = nd//10
+            
+            # get multiplier for location from node number
+            bay = parent_nd%10
+            fl = parent_nd//10 - 1
+            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            
+        lc_spr_nodes = self.node_tags['lc_spring']
+        for nd in lc_spr_nodes:
+            parent_nd = nd//10
+            
+            # get multiplier for location from node number
+            bay = parent_nd%10
+            fl = parent_nd//10 - 1
+            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            
+        brace_beam_spr_nodes = self.node_tags['brace_beam_spring']
+        for nd in brace_beam_spr_nodes:
+            grandparent_nd = nd//100
+            
+            # extract their corresponding coordinates from the node numbers
+            fl = grandparent_nd//10 - 1
+            x_coord = (grandparent_nd%10 + 0.5)*L_beam
+            z_coord = fl*L_col
+            ops.node(nd, x_coord, 0.0*ft, z_coord)
+            
+        
+        # each end has 0.05*L_diagonal assigned to gusset plate offset
+        brace_bot_gp_nodes = self.node_tags['brace_bottom_spring']
+        for nd in brace_bot_gp_nodes:
+            
+            # values returned are already in inches
+            x_coord, z_coord = bot_gp_coord(nd, L_beam, L_col)
+            ops.node(nd, x_coord, 0.0*ft, z_coord)
+        
+        brace_top_gp_nodes = self.node_tags['brace_top_spring']
+        for nd in brace_top_gp_nodes:
+            # values returned are already in inches
+            x_coord, z_coord = top_gp_coord(nd, L_beam, L_col)
+            ops.node(nd, x_coord, 0.0*ft, z_coord)
+        
+        print('Nodes placed.')
+        
+################################################################################
+# tags
+################################################################################
+
+        # General elastic section (non-plastic beam columns, leaning columns)
+        lc_spring_mat_tag = 51
+        elastic_mat_tag = 52
+    
+        # Steel material tag
+        steel_col_tag = 31
+        steel_beam_tag = 32
+        steel_roof_tag = 33
+    
+        # Isolation layer tags
+        friction_1_tag = 41
+        friction_2_tag = 42
+        fps_vert_tag = 44
+        fps_rot_tag = 45
+        
+        # Impact material tags
+        impact_mat_tag = 91
+        
+################################################################################
+# define materials
+################################################################################
+    
+        # define material: steel
+        Es  = 29000*ksi     # initial elastic tangent
+        nu  = 0.2          # Poisson's ratio
+        Gs  = Es/(1 + nu) # Torsional stiffness modulus
+        J   = 1e10          # Set large torsional stiffness
+    
+        # Frame link (stiff elements)
+        A_rigid = 1000.0         # define area of truss section
+        I_rigid = 1e6        # moment of inertia for p-delta columns
+        ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
+    
+################################################################################
+# define spring materials
+################################################################################
+            
+        (Ag_col, Iz_col, Iy_col,
+         Zx_col, Sx_col, d_col,
+         bf_col, tf_col, tw_col) = get_properties(selected_col)
+        (Ag_beam, Iz_beam, Iy_beam,
+         Zx_beam, Sx_beam, d_beam,
+         bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
+        
+        # Modified IK steel
+        cIK = 1.0
+        DIK = 1.0
+        (Ke_col, My_col, lam_col,
+         thp_col, thpc_col,
+         kappa_col, thu_col) = modified_IK_params(selected_col, L_col)
+        (Ke_beam, My_beam, lam_beam,
+         thp_beam, thpc_beam,
+         kappa_beam, thu_beam) = modified_IK_params(selected_beam, L_beam)
+    
+        # calculate modified section properties to account for spring stiffness being in series with the elastic element stiffness
+        # Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
+        n = 10 # stiffness multiplier for rotational spring
+    
+        # TODO: reduce the elastic section strength to account for bilin spring?
+        
+        Iz_col_mod = Iz_col*(n+1)/n
+        Iz_beam_mod = Iz_beam*(n+1)/n
+    
+        Iy_col_mod = Iy_col*(n+1)/n
+        Iy_beam_mod = Iy_beam*(n+1)/n
+    
+        Ke_col = n*6.0*Es*Iz_col/(0.8*L_col)
+        Ke_beam = n*6.0*Es*Iz_beam/(0.8*L_beam)
+    
+        McMy = 1.05 # ratio of capping moment to yield moment, Mc / My
+        a_mem_col = (n+1.0)*(My_col*(McMy-1.0))/(Ke_col*thp_col)
+        b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
+    
+        a_mem_beam = (n+1.0)*(My_col*(McMy-1.0))/(Ke_beam*thp_beam)
+        b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
+    
+        ops.uniaxialMaterial('Bilin', steel_col_tag, Ke_col, b_col, b_col,
+                              My_col, -My_col, lam_col, 
+                              0, 0, 0, cIK, cIK, cIK, cIK, 
+                              thp_col, thp_col, thpc_col, thpc_col, 
+                              kappa_col, kappa_col, thu_col, thu_col, DIK, DIK)
+    
+        ops.uniaxialMaterial('Bilin', steel_beam_tag, Ke_beam, b_beam, b_beam,
+                              My_beam, -My_beam, lam_beam, 
+                              0, 0, 0, cIK, cIK, cIK, cIK, 
+                              thp_beam, thp_beam, thpc_beam, thpc_beam, 
+                              kappa_beam, kappa_beam, thu_beam, thu_beam, DIK, DIK)
         
 ###############################################################################
 #              Steel dimensions and parameters
@@ -924,6 +1094,9 @@ def get_shape(shape_name, member, csv_dir='../resource/'):
     elif member == 'column':
         shape_db = pd.read_csv(csv_dir+'colShapes.csv',
                                index_col=None, header=0)
+    elif member == 'brace':
+        shape_db = pd.read_csv(csv_dir+'braceShapes.csv',
+                               index_col=None, header=0)  
     shape = shape_db.loc[shape_db['AISC_Manual_Label'] == shape_name]
     return(shape)
 
@@ -1071,7 +1244,7 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.1):
     theta = atan(h_story/(L_bay/2))
     
     # angle from the brace vector up to camber
-    beta = asin(camber)
+    beta = asin(2*camber)
     
     # angle from horizontal up to camber
     gamma  = theta + beta

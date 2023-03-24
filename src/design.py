@@ -1047,7 +1047,7 @@ def design_CBF(input_df, db_string='../resource/'):
     
     # import shapes 
     
-    brace_shapes      = pd.read_csv(db_string+'squareHSS.csv',
+    brace_shapes      = pd.read_csv(db_string+'braceShapes.csv',
         index_col=None, header=0)
     sorted_braces     = brace_shapes.sort_values(by=['A'])
 
