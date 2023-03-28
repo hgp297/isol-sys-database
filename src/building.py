@@ -997,6 +997,10 @@ class Building:
         beam_brace_bay_node = [nd//10*10+9 if nd%10 == 0
                                else nd//10*10+7 for nd in brace_beam_tab_nodes]
         
+        grav_spring_nodes = [nd for nd in spring_nodes
+                             if (nd not in col_brace_bay_node)
+                             and (nd not in beam_brace_bay_node)]
+        
         for nd in spring_nodes:
             parent_nd = nd//10
             
@@ -1101,6 +1105,7 @@ class Building:
         beam_sec_tag = 42
         brace_beam_sec_tag = 43
         brace_sec_tag = 44
+        gp_sec_tag = 45
         
         # Integration tags
         col_int_tag = 61
@@ -1149,9 +1154,10 @@ class Building:
         brace_beam_transf_tag = 3
         brace_transf_tag = 4
     
-        ops.geomTransf('PDelta', brace_beam_transf_tag, 0, -1, 0) # beams
-        ops.geomTransf('PDelta', col_transf_tag, 0, -1, 0) # columns
-        ops.geomTransf('Corotational', brace_transf_tag, 0, -1, 0) # braces
+        # this is different from moment frame
+        ops.geomTransf('PDelta', brace_beam_transf_tag, 0, 0, 1) # beams
+        ops.geomTransf('PDelta', col_transf_tag, 0, 0, 1) # columns
+        ops.geomTransf('Corotational', brace_transf_tag, 0, 0, 1) # braces
         
         # outside of concentrated plasticity zones, use elastic beam columns
         
@@ -1261,14 +1267,14 @@ class Building:
                 
         ###################### Gusset plates #############################
         
-        # # beam section: fiber wide flange section
-        # ops.section('Fiber', brace_beam_sec_tag, '-GJ', Gs*J)
-        # ops.patch('rect', steel_mat_tag, 
-        #     1, nff,  d_beam/2-tf_beam, -bf_beam/2, d_beam/2, bf_beam/2)
-        # ops.patch('rect', steel_mat_tag, 
-        #     1, nff, -d_beam/2, -bf_beam/2, -d_beam/2+tf_beam, bf_beam/2)
-        # ops.patch('rect', steel_mat_tag, nfw, 
-        #     1, -d_beam/2+tf_beam, -tw_beam, d_beam/2-tf_beam, tw_beam)
+        # TODO: switch to spring
+        # GP section: thin plate
+        d_gp = (L_gp**2 + L_gp**2)**0.5
+        t_gp = 1.375
+        
+        ops.section('Fiber', gp_sec_tag, '-GJ', Gs*J)
+        ops.patch('rect', steel_mat_tag, 
+            nff, 1,  -d_gp/2, -t_gp/2, d_gp/2, t_gp/2)
         
 ################################################################################
 # define rigid links - braced bays
