@@ -801,7 +801,6 @@ class Building:
         K1          = kEffWall + EImpact/(a*delM**2)                        # initial impact stiffness
         K2          = kEffWall - EImpact/((1-a)*delM**2)                    # secondary impact stiffness
     
-        # TODO: adjust for torsion?
         moat_gap = self.D_m * self.moat_ampli
     
         ops.uniaxialMaterial('ImpactMaterial', impact_mat_tag, 
@@ -883,6 +882,17 @@ class Building:
         selected_beam = get_shape(self.beam, 'beam')
         selected_brace = get_shape(self.brace, 'brace')
         
+        (Ag_col, Iz_col, Iy_col,
+         Zx_col, Sx_col, d_col,
+         bf_col, tf_col, tw_col) = get_properties(selected_col)
+        
+        (Ag_beam, Iz_beam, Iy_beam,
+         Zx_beam, Sx_beam, d_beam,
+         bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
+        
+        d_brace = selected_brace.iloc[0]['b']
+        t_brace = selected_brace.iloc[0]['tdes']
+        
         # base nodes
         base_nodes = self.node_tags['base']
         for idx, nd in enumerate(base_nodes):
@@ -946,6 +956,10 @@ class Building:
                 ops.fix(nd, 0, 1, 0, 1, 0, 1)
                 
         # brace nodes
+        ofs = 0.25
+        L_diag = ((L_bay/2)**2 + L_col**2)**(0.5)
+        L_eff = (1-ofs) * L_diag
+        L_gp = ofs/2 * L_diag
         brace_top_nodes = self.node_tags['brace_top']
         for nd in brace_top_nodes:
             parent_node = nd // 10
@@ -961,24 +975,59 @@ class Building:
                      negligible, negligible, negligible)
             
         # mid brace node adjusted to have camber of 0.1% L_eff
-        # L_eff is defined as 0.9*L_diagonal
+        # L_eff is defined as L_diag - offset
         brace_mid_nodes = self.node_tags['brace_mid']
         for nd in brace_mid_nodes:
             
             # values returned are already in inches
-            x_coord, z_coord = mid_brace_coord(nd, L_beam, L_col)
+            x_coord, z_coord = mid_brace_coord(nd, L_beam, L_col, offset=ofs)
             ops.node(nd, x_coord, 0.0*ft, z_coord)
         
         
         # spring nodes
         spring_nodes = self.node_tags['spring']
+        brace_beam_ends = self.node_tags['brace_beam_end']    
+        brace_beam_tab_nodes = self.node_tags['brace_beam_tab']
+        
+        col_brace_bay_node = [nd for nd in spring_nodes
+                              if (nd//10 in brace_beam_ends 
+                                  or nd//10 in brace_bot_nodes)
+                              and (nd%10 == 6 or nd%10 == 8)]
+        
+        beam_brace_bay_node = [nd//10*10+9 if nd%10 == 0
+                               else nd//10*10+7 for nd in brace_beam_tab_nodes]
+        
         for nd in spring_nodes:
             parent_nd = nd//10
             
             # get multiplier for location from node number
             bay = parent_nd%10
             fl = parent_nd//10 - 1
-            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            
+            # "springs" inside the brace frames should be treated differently
+            # if it's a column spring, the offset should be dbeam/2 if it's below the column node
+            # if it's above the column node, there is a GP node attached to it
+            # roughly, we put it 1.2x L_gp, where L_gp is the diagonal offset of the gusset plate
+            
+            if nd in col_brace_bay_node:
+                if nd%10 == 6:
+                    y_offset = d_beam/2
+                    ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col-y_offset)
+                else:
+                    y_offset = 1.2*L_gp
+                    ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col+y_offset)
+                    
+            # if it's a beam spring, place it +/- d_col to the right/left of the column node
+            elif nd in beam_brace_bay_node:
+                x_offset = d_col/2
+                if nd%10 == 7:
+                    ops.node(nd, bay*L_beam-x_offset, 0.0*ft, fl*L_col) 
+                else:
+                    ops.node(nd, bay*L_beam+x_offset, 0.0*ft, fl*L_col)
+                    
+            # otherwise, it is a gravity frame node and can just overlap the main node
+            else:
+                ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
             
         lc_spr_nodes = self.node_tags['lc_spring']
         for nd in lc_spr_nodes:
@@ -994,32 +1043,42 @@ class Building:
             grandparent_nd = nd//100
             
             # extract their corresponding coordinates from the node numbers
+            x_offset = 1.2*L_gp
             fl = grandparent_nd//10 - 1
             x_coord = (grandparent_nd%10 + 0.5)*L_beam
             z_coord = fl*L_col
-            ops.node(nd, x_coord, 0.0*ft, z_coord)
             
-        brace_beam_tab_nodes = self.node_tags['brace_beam_tab']
+            # place the node with the offset l/r of midpoint according to suffix
+            if nd%10 == 3:
+                ops.node(nd, x_coord-x_offset, 0.0*ft, z_coord)
+            else:
+                ops.node(nd, x_coord+x_offset, 0.0*ft, z_coord)
+            
         for nd in brace_beam_tab_nodes:
             parent_nd = nd//10
             
             # get multiplier for location from node number
             bay = parent_nd%10
             fl = parent_nd//10 - 1
-            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            
+            x_offset = d_col/2
+            if nd%10 == 5:
+                ops.node(nd, bay*L_beam-x_offset, 0.0*ft, fl*L_col) 
+            else:
+                ops.node(nd, bay*L_beam+x_offset, 0.0*ft, fl*L_col)
         
-        # each end has 0.05*L_diagonal assigned to gusset plate offset
+        # each end has offset/2*L_diagonal assigned to gusset plate offset
         brace_bot_gp_nodes = self.node_tags['brace_bottom_spring']
         for nd in brace_bot_gp_nodes:
             
             # values returned are already in inches
-            x_coord, z_coord = bot_gp_coord(nd, L_beam, L_col)
+            x_coord, z_coord = bot_gp_coord(nd, L_beam, L_col, offset=ofs)
             ops.node(nd, x_coord, 0.0*ft, z_coord)
         
         brace_top_gp_nodes = self.node_tags['brace_top_spring']
         for nd in brace_top_gp_nodes:
             # values returned are already in inches
-            x_coord, z_coord = top_gp_coord(nd, L_beam, L_col)
+            x_coord, z_coord = top_gp_coord(nd, L_beam, L_col, offset=ofs)
             ops.node(nd, x_coord, 0.0*ft, z_coord)
         
         print('Nodes placed.')
@@ -1041,11 +1100,13 @@ class Building:
         col_sec_tag = 41
         beam_sec_tag = 42
         brace_beam_sec_tag = 43
+        brace_sec_tag = 44
         
         # Integration tags
         col_int_tag = 61
         beam_int_tag = 62
         brace_beam_int_tag = 63
+        brace_int_tag = 64
         
         # Impact material tags
         impact_mat_tag = 91
@@ -1086,9 +1147,11 @@ class Building:
         beam_transf_tag   = 1
         col_transf_tag    = 2
         brace_beam_transf_tag = 3
+        brace_transf_tag = 4
     
         ops.geomTransf('PDelta', brace_beam_transf_tag, 0, -1, 0) # beams
         ops.geomTransf('PDelta', col_transf_tag, 0, -1, 0) # columns
+        ops.geomTransf('Corotational', brace_transf_tag, 0, -1, 0) # braces
         
         # outside of concentrated plasticity zones, use elastic beam columns
         
@@ -1101,10 +1164,6 @@ class Building:
         # define the columns
         col_id = self.elem_ids['col']
         col_elems = self.elem_tags['col']
-        
-        (Ag_col, Iz_col, Iy_col,
-         Zx_col, Sx_col, d_col,
-         bf_col, tf_col, tw_col) = get_properties(selected_col)
         
         # column section: fiber wide flange section
         ops.section('Fiber', col_sec_tag, '-GJ', Gs*J)
@@ -1135,10 +1194,6 @@ class Building:
             
         ###################### beams #############################
         
-        (Ag_beam, Iz_beam, Iy_beam,
-         Zx_beam, Sx_beam, d_beam,
-         bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
-        
         # beam section: fiber wide flange section
         ops.section('Fiber', brace_beam_sec_tag, '-GJ', Gs*J)
         ops.patch('rect', steel_mat_tag, 
@@ -1168,6 +1223,52 @@ class Building:
             ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_beam_transf_tag, brace_beam_int_tag)
             
+        ###################### Brace #############################
+        
+        # brace section: HSS section
+        ops.section('Fiber', brace_sec_tag, '-GJ', Gs*J)
+        ops.patch('rect', steel_mat_tag, 
+            1, nff,  d_brace/2-t_brace, -d_brace/2, d_brace/2, d_brace/2)
+        ops.patch('rect', steel_mat_tag, 
+            1, nff, -d_brace/2, -d_brace/2, -d_brace/2+t_brace, d_brace/2)
+        ops.patch('rect', steel_mat_tag, nfw, 
+            1, -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
+        ops.patch('rect', steel_mat_tag, nfw, 
+            1, -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
+        
+        ops.beamIntegration('Lobatto', brace_int_tag, 
+                            brace_sec_tag, n_IP)
+        
+        brace_id = self.elem_ids['brace']
+        brace_elems = self.elem_tags['brace']
+        
+        for elem_tag in brace_elems:
+            
+            # if tag is 02 or 04, it extends from the bottom up
+            if elem_tag%10 == 4:
+                i_nd = (elem_tag - brace_id)
+                parent_i_nd = i_nd // 100 
+                j_nd = (parent_i_nd + 10)*100 + 18
+            elif elem_tag%10 == 2:
+                i_nd = (elem_tag - brace_id)
+                parent_i_nd = i_nd // 100 
+                j_nd = (parent_i_nd + 9)*100 + 17
+            else:
+                i_nd = (elem_tag - brace_id) + 2
+                j_nd = elem_tag - brace_id
+            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+                        brace_transf_tag, brace_int_tag)
+                
+        ###################### Gusset plates #############################
+        
+        # # beam section: fiber wide flange section
+        # ops.section('Fiber', brace_beam_sec_tag, '-GJ', Gs*J)
+        # ops.patch('rect', steel_mat_tag, 
+        #     1, nff,  d_beam/2-tf_beam, -bf_beam/2, d_beam/2, bf_beam/2)
+        # ops.patch('rect', steel_mat_tag, 
+        #     1, nff, -d_beam/2, -bf_beam/2, -d_beam/2+tf_beam, bf_beam/2)
+        # ops.patch('rect', steel_mat_tag, nfw, 
+        #     1, -d_beam/2+tf_beam, -tw_beam, d_beam/2-tf_beam, tw_beam)
         
 ################################################################################
 # define rigid links - braced bays
@@ -1177,7 +1278,6 @@ class Building:
         spr_elems = self.elem_tags['spring']
         
         # extract where rigid elements are in the entire frame
-        brace_beam_ends = self.node_tags['brace_beam_end']
         brace_beam_end_joint = [link for link in spr_elems
                                 if (link-spr_id)//10 in brace_beam_ends
                                 and (link%10 == 9 or link%10 == 7)]
@@ -1205,21 +1305,6 @@ class Building:
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_beam_transf_tag)
           
-        # make link for beam around where shear tabs are
-        for link_tag in brace_beam_end_joint:
-            outer_nd = link_tag - spr_id
-            
-            if outer_nd%10 == 9:
-                i_nd = outer_nd // 10
-                j_nd = outer_nd
-            else:
-                i_nd = outer_nd
-                j_nd = outer_nd // 10
-                
-            ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
-                        A_rigid, Es, Gs, J, I_rigid, I_rigid, 
-                        brace_beam_transf_tag)
-        
         # make link for all column in braced bays
         for link_tag in col_joint:
             outer_nd = link_tag - spr_id
@@ -1235,9 +1320,53 @@ class Building:
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         col_transf_tag)
             
-        # TODO: brace main
-        # TODO: brace gp rigid
+        # make link for the column/beam to gusset plate connection
+        brace_top_links = self.elem_tags['brace_top_springs']
+        brace_top_rigid_links = [link for link in brace_top_links
+                                 if link%10 < 3]
+        
+        for link_tag in brace_top_rigid_links:
+            outer_nd = link_tag - brace_spr_id
+            i_nd = outer_nd
+            j_nd = outer_nd//10
+            
+            ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
+                        A_rigid, Es, Gs, J, I_rigid, I_rigid, 
+                        brace_transf_tag)
+            
+        brace_bot_links = self.elem_tags['brace_bot_springs']
+        brace_bot_rigid_links = [link for link in brace_bot_links
+                                 if link%2 == 1]
+        
+        for link_tag in brace_bot_rigid_links:
+            outer_nd = link_tag - brace_spr_id
+            i_nd = outer_nd//100
+            j_nd = outer_nd
+            
+            ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
+                        A_rigid, Es, Gs, J, I_rigid, I_rigid, 
+                        brace_transf_tag)
+        
+        # make link for beam around where shear tabs are
+        beam_brace_rigid_joints = [nd+spr_id for nd in beam_brace_bay_node]
+        
+        for link_tag in beam_brace_rigid_joints:
+            outer_nd = link_tag - spr_id
+            
+            if outer_nd%10 == 9:
+                i_nd = outer_nd // 10
+                j_nd = outer_nd
+            else:
+                i_nd = outer_nd
+                j_nd = outer_nd // 10
+                
+            ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
+                        A_rigid, Es, Gs, J, I_rigid, I_rigid, 
+                        brace_beam_transf_tag)
+            
         # TODO: brace gp fbc/spring
+        # TODO: ghost trust
+        # TODO: ghost elastic beam
         
         # make shear tab pin connections
         # use constraint (fix translation, allow rotation) rather than spring
@@ -1268,6 +1397,7 @@ def get_shape(shape_name, member, csv_dir='../resource/'):
     shape = shape_db.loc[shape_db['AISC_Manual_Label'] == shape_name]
     return(shape)
 
+    
 # get shape properties
 def get_properties(shape):
     Ag      = float(shape.iloc[0]['A'])
@@ -1335,7 +1465,7 @@ def modified_IK_params(shape, L):
 #              Brace geometry
 ###############################################################################
 
-def bot_gp_coord(nd, L_bay, h_story, offset=0.1):
+def bot_gp_coord(nd, L_bay, h_story, offset=0.25):
     # from node number, get the parent node it's attached to
     bot_nd = nd//100
     
@@ -1358,7 +1488,7 @@ def bot_gp_coord(nd, L_bay, h_story, offset=0.1):
     return(gp_x_coord, gp_y_coord)
 
 
-def top_gp_coord(nd, L_bay, h_story, offset=0.1):
+def top_gp_coord(nd, L_bay, h_story, offset=0.25):
     # from node number, get the parent node it's attached to
     top_node = nd//100
     
@@ -1380,7 +1510,7 @@ def top_gp_coord(nd, L_bay, h_story, offset=0.1):
     return(gp_x_coord, gp_y_coord)
     
 
-def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.1):
+def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     # from mid brace number, get the corresponding top and bottom node numbers
     top_node = nd//100
     
@@ -1405,7 +1535,7 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.1):
     # effective length is 90% of the diagonal (gusset plate offset)
     br_x = abs(top_x_coord - bot_x_coord)
     br_y = abs(top_y_coord - bot_y_coord)
-    L_eff = 0.9*(br_x**2 + br_y**2)**0.5
+    L_eff = (1-offset)*(br_x**2 + br_y**2)**0.5
     
     # angle from horizontal up to brace vector
     from math import atan, asin, sin, cos
