@@ -1098,6 +1098,7 @@ class Building:
     
         # Steel material tag
         steel_mat_tag = 31
+        gp_mat_tag = 32
         
     
         # Section tags
@@ -1153,11 +1154,43 @@ class Building:
         col_transf_tag    = 2
         brace_beam_transf_tag = 3
         brace_transf_tag = 4
-    
+        
         # this is different from moment frame
-        ops.geomTransf('PDelta', brace_beam_transf_tag, 0, 0, 1) # beams
-        ops.geomTransf('PDelta', col_transf_tag, 0, 0, 1) # columns
-        ops.geomTransf('Corotational', brace_transf_tag, 0, 0, 1) # braces
+        # beam geometry
+        xyz_i = ops.nodeCoord(10)
+        xyz_j = ops.nodeCoord(11)
+        beam_x_axis = np.subtract(xyz_j, xyz_i)
+        vecxy_beam = [0,1,0] # Use any vector in local x-y, but not local x
+        vecxz = np.cross(beam_x_axis,vecxy_beam) # What OpenSees expects
+        vecxz_beam = vecxz / np.sqrt(np.sum(vecxz**2))
+    
+        
+        # column geometry
+        xyz_i = ops.nodeCoord(10)
+        xyz_j = ops.nodeCoord(20)
+        col_x_axis = np.subtract(xyz_j, xyz_i)
+        vecxy_col = [0,1,0] # Use any vector in local x-y, but not local x
+        vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
+        vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
+        
+        # brace geometry (we can use one because HSS is symmetric)
+        xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10)
+        xyz_j = ops.nodeCoord(brace_top_nodes[0])
+        brace_x_axis_L = np.subtract(xyz_j, xyz_i)
+        brace_x_axis_L = brace_x_axis_L / np.sqrt(np.sum(brace_x_axis_L**2))
+        vecxy_brace = [0,1,0] # Use any vector in local x-y, but not local x
+        vecxz = np.cross(brace_x_axis_L,vecxy_brace) # What OpenSees expects
+        vecxz_brace = vecxz / np.sqrt(np.sum(vecxz**2))
+        
+        # brace geometry (we can use one because HSS is symmetric)
+        xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10 + 1)
+        xyz_j = ops.nodeCoord(brace_top_nodes[0])
+        brace_x_axis_R = np.subtract(xyz_j, xyz_i)
+        brace_x_axis_R = brace_x_axis_R / np.sqrt(np.sum(brace_x_axis_R**2))
+        
+        ops.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
+        ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
+        ops.geomTransf('Corotational', brace_transf_tag, *vecxz_brace) # braces
         
         # outside of concentrated plasticity zones, use elastic beam columns
         
@@ -1269,13 +1302,69 @@ class Building:
         
         # TODO: switch to spring
         # GP section: thin plate
-        d_gp = (L_gp**2 + L_gp**2)**0.5
-        t_gp = 1.375
+        W_w = (L_gp**2 + L_gp**2)**0.5
+        L_avg = 0.75* L_gp
+        t_gp = 1.375*inch
+        Fy_gp = 50*ksi
         
-        ops.section('Fiber', gp_sec_tag, '-GJ', Gs*J)
-        ops.patch('rect', steel_mat_tag, 
-            nff, 1,  -d_gp/2, -t_gp/2, d_gp/2, t_gp/2)
+        My_GP = (W_w*t_gp**2/6)*Fy_gp
+        K_rot_GP = Es/L_avg * (W_w*t_gp**3/12)
+        b_GP = 0.01
+        ops.uniaxialMaterial('Steel02', gp_mat_tag, My_GP, K_rot_GP, b_GP, R0, cR1, cR2)
         
+        brace_spr_id = self.elem_ids['brace_spring']
+        brace_top_links = self.elem_tags['brace_top_springs']
+        brace_bot_links = self.elem_tags['brace_bot_springs']
+        
+        # on bottom, the outer (GP non rigid) nodes are 2 and 4
+        # TODO: check rotation here. why use material in directions 4 6 but restrain 1 2 3 5
+        brace_bot_gp_spring_link = [link for link in brace_bot_links
+                                    if link%2 == 0]
+        
+        for link_tag in brace_bot_gp_spring_link:
+            i_nd = (link_tag - brace_spr_id) - 1
+            j_nd = (link_tag - brace_spr_id)
+            
+            # put the correct local x-axis
+            # torsional stiffness around local-x, GP stiffness around local-z
+            if link_tag%10 == 4:
+                ops.element('zeroLength', link_tag, i_nd, j_nd,
+                    '-mat', elastic_mat_tag, gp_mat_tag, 
+                    '-dir', 4, 6, 
+                    '-orient', *brace_x_axis_L, *vecxy_brace)
+            else:
+                ops.element('zeroLength', link_tag, i_nd, j_nd,
+                    '-mat', elastic_mat_tag, gp_mat_tag, 
+                    '-dir', 4, 6, 
+                    '-orient', *brace_x_axis_R, *vecxy_brace)
+            # put a rotational pin around the local y (global-y rotation)
+            # to enable buckling
+            ops.equalDOF(i_nd, j_nd, 1, 2, 3, 5)
+            
+        # at top, outer (GP non rigid nodes are 5 and 6)
+        brace_top_gp_spring_link = [link for link in brace_top_links
+                                    if link%10 > 4]
+        
+        for link_tag in brace_top_gp_spring_link:
+            i_nd = (link_tag - brace_spr_id)
+            j_nd = (link_tag - brace_spr_id) - 4
+            
+            # put the correct local x-axis
+            # torsional stiffness around local-x, GP stiffness around local-z
+            if link_tag%10 == 6:
+                ops.element('zeroLength', link_tag, i_nd, j_nd,
+                    '-mat', elastic_mat_tag, gp_mat_tag, 
+                    '-dir', 4, 6, 
+                    '-orient', *brace_x_axis_L, *vecxy_brace)
+            else:
+                ops.element('zeroLength', link_tag, i_nd, j_nd,
+                    '-mat', elastic_mat_tag, gp_mat_tag, 
+                    '-dir', 4, 6, 
+                    '-orient', *brace_x_axis_R, *vecxy_brace)
+            # put a rotational pin around the local y (global-y rotation)
+            # to enable buckling
+            ops.equalDOF(j_nd, i_nd, 1, 2, 3, 5)
+            
 ################################################################################
 # define rigid links - braced bays
 ################################################################################  
@@ -1288,7 +1377,7 @@ class Building:
                                 if (link-spr_id)//10 in brace_beam_ends
                                 and (link%10 == 9 or link%10 == 7)]
         
-        brace_spr_id = self.elem_ids['brace_spring']
+        
         brace_beam_middle_joint = self.elem_tags['brace_beam_springs']
         
         col_joint = [link for link in spr_elems
@@ -1327,7 +1416,6 @@ class Building:
                         col_transf_tag)
             
         # make link for the column/beam to gusset plate connection
-        brace_top_links = self.elem_tags['brace_top_springs']
         brace_top_rigid_links = [link for link in brace_top_links
                                  if link%10 < 3]
         
@@ -1340,7 +1428,6 @@ class Building:
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_transf_tag)
             
-        brace_bot_links = self.elem_tags['brace_bot_springs']
         brace_bot_rigid_links = [link for link in brace_bot_links
                                  if link%2 == 1]
         
@@ -1370,7 +1457,6 @@ class Building:
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_beam_transf_tag)
             
-        # TODO: brace gp fbc/spring
         # TODO: ghost trust
         # TODO: ghost elastic beam
         
@@ -1383,7 +1469,11 @@ class Building:
                 parent_nd = (nd//10)*10 + 9
             else:
                 parent_nd = (nd//10)*10 + 7
-            ops.equalDOF(parent_nd, nd, 1, 1, 1, 0, 0, 0)
+            ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+            
+        # TODO: gravity frame
+        
+        # TODO: rest of building (wall, LC, diaphragm, LC truss, isolators)
 ###############################################################################
 #              Steel dimensions and parameters
 ###############################################################################
