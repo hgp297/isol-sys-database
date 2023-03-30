@@ -901,7 +901,6 @@ class Building:
         
         # wall nodes (should only be two)
         n_bays = int(self.num_bays)
-        n_floors = int(self.num_stories)
         n_braced = int(round(n_bays/2.25))
         # roughly center braces around middle
         n_start = round(n_bays/2 - n_braced/2)
@@ -1113,6 +1112,12 @@ class Building:
         beam_int_tag = 62
         brace_beam_int_tag = 63
         brace_int_tag = 64
+        
+        # isolator tags
+        friction_1_tag = 81
+        friction_2_tag = 82
+        fps_vert_tag = 84
+        fps_rot_tag = 85
         
         # Impact material tags
         impact_mat_tag = 91
@@ -1474,6 +1479,203 @@ class Building:
         # TODO: gravity frame
         
         # TODO: rest of building (wall, LC, diaphragm, LC truss, isolators)
+        
+################################################################################
+# define leaning column
+################################################################################
+
+        # Rotational hinge at leaning column joints via zeroLength elements
+        k_lc = 1e-9*kip/inch
+    
+        # Create the material (spring)
+        ops.uniaxialMaterial('Elastic', lc_spring_mat_tag, k_lc)
+        
+        # define leaning column
+        lc_elems = self.elem_tags['leaning']
+        for elem_tag in lc_elems:
+            i_nd = (elem_tag - col_id)*10 + 8
+            j_nd = (elem_tag - col_id + 10)*10 + 6
+            
+            # create elastic members
+            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                        A_rigid, Es, Gs, J, I_rigid, I_rigid, col_transf_tag)
+        
+        # TODO: check that bottom node above the roller
+        lc_spr_elems = self.elem_tags['lc_spring']
+        for elem_tag in lc_spr_elems:
+            spr_nd = elem_tag - spr_id
+            parent_nd = spr_nd//10
+            
+            # create zero length element (spring), rotations allowed about local Z axis
+            ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
+                '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
+                elastic_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
+                '-dir', 1, 2, 3, 4, 5, 6, '-orient', 0, 0, 1, 1, 0, 0)
+            
+################################################################################
+# Trusses and diaphragms
+################################################################################
+        truss_id = self.elem_ids['truss']
+        truss_elems = self.elem_tags['truss']
+        for elem_tag in truss_elems:
+            i_nd = elem_tag - truss_id
+            j_nd = elem_tag - truss_id + 1
+            ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
+            
+        diaph_id = self.elem_ids['diaphragm']
+        diaph_elems = self.elem_tags['diaphragm']
+        for elem_tag in diaph_elems:
+            i_nd = elem_tag - diaph_id
+            j_nd = elem_tag - diaph_id + 1
+            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                        A_rigid, Es, Gs, J, I_rigid, I_rigid, beam_transf_tag)
+            
+################################################################################
+# Isolators
+################################################################################
+
+        if self.isolator_system == 'TFP':
+            
+            # TFP system
+            # TODO: check displacement capacities
+            # Isolator parameters
+            R1 = self.R_1
+            R2 = self.R_2
+            uy          = 0.00984*inch      # 0.025cm from Scheller & Constantinou
+            dSlider1    = 4 *inch           # slider diameters
+            dSlider2    = 11*inch
+            d1      = 10*inch   - dSlider1  # displacement capacities
+            d2      = 37.5*inch - dSlider2
+            h1      = 1*inch                # half-height of sliders
+            h2      = 4*inch
+            
+            # TODO: effective height of bearing
+            L1      = R1 - h1
+            L2      = R2 - h2
+    
+            # uLim    = 2*d1 + 2*d2 + L1*d2/L2 - L1*d2/L2
+    
+            # friction pendulum system
+            # kv = EASlider/hSlider
+            kv = 6*1000*kip/inch
+            ops.uniaxialMaterial('Elastic', fps_vert_tag, kv)
+            ops.uniaxialMaterial('Elastic', fps_rot_tag, 10.0)
+    
+    
+            # Define friction model for FP elements
+            # command: frictionModel Coulomb tag mu
+            ops.frictionModel('Coulomb', friction_1_tag, self.mu_1)
+            ops.frictionModel('Coulomb', friction_2_tag, self.mu_2)
+    
+    
+            # define 2-D isolation layer 
+            kvt     = 0.01*kv
+            minFv   = 1.0
+            
+            isol_id = self.elem_ids['isolator']
+            base_id = self.elem_ids['base']
+            isol_elems = self.elem_tags['isolator']
+            for elem_tag in isol_elems:
+                i_nd = elem_tag - isol_id
+                j_nd = elem_tag - isol_id - base_id + 10
+                
+                # if top node is furthest left or right, vertical force is outer
+                if (j_nd == 0) or (j_nd%10 == n_bays):
+                    p_vert = p_outer
+                else:
+                    p_vert = p_inner
+                ops.element('TripleFrictionPendulum', elem_tag, i_nd, j_nd,
+                            friction_1_tag, friction_2_tag, friction_2_tag,
+                            fps_vert_tag, fps_rot_tag, fps_rot_tag, fps_rot_tag,
+                            L1, L2, L2, d1, d2, d2,
+                            p_vert, uy, kvt, minFv, 1e-5)
+        else:
+            # LRB modeling
+            
+            # dimensions. Material parameters should not be edited without 
+            # modifying design script
+            K_bulk = 290.0*ksi
+            G_r = 0.060*ksi
+            D_inner = self.d_lead
+            D_outer = self.d_bearing
+            t_shim = 0.1*inch
+            t_rubber_whole = self.t_r
+            n_layers = int(self.n_layers)
+            t_layer = t_rubber_whole/n_layers
+            
+            # calculate yield strength. this assumes design was done correctly
+            Q_L = self.Q * self.W
+            alpha = 1.0/self.k_ratio
+            Fy_LRB = Q_L/(1 - alpha)
+            
+            # define 2-D isolation layer 
+            isol_id = self.elem_ids['isolator']
+            base_id = self.elem_ids['base']
+            isol_elems = self.elem_tags['isolator']
+            
+            for elem_tag in isol_elems:
+                i_nd = elem_tag - isol_id
+                j_nd = elem_tag - isol_id - base_id + 10
+                
+                # if top node is furthest left or right, vertical force is outer
+                if (j_nd == 0) or (j_nd%10 == n_bays):
+                    p_vert = p_outer
+                else:
+                    p_vert = p_inner
+                    
+                # TODO: change temp coefficients to imperial units
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                            G_r, K_bulk, D_inner, D_outer,
+                            t_shim, t_layer, n_layers)
+  
+################################################################################
+# Walls
+################################################################################
+
+        # define impact moat as ZeroLengthImpact3D elements
+        # https://opensees.berkeley.edu/wiki/index.php/Impact_Material
+        # assume slab of base layer is 6 in
+        # model half of slab
+        VSlab = (6*inch)*(45*ft)*(90*ft)
+        pi = 3.14159
+        RSlab = (3/4/pi*VSlab)**(1/3)
+        
+        # assume wall extends 9 ft up to isolation layer and is 12 in thick
+        VWall = (12*inch)*(1*ft)*(45*ft)
+        RWall = (3/4/pi*VWall)**(1/3)
+        
+        # concrete slab and wall properties
+        Ec = 3645*ksi
+        nu_c = 0.2
+        h_impact = (1-nu_c**2)/(pi*Ec)
+        
+        # impact stiffness parameter from Muthukumar, 2006
+        khWall = 4/(3*pi*(h_impact + h_impact))*((RSlab*RWall)/(RSlab + RWall))**(0.5)
+        e           = 0.7                                                   # coeff of restitution (1.0 = perfectly elastic collision)
+        delM        = 0.025*inch                                            # maximum penetration during pounding event, from Hughes paper
+        kEffWall    = khWall*((delM)**(0.5))                                # effective stiffness
+        a           = 0.1                                                   # yield coefficient
+        delY        = a*delM                                                # yield displacement
+        nImpact     = 3/2                                                   # Hertz power rule exponent
+        EImpact     = khWall*delM**(nImpact+1)*(1 - e**2)/(nImpact+1)       # energy dissipated during impact
+        K1          = kEffWall + EImpact/(a*delM**2)                        # initial impact stiffness
+        K2          = kEffWall - EImpact/((1-a)*delM**2)                    # secondary impact stiffness
+    
+        moat_gap = self.D_m * self.moat_ampli
+    
+        ops.uniaxialMaterial('ImpactMaterial', impact_mat_tag, 
+                             K1, K2, -delY, -moat_gap)
+        
+        # command: element('zeroLength', eleTag, *eleNodes, '-mat', *matTags, 
+        #   '-dir', *dirs, <'-doRayleigh', rFlag=0>, <'-orient', *vecx, *vecyp>)
+        wall_elems = self.elem_tags['wall']
+        
+        ops.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
+                    '-mat', impact_mat_tag, elastic_mat_tag,
+                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+        ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
+                    '-mat', impact_mat_tag, elastic_mat_tag,
+                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
 ###############################################################################
 #              Steel dimensions and parameters
 ###############################################################################
