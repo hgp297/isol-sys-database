@@ -215,7 +215,10 @@ class Building:
             brace_end_nodes = (br_top_w_outer + br_top_e_outer + 
                                br_bot_w_outer + br_bot_e_outer)
             
+            brace_bot_end_nodes = (br_bot_w_outer + br_bot_e_outer)
+            
             brace_elems = [brace_id + nd for nd in brace_end_nodes]
+            brace_ghost_elems = [brace_id + nd + 5 for nd in brace_bot_end_nodes]
             
             # brace beams are 2xxx, where xxx is either 0xy for the left parent xy
             # or xy1 for the mid-bay parent xy1
@@ -262,6 +265,7 @@ class Building:
             self.elem_tags['brace_bot_springs'] = brace_bot_elems
             self.elem_tags['brace_beam_springs'] = br_beam_spr_elems
             self.elem_tags['brace_beams'] = brace_beam_elems
+            self.elem_tags['brace_ghosts'] = brace_ghost_elems
             
             
         self.elem_ids = {
@@ -854,7 +858,6 @@ class Building:
         self.number_nodes()
         
         # model gravity masses corresponding to the frame placed on building edge
-        # TODO: check if "base" level should have mass
         import numpy as np
         m_grav_inner = w_floor * L_bay / g
         m_grav_outer = w_floor * L_bay / 2 /g
@@ -1000,6 +1003,12 @@ class Building:
                              if (nd not in col_brace_bay_node)
                              and (nd not in beam_brace_bay_node)]
         
+        grav_beam_spring_nodes = [nd for nd in grav_spring_nodes
+                                  if nd%2 == 1]
+        
+        grav_col_spring_nodes = [nd for nd in grav_spring_nodes
+                                  if nd%2 == 0]
+        
         for nd in spring_nodes:
             parent_nd = nd//10
             
@@ -1094,6 +1103,7 @@ class Building:
         lc_spring_mat_tag = 51
         elastic_mat_tag = 52
         torsion_mat_tag = 53
+        ghost_mat_tag = 54
     
         # Steel material tag
         steel_mat_tag = 31
@@ -1102,16 +1112,18 @@ class Building:
     
         # Section tags
         col_sec_tag = 41
-        beam_sec_tag = 42
+        grav_beam_sec_tag = 42
         brace_beam_sec_tag = 43
         brace_sec_tag = 44
         gp_sec_tag = 45
+        grav_col_sec_tag = 46
         
         # Integration tags
         col_int_tag = 61
-        beam_int_tag = 62
+        grav_beam_int_tag = 62
         brace_beam_int_tag = 63
         brace_int_tag = 64
+        grav_col_int_tag = 65
         
         # isolator tags
         friction_1_tag = 81
@@ -1137,6 +1149,12 @@ class Building:
         A_rigid = 1000.0         # define area of truss section
         I_rigid = 1e6        # moment of inertia for p-delta columns
         ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
+        
+        # minimal stiffness elements (ghosts)
+        A_ghost = 0.05
+        E_ghost = 100.0
+        ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
+        
         
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
@@ -1194,6 +1212,7 @@ class Building:
         brace_x_axis_R = brace_x_axis_R / np.sqrt(np.sum(brace_x_axis_R**2))
         
         ops.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
+        ops.geomTransf('PDelta', beam_transf_tag, *vecxz_beam) # beams
         ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
         ops.geomTransf('Corotational', brace_transf_tag, *vecxz_brace) # braces
         
@@ -1229,6 +1248,9 @@ class Building:
         # (if its i-node parent is a brace_bottom_node)
         col_br_elems = [col for col in col_elems
                         if col-col_id in brace_bot_nodes]
+        
+        grav_cols = [col for col in col_elems
+                     if col not in col_br_elems]
         
         for elem_tag in col_br_elems:
             i_nd = (elem_tag - col_id)*10 + 8
@@ -1302,10 +1324,22 @@ class Building:
                 j_nd = elem_tag - brace_id
             ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_transf_tag, brace_int_tag)
-                
+            
+        # add ghost trusses to the braces to reduce convergence problems
+        brace_ghosts = self.elem_tags['brace_ghosts']
+        for elem_tag in brace_ghosts:
+            i_nd = (elem_tag - 5) - brace_id
+            
+            parent_i_nd = i_nd // 100
+            if elem_tag%10 == 9:
+                j_nd = (parent_i_nd + 10)*100 + 16
+            else:
+                j_nd = (parent_i_nd + 9)*100 + 15
+            ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
+            
         ###################### Gusset plates #############################
         
-        # TODO: switch to spring
+        # TODO: switch to spring and check dimension
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
         L_avg = 0.75* L_gp
@@ -1371,7 +1405,7 @@ class Building:
             ops.equalDOF(j_nd, i_nd, 1, 2, 3, 5)
             
 ################################################################################
-# define rigid links - braced bays
+# define rigid links in the braced bays
 ################################################################################  
      
         spr_id = self.elem_ids['spring'] 
@@ -1461,9 +1495,6 @@ class Building:
             ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_beam_transf_tag)
-            
-        # TODO: ghost trust
-        # TODO: ghost elastic beam
         
         # make shear tab pin connections
         # use constraint (fix translation, allow rotation) rather than spring
@@ -1476,10 +1507,85 @@ class Building:
                 parent_nd = (nd//10)*10 + 7
             ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
             
-        # TODO: gravity frame
+################################################################################
+# define gravity frame
+################################################################################
+       
+        # TODO: design grav frame
+        selected_grav_beam = get_shape('W21X55', 'beam')
         
-        # TODO: rest of building (wall, LC, diaphragm, LC truss, isolators)
+        (Ag_gb, Iz_gb, Iy_gb,
+         Zx_gb, Sx_gb, d_gb,
+         bf_gb, tf_gb, tw_gb) = get_properties(selected_grav_beam)
         
+        # gravity beam section: fiber wide flange section
+        ops.section('Fiber', grav_beam_sec_tag, '-GJ', Gs*J)
+        ops.patch('rect', steel_mat_tag, 
+            1, nff,  d_gb/2-tf_gb, -bf_gb/2, d_gb/2, bf_gb/2)
+        ops.patch('rect', steel_mat_tag, 
+            1, nff, -d_gb/2, -bf_gb/2, -d_gb/2+tf_gb, bf_gb/2)
+        ops.patch('rect', steel_mat_tag, nfw, 
+            1, -d_gb/2+tf_gb, -tw_gb, d_gb/2-tf_gb, tw_gb)
+        
+        ops.beamIntegration('Lobatto', grav_beam_int_tag, 
+                            grav_beam_sec_tag, n_IP)
+        
+        # place gravity beams
+        beam_elems = self.elem_tags['beam']
+        beam_id = self.elem_ids['beam']
+        ghost_beams = [beam_tag//10 for beam_tag in brace_beam_elems
+                       if beam_tag%10 == 1]
+        grav_beams = [beam_tag for beam_tag in beam_elems
+                      if beam_tag not in ghost_beams]
+        
+        for elem_tag in grav_beams:
+            i_nd = (elem_tag - beam_id)*10 + 9
+            j_nd = (elem_tag - beam_id + 1)*10 + 7
+            
+            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+                        beam_transf_tag, grav_beam_int_tag)
+        
+        # place pin joints for all gravity beams
+        for nd in grav_beam_spring_nodes:
+            parent_nd = nd // 10
+            ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+            
+        # place ghost trusses along braced frame beams to ensure horizontal movement
+        for elem_tag in ghost_beams:
+            i_nd = elem_tag - beam_id
+            j_nd = i_nd + 1
+            ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
+            
+            
+        selected_grav_col = get_shape('W14X211', 'column')
+        
+        (Ag_gc, Iz_gc, Iy_gc,
+         Zx_gc, Sx_gc, d_gc,
+         bf_gc, tf_gc, tw_gc) = get_properties(selected_grav_col)
+        
+        # gravity column section: fiber wide flange section
+        ops.section('Fiber', grav_col_sec_tag, '-GJ', Gs*J)
+        ops.patch('rect', steel_mat_tag, 
+            1, nff,  d_gc/2-tf_gc, -bf_gc/2, d_gc/2, bf_gc/2)
+        ops.patch('rect', steel_mat_tag, 
+            1, nff, -d_gc/2, -bf_gc/2, -d_gc/2+tf_gc, bf_gc/2)
+        ops.patch('rect', steel_mat_tag, nfw, 
+            1, -d_gc/2+tf_gc, -tw_gc, d_gc/2-tf_gc, tw_gc)
+        
+        ops.beamIntegration('Lobatto', grav_col_int_tag, 
+                            grav_col_sec_tag, n_IP)
+        
+        for elem_tag in grav_cols:
+            i_nd = (elem_tag - col_id)*10 + 8
+            j_nd = (elem_tag - col_id + 10)*10 + 6
+            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+                        col_transf_tag, grav_col_int_tag)
+            
+        # fully fix all column spring nodes to its parent
+        for nd in grav_col_spring_nodes:
+            parent_nd = nd // 10
+            ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 5, 6)
+            
 ################################################################################
 # define leaning column
 ################################################################################
@@ -1500,7 +1606,6 @@ class Building:
             ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, col_transf_tag)
         
-        # TODO: check that bottom node above the roller
         lc_spr_elems = self.elem_tags['lc_spring']
         for elem_tag in lc_spr_elems:
             spr_nd = elem_tag - spr_id
@@ -1537,7 +1642,6 @@ class Building:
         if self.isolator_system == 'TFP':
             
             # TFP system
-            # TODO: check displacement capacities
             # Isolator parameters
             R1 = self.R_1
             R2 = self.R_2
@@ -1549,7 +1653,6 @@ class Building:
             h1      = 1*inch                # half-height of sliders
             h2      = 4*inch
             
-            # TODO: effective height of bearing
             L1      = R1 - h1
             L2      = R2 - h2
     
