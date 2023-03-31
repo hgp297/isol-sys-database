@@ -937,6 +937,7 @@ class Building:
             ops.mass(nd, m_nd, m_nd, m_nd,
                      negligible, negligible, negligible)
             
+            # TODO: need to restrict x-rotation if torsion elements present?
             # restrain out of plane motion
             ops.fix(nd, 0, 1, 0, 1, 0, 1)
             
@@ -1166,7 +1167,19 @@ class Building:
         ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
         ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
         
+        # GP section: thin plate
+        W_w = (L_gp**2 + L_gp**2)**0.5
+        L_avg = 0.75* L_gp
+        t_gp = 1.375*inch
+        Fy_gp = 50*ksi
         
+        # TODO: switch to spring and check dimension
+        My_GP = (W_w*t_gp**2/6)*Fy_gp
+        K_rot_GP = Es/L_avg * (W_w*t_gp**3/12)
+        b_GP = 0.01
+        ops.uniaxialMaterial('Steel02', gp_mat_tag, My_GP, K_rot_GP, b_GP, R0, cR1, cR2)
+        
+        # TODO: fatigue
 ################################################################################
 # define beams and columns - braced bays
 ################################################################################
@@ -1338,18 +1351,6 @@ class Building:
             ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
             
         ###################### Gusset plates #############################
-        
-        # TODO: switch to spring and check dimension
-        # GP section: thin plate
-        W_w = (L_gp**2 + L_gp**2)**0.5
-        L_avg = 0.75* L_gp
-        t_gp = 1.375*inch
-        Fy_gp = 50*ksi
-        
-        My_GP = (W_w*t_gp**2/6)*Fy_gp
-        K_rot_GP = Es/L_avg * (W_w*t_gp**3/12)
-        b_GP = 0.01
-        ops.uniaxialMaterial('Steel02', gp_mat_tag, My_GP, K_rot_GP, b_GP, R0, cR1, cR2)
         
         brace_spr_id = self.elem_ids['brace_spring']
         brace_top_links = self.elem_tags['brace_top_springs']
@@ -1874,9 +1875,9 @@ def bot_gp_coord(nd, L_bay, h_story, offset=0.25):
     bot_x_coord = (bot_nd%10)*L_bay
     bot_y_coord = (bot_nd//10 - 1)*h_story
     
-    # if last number is 1 or 2, brace connects ne
-    # if last number is 3 or 4, brace connects nw
-    goes_ne = [1, 2]
+    # if last number is 1 or 2, brace connects nw
+    # if last number is 3 or 4, brace connects ne
+    goes_ne = [3, 4]
     if (nd%10 in goes_ne):
         x_offset = offset/2*L_bay/2
     else:
