@@ -1366,20 +1366,21 @@ class Building:
             j_nd = (link_tag - brace_spr_id)
             
             # put the correct local x-axis
-            # torsional stiffness around local-x, GP stiffness around local-z
+            # torsional stiffness around local-x, GP stiffness around local-y
+            # since imperfection is in x-z plane, we allow GP-stiff rotation 
+            # pin around y to enable buckling
             if link_tag%10 == 4:
                 ops.element('zeroLength', link_tag, i_nd, j_nd,
                     '-mat', elastic_mat_tag, gp_mat_tag, 
-                    '-dir', 4, 6, 
+                    '-dir', 4, 5, 
                     '-orient', *brace_x_axis_L, *vecxy_brace)
             else:
                 ops.element('zeroLength', link_tag, i_nd, j_nd,
                     '-mat', elastic_mat_tag, gp_mat_tag, 
-                    '-dir', 4, 6, 
+                    '-dir', 4, 5, 
                     '-orient', *brace_x_axis_R, *vecxy_brace)
-            # put a rotational pin around the local y (global-y rotation)
-            # to enable buckling
-            ops.equalDOF(i_nd, j_nd, 1, 2, 3, 5)
+            # z-rotation is restrained
+            ops.equalDOF(i_nd, j_nd, 1, 2, 3, 6)
             
         # at top, outer (GP non rigid nodes are 5 and 6)
         brace_top_gp_spring_link = [link for link in brace_top_links

@@ -291,15 +291,15 @@ ops.element('corotTruss', 91009, 1004, 2016, A_ghost, ghost_mat_tag)
 # springs
 ops.element('zeroLength', 51004, 1003, 1004,
             '-mat', elastic_mat_tag, gp_mat_tag, 
-            '-dir', 4, 6, 
+            '-dir', 4, 5, 
             '-orient', *brace_x_axis_L, *vecxy_brace)
-ops.equalDOF(1003, 1004, 1, 2, 3, 5)
+ops.equalDOF(1003, 1004, 1, 2, 3, 6)
 
 ops.element('zeroLength', 52016, 2016, 2012,
             '-mat', elastic_mat_tag, gp_mat_tag,
-            '-dir', 4, 6, 
+            '-dir', 4, 5, 
             '-orient', *brace_x_axis_L, *vecxy_brace)
-ops.equalDOF(2012, 2016, 1, 2, 3, 5)
+ops.equalDOF(2012, 2016, 1, 2, 3, 6)
 
 # rigid portion
 ops.element('elasticBeamColumn', 51003, 10, 1003, 
