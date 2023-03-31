@@ -123,6 +123,26 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     
     return(mid_x_coord, mid_y_coord)
 
+def compressive_brace_strength(Ag, ry, Lc_r):
+    
+    Ry_hss = 1.4
+    
+    E = 29000.0 # ksi
+    pi = 3.14159
+    Fy = 50.0 # ksi for ASTM A500 brace
+    Fy_pr = Fy*Ry_hss
+    
+    Fe = pi**2*E/(Lc_r**2)
+    
+    if (Lc_r <= 4.71*(E/Fy)**0.5):
+        F_cr = 0.658**(Fy_pr/Fe)*Fy_pr
+    else:
+        F_cr = 0.877*Fe
+        
+    phi = 0.9
+    phi_Pn = phi * Ag * F_cr
+    return(phi_Pn)
+
 ############################################################################
 # Construct brace
 ############################################################################
@@ -157,10 +177,13 @@ import numpy as np
 L_beam = L_bay
 L_col = h_story
 
-selected_brace = get_shape('HSS6X6X3/16', 'brace')
+HSS_Uriz = 'HSS4X4X1/2'
+selected_brace = get_shape('HSS5X5X3/8', 'brace')
 
 d_brace = selected_brace.iloc[0]['b']
 t_brace = selected_brace.iloc[0]['tdes']
+A_brace = selected_brace.iloc[0]['A']
+ry_brace = selected_brace.iloc[0]['ry']
 
 # base node
 ops.node(10, 0.0, 0.0, 0.0)
@@ -194,6 +217,7 @@ ghost_mat_tag = 54
 
 # Steel material tag
 steel_mat_tag = 31
+steel_no_fatigue = 33
 gp_mat_tag = 32
 
 # Section tags
@@ -230,8 +254,28 @@ b   = 0.1           # hardening ratio
 R0 = 15
 cR1 = 0.925
 cR2 = 0.15
+
+E0 = 0.095
+m = 0.95
 ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
-ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
+ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+
+
+# GP section: thin plate
+# brace nodes
+ofs = 0.25
+L_diag = ((L_bay/2)**2 + L_col**2)**(0.5)
+L_eff = (1-ofs) * L_diag
+L_gp = ofs/2 * L_diag
+W_w = (L_gp**2 + L_gp**2)**0.5
+L_avg = 0.75* L_gp
+t_gp = 1.375*inch
+Fy_gp = 50*ksi
+My_GP = (W_w*t_gp**2/6)*Fy_gp
+K_rot_GP = Es/L_avg * (W_w*t_gp**3/12)
+b_GP = 0.01
+ops.uniaxialMaterial('Steel02', gp_mat_tag, My_GP, K_rot_GP, b_GP, R0, cR1, cR2)
 
 ################################################################################
 # define brace
@@ -309,3 +353,46 @@ ops.element('elasticBeamColumn', 52012, 2012, 201,
             A_rigid, Es, Gs, J, I_rigid, I_rigid, 
             brace_transf_tag)
 
+Lcr = L_eff/ry_brace
+estimated_compressive_str = compressive_brace_strength(A_brace, ry_brace, Lcr)/0.9
+
+
+############################################################################
+#              Loading and analysis
+############################################################################
+cyclic_pattern_tag  = 2
+cyclic_series_tag = 1
+
+# ------------------------------
+# Loading: axial
+# ------------------------------
+
+# create TimeSeries
+ops.timeSeries("Linear", cyclic_series_tag)
+ops.pattern('Plain', cyclic_pattern_tag, cyclic_series_tag)
+ops.load(201, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+tol             = 1e-5                  # convergence tolerance for test
+
+ops.system("BandGeneral")                   # create system of equation (SOE)
+ops.test("NormDispIncr", tol, 15)           # determine if convergence has been achieved at the end of an iteration step
+ops.numberer("RCM")                         # create DOF numberer
+ops.constraints("Plain")                    # create constraint handler
+ops.algorithm("Newton")                     # create solution algorithm
+ops.integrator('LoadControl', 1.0)
+ops.analysis("Static")                      # create analysis object
+
+
+# Set some parameters
+dU = 0.1  # Displacement increment
+n_step = 10
+P_incr = np.array([0.1, -0.1, 0.1, -0.1, 0.1, -0.1, 
+                   0.2, -0.2, 0.2, -0.2, 0.2, -0.2,
+                   0.2, -0.2, 0.2, -0.2, 0.2, -0.2])
+
+for p in P_incr:
+    ops.integrator('LoadControl', p)
+    ops.analyze(n_step)
+    
+    disp = ops.nodeDisp(201, 1)
+    print('Displacement: %.5f' %disp)
