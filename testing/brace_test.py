@@ -187,7 +187,7 @@ ry_brace = selected_brace.iloc[0]['ry']
 
 # base node
 ops.node(10, 0.0, 0.0, 0.0)
-ops.fix(10, 1, 1, 1, 1, 1, 1)
+ops.fix(10, 1, 1, 1, 1, 0, 1)
 
 # end node
 ops.node(201, L_bay/2, 0.0, 0.0)
@@ -372,27 +372,54 @@ ops.timeSeries("Linear", cyclic_series_tag)
 ops.pattern('Plain', cyclic_pattern_tag, cyclic_series_tag)
 ops.load(201, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-tol             = 1e-5                  # convergence tolerance for test
+tol = 1e-5
 
-ops.system("BandGeneral")                   # create system of equation (SOE)
-ops.test("NormDispIncr", tol, 15)           # determine if convergence has been achieved at the end of an iteration step
-ops.numberer("RCM")                         # create DOF numberer
-ops.constraints("Plain")                    # create constraint handler
-ops.algorithm("Newton")                     # create solution algorithm
-ops.integrator('LoadControl', 1.0)
+ops.system("BandGeneral")   
+ops.test("NormDispIncr", tol, 15)
+ops.numberer("RCM")
+ops.constraints("Plain")
+ops.algorithm("Newton")
+# ops.integrator('LoadControl', 1.0)
+du = -0.1*inch
+ops.integrator('DisplacementControl', 201, 1, du, 1, du, du)
+
+
+max_u = -1.0  # Max displacement
+n_steps = int(round(max_u/du))
+currentDisp = 0.0
+
+ops.recorder('Element','-ele',92016,'-file','output/fiber.out',
+             'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+
 ops.analysis("Static")                      # create analysis object
 
+d_mid = ops.nodeDisp(2018)
+print(d_mid)
 
-# Set some parameters
-dU = 0.1  # Displacement increment
-n_step = 10
-P_incr = np.array([0.1, -0.1, 0.1, -0.1, 0.1, -0.1, 
-                   0.2, -0.2, 0.2, -0.2, 0.2, -0.2,
-                   0.2, -0.2, 0.2, -0.2, 0.2, -0.2])
+ops.analyze(n_steps)
+disp = ops.nodeDisp(201, 1)
+print('Displacement: %.5f' %disp)
 
-for p in P_incr:
-    ops.integrator('LoadControl', p)
-    ops.analyze(n_step)
+d_mid = ops.nodeDisp(2018)
+print(d_mid)
+
+ops.wipe()
+
+# # Set some parameters
+# dU = 0.1  # Displacement increment
+# dP = 0.05
+# steps = np.arange(10, 90, 10)
+# p_incr = [dP, -dP] * (int)(len(steps)/2)
+
+# for i, st in enumerate(steps):
+#     # 5 kips at a time
+#     ops.integrator('LoadControl', p_incr[i])
+#     st = int(st)
+#     ops.analyze(st)
     
-    disp = ops.nodeDisp(201, 1)
-    print('Displacement: %.5f' %disp)
+#     ops.reactions()
+#     fx = ops.nodeReaction(10, 1)
+#     fxn = ops.nodeReaction(10)
+#     disp = ops.nodeDisp(201, 1)
+#     print('Force: %.5f' %fx)
+#     print('Displacement: %.5f' %disp)
