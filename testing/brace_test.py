@@ -360,50 +360,100 @@ estimated_compressive_str = compressive_brace_strength(A_brace, ry_brace, Lcr)/0
 ############################################################################
 #              Loading and analysis
 ############################################################################
-cyclic_pattern_tag  = 2
-cyclic_series_tag = 1
+monotonic_pattern_tag  = 2
+monotonic_series_tag = 1
+
+gm_pattern_tag = 3
+gm_series_tag = 4
 
 # ------------------------------
 # Loading: axial
 # ------------------------------
 
 # create TimeSeries
-ops.timeSeries("Linear", cyclic_series_tag)
-ops.pattern('Plain', cyclic_pattern_tag, cyclic_series_tag)
-ops.load(201, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+ops.timeSeries("Linear", monotonic_series_tag)
+ops.pattern('Plain', monotonic_pattern_tag, monotonic_series_tag)
+ops.load(201, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
 tol = 1e-5
 
-ops.system("BandGeneral")   
-ops.test("NormDispIncr", tol, 15)
+# ops.system("BandGeneral")   
+# ops.test("NormDispIncr", tol, 15)
+# ops.numberer("RCM")
+# ops.constraints("Plain")
+# ops.algorithm("Newton")
+
+ops.test('EnergyIncr', 1.0e-5, 300, 0)
+ops.algorithm('KrylovNewton')
+ops.system('UmfPack')
 ops.numberer("RCM")
 ops.constraints("Plain")
-ops.algorithm("Newton")
-# ops.integrator('LoadControl', 1.0)
-du = -0.1*inch
-ops.integrator('DisplacementControl', 201, 1, du, 1, du, du)
 
+# du = -0.01*inch
+# ops.integrator('DisplacementControl', 201, 1, du, 1, du, du)
+# max_u = -1.5  # Max displacement
+# n_steps = int(round(max_u/du))
+# currentDisp = 0.0
 
-max_u = -1.0  # Max displacement
-n_steps = int(round(max_u/du))
-currentDisp = 0.0
+filename = 'output/fiber.out'
+load_disp = 'output/load_disp.out'
 
-ops.recorder('Element','-ele',92016,'-file','output/fiber.out',
+ops.recorder('Element','-ele',92016,'-file',filename,
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+ops.recorder('Node','-node', 201,'-file', load_disp, '-dof', 1, 'disp')
 
 ops.analysis("Static")                      # create analysis object
 
-d_mid = ops.nodeDisp(2018)
-print(d_mid)
+peaks = [0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+steps = 500
+for i, pk in enumerate(peaks):
+    du = (-1.0)**i*(peaks[i] / steps)
+    ops.integrator('DisplacementControl', 201, 1, du, 1, du, du)
+    ops.analyze(steps)
 
-ops.analyze(n_steps)
-disp = ops.nodeDisp(201, 1)
-print('Displacement: %.5f' %disp)
+# d_mid = ops.nodeDisp(2018)
+# print(d_mid)
 
-d_mid = ops.nodeDisp(2018)
-print(d_mid)
+# ops.analyze(n_steps)
+# disp = ops.nodeDisp(201, 1)
+# print('Displacement: %.5f' %disp)
+
+# d_mid = ops.nodeDisp(2018)
+# print(d_mid)
 
 ops.wipe()
+
+############################################################################
+#              Plot results
+############################################################################
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.close('all')
+
+res_columns = ['stress1', 'strain1', 'stress2', 'strain2', 'stress3', 'strain3', 'stress4', 'strain4']
+
+brace_res = pd.read_csv(filename, sep=' ', header=None, names=res_columns)
+
+# stress strain
+fig = plt.figure()
+plt.plot(-brace_res['strain1'], -brace_res['stress1'])
+plt.title('Axial stress-strain brace (midpoint, top fiber)')
+plt.ylabel('Stress (ksi)')
+plt.xlabel('Strain (in/in)')
+plt.grid(True)
+
+# disp plot
+disps = pd.read_csv(load_disp, sep=' ', header=None, names=['displacement'])
+
+# stress strain
+fig = plt.figure()
+plt.plot(np.arange(1, len(disps['displacement'])+1)/steps, disps['displacement'])
+plt.title('Cyclic history')
+plt.ylabel('Displacement history')
+plt.xlabel('Cycles')
+plt.grid(True)
 
 # # Set some parameters
 # dU = 0.1  # Displacement increment
