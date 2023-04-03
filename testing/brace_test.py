@@ -187,22 +187,24 @@ ry_brace = selected_brace.iloc[0]['ry']
 
 # base node
 ops.node(10, 0.0, 0.0, 0.0)
-ops.fix(10, 1, 1, 1, 1, 0, 1)
+ops.fix(10, 1, 1, 1, 1, 1, 1)
 
 # end node
 ops.node(201, L_bay/2, 0.0, 0.0)
 ops.fix(201, 0, 1, 1, 1, 0, 1)
 
+ofs = 0.25
+
 # middle node
-xc, zc = mid_brace_coord(2018, L_bay, h_story, camber=0.001, offset=0.25)
+xc, zc = mid_brace_coord(2018, L_bay, h_story, camber=0.001, offset=ofs)
 ops.node(2018, xc, 0.0, zc)
 
 # gusset plate ends and brace ends
-xc, zc = bot_gp_coord(1003, L_bay, h_story, offset=0.25)
+xc, zc = bot_gp_coord(1003, L_bay, h_story, offset=ofs)
 ops.node(1003, xc, 0.0, zc)
 ops.node(1004, xc, 0.0, zc)
 
-xc, zc = top_gp_coord(2012, L_bay, h_story, offset=0.25)
+xc, zc = top_gp_coord(2012, L_bay, h_story, offset=ofs)
 ops.node(2012, xc, 0.0, zc)
 ops.node(2016, xc, 0.0, zc)
 
@@ -250,7 +252,7 @@ ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
 # define material: Steel02
 # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
 Fy  = 50*ksi        # yield strength
-b   = 0.1           # hardening ratio
+b   = 0.003           # hardening ratio
 R0 = 15
 cR1 = 0.925
 cR2 = 0.15
@@ -317,7 +319,7 @@ ops.patch('rect', steel_mat_tag, nfw,
     1, -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
 
 # use a distributed plasticity integration with 4 IPs
-n_IP = 4
+n_IP = 7
 ops.beamIntegration('Lobatto', brace_int_tag, 
                     brace_sec_tag, n_IP)
 
@@ -397,14 +399,16 @@ ops.constraints("Plain")
 
 filename = 'output/fiber.out'
 load_disp = 'output/load_disp.out'
+node_rxn = 'output/end_reaction.out'
 
 ops.recorder('Element','-ele',92016,'-file',filename,
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
 ops.recorder('Node','-node', 201,'-file', load_disp, '-dof', 1, 'disp')
+ops.recorder('Node','-node', 10,'-file', node_rxn, '-dof', 1, 'reaction')
 
 ops.analysis("Static")                      # create analysis object
 
-peaks = [0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+peaks = np.arange(0.1, 3.0, 0.1)
 steps = 500
 for i, pk in enumerate(peaks):
     du = (-1.0)**i*(peaks[i] / steps)
@@ -447,12 +451,23 @@ plt.grid(True)
 # disp plot
 disps = pd.read_csv(load_disp, sep=' ', header=None, names=['displacement'])
 
-# stress strain
+# disp plot
+forces = pd.read_csv(node_rxn, sep=' ', header=None, names=['force'])
+
+# cycles
 fig = plt.figure()
 plt.plot(np.arange(1, len(disps['displacement'])+1)/steps, disps['displacement'])
 plt.title('Cyclic history')
 plt.ylabel('Displacement history')
 plt.xlabel('Cycles')
+plt.grid(True)
+
+# force disp
+fig = plt.figure()
+plt.plot(disps['displacement'], -forces['force'])
+plt.title('Force-displacement recorded at end node')
+plt.ylabel('Force (kip)')
+plt.xlabel('Displacement (in)')
 plt.grid(True)
 
 # # Set some parameters

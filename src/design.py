@@ -813,16 +813,17 @@ def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
     return(A_brace_req, C_max, T_max, del_buckling)
 
 def compressive_brace_loss(x, C, h, L):
-    phi_Pn = compressive_brace_strength(x[0], x[1], h, L)
+    phi_Pn = compressive_strength(x[0], x[1], h, L)
     
     # we minimize the distance to true desired strength
     # we also seek to minimize Ag and ry to keep the shape size as small as possible
     loss = (phi_Pn - C)**2 + (x[0]**2 + x[1]**2)**(0.5)
     return(loss)
 
-def compressive_brace_strength(Ag, ry, Lc_r):
+# TODO: adjust this so that Ry_hss is not used for all compression design
+def compressive_strength(Ag, ry, Lc_r, Ry=1.0):
     
-    Ry_hss = 1.4
+    Ry_hss = Ry
     
     E = 29000.0 # ksi
     pi = 3.14159
@@ -849,7 +850,7 @@ def select_compression_member(mem_list, Lc, C_design):
     mem_list['Lc_r'] = Lc/mem_list['ry']
     
     mem_list['phi_Pn'] = mem_list.apply(lambda row: 
-                                            compressive_brace_strength(
+                                            compressive_strength(
                                                 row['A'],
                                                 row['ry'],
                                                 row['Lc_r']),
@@ -890,7 +891,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     Fy = 50.0 #ksi
     
     # probable capacities for compr, tension, buckled compr 
-    Cpr = compressive_brace_strength(Ag, rad_gy, Lc_r) / 0.9 / 0.877
+    Cpr = compressive_strength(Ag, rad_gy, Lc_r, Ry=1.4) / 0.9 / 0.877
     Tpr = Ag * Fy * Ry_hss
     Cpr_pr = Cpr * 0.3
     
@@ -923,7 +924,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     rad_gy_beam = selected_beam['ry'].iloc[0]
     Ag_beam = selected_beam['A'].iloc[0]
     Lc_r_beam = L_bay/2 / rad_gy_beam
-    Pn_beam = compressive_brace_strength(Ag_beam, rad_gy_beam, Lc_r_beam)
+    Pn_beam = compressive_strength(Ag_beam, rad_gy_beam, Lc_r_beam)
     
     P_beam_des = np.max(Pu_beam)
     
@@ -1001,13 +1002,13 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     #                                                     'A', Ag_req_est)
     #     Ag = selected_brace['A'].iloc[0]
     #     ry = selected_brace['ry'].iloc[0]
-    #     test_strength = compressive_brace_strength(Ag, ry, h_story, L_bay)
+    #     test_strength = compressive_strength(Ag, ry, h_story, L_bay)
     #     selected_brace, passed_ry_braces = select_member(passed_A_braces, 
     #                                                      'ry', ry_req_est)
         
     #     Ag = selected_brace['A'].iloc[0]
     #     ry = selected_brace['ry'].iloc[0]
-    #     phi_Pn = compressive_brace_strength(Ag, ry, h_story, L_bay)
+    #     phi_Pn = compressive_strength(Ag, ry, h_story, L_bay)
         
 
 def design_CBF(input_df, db_string='../resource/'):
