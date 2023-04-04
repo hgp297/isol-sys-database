@@ -496,8 +496,6 @@ class Building:
         # calculate modified section properties to account for spring stiffness being in series with the elastic element stiffness
         # Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
         n = 10 # stiffness multiplier for rotational spring
-    
-        # TODO: reduce the elastic section strength to account for bilin spring?
         
         Iz_col_mod = Iz_col*(n+1)/n
         Iz_beam_mod = Iz_beam*(n+1)/n
@@ -587,7 +585,8 @@ class Building:
 ################################################################################
 # define beams and columns
 ################################################################################
-
+        # TODO: convert all orientations to np-calculated vectors
+        
         # geometric transformation for beam-columns
         # command: geomTransf('Linear', transfTag, *vecxz, '-jntOffset', *dI, *dJ) for 3d
         beam_transf_tag   = 1
@@ -644,7 +643,6 @@ class Building:
             ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, col_transf_tag)
         
-        # TODO: check that bottom node above the roller
         lc_spr_elems = self.elem_tags['lc_spring']
         for elem_tag in lc_spr_elems:
             spr_nd = elem_tag - spring_id
@@ -693,7 +691,6 @@ class Building:
             h1      = 1*inch                # half-height of sliders
             h2      = 4*inch
             
-            # TODO: effective height of bearing
             L1      = R1 - h1
             L2      = R2 - h2
     
@@ -937,7 +934,6 @@ class Building:
             ops.mass(nd, m_nd, m_nd, m_nd,
                      negligible, negligible, negligible)
             
-            # TODO: need to restrict x-rotation if torsion elements present?
             # restrain out of plane motion
             ops.fix(nd, 0, 1, 0, 1, 0, 1)
             
@@ -1109,7 +1105,7 @@ class Building:
         # Steel material tag
         steel_mat_tag = 31
         gp_mat_tag = 32
-        
+        steel_no_fatigue = 33
     
         # Section tags
         col_sec_tag = 41
@@ -1165,7 +1161,8 @@ class Building:
         cR1 = 0.925
         cR2 = 0.15
         ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
-        ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
+        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
@@ -1173,13 +1170,12 @@ class Building:
         t_gp = 1.375*inch
         Fy_gp = 50*ksi
         
-        # TODO: switch to spring and check dimension
+        # TODO: check dimension of gusset plate
         My_GP = (W_w*t_gp**2/6)*Fy_gp
         K_rot_GP = Es/L_avg * (W_w*t_gp**3/12)
         b_GP = 0.01
         ops.uniaxialMaterial('Steel02', gp_mat_tag, My_GP, K_rot_GP, b_GP, R0, cR1, cR2)
         
-        # TODO: fatigue
 ################################################################################
 # define beams and columns - braced bays
 ################################################################################
@@ -1357,7 +1353,6 @@ class Building:
         brace_bot_links = self.elem_tags['brace_bot_springs']
         
         # on bottom, the outer (GP non rigid) nodes are 2 and 4
-        # TODO: check rotation here. why use material in directions 4 6 but restrain 1 2 3 5
         brace_bot_gp_spring_link = [link for link in brace_bot_links
                                     if link%2 == 0]
         
@@ -1513,26 +1508,25 @@ class Building:
 # define gravity frame
 ################################################################################
        
-        # TODO: design grav frame
-        selected_grav_beam = get_shape('W21X55', 'beam')
+        # selected_grav_beam = get_shape('W21X55', 'beam')
         
-        (Ag_gb, Iz_gb, Iy_gb,
-         Zx_gb, Sx_gb, d_gb,
-         bf_gb, tf_gb, tw_gb) = get_properties(selected_grav_beam)
+        # (Ag_gb, Iz_gb, Iy_gb,
+        #  Zx_gb, Sx_gb, d_gb,
+        #  bf_gb, tf_gb, tw_gb) = get_properties(selected_grav_beam)
         
-        # gravity beam section: fiber wide flange section
-        ops.section('Fiber', grav_beam_sec_tag, '-GJ', Gs*J)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff,  d_gb/2-tf_gb, -bf_gb/2, d_gb/2, bf_gb/2)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff, -d_gb/2, -bf_gb/2, -d_gb/2+tf_gb, bf_gb/2)
-        ops.patch('rect', steel_mat_tag, nfw, 
-            1, -d_gb/2+tf_gb, -tw_gb, d_gb/2-tf_gb, tw_gb)
+        # # gravity beam section: fiber wide flange section
+        # ops.section('Fiber', grav_beam_sec_tag, '-GJ', Gs*J)
+        # ops.patch('rect', steel_mat_tag, 
+        #     1, nff,  d_gb/2-tf_gb, -bf_gb/2, d_gb/2, bf_gb/2)
+        # ops.patch('rect', steel_mat_tag, 
+        #     1, nff, -d_gb/2, -bf_gb/2, -d_gb/2+tf_gb, bf_gb/2)
+        # ops.patch('rect', steel_mat_tag, nfw, 
+        #     1, -d_gb/2+tf_gb, -tw_gb, d_gb/2-tf_gb, tw_gb)
         
-        ops.beamIntegration('Lobatto', grav_beam_int_tag, 
-                            grav_beam_sec_tag, n_IP)
+        # ops.beamIntegration('Lobatto', grav_beam_int_tag, 
+        #                     grav_beam_sec_tag, n_IP)
         
-        # place gravity beams
+        # place gravity beams: elastic elements with pinned ends
         beam_elems = self.elem_tags['beam']
         beam_id = self.elem_ids['beam']
         ghost_beams = [beam_tag//10 for beam_tag in brace_beam_elems
@@ -1544,8 +1538,12 @@ class Building:
             i_nd = (elem_tag - beam_id)*10 + 9
             j_nd = (elem_tag - beam_id + 1)*10 + 7
             
-            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
-                        beam_transf_tag, grav_beam_int_tag)
+            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                        A_rigid, Es, Gs, J, I_rigid, I_rigid, 
+                        beam_transf_tag)
+            
+            # ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+            #             beam_transf_tag, grav_beam_int_tag)
         
         # place pin joints for all gravity beams
         for nd in grav_beam_spring_nodes:
@@ -1614,6 +1612,7 @@ class Building:
             parent_nd = spr_nd//10
             
             # create zero length element (spring), rotations allowed about local Z axis
+            # TODO: make sure orientation is right (CBF)
             ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
                 '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                 elastic_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 

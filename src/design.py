@@ -812,13 +812,13 @@ def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
     
     return(A_brace_req, C_max, T_max, del_buckling)
 
-def compressive_brace_loss(x, C, h, L):
-    phi_Pn = compressive_strength(x[0], x[1], h, L)
+# def compressive_brace_loss(x, C, h, L):
+#     phi_Pn = compressive_strength(x[0], x[1], h, L)
     
-    # we minimize the distance to true desired strength
-    # we also seek to minimize Ag and ry to keep the shape size as small as possible
-    loss = (phi_Pn - C)**2 + (x[0]**2 + x[1]**2)**(0.5)
-    return(loss)
+#     # we minimize the distance to true desired strength
+#     # we also seek to minimize Ag and ry to keep the shape size as small as possible
+#     loss = (phi_Pn - C)**2 + (x[0]**2 + x[1]**2)**(0.5)
+#     return(loss)
 
 # TODO: adjust this so that Ry_hss is not used for all compression design
 def compressive_strength(Ag, ry, Lc_r, Ry=1.0):
@@ -891,7 +891,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     Fy = 50.0 #ksi
     
     # probable capacities for compr, tension, buckled compr 
-    Cpr = compressive_strength(Ag, rad_gy, Lc_r, Ry=1.4) / 0.9 / 0.877
+    Cpr = compressive_strength(Ag, rad_gy, Lc_r, Ry=Ry_hss) / 0.9 / 0.877
     Tpr = Ag * Fy * Ry_hss
     Cpr_pr = Cpr * 0.3
     
