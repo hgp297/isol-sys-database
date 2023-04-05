@@ -331,6 +331,7 @@ class Building:
         
         # model gravity masses corresponding to the frame placed on building edge
         # TODO: check if "base" level should have mass
+        # TODO: readd bearing beneath LC for TFP case: node, unfix LC bottom, element
         import numpy as np
         m_grav_inner = w_floor * L_bay / g
         m_grav_outer = w_floor * L_bay / 2 /g
@@ -730,6 +731,8 @@ class Building:
                             fps_vert_tag, fps_rot_tag, fps_rot_tag, fps_rot_tag,
                             L1, L2, L2, d1, d2, d2,
                             p_vert, uy, kvt, minFv, 1e-5)
+                
+        # TODO: stack edge LRBs to model the rest of the half-building
         else:
             # LRB modeling
             
@@ -1582,9 +1585,13 @@ class Building:
                         col_transf_tag, grav_col_int_tag)
             
         # fully fix all column spring nodes to its parent
+        # make pins at the bottom of the columns to ensure no stiffness added
         for nd in grav_col_spring_nodes:
             parent_nd = nd // 10
-            ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 5, 6)
+            if (parent_nd//10 == 1):
+                ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+            else:
+                ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 5, 6)
             
 ################################################################################
 # define leaning column
@@ -1780,6 +1787,9 @@ class Building:
         ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
                     '-mat', impact_mat_tag, elastic_mat_tag,
                     '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+        
+    def run_ground_motion(self, GM_name):
+        print('Running.')
 ###############################################################################
 #              Steel dimensions and parameters
 ###############################################################################
