@@ -43,7 +43,7 @@ mf_lrb_bldg.model_frame()
 # test build CBF
 cbf_bldg = Building(test_cbf)
 cbf_bldg.model_frame()
-
+cbf_bldg.apply_grav_load()
 
 # sample_lrb = main_obj.lrb_designs.iloc[0]
 # from design import design_LRB

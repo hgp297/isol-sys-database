@@ -400,15 +400,12 @@ ops.constraints("Plain")
 filename = 'output/fiber.out'
 load_disp = 'output/load_disp.out'
 node_rxn = 'output/end_reaction.out'
-gp_mk = 'output/gusset_plate.out'
 
 ops.recorder('Element','-ele',92016,'-file',filename,
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
 ops.recorder('Node','-node', 10,'-file', node_rxn, '-dof', 1, 'reaction')
 ops.recorder('Node','-node', 201,'-file', load_disp, '-dof', 1, 'disp')
 ops.recorder('Node','-node', 10,'-file', node_rxn, '-dof', 1, 'reaction')
-ops.recorder('Element', '-file', gp_mk, '-ele', 52016, 'section','deformation')
-
 ops.analysis("Static")                      # create analysis object
 
 peaks = np.arange(0.1, 3.0, 0.1)

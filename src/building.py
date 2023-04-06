@@ -1240,6 +1240,7 @@ class Building:
         col_id = self.elem_ids['col']
         col_elems = self.elem_tags['col']
         
+        # TODO: verify patch coordinate systems (for all)
         # column section: fiber wide flange section
         ops.section('Fiber', col_sec_tag, '-GJ', Gs*J)
         ops.patch('rect', steel_mat_tag, 
@@ -1787,6 +1788,92 @@ class Building:
         ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
                     '-mat', impact_mat_tag, elastic_mat_tag,
                     '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+        
+    def apply_grav_load(self):
+        import openseespy.opensees as ops
+        import numpy as np
+        
+        grav_series   = 1
+        grav_pattern  = 1
+        
+        # get loads
+        w_cases = self.all_w_cases
+        plc_cases = self.all_Plc_cases
+        
+        ft = 12.0
+        w_floor = w_cases['1.0D+0.5L'] / ft
+        p_lc = plc_cases['1.0D+0.5L'] / ft
+        
+        # append diaphragm level loads
+        w_floor = np.insert(w_floor, 0, w_floor[0])
+        p_lc = np.insert(p_lc, 0, p_lc[0])
+        
+        # create TimeSeries
+        ops.timeSeries("Linear", grav_series)
+
+        # create plain load pattern
+        ops.pattern('Plain', grav_pattern, grav_series)
+        
+        # get elements
+        
+        
+        brace_beams = self.elem_tags['brace_beams']
+        beams = self.elem_tags['beam']
+        lc_nodes = self.node_tags['leaning']
+        
+        ghost_beams = [beam_tag//10 for beam_tag in brace_beams
+                       if beam_tag%10 == 1]
+        grav_beams = [beam_tag for beam_tag in beams
+                      if beam_tag not in ghost_beams]
+        
+        brace_beam_id = self.elem_ids['brace_beam']
+        beam_id = self.elem_ids['beam']
+        
+        # line loads on elements
+        # TODO: this loading scheme assumes local z is vertical (make sure compatible for MRF which as different transform)
+        # TODO: adjust for the section of rigid offset that is not loaded
+        for elem in brace_beams:
+            attached_node = elem - brace_beam_id
+            floor_idx = int(str(attached_node)[0]) - 1
+            w_applied = w_floor[floor_idx]
+            ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                        0.0, -w_applied)
+            
+        for elem in grav_beams:
+            attached_node = elem - beam_id
+            floor_idx = attached_node//10 - 1 
+            w_applied = w_floor[floor_idx]
+            ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                        0.0, -w_applied)
+            
+        # point loads on LC
+        for nd in lc_nodes:
+            floor_idx = nd//10 - 1
+            p_applied = p_lc[floor_idx]
+            ops.load(nd, 0, 0, -p_applied, 0, 0, 0)
+            
+        # TODO: adjustment of vertical load for TFP
+        
+        # ------------------------------
+        # Start of analysis generation: gravity
+        # ------------------------------
+
+        nStepGravity = 10  # apply gravity in 10 steps
+        tol = 1e-5
+        dGravity = 1/nStepGravity
+
+        ops.system("BandGeneral")
+        ops.test("NormDispIncr", tol, 15)
+        ops.numberer("RCM")
+        ops.constraints("Plain")
+        ops.integrator("LoadControl", dGravity)
+        ops.algorithm("Newton")
+        ops.analysis("Static")
+        ops.analyze(nStepGravity)
+
+        print("Gravity analysis complete!")
+
+        ops.loadConst('-time', 0.0)
         
     def run_ground_motion(self, GM_name):
         print('Running.')
