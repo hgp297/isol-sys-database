@@ -471,6 +471,7 @@ class Building:
 # define spring materials
 ################################################################################
             
+        # Iz is the stronger axis
         (Ag_col, Iz_col, Iy_col,
          Zx_col, Sx_col, d_col,
          bf_col, tf_col, tw_col) = get_properties(selected_col)
@@ -541,23 +542,32 @@ class Building:
 
         # Create springs at column and beam ends
         # Springs follow Modified Ibarra Krawinkler model
+        # have spring local z be global y, then allow rotation around local z
+        column_x = [0, 0, 1]
+        column_y = [1, 0, 0]
+        beam_x = [1, 0, 0]
+        beam_y = [0, 0, 1]
+        
         def rot_spring_bilin(eleID, matID, nodeI, nodeJ, mem_tag):
             # columns
             if mem_tag == 1:
+                # Create zero length element (spring), rotations allowed about local z axis
                 ops.element('zeroLength', eleID, nodeI, nodeJ,
                     '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                     elastic_mat_tag, elastic_mat_tag, matID, 
                     '-dir', 1, 2, 3, 4, 5, 6,
-                    '-orient', 0, 0, 1, 1, 0, 0,
-                    '-doRayleigh', 1)           # Create zero length element (spring), rotations allowed about local z axis
+                    '-orient', *column_x, *column_y,
+                    '-doRayleigh', 1)           
             # beams
             if mem_tag == 2:
+                # Create zero length element (spring), rotations allowed about local z axis
                 ops.element('zeroLength', eleID, nodeI, nodeJ,
                     '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                     elastic_mat_tag, elastic_mat_tag, matID, 
                     '-dir', 1, 2, 3, 4, 5, 6, 
-                    '-orient', 1, 0, 0, 0, 0, 1,
-                    '-doRayleigh', 1)           # Create zero length element (spring), rotations allowed about local z axis
+                    '-orient', *beam_x, *beam_y,
+                    '-doRayleigh', 1)
+                
             # ops.equalDOF(nodeI, nodeJ, 1, 2, 3, 4, 6)
             
         # spring elements: #5xxx, xxx is the spring node
@@ -583,18 +593,32 @@ class Building:
                     rot_spring_bilin(elem_tag, steel_beam_tag, 
                                      parent_nd, spr_nd, mem_tag)
             
-################################################################################
+###############################################################################
 # define beams and columns
-################################################################################
-        # TODO: convert all orientations to np-calculated vectors
-        
+###############################################################################
         # geometric transformation for beam-columns
         # command: geomTransf('Linear', transfTag, *vecxz, '-jntOffset', *dI, *dJ) for 3d
         beam_transf_tag   = 1
         col_transf_tag    = 2
+        
+        # beam geometry
+        xyz_i = ops.nodeCoord(10)
+        xyz_j = ops.nodeCoord(11)
+        beam_x_axis = np.subtract(xyz_j, xyz_i)
+        vecxy_beam = [0, 0, 1] # Use any vector in local x-y, but not local x
+        vecxz = np.cross(beam_x_axis,vecxy_beam) # What OpenSees expects
+        vecxz_beam = vecxz / np.sqrt(np.sum(vecxz**2))
+        
+        # column geometry
+        xyz_i = ops.nodeCoord(10)
+        xyz_j = ops.nodeCoord(20)
+        col_x_axis = np.subtract(xyz_j, xyz_i)
+        vecxy_col = [1, 0, 0] # Use any vector in local x-y, but not local x
+        vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
+        vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
     
-        ops.geomTransf('Linear', beam_transf_tag, 0, -1, 0) # beams
-        ops.geomTransf('Corotational', col_transf_tag, 0, -1, 0) # columns
+        ops.geomTransf('Linear', beam_transf_tag, *vecxz_beam) # beams
+        ops.geomTransf('Corotational', col_transf_tag, *vecxz_col) # columns
         
         # outside of concentrated plasticity zones, use elastic beam columns
         
@@ -653,7 +677,7 @@ class Building:
             ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
                 '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                 elastic_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
-                '-dir', 1, 2, 3, 4, 5, 6, '-orient', 0, 0, 1, 1, 0, 0)
+                '-dir', 1, 2, 3, 4, 5, 6, '-orient', *col_x_axis, *vecxy_col)
             
 ################################################################################
 # Trusses and diaphragms
@@ -1195,7 +1219,7 @@ class Building:
         xyz_i = ops.nodeCoord(10)
         xyz_j = ops.nodeCoord(11)
         beam_x_axis = np.subtract(xyz_j, xyz_i)
-        vecxy_beam = [0,1,0] # Use any vector in local x-y, but not local x
+        vecxy_beam = [0, 0, 1] # Use any vector in local x-y, but not local x
         vecxz = np.cross(beam_x_axis,vecxy_beam) # What OpenSees expects
         vecxz_beam = vecxz / np.sqrt(np.sum(vecxz**2))
     
@@ -1204,7 +1228,7 @@ class Building:
         xyz_i = ops.nodeCoord(10)
         xyz_j = ops.nodeCoord(20)
         col_x_axis = np.subtract(xyz_j, xyz_i)
-        vecxy_col = [0,1,0] # Use any vector in local x-y, but not local x
+        vecxy_col = [1, 0, 0] # Use any vector in local x-y, but not local x
         vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
         vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
         
@@ -1213,7 +1237,7 @@ class Building:
         xyz_j = ops.nodeCoord(brace_top_nodes[0])
         brace_x_axis_L = np.subtract(xyz_j, xyz_i)
         brace_x_axis_L = brace_x_axis_L / np.sqrt(np.sum(brace_x_axis_L**2))
-        vecxy_brace = [0,1,0] # Use any vector in local x-y, but not local x
+        vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
         vecxz = np.cross(brace_x_axis_L,vecxy_brace) # What OpenSees expects
         vecxz_brace = vecxz / np.sqrt(np.sum(vecxz**2))
         
@@ -1240,15 +1264,14 @@ class Building:
         col_id = self.elem_ids['col']
         col_elems = self.elem_tags['col']
         
-        # TODO: verify patch coordinate systems (for all)
         # column section: fiber wide flange section
         ops.section('Fiber', col_sec_tag, '-GJ', Gs*J)
         ops.patch('rect', steel_mat_tag, 
             1, nff,  d_col/2-tf_col, -bf_col/2, d_col/2, bf_col/2)
         ops.patch('rect', steel_mat_tag, 
             1, nff, -d_col/2, -bf_col/2, -d_col/2+tf_col, bf_col/2)
-        ops.patch('rect', steel_mat_tag, nfw, 
-            1, -d_col/2+tf_col, -tw_col, d_col/2-tf_col, tw_col)
+        ops.patch('rect', steel_mat_tag,
+            nfw, 1, -d_col/2+tf_col, -tw_col, d_col/2-tf_col, tw_col)
         
         # use a distributed plasticity integration with 4 IPs
         n_IP = 4
@@ -1279,8 +1302,8 @@ class Building:
             1, nff,  d_beam/2-tf_beam, -bf_beam/2, d_beam/2, bf_beam/2)
         ops.patch('rect', steel_mat_tag, 
             1, nff, -d_beam/2, -bf_beam/2, -d_beam/2+tf_beam, bf_beam/2)
-        ops.patch('rect', steel_mat_tag, nfw, 
-            1, -d_beam/2+tf_beam, -tw_beam, d_beam/2-tf_beam, tw_beam)
+        ops.patch('rect', steel_mat_tag,
+            nfw, 1, -d_beam/2+tf_beam, -tw_beam, d_beam/2-tf_beam, tw_beam)
         
         ops.beamIntegration('Lobatto', brace_beam_int_tag, 
                             brace_beam_sec_tag, n_IP)
@@ -1310,10 +1333,10 @@ class Building:
             1, nff,  d_brace/2-t_brace, -d_brace/2, d_brace/2, d_brace/2)
         ops.patch('rect', steel_mat_tag, 
             1, nff, -d_brace/2, -d_brace/2, -d_brace/2+t_brace, d_brace/2)
-        ops.patch('rect', steel_mat_tag, nfw, 
-            1, -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
-        ops.patch('rect', steel_mat_tag, nfw, 
-            1, -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
+        ops.patch('rect', steel_mat_tag, 
+            nfw, 1, -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
+        ops.patch('rect', steel_mat_tag, 
+            nfw, 1, -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
         
         ops.beamIntegration('Lobatto', brace_int_tag, 
                             brace_sec_tag, n_IP)
@@ -1378,7 +1401,8 @@ class Building:
                     '-mat', elastic_mat_tag, gp_mat_tag, 
                     '-dir', 4, 5, 
                     '-orient', *brace_x_axis_R, *vecxy_brace)
-            # z-rotation is restrained
+                
+            # global z-rotation is restrained
             ops.equalDOF(i_nd, j_nd, 1, 2, 3, 6)
             
         # at top, outer (GP non rigid nodes are 5 and 6)
@@ -1401,6 +1425,7 @@ class Building:
                     '-mat', elastic_mat_tag, gp_mat_tag, 
                     '-dir', 4, 6, 
                     '-orient', *brace_x_axis_R, *vecxy_brace)
+                
             # put a rotational pin around the local y (global-y rotation)
             # to enable buckling
             ops.equalDOF(j_nd, i_nd, 1, 2, 3, 5)
@@ -1620,11 +1645,10 @@ class Building:
             parent_nd = spr_nd//10
             
             # create zero length element (spring), rotations allowed about local Z axis
-            # TODO: make sure orientation is right (CBF)
             ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
                 '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                 elastic_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
-                '-dir', 1, 2, 3, 4, 5, 6, '-orient', 0, 0, 1, 1, 0, 0)
+                '-dir', 1, 2, 3, 4, 5, 6, '-orient', *col_x_axis, *vecxy_col)
             
 ################################################################################
 # Trusses and diaphragms
@@ -1830,21 +1854,22 @@ class Building:
         beam_id = self.elem_ids['beam']
         
         # line loads on elements
-        # TODO: this loading scheme assumes local z is vertical (make sure compatible for MRF which as different transform)
+        # this loading scheme assumes that local-y is vertical direction (global-z)
+        # this is currently true for both MRF and CBF beams
         # TODO: adjust for the section of rigid offset that is not loaded
         for elem in brace_beams:
             attached_node = elem - brace_beam_id
             floor_idx = int(str(attached_node)[0]) - 1
             w_applied = w_floor[floor_idx]
             ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
-                        0.0, -w_applied)
+                        -w_applied, 0.0)
             
         for elem in grav_beams:
             attached_node = elem - beam_id
             floor_idx = attached_node//10 - 1 
             w_applied = w_floor[floor_idx]
             ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
-                        0.0, -w_applied)
+                        -w_applied, 0.0)
             
         # point loads on LC
         for nd in lc_nodes:
