@@ -437,7 +437,8 @@ class Building:
         # General elastic section (non-plastic beam columns, leaning columns)
         lc_spring_mat_tag = 51
         elastic_mat_tag = 52
-    
+        torsion_mat_tag = 53
+        
         # Steel material tag
         steel_col_tag = 31
         steel_beam_tag = 32
@@ -466,6 +467,7 @@ class Building:
         A_rigid = 1000.0         # define area of truss section
         I_rigid = 1e6        # moment of inertia for p-delta columns
         ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
+        ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
     
 ################################################################################
 # define spring materials
@@ -554,7 +556,7 @@ class Building:
                 # Create zero length element (spring), rotations allowed about local z axis
                 ops.element('zeroLength', eleID, nodeI, nodeJ,
                     '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
-                    elastic_mat_tag, elastic_mat_tag, matID, 
+                    torsion_mat_tag, elastic_mat_tag, matID, 
                     '-dir', 1, 2, 3, 4, 5, 6,
                     '-orient', *column_x, *column_y,
                     '-doRayleigh', 1)           
@@ -563,7 +565,7 @@ class Building:
                 # Create zero length element (spring), rotations allowed about local z axis
                 ops.element('zeroLength', eleID, nodeI, nodeJ,
                     '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
-                    elastic_mat_tag, elastic_mat_tag, matID, 
+                    torsion_mat_tag, elastic_mat_tag, matID, 
                     '-dir', 1, 2, 3, 4, 5, 6, 
                     '-orient', *beam_x, *beam_y,
                     '-doRayleigh', 1)
@@ -676,7 +678,7 @@ class Building:
             # create zero length element (spring), rotations allowed about local Z axis
             ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
                 '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
-                elastic_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
+                torsion_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
                 '-dir', 1, 2, 3, 4, 5, 6, '-orient', *col_x_axis, *vecxy_col)
             
 ################################################################################
@@ -1393,12 +1395,12 @@ class Building:
             # pin around y to enable buckling
             if link_tag%10 == 4:
                 ops.element('zeroLength', link_tag, i_nd, j_nd,
-                    '-mat', elastic_mat_tag, gp_mat_tag, 
+                    '-mat', torsion_mat_tag, gp_mat_tag, 
                     '-dir', 4, 5, 
                     '-orient', *brace_x_axis_L, *vecxy_brace)
             else:
                 ops.element('zeroLength', link_tag, i_nd, j_nd,
-                    '-mat', elastic_mat_tag, gp_mat_tag, 
+                    '-mat', torsion_mat_tag, gp_mat_tag, 
                     '-dir', 4, 5, 
                     '-orient', *brace_x_axis_R, *vecxy_brace)
                 
@@ -1417,12 +1419,12 @@ class Building:
             # torsional stiffness around local-x, GP stiffness around local-z
             if link_tag%10 == 6:
                 ops.element('zeroLength', link_tag, i_nd, j_nd,
-                    '-mat', elastic_mat_tag, gp_mat_tag, 
+                    '-mat', torsion_mat_tag, gp_mat_tag, 
                     '-dir', 4, 6, 
                     '-orient', *brace_x_axis_L, *vecxy_brace)
             else:
                 ops.element('zeroLength', link_tag, i_nd, j_nd,
-                    '-mat', elastic_mat_tag, gp_mat_tag, 
+                    '-mat', torsion_mat_tag, gp_mat_tag, 
                     '-dir', 4, 6, 
                     '-orient', *brace_x_axis_R, *vecxy_brace)
                 
@@ -1647,7 +1649,7 @@ class Building:
             # create zero length element (spring), rotations allowed about local Z axis
             ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
                 '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
-                elastic_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
+                torsion_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
                 '-dir', 1, 2, 3, 4, 5, 6, '-orient', *col_x_axis, *vecxy_col)
             
 ################################################################################
