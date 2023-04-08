@@ -923,14 +923,14 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     # axial check
     rad_gy_beam = selected_beam['ry'].iloc[0]
     Ag_beam = selected_beam['A'].iloc[0]
-    Lc_r_beam = L_bay/2 / rad_gy_beam
+    Lc_r_beam = L_bay / rad_gy_beam
     Pn_beam = compressive_strength(Ag_beam, rad_gy_beam, Lc_r_beam)
     
     P_beam_des = np.max(Pu_beam)
     
     if P_beam_des > Pn_beam:
         selected_beam, passed_axial_beams = select_compression_member(passed_Zx_beams, 
-                                                                      L_bay/2.0, 
+                                                                      L_bay, 
                                                                       P_beam_des)
     else:
         passed_axial_beams = passed_Zx_beams
@@ -980,11 +980,11 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
                                 P_case_Tbuck,
                                 P_case_TC])
     
-    T_des_col = np.sum(Tu_col)
+    # T_des_col = np.sum(Tu_col)
     C_des_col = np.sum(Pu_col)
     k_col = 1.0 
     Lc_col = h_story/k_col
-    selected_col, col_compr_list = select_compression_member(col_list, Lc, C_des_col)
+    selected_col, col_compr_list = select_compression_member(col_list, Lc_col, C_des_col)
     
     return(selected_beam, beam_shear_list, selected_col, col_compr_list)
 
@@ -1069,7 +1069,7 @@ def design_CBF(input_df, db_string='../resource/'):
                                                                  Lc_brace, 
                                                                  C_brace)
         
-    # beam capacity design
+    # beam and column capacity design
     # TODO: should w_grav be one of the EQ cases
     selected_beam, qualified_beams, selected_col, qualified_cols = capacity_CBF_design(
         selected_brace, Q_per_bay, w_grav, 

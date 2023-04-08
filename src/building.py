@@ -1185,7 +1185,7 @@ class Building:
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
         Fy  = 50*ksi        # yield strength
-        b   = 0.1           # hardening ratio
+        b   = 0.003           # hardening ratio
         R0 = 15
         cR1 = 0.925
         cR2 = 0.15
@@ -1841,8 +1841,6 @@ class Building:
         ops.pattern('Plain', grav_pattern, grav_series)
         
         # get elements
-        
-        
         brace_beams = self.elem_tags['brace_beams']
         beams = self.elem_tags['beam']
         lc_nodes = self.node_tags['leaning']
@@ -1902,7 +1900,25 @@ class Building:
 
         ops.loadConst('-time', 0.0)
         
+    # TODO: DAMPING
+    
+    # TODO: eigenvalue analysis
+    
     def run_ground_motion(self, GM_name):
+        
+        # Recorders
+        
+        # ground motion file read in
+        
+        # ground motion file scaling
+        
+        # ground motion series
+        
+        # analysis settings
+        
+        # recursive convergence strategies
+        
+        
         print('Running.')
 ###############################################################################
 #              Steel dimensions and parameters
