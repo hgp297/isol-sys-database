@@ -572,11 +572,11 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
     A_web        = A_g - 2*(t_f*b_f)
     V_n          = 0.9*A_web*0.6*Fy
 
-    beam_shear_fail   = V_n < V_pr
+    beam_shear_fail   = V_n < (V_pr + np.max(ph_VGrav))
 
     if beam_shear_fail:
         # print('Beam shear check failed. Reselecting...')
-        Ag_req   = 2*V_pr/(0.9*0.6*Fy)    # Assume web is half of gross area
+        Ag_req   = 2*(V_pr + np.max(ph_VGrav))/(0.9*0.6*Fy)    # Assume web is half of gross area
 
         selected_member, shear_list = select_member(ph_list, 
             'A', Ag_req)
@@ -772,7 +772,6 @@ def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
     thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits (risk cat III)
     delx        = thetaMax*hsx
     delxe       = delx*(1/Cd)   # assumes Ie = 1.0
-    # TODO: check stiffness against delxe
     
     # element lateral force
     Q           = np.empty(nFloor)
@@ -869,7 +868,7 @@ def select_compression_member(mem_list, Lc, C_design):
  
 # design both columns and beams
 
-def capacity_CBF_design(selected_brace, Q_per_bay, w_grav, 
+def capacity_CBF_design(selected_brace, Q_per_bay, w_cases, 
                         h_story, L_bay, n_bays,
                         beam_list, col_list):
     
@@ -882,7 +881,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
         return np.nan, np.nan, np.nan, np.nan
     
     k_brace = 1.0 # for pinned-pinned connection, steel manual Table C-A-7.1
-    Lc = (h_story**2 + (L_bay/2)**2)**(0.5)/k_brace
+    Lc = (h_story**2 + (L_bay/2)**2)**(0.5)*k_brace
     rad_gy = selected_brace['ry'].iloc[0]
     Ag = selected_brace['A'].iloc[0]
     Lc_r = Lc / rad_gy
@@ -905,11 +904,21 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     Pu_beam = Fh_braces - Q_beam
     
     # shear/moment demand on beam
-    M_grav = w_grav*L_bay**2/8 # kip-in
+    w1 = w_cases['1.2D+0.5L+1.0E']/12 # raw is kip/ft, convert to kip/in
+    w2 = w_cases['0.9D-1.0E']/12
+    w3 = w_cases['1.2D+1.6L']/12
+    
+    M_grav1 = w1*L_bay**2/8 # kip-in
+    M_grav2 = w2*L_bay**2/8 # kip-in
+    M_grav3 = w3*L_bay**2/8 # kip-in
+    
     Fv_braces = (Tpr - Cpr_pr)*sin(theta)
     M_seis = Fv_braces * L_bay / 4 # kip-in 
     
-    M_max = M_grav + M_seis
+    # apply load combos
+    M_max = np.maximum.reduce([M_grav1+M_seis,
+                               abs(M_grav2-M_seis),
+                               M_grav3])
     
     # find required Zx that satisfies M_max
     Z_req = np.max(M_max/Fy)
@@ -918,7 +927,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     selected_beam, passed_Zx_beams = select_member(beam_list, 
         'Zx', Z_req)
     
-    Mn_beam, Mpr_beam, Vpr_beam = calculate_strength(selected_beam, L_bay)
+    
     
     # axial check
     rad_gy_beam = selected_beam['ry'].iloc[0]
@@ -937,13 +946,16 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     
     # shear check
     # beam shear
+    Mn_beam, Mpr_beam, Vpr_beam = calculate_strength(selected_beam, L_bay)
+    V_grav = np.max(w1*L_bay/2)
+    
     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_beam)
 
     A_web        = A_g - 2*(t_f*b_f)
     Fy = 50.0
     V_n          = 0.9*A_web*0.6*Fy
 
-    beam_shear_fail   = V_n < Vpr_beam
+    beam_shear_fail   = V_n < (Vpr_beam + V_grav)
     if beam_shear_fail:
         # print('Beam shear check failed. Reselecting...')
         Ag_req   = 2*Vpr_beam/(0.9*0.6*Fy)    # Assume web is half of gross area
@@ -953,12 +965,16 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     else:
         beam_shear_list = passed_axial_beams
     
-    P_col_grav = w_grav * L_bay
-    P_case_T = P_col_grav + Fv_braces/2
-    P_case_C = P_col_grav + Fv_braces/2
-    P_case_buck = P_col_grav + Fv_braces/2
-    P_case_TC = P_col_grav + Fv_braces/2
-    P_case_Tbuck = P_col_grav + Fv_braces/2
+    # using the 1.2D+0.5L case
+    Fv_buck = (Tpr - Cpr_pr)*sin(theta)
+    Fv_TC = (Tpr - Cpr)*sin(theta)
+    
+    P_col_grav = w1 * L_bay
+    P_case_T = P_col_grav + Fv_buck/2
+    P_case_C = P_col_grav - Fv_TC/2
+    P_case_buck = P_col_grav - Fv_buck/2
+    P_case_TC = P_col_grav + Fv_buck/2 - Fv_TC/2
+    P_case_Tbuck = P_col_grav + Fv_buck/2 - Fv_buck/2
     
     # top floor has no direct brace action (just transferred from beam)
     P_case_T[:-1] = P_case_T[:-1] - Tpr*sin(theta)
@@ -983,7 +999,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_grav,
     # T_des_col = np.sum(Tu_col)
     C_des_col = np.sum(Pu_col)
     k_col = 1.0 
-    Lc_col = h_story/k_col
+    Lc_col = h_story*k_col
     selected_col, col_compr_list = select_compression_member(col_list, Lc_col, C_des_col)
     
     return(selected_beam, beam_shear_list, selected_col, col_compr_list)
@@ -1028,9 +1044,9 @@ def design_CBF(input_df, db_string='../resource/'):
     case_1 = load_cases['1.2D+0.5L+1.0E']/12
     case_2 = load_cases['0.9D-1.0E']/12
     
-    # gravity case for all uses
-    # import numpy as np
-    w_grav = input_df['w_fl']/12
+    # # gravity case for all uses
+    # # import numpy as np
+    # w_grav = input_df['w_fl']/12
     
     import pandas as pd
 
@@ -1054,7 +1070,7 @@ def design_CBF(input_df, db_string='../resource/'):
 
     beam_shapes      = pd.read_csv(db_string+'beamShapes.csv',
         index_col=None, header=0)
-    sorted_beams     = beam_shapes.sort_values(by=['Ix'])
+    sorted_beams     = beam_shapes.sort_values(by=['A'])
     
     col_shapes       = pd.read_csv(db_string+'colShapes.csv',
         index_col=None, header=0)
@@ -1063,16 +1079,20 @@ def design_CBF(input_df, db_string='../resource/'):
     # Braces
     # select compact braces that has required compression capacity
     k_brace = 1.0 
-    Lc_brace = (h_story**2 + (L_bay/2)**2)**(0.5)/k_brace
+    Lc_brace = (h_story**2 + (L_bay/2)**2)**(0.5)*k_brace
     C_brace = max(C_max)
     selected_brace, qualified_braces = select_compression_member(sorted_braces, 
                                                                  Lc_brace, 
                                                                  C_brace)
         
+    import numpy as np
+    A_min = np.max(A_brace)
+    if selected_brace['A'].iloc[0] < A_min:
+        selected_brace = select_member(qualified_braces, 'A', A_min)
+        
     # beam and column capacity design
-    # TODO: should w_grav be one of the EQ cases
     selected_beam, qualified_beams, selected_col, qualified_cols = capacity_CBF_design(
-        selected_brace, Q_per_bay, w_grav, 
+        selected_brace, Q_per_bay, load_cases, 
         h_story, L_bay, n_bays, sorted_beams, sorted_cols)
     
     
@@ -1086,27 +1106,3 @@ def design_CBF(input_df, db_string='../resource/'):
     
     return(selected_brace, selected_beam, selected_col)
     
-    
-# if __name__ == '__main__':
-#     print('====== sample TFP design ======')
-#     # T_m = 4.5
-#     # S_1 = 1.017
-#     # Q = 0.06
-#     # rho_k = 7.0
-#     # mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_E, D_m = design_TFP(T_m, S_1, Q, rho_k)
-#     # print('Friction coefficients:', mu_1, mu_2)
-#     # print('Radii of curvature:', R_1, R_2)
-    
-#     print('====== sample LRB design ======')
-#     # T_m = 2.5
-#     # S_1 = 1.017
-#     # Q = 0.06
-#     # rho_k = 21.0
-#     # n_bay = 3
-#     # W_sample = 3000.0
-#     # d_r, d_Pb, T_e, k_e, zeta_E, D_m, checks = design_LRB(T_m, S_1, Q, rho_k,
-#     #                                                  n_bay, W_sample,t_r=10.0)
-#     # print('Bearing diameter:', d_r)
-#     # print('Lead core diameter:', d_Pb)
-    
-#     # design_LRB()

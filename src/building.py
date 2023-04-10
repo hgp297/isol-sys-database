@@ -1587,30 +1587,35 @@ class Building:
             j_nd = i_nd + 1
             ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
             
-            
-        selected_grav_col = get_shape('W14X211', 'column')
+       
+        # place gravity columns:
         
-        (Ag_gc, Iz_gc, Iy_gc,
-         Zx_gc, Sx_gc, d_gc,
-         bf_gc, tf_gc, tw_gc) = get_properties(selected_grav_col)
+        # (Ag_gc, Iz_gc, Iy_gc,
+        #  Zx_gc, Sx_gc, d_gc,
+        #  bf_gc, tf_gc, tw_gc) = get_properties(selected_grav_col)
         
-        # gravity column section: fiber wide flange section
-        ops.section('Fiber', grav_col_sec_tag, '-GJ', Gs*J)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff,  d_gc/2-tf_gc, -bf_gc/2, d_gc/2, bf_gc/2)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff, -d_gc/2, -bf_gc/2, -d_gc/2+tf_gc, bf_gc/2)
-        ops.patch('rect', steel_mat_tag, nfw, 
-            1, -d_gc/2+tf_gc, -tw_gc, d_gc/2-tf_gc, tw_gc)
+        # # gravity column section: fiber wide flange section
+        # ops.section('Fiber', grav_col_sec_tag, '-GJ', Gs*J)
+        # ops.patch('rect', steel_mat_tag, 
+        #     1, nff,  d_gc/2-tf_gc, -bf_gc/2, d_gc/2, bf_gc/2)
+        # ops.patch('rect', steel_mat_tag, 
+        #     1, nff, -d_gc/2, -bf_gc/2, -d_gc/2+tf_gc, bf_gc/2)
+        # ops.patch('rect', steel_mat_tag, nfw, 
+        #     1, -d_gc/2+tf_gc, -tw_gc, d_gc/2-tf_gc, tw_gc)
         
-        ops.beamIntegration('Lobatto', grav_col_int_tag, 
-                            grav_col_sec_tag, n_IP)
+        # ops.beamIntegration('Lobatto', grav_col_int_tag, 
+        #                     grav_col_sec_tag, n_IP)
         
         for elem_tag in grav_cols:
             i_nd = (elem_tag - col_id)*10 + 8
             j_nd = (elem_tag - col_id + 10)*10 + 6
-            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
-                        col_transf_tag, grav_col_int_tag)
+            
+            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                        A_rigid, Es, Gs, J, I_rigid, I_rigid, 
+                        col_transf_tag)
+            
+            # ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+            #             col_transf_tag, grav_col_int_tag)
             
         # fully fix all column spring nodes to its parent
         # make pins at the bottom of the columns to ensure no stiffness added
