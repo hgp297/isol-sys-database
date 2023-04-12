@@ -908,16 +908,17 @@ class Building:
         self.number_nodes()
         
         selected_col = get_shape(self.column, 'column')
-        selected_beam = get_shape(self.beam, 'beam')
+        
+        beam_list = self.beam
+        sample_beam = get_shape(beam_list[0], 'beam')
+        (Ag_beam, Iz_beam, Iy_beam,
+         Zx_beam, Sx_beam, d_beam,
+         bf_beam, tf_beam, tw_beam) = get_properties(sample_beam)
         
         
         (Ag_col, Iz_col, Iy_col,
          Zx_col, Sx_col, d_col,
          bf_col, tf_col, tw_col) = get_properties(selected_col)
-        
-        (Ag_beam, Iz_beam, Iy_beam,
-         Zx_beam, Sx_beam, d_beam,
-         bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
         
         # base nodes
         base_nodes = self.node_tags['base']
@@ -1135,11 +1136,9 @@ class Building:
     
         # Section tags
         col_sec_tag = 41
-        brace_beam_sec_tag = 43
         
         # Integration tags
         col_int_tag = 61
-        brace_beam_int_tag = 63
         
         # isolator tags
         friction_1_tag = 81
@@ -1149,6 +1148,12 @@ class Building:
         
         # Impact material tags
         impact_mat_tag = 91
+        
+        # reserve 130-139 for beam sections
+        beam_sec = 130
+        
+        # reserve 170-179 for beam integration
+        beam_int = 170
         
         # reserve 140-149 for brace section
         br_sec = 140
@@ -1293,17 +1298,30 @@ class Building:
             
         ###################### beams #############################
         
-        # beam section: fiber wide flange section
-        ops.section('Fiber', brace_beam_sec_tag, '-GJ', Gs*J)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff,  d_beam/2-tf_beam, -bf_beam/2, d_beam/2, bf_beam/2)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff, -d_beam/2, -bf_beam/2, -d_beam/2+tf_beam, bf_beam/2)
-        ops.patch('rect', steel_mat_tag,
-            nfw, 1, -d_beam/2+tf_beam, -tw_beam, d_beam/2-tf_beam, tw_beam)
-        
-        ops.beamIntegration('Lobatto', brace_beam_int_tag, 
-                            brace_beam_sec_tag, n_IP)
+        for fl_beam, beam in enumerate(beam_list):
+            current_beam = get_shape(beam, 'beam')
+            
+            (Ag_beam, Iz_beam, Iy_beam,
+             Zx_beam, Sx_beam, d_beam,
+             bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
+            
+            # beam section: fiber wide flange section
+            # match the tag number with the floor's node number
+            # e.g. first beams nodes at 2x -> tag 132 and 172
+            current_brace_beam_sec = beam_sec + fl_beam + 2
+            
+            ops.section('Fiber', current_brace_beam_sec, '-GJ', Gs*J)
+            ops.patch('rect', steel_mat_tag, 
+                1, nff,  d_beam/2-tf_beam, -bf_beam/2, d_beam/2, bf_beam/2)
+            ops.patch('rect', steel_mat_tag, 
+                1, nff, -d_beam/2, -bf_beam/2, -d_beam/2+tf_beam, bf_beam/2)
+            ops.patch('rect', steel_mat_tag,
+                nfw, 1, -d_beam/2+tf_beam, -tw_beam, d_beam/2-tf_beam, tw_beam)
+            
+            
+            current_brace_beam_int = beam_int + fl_beam + 2
+            ops.beamIntegration('Lobatto', current_brace_beam_int, 
+                                current_brace_beam_sec, n_IP)
         
         brace_beam_id = self.elem_ids['brace_beam']
         brace_beam_elems = self.elem_tags['brace_beams']
@@ -1316,9 +1334,13 @@ class Building:
             if parent_i_nd > 100:
                 i_nd = parent_i_nd*10 + 4
                 j_nd = (parent_i_nd//10 + 1)*10 + 5
+                beam_floor = parent_i_nd // 100
             else:
                 i_nd = parent_i_nd*10
                 j_nd = (parent_i_nd*10 + 1)*10 + 3
+                beam_floor = parent_i_nd // 10
+                
+            brace_beam_int_tag = beam_floor + beam_int
             ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_beam_transf_tag, brace_beam_int_tag)
             

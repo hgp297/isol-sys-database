@@ -1265,5 +1265,5 @@ def design_CBF(input_df, db_string='../resource/'):
     if isinstance(selected_brace, pd.DataFrame):
         selected_brace = selected_brace.iloc[0]['AISC_Manual_Label']
     
-    return(all_braces, selected_beam, selected_col)
+    return(all_braces, all_beams, selected_col)
     
