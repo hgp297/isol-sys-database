@@ -927,8 +927,6 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_cases,
     selected_beam, passed_Zx_beams = select_member(beam_list, 
         'Zx', Z_req)
     
-    
-    
     # axial check
     rad_gy_beam = selected_beam['ry'].iloc[0]
     Ag_beam = selected_beam['A'].iloc[0]
@@ -964,6 +962,8 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_cases,
                                                        'A', Ag_req)
     else:
         beam_shear_list = passed_axial_beams
+    
+    # capacity columns
     
     # using the 1.2D+0.5L case
     Fv_buck = (Tpr - Cpr_pr)*sin(theta)
@@ -1080,17 +1080,28 @@ def design_CBF(input_df, db_string='../resource/'):
     # select compact braces that has required compression capacity
     k_brace = 1.0 
     Lc_brace = (h_story**2 + (L_bay/2)**2)**(0.5)*k_brace
+    
+    all_braces = []
+    
+    for fl, C_brace in enumerate(C_max):
+        selected_brace, qualified_braces = select_compression_member(sorted_braces, 
+                                                                     Lc_brace, 
+                                                                     C_brace)
+        
+        A_min = A_brace[fl]
+        if selected_brace['A'].iloc[0] < A_min:
+            selected_brace = select_member(qualified_braces, 'A', A_min)
+            
+        all_braces.append(selected_brace.iloc[0]['AISC_Manual_Label'])
+        
+    # old: keep largest brace for beam design
     C_brace = max(C_max)
     selected_brace, qualified_braces = select_compression_member(sorted_braces, 
                                                                  Lc_brace, 
                                                                  C_brace)
         
-    import numpy as np
-    A_min = np.max(A_brace)
-    if selected_brace['A'].iloc[0] < A_min:
-        selected_brace = select_member(qualified_braces, 'A', A_min)
-        
     # beam and column capacity design
+    # TODO: expand one beam per floor, one column per 4 floors
     selected_beam, qualified_beams, selected_col, qualified_cols = capacity_CBF_design(
         selected_brace, Q_per_bay, load_cases, 
         h_story, L_bay, n_bays, sorted_beams, sorted_cols)
@@ -1104,5 +1115,5 @@ def design_CBF(input_df, db_string='../resource/'):
     if isinstance(selected_brace, pd.DataFrame):
         selected_brace = selected_brace.iloc[0]['AISC_Manual_Label']
     
-    return(selected_brace, selected_beam, selected_col)
+    return(all_braces, selected_beam, selected_col)
     

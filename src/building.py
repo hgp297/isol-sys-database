@@ -909,7 +909,7 @@ class Building:
         
         selected_col = get_shape(self.column, 'column')
         selected_beam = get_shape(self.beam, 'beam')
-        selected_brace = get_shape(self.brace, 'brace')
+        
         
         (Ag_col, Iz_col, Iy_col,
          Zx_col, Sx_col, d_col,
@@ -918,9 +918,6 @@ class Building:
         (Ag_beam, Iz_beam, Iy_beam,
          Zx_beam, Sx_beam, d_beam,
          bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
-        
-        d_brace = selected_brace.iloc[0]['b']
-        t_brace = selected_brace.iloc[0]['tdes']
         
         # base nodes
         base_nodes = self.node_tags['base']
@@ -1138,18 +1135,11 @@ class Building:
     
         # Section tags
         col_sec_tag = 41
-        grav_beam_sec_tag = 42
         brace_beam_sec_tag = 43
-        brace_sec_tag = 44
-        gp_sec_tag = 45
-        grav_col_sec_tag = 46
         
         # Integration tags
         col_int_tag = 61
-        grav_beam_int_tag = 62
         brace_beam_int_tag = 63
-        brace_int_tag = 64
-        grav_col_int_tag = 65
         
         # isolator tags
         friction_1_tag = 81
@@ -1160,6 +1150,11 @@ class Building:
         # Impact material tags
         impact_mat_tag = 91
         
+        # reserve 140-149 for brace section
+        br_sec = 140
+        
+        # reserve 160-169 for brace integration
+        br_int = 160
         
 ################################################################################
 # define materials
@@ -1328,20 +1323,31 @@ class Building:
                         brace_beam_transf_tag, brace_beam_int_tag)
             
         ###################### Brace #############################
+        brace_list = self.brace
         
-        # brace section: HSS section
-        ops.section('Fiber', brace_sec_tag, '-GJ', Gs*J)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff,  d_brace/2-t_brace, -d_brace/2, d_brace/2, d_brace/2)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff, -d_brace/2, -d_brace/2, -d_brace/2+t_brace, d_brace/2)
-        ops.patch('rect', steel_mat_tag, 
-            nfw, 1, -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
-        ops.patch('rect', steel_mat_tag, 
-            nfw, 1, -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
-        
-        ops.beamIntegration('Lobatto', brace_int_tag, 
-                            brace_sec_tag, n_IP)
+        # starting from bottom floor, define the brace shape for that floor
+        # floor 1's brace at 141 and 161, etc.
+        for fl_br, brace in enumerate(brace_list):
+            current_brace = get_shape(brace, 'brace')
+            d_brace = current_brace.iloc[0]['b']
+            t_brace = current_brace.iloc[0]['tdes']
+            
+            # brace section: HSS section
+            brace_sec_tag = br_sec + fl_br + 1
+            
+            ops.section('Fiber', brace_sec_tag, '-GJ', Gs*J)
+            ops.patch('rect', steel_mat_tag, 1, nff,  
+                      d_brace/2-t_brace, -d_brace/2, d_brace/2, d_brace/2)
+            ops.patch('rect', steel_mat_tag, 1, nff, 
+                      -d_brace/2, -d_brace/2, -d_brace/2+t_brace, d_brace/2)
+            ops.patch('rect', steel_mat_tag, nfw, 1, 
+                      -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
+            ops.patch('rect', steel_mat_tag, nfw, 1, 
+                      -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
+            
+            brace_int_tag = br_int + fl_br + 1
+            ops.beamIntegration('Lobatto', brace_int_tag, 
+                                brace_sec_tag, n_IP)
         
         brace_id = self.elem_ids['brace']
         brace_elems = self.elem_tags['brace']
@@ -1360,8 +1366,13 @@ class Building:
             else:
                 i_nd = (elem_tag - brace_id) + 2
                 j_nd = elem_tag - brace_id
+                
+            # ending node is always numbered with parent as floor j_floor
+            j_floor = j_nd//1000
+            
+            current_brace_int = j_floor - 1 + br_int
             ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
-                        brace_transf_tag, brace_int_tag)
+                        brace_transf_tag, current_brace_int)
             
         # add ghost trusses to the braces to reduce convergence problems
         brace_ghosts = self.elem_tags['brace_ghosts']
