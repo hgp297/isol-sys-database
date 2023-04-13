@@ -1945,6 +1945,90 @@ class Building:
     def run_ground_motion(self, GM_name):
         
         # Recorders
+        import openseespy.opensees as ops
+        data_dir         = './outputs/'          # output folder
+
+        # get list of relevant nodes
+        superstructure_system = self.superstructure_system
+        isols = self.elem_tags['isolator']
+        isol_id = self.elem_ids['isolator']
+        base_id = self.elem_ids['base']
+        
+        if superstructure_system == 'CBF':
+            # extract nodes that belong to the braced portion
+            brace_beam_ends = self.node_tags['brace_beam_end']
+            left_col_digit = min([nd%10 for nd in brace_beam_ends])
+            
+            # get the list of nodes in all stories for the first outer and inner column
+            outer_col_nds = [nd for nd in brace_beam_ends
+                             if nd%10 == left_col_digit]
+            inner_col_nds = [nd+1 for nd in outer_col_nds]
+            
+            isol_elem = [elem for elem in isols
+                         if elem%10 == left_col_digit][0]
+            isol_node = isol_elem - isol_id - base_id + 10
+            
+        else:
+            floor_nodes = self.node_tags['floor']
+            
+            # get the list of nodes in all stories for the first outer and inner column
+            outer_col_nds = [nd for nd in floor_nodes
+                             if nd%10 == 0 and nd//10 > 1]
+            
+            inner_col_nds = [nd+1 for nd in outer_col_nds]
+            
+            # get the leftmost isolator
+            isol_elem = isols[0]
+            
+            isol_node = isol_elem - isol_id - base_id + 10
+            
+        ops.printModel('-file', data_dir+'model.out')
+        
+        # lateral frame story displacement
+        ops.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
+            '-node', *outer_col_nds, '-dof', 1, 'disp')
+        ops.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
+            '-node', *inner_col_nds, '-dof', 1, 'disp')
+        
+        ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv','-time',
+            '-node', *outer_col_nds, '-dof', 1, 'vel')
+        ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv','-time',
+            '-node', *inner_col_nds, '-dof', 1, 'vel')
+        
+        
+        # TODO: need absolute acceleration by using GM file
+        
+        ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv','-time',
+            '-node', *outer_col_nds, '-dof', 1, 'accel')
+        ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv','-time',
+            '-node', *inner_col_nds, '-dof', 1, 'accel')
+        
+        # isolator node displacement of outer column
+        ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', '-time',
+            '-node', isol_node, '-dof', 1, 3, 5, 'disp')
+        
+        # isolator response of beneath outer column
+        ops.recorder('Element', '-file', data_dir+'isolator_forces.csv',
+            '-time', '-ele', isol_elem, 'localForce')
+        
+        # brace force?
+        # beam force?
+        # column force?
+        # wall?
+        # diaphragm?
+        # leaning column?
+        
+        ops.printModel('-file', data_dir+'model.out')
+
+        # ops.recorder('Element', '-file', data_dir+'colForce1.csv',
+        #     '-time', '-ele', 111, 'localForce')
+        # ops.recorder('Element', '-file', data_dir+'colForce2.csv',
+        #     '-time', '-ele', 112, 'localForce')
+        # ops.recorder('Element', '-file', data_dir+'colForce3.csv',
+        #     '-time', '-ele', 113, 'localForce')
+        # ops.recorder('Element', '-file', data_dir+'colForce4.csv',
+        #     '-time', '-ele', 114, 'localForce')
+        
         
         # ground motion file read in
         

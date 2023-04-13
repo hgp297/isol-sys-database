@@ -526,6 +526,9 @@ def zx_check(current_member, member_list, Z_beam_req):
     else:
         selected_member = current_member
         qualified_list = member_list
+        
+    # TODO: check beam axial
+    # TODO: check beam interaction
 
     return(selected_member, qualified_list)
 
@@ -612,7 +615,8 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
         Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
         
     # TODO: check SMRF column axial capacity
-
+    # TODO: check SMRF column interaction
+    
     # initial guess: use columns that has similar Ix to beam
     qualified_Ix = col_list[col_list['Ix'] > I_beam_req]
     from numpy import nan
@@ -820,7 +824,6 @@ def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
 #     loss = (phi_Pn - C)**2 + (x[0]**2 + x[1]**2)**(0.5)
 #     return(loss)
 
-# TODO: adjust this so that Ry_hss is not used for all compression design
 def compressive_strength(Ag, ry, Lc_r, Ry=1.0):
     
     Ry_hss = Ry
@@ -867,6 +870,17 @@ def select_compression_member(mem_list, Lc, C_design):
         selected_mem = qualified_list.iloc[:1]
         return(selected_mem, qualified_list)
  
+# return inverted in order to facilitate selection by larger values
+def interaction_equation(Zx, Pu, Pn, Mu):
+    Mnx = 50.0*Zx*0.9
+    if Pu/Pn > 0.2:
+        # H1-1a/b
+        combined_forces_coef = Pu/Pn + 8/9*(Mu/Mnx)
+    else:
+        combined_forces_coef = Pu/(2*Pn) + 8/9*(Mu/Mnx)
+        
+    return(1.0/combined_forces_coef)
+
 # design both columns and beams
 def capacity_CBF_beam(selected_brace, current_floor,
                       Q_per_bay, w_cases, 
@@ -942,14 +956,35 @@ def capacity_CBF_beam(selected_brace, current_floor,
         
     # TODO: interaction check (y direction?)
     Zx = selected_beam.iloc[0]['Zx']
-    Zy = selected_beam.iloc[0]['Zy']
     Mnx = 50.0*Zx*0.9
-    Mny = 50.0*Zy*0.9
     if Pu_beam/Pn_beam > 0.2:
         # H1-1a/b
         combined_forces_coef = Pu_beam/Pn_beam + 8/9*(M_max/Mnx)
     else:
         combined_forces_coef = Pu_beam/(2*Pn_beam) + 8/9*(M_max/Mnx)
+        
+    # if fail the interaction equation, design based on that
+    if combined_forces_coef > 1.0:
+        # calculate coef for all available beams
+        Lc_beam = L_bay
+        passed_axial_beams['Lc_r'] = Lc_beam/passed_axial_beams['ry']
+        passed_axial_beams['phi_Pn'] = passed_axial_beams.apply(lambda row: 
+                                                                compressive_strength(
+                                                                    row['A'],
+                                                                    row['ry'],
+                                                                    row['Lc_r']),
+                                                                axis='columns')
+        
+        passed_axial_beams['interaction'] = passed_axial_beams.apply(lambda row: 
+                                                                     interaction_equation(
+                                                                         row['Zx'],
+                                                                         Pu_beam,
+                                                                         row['phi_Pn'],
+                                                                         M_max),
+                                                                     axis='columns')
+            
+        selected_beam, passed_axial_beams = select_member(passed_axial_beams, 
+            'interaction', 1.0)
     
     # shear check
     # beam shear
@@ -965,7 +1000,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
     beam_shear_fail   = V_n < (Vpr_beam + V_grav)
     if beam_shear_fail:
         # print('Beam shear check failed. Reselecting...')
-        Ag_req   = 2*Vpr_beam/(0.9*0.6*Fy)    # Assume web is half of gross area
+        Ag_req   = 2*(Vpr_beam + V_grav)/(0.9*0.6*Fy)    # Assume web is half of gross area
 
         selected_beam, beam_shear_list = select_member(passed_axial_beams, 
                                                        'A', Ag_req)
@@ -1130,7 +1165,7 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_cases,
     beam_shear_fail   = V_n < (Vpr_beam + V_grav)
     if beam_shear_fail:
         # print('Beam shear check failed. Reselecting...')
-        Ag_req   = 2*Vpr_beam/(0.9*0.6*Fy)    # Assume web is half of gross area
+        Ag_req   = 2*(Vpr_beam + V_grav)/(0.9*0.6*Fy)    # Assume web is half of gross area
 
         selected_beam, beam_shear_list = select_member(passed_axial_beams, 
                                                        'A', Ag_req)
