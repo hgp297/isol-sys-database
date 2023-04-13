@@ -717,6 +717,7 @@ def design_MF(input_df, db_string='../resource/'):
 
 
     # Floor beams
+    # TODO: extend one beam/floor to MF, column splices as well
     selected_beam, passed_Ix_beams = select_member(sorted_beams, 
                                                    'Ix', I_beam_req)
 
@@ -932,14 +933,23 @@ def capacity_CBF_beam(selected_brace, current_floor,
     Lc_r_beam = L_bay / rad_gy_beam
     Pn_beam = compressive_strength(Ag_beam, rad_gy_beam, Lc_r_beam)
     
-    P_beam_des = np.max(Pu_beam)
-    
-    if P_beam_des > Pn_beam:
+    if Pu_beam > Pn_beam:
         selected_beam, passed_axial_beams = select_compression_member(passed_Zx_beams, 
                                                                       L_bay, 
-                                                                      P_beam_des)
+                                                                      Pu_beam)
     else:
         passed_axial_beams = passed_Zx_beams
+        
+    # TODO: interaction check (y direction?)
+    Zx = selected_beam.iloc[0]['Zx']
+    Zy = selected_beam.iloc[0]['Zy']
+    Mnx = 50.0*Zx*0.9
+    Mny = 50.0*Zy*0.9
+    if Pu_beam/Pn_beam > 0.2:
+        # H1-1a/b
+        combined_forces_coef = Pu_beam/Pn_beam + 8/9*(M_max/Mnx)
+    else:
+        combined_forces_coef = Pu_beam/(2*Pn_beam) + 8/9*(M_max/Mnx)
     
     # shear check
     # beam shear
@@ -1025,6 +1035,10 @@ def capacity_CBF_column(selected_brace, current_floor,
     selected_col, col_compr_list = select_compression_member(col_list, 
                                                              Lc_col, 
                                                              C_des_col)
+    
+    # TODO: AISC 341-16 4e-c-2
+    
+    # TODO: interaction
     
     return(selected_col, col_compr_list)
 
