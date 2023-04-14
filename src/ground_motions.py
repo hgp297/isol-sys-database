@@ -24,6 +24,7 @@ def scale_ground_motion(db_dir='../resource/ground_motions/gm_db.csv',
     # default='warn', ignore SettingWithCopyWarning
     pd.options.mode.chained_assignment = None  
     
+    # TODO: include more pulse-like gms
     gm_info = pd.read_csv(db_dir)
     unscaled_spectra = pd.read_csv(spec_dir)
     

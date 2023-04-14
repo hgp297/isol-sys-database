@@ -984,7 +984,7 @@ class Building:
         # brace nodes
         ofs = 0.25
         L_diag = ((L_bay/2)**2 + L_col**2)**(0.5)
-        L_eff = (1-ofs) * L_diag
+        # L_eff = (1-ofs) * L_diag
         L_gp = ofs/2 * L_diag
         brace_top_nodes = self.node_tags['brace_top']
         for nd in brace_top_nodes:
@@ -1473,9 +1473,9 @@ class Building:
         spr_elems = self.elem_tags['spring']
         
         # extract where rigid elements are in the entire frame
-        brace_beam_end_joint = [link for link in spr_elems
-                                if (link-spr_id)//10 in brace_beam_ends
-                                and (link%10 == 9 or link%10 == 7)]
+        # brace_beam_end_joint = [link for link in spr_elems
+        #                         if (link-spr_id)//10 in brace_beam_ends
+        #                         and (link%10 == 9 or link%10 == 7)]
         
         
         brace_beam_middle_joint = self.elem_tags['brace_beam_springs']
@@ -2215,11 +2215,11 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     # offset is the shift (+/-) of the bottom gusset plate
     # terminus is top node, adjusted for gusset plate (gusset placed opposite direction)
     x_origin = bot_x_coord + x_offset
-    x_terminus = top_x_coord - x_offset
+    # x_terminus = top_x_coord - x_offset
     
     y_offset = offset/2 * h_story
     y_origin = bot_y_coord + y_offset
-    y_terminus = top_y_coord - y_offset
+    # y_terminus = top_y_coord - y_offset
     
     mid_x_coord = x_origin + L_eff/2 * cos(gamma)
     mid_y_coord = y_origin + L_eff/2 * sin(gamma)
