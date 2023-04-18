@@ -192,6 +192,11 @@ class Building:
         isol_id = 1000
         # make isolators above base nodes
         isol_elems = [nd+isol_id for nd in base_nodes]
+
+		isol_type = self.isolation_system
+		if isol_type == 'LRB':
+			# TODO: numbering additional stacked LRB nodes
+			addl_isols = [nd+isol_id for nd in base_nodes]
         
         # spring elements, series 5000
         spring_id = 5000
