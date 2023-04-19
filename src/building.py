@@ -191,12 +191,19 @@ class Building:
         # isolator elements, series 1000
         isol_id = 1000
         # make isolators above base nodes
+		left_id = -100
+		right_id = 100
         isol_elems = [nd+isol_id for nd in base_nodes]
 
 		isol_type = self.isolation_system
 		if isol_type == 'LRB':
 			# TODO: numbering additional stacked LRB nodes
-			addl_isols = [nd+isol_id for nd in base_nodes]
+			n_addl_lrb = int(n_bays/2)
+			addl_left = [isol_elems[0]+left_id+bearing
+						 for bearing in range(n_addl_lrb)]
+			addl_right = [isol_elems[-1]+right_id+bearing
+						  for bearing in range(n_addl_lrb)]
+			addl_bearing = addl_left + addl_right
         
         # spring elements, series 5000
         spring_id = 5000
