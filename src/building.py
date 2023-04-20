@@ -331,7 +331,6 @@ class Building:
         
         # model gravity masses corresponding to the frame placed on building edge
         # TODO: check if "base" level should have mass
-        # TODO: readd bearing beneath LC for TFP case: node, unfix LC bottom, element
         import numpy as np
         m_grav_inner = w_floor * L_bay / g
         m_grav_outer = w_floor * L_bay / 2 /g
