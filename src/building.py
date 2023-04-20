@@ -191,19 +191,7 @@ class Building:
         # isolator elements, series 1000
         isol_id = 1000
         # make isolators above base nodes
-		left_id = -100
-		right_id = 100
         isol_elems = [nd+isol_id for nd in base_nodes]
-
-		isol_type = self.isolation_system
-		if isol_type == 'LRB':
-			# TODO: numbering additional stacked LRB nodes
-			n_addl_lrb = int(n_bays/2)
-			addl_left = [isol_elems[0]+left_id+bearing
-						 for bearing in range(n_addl_lrb)]
-			addl_right = [isol_elems[-1]+right_id+bearing
-						  for bearing in range(n_addl_lrb)]
-			addl_bearing = addl_left + addl_right
         
         # spring elements, series 5000
         spring_id = 5000
@@ -770,7 +758,6 @@ class Building:
                             L1, L2, L2, d1, d2, d2,
                             p_vert, uy, kvt, minFv, 1e-5)
                 
-        # TODO: stack edge LRBs to model the rest of the half-building
         else:
             # LRB modeling
             
@@ -795,7 +782,7 @@ class Building:
             base_id = self.elem_ids['base']
             isol_elems = self.elem_tags['isolator']
             
-            for elem_tag in isol_elems:
+            for elem_idx, elem_tag in enumerate(isol_elems):
                 i_nd = elem_tag - isol_id
                 j_nd = elem_tag - isol_id - base_id + 10
                 
@@ -806,9 +793,19 @@ class Building:
                     p_vert = p_inner
                     
                 # TODO: change temp coefficients to imperial units
-                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                            G_r, K_bulk, D_inner, D_outer,
-                            t_shim, t_layer, n_layers)
+                # ad-hoc change edge bearing to have area equivalent to stacked LRBs
+                from math import floor
+                n_addl_bearings = floor(n_bays/2)
+                if (elem_idx == 0) or (elem_idx == len(isol_elems)):
+                    mod_D_inner = (n_addl_bearings+1)*D_inner
+                    mod_D_outer = (n_addl_bearings+1)*D_outer
+                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                                G_r, K_bulk, mod_D_inner, mod_D_outer,
+                                t_shim, t_layer, n_layers)
+                else:
+                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                                G_r, K_bulk, D_inner, D_outer,
+                                t_shim, t_layer, n_layers)
   
 ################################################################################
 # Walls
@@ -1801,7 +1798,7 @@ class Building:
             base_id = self.elem_ids['base']
             isol_elems = self.elem_tags['isolator']
             
-            for elem_tag in isol_elems:
+            for elem_idx, elem_tag in enumerate(isol_elems):
                 i_nd = elem_tag - isol_id
                 j_nd = elem_tag - isol_id - base_id + 10
                 
@@ -1812,9 +1809,19 @@ class Building:
                     p_vert = p_inner
                     
                 # TODO: change temp coefficients to imperial units
-                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                            G_r, K_bulk, D_inner, D_outer,
-                            t_shim, t_layer, n_layers)
+                # ad-hoc change edge bearing to have area equivalent to stacked LRBs
+                from math import floor
+                n_addl_bearings = floor(n_bays/2)
+                if (elem_idx == 0) or (elem_idx == len(isol_elems)):
+                    mod_D_inner = (n_addl_bearings+1)*D_inner
+                    mod_D_outer = (n_addl_bearings+1)*D_outer
+                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                                G_r, K_bulk, mod_D_inner, mod_D_outer,
+                                t_shim, t_layer, n_layers)
+                else:
+                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                                G_r, K_bulk, D_inner, D_outer,
+                                t_shim, t_layer, n_layers)
   
 ################################################################################
 # Walls
