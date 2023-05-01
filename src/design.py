@@ -882,6 +882,7 @@ def interaction_equation(Zx, Pu, Pn, Mu):
     return(1.0/combined_forces_coef)
 
 # design both columns and beams
+# TODO: error handle when cannot design
 def capacity_CBF_beam(selected_brace, current_floor,
                       Q_per_bay, w_cases, 
                       h_story, L_bay, n_bays,
@@ -892,7 +893,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
     
     import numpy as np
     if selected_brace is np.nan:
-        return np.nan, np.nan, np.nan, np.nan
+        return np.nan, np.nan
     
     k_brace = 1.0 # for pinned-pinned connection, steel manual Table C-A-7.1
     Lc = (h_story**2 + (L_bay/2)**2)**(0.5)*k_brace
@@ -1020,7 +1021,7 @@ def capacity_CBF_column(selected_brace, current_floor,
     
     import numpy as np
     if selected_brace is np.nan:
-        return np.nan, np.nan, np.nan, np.nan
+        return np.nan, np.nan
     
     k_brace = 1.0 # for pinned-pinned connection, steel manual Table C-A-7.1
     Lc = (h_story**2 + (L_bay/2)**2)**(0.5)*k_brace

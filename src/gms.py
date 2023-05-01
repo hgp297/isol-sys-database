@@ -6,34 +6,34 @@
 
 # Date created: April 2023
 
-# Description:  Script creates list of viable ground motions and scales from PEER search
+# Description:  Function takes the df of the design and first creates a spectrum
+#               based on the S_1 and T_m values. It then scales all ground motions
+#               and filters based on lowest usable freq
 
-# Open issues:  (1) Lengths of sections require specifications
-#               (2) Manually specify how many of each EQ you want
+# Open issues:  (1) 
 
 ###############################################################################
 
 
 
-def scale_ground_motion(db_dir='../resource/ground_motions/gm_db.csv',
+def scale_ground_motion(input_df,
+                        db_dir='../resource/ground_motions/gm_db.csv',
                         spec_dir='../resource/ground_motions/gm_spectra.csv'):
     
     import pandas as pd
     import numpy as np
     
+    S_1 = input_df['S_1']
+    T_m = input_df['T_m']
+    
     # default='warn', ignore SettingWithCopyWarning
     pd.options.mode.chained_assignment = None  
     
-    # TODO: include more pulse-like gms
     gm_info = pd.read_csv(db_dir)
     unscaled_spectra = pd.read_csv(spec_dir)
     
     # info from building class
-    # TODO: integrate building class
     S_s = 2.2815
-    S_1 = 1.017
-    T_fb = 0.6
-    T_m = 3.5
     
     # Scale both Ss and S1
     # Create design spectrum
@@ -45,7 +45,8 @@ def scale_ground_motion(db_dir='../resource/ground_motions/gm_db.csv',
         S_s, S_1/target_spectrum['Period (sec)'])
     
     # calculate desired target spectrum average (0.2*Tm, 1.5*Tm)
-    
+    # TODO: T_fb shouldn't be fixed
+    T_fb = 0.6
     t_lower = T_fb
     t_upper = 1.5*T_m
 
@@ -109,9 +110,26 @@ def scale_ground_motion(db_dir='../resource/ground_motions/gm_db.csv',
     final_GM.columns = ['RSN', 'sf_average_spectral', 
                         'earthquake_name', 'lowest_frequency', 'filename']
     
+    # select random GM from the list
+    from random import randrange
     
-    print('Done.')
+    sf = 40.0
     
-    return(final_GM, target_average)
+    # keep selecting until we have a GM with <20
+    # assumes that there is a ground motion that can reach the S_1 without being scaled >20.0
+    tries = 0
+    while sf > 20.0:
+        ind = randrange(len(final_GM.index))
+        filename = str(final_GM['filename'][ind]) # ground motion name
+        gm_name = filename.replace('.AT2', '') # remove extension from file name
+        sf = float(final_GM['sf_average_spectral'][ind])  # scale factor used
+        
+        tries += 1
+        if tries > len(final_GM.index):
+            print('No GM found.')
+            break
     
-scale_ground_motion()
+    return(gm_name, sf, target_average)
+    
+    
+# a, b = scale_ground_motion()

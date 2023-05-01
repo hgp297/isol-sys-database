@@ -286,3 +286,31 @@ class Database:
               (cbf_df.shape[0], tp))
         
         # TODO: method to retain only flat n points
+        
+    def scale_gms(self):
+        
+        import pandas as pd
+        
+        # join both systems
+        all_des = pd.concat([self.mf_designs, self.cbf_designs], 
+                                     axis=0)
+        
+        # set seed to ensure same GMs are selected
+        from random import seed
+        seed(985)
+        
+        # scale and select ground motion
+        from gms import scale_ground_motion
+        all_des[['gm_selected',
+                 'scale_factor',
+                 'sa_avg']] = all_des.apply(lambda row: scale_ground_motion(row),
+                                            axis='columns', result_type='expand')
+                                            
+        self.all_designs = all_des
+        
+        
+        
+        
+        
+        
+        

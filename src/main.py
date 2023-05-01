@@ -24,6 +24,9 @@ test_mf_tfp = main_obj.mf_designs.iloc[0]
 test_cbf = main_obj.cbf_designs.iloc[0]
 test_mf_lrb = main_obj.mf_designs.iloc[-1]
 
+main_obj.scale_gms()
+
+
 # # test build one building (MF, TFP only)
 # from building import Building
 # mf_tfp_bldg = Building(test_mf_tfp)
