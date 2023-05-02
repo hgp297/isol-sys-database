@@ -1328,25 +1328,6 @@ def design_CBF(input_df, db_string='../resource/'):
         else:
             all_columns = np.nan
             break
-       
-    # # old: keep largest brace for beam design, one beam per floor
-    # C_brace = max(C_max)
-    # selected_brace, qualified_braces = select_compression_member(sorted_braces, 
-    #                                                              Lc_brace, 
-    #                                                              C_brace)
-    
-    # selected_beam, qualified_beams, selected_col, qualified_cols = capacity_CBF_design(
-    #     selected_brace, Q_per_bay, load_cases, 
-    #     h_story, L_bay, n_bays, sorted_beams, sorted_cols)
-    
-    
-    # # return only string to keep data management clean
-    # if isinstance(selected_beam, pd.DataFrame):
-    #     selected_beam = selected_beam.iloc[0]['AISC_Manual_Label']
-    # if isinstance(selected_col, pd.DataFrame):
-    #     selected_col = selected_col.iloc[0]['AISC_Manual_Label']
-    # if isinstance(selected_brace, pd.DataFrame):
-    #     selected_brace = selected_brace.iloc[0]['AISC_Manual_Label']
     
     return(all_braces, all_beams, all_columns)
     
