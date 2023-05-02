@@ -882,7 +882,6 @@ def interaction_equation(Zx, Pu, Pn, Mu):
     return(1.0/combined_forces_coef)
 
 # design both columns and beams
-# TODO: error handle when cannot design
 def capacity_CBF_beam(selected_brace, current_floor,
                       Q_per_bay, w_cases, 
                       h_story, L_bay, n_bays,
@@ -942,6 +941,9 @@ def capacity_CBF_beam(selected_brace, current_floor,
     selected_beam, passed_Zx_beams = select_member(beam_list, 
         'Zx', Z_req)
     
+    if selected_beam is np.nan:
+        return(np.nan, np.nan)
+    
     # axial check
     rad_gy_beam = selected_beam['ry'].iloc[0]
     Ag_beam = selected_beam['A'].iloc[0]
@@ -989,6 +991,9 @@ def capacity_CBF_beam(selected_brace, current_floor,
     
     # shear check
     # beam shear
+    if selected_beam is np.nan:
+        return(np.nan, np.nan)
+    
     Mn_beam, Mpr_beam, Vpr_beam = calculate_strength(selected_beam, L_bay)
     V_grav = np.max(w1*L_bay/2)
     
@@ -1044,6 +1049,9 @@ def capacity_CBF_column(selected_brace, current_floor,
     w1 = w_cases['1.2D+0.5L+1.0E'][current_floor:]/12 # raw is kip/ft, convert to kip/in
     
     P_col_grav = w1 * L_bay
+    
+    
+    
     P_case_T = P_col_grav + Fv_buck/2
     P_case_C = P_col_grav - Fv_TC/2
     P_case_buck = P_col_grav - Fv_buck/2
@@ -1064,6 +1072,9 @@ def capacity_CBF_column(selected_brace, current_floor,
                                 P_case_Tbuck,
                                 P_case_TC])
     
+    # remove loads of floor below when designing column
+    Pu_col[0:current_floor] = 0.0
+    
     # T_des_col = np.sum(Tu_col)
     C_des_col = np.sum(Pu_col)
     k_col = 1.0 
@@ -1078,6 +1089,7 @@ def capacity_CBF_column(selected_brace, current_floor,
     
     return(selected_col, col_compr_list)
 
+'''
 def capacity_CBF_design(selected_brace, Q_per_bay, w_cases, 
                         h_story, L_bay, n_bays,
                         beam_list, col_list):
@@ -1213,7 +1225,8 @@ def capacity_CBF_design(selected_brace, Q_per_bay, w_cases,
     selected_col, col_compr_list = select_compression_member(col_list, Lc_col, C_des_col)
     
     return(selected_beam, beam_shear_list, selected_col, col_compr_list)
-        
+'''
+
 def design_CBF(input_df, db_string='../resource/'):
     
     # ensure everything is in inches, kip/in
@@ -1294,26 +1307,46 @@ def design_CBF(input_df, db_string='../resource/'):
                                                            h_story, L_bay, n_bays,
                                                            sorted_beams)
         
-        all_beams.append(selected_beam.iloc[0]['AISC_Manual_Label'])
+        import numpy as np
+        if selected_beam is not np.nan:
+            all_beams.append(selected_beam.iloc[0]['AISC_Manual_Label'])
+        else:
+            all_beams = np.nan
+            break
+        
+    all_columns = []
+    for fl, brace in enumerate(all_braces):
+        current_brace = get_shape(brace, 'brace')
+        
+        selected_col, qualified_cols = capacity_CBF_column(current_brace, fl,
+                                                           Q_per_bay, load_cases, 
+                                                           h_story, L_bay, n_bays,
+                                                           sorted_cols)
+        
+        if selected_col is not np.nan:
+            all_columns.append(selected_col.iloc[0]['AISC_Manual_Label'])
+        else:
+            all_columns = np.nan
+            break
        
-    # old: keep largest brace for beam design, one beam per floor
-    C_brace = max(C_max)
-    selected_brace, qualified_braces = select_compression_member(sorted_braces, 
-                                                                 Lc_brace, 
-                                                                 C_brace)
+    # # old: keep largest brace for beam design, one beam per floor
+    # C_brace = max(C_max)
+    # selected_brace, qualified_braces = select_compression_member(sorted_braces, 
+    #                                                              Lc_brace, 
+    #                                                              C_brace)
     
-    selected_beam, qualified_beams, selected_col, qualified_cols = capacity_CBF_design(
-        selected_brace, Q_per_bay, load_cases, 
-        h_story, L_bay, n_bays, sorted_beams, sorted_cols)
+    # selected_beam, qualified_beams, selected_col, qualified_cols = capacity_CBF_design(
+    #     selected_brace, Q_per_bay, load_cases, 
+    #     h_story, L_bay, n_bays, sorted_beams, sorted_cols)
     
     
-    # return only string to keep data management clean
-    if isinstance(selected_beam, pd.DataFrame):
-        selected_beam = selected_beam.iloc[0]['AISC_Manual_Label']
-    if isinstance(selected_col, pd.DataFrame):
-        selected_col = selected_col.iloc[0]['AISC_Manual_Label']
-    if isinstance(selected_brace, pd.DataFrame):
-        selected_brace = selected_brace.iloc[0]['AISC_Manual_Label']
+    # # return only string to keep data management clean
+    # if isinstance(selected_beam, pd.DataFrame):
+    #     selected_beam = selected_beam.iloc[0]['AISC_Manual_Label']
+    # if isinstance(selected_col, pd.DataFrame):
+    #     selected_col = selected_col.iloc[0]['AISC_Manual_Label']
+    # if isinstance(selected_brace, pd.DataFrame):
+    #     selected_brace = selected_brace.iloc[0]['AISC_Manual_Label']
     
-    return(all_braces, all_beams, selected_col)
+    return(all_braces, all_beams, all_columns)
     

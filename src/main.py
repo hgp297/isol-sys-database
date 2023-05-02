@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(100)
+main_obj = Database(1000)
 
 main_obj.design_bearings(filter_designs=True)
 
