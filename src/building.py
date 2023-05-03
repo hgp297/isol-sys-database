@@ -1933,7 +1933,6 @@ class Building:
         # line loads on elements
         # this loading scheme assumes that local-y is vertical direction (global-z)
         # this is currently true for both MRF and CBF beams
-        # TODO: adjust for the section of rigid offset that is not loaded
         for elem in brace_beams:
             attached_node = elem - brace_beam_id
             floor_idx = int(str(attached_node)[0]) - 1
@@ -1955,6 +1954,9 @@ class Building:
             ops.load(nd, 0, 0, -p_applied, 0, 0, 0)
             
         # TODO: adjustment of vertical load for TFP
+        isol_sys = self.isolator_system
+        if isol_sys == 'TFP':
+            print('do load')
         
         # ------------------------------
         # Start of analysis generation: gravity
