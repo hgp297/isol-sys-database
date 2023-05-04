@@ -1085,8 +1085,6 @@ def capacity_CBF_column(selected_brace, current_floor,
     
     # TODO: AISC 341-16 4e-c-2
     
-    # TODO: interaction
-    
     return(selected_col, col_compr_list)
 
 '''
@@ -1297,6 +1295,7 @@ def design_CBF(input_df, db_string='../resource/'):
     # beam and column capacity design
     # TODO: one column per 4 floors
     from building import get_shape
+    import numpy as np
     
     all_beams = []
     for fl, brace in enumerate(all_braces):
@@ -1307,7 +1306,7 @@ def design_CBF(input_df, db_string='../resource/'):
                                                            h_story, L_bay, n_bays,
                                                            sorted_beams)
         
-        import numpy as np
+        
         if selected_beam is not np.nan:
             all_beams.append(selected_beam.iloc[0]['AISC_Manual_Label'])
         else:
