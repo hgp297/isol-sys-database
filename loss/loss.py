@@ -28,6 +28,39 @@ warnings.filterwarnings('ignore')
 ###########################################################################
 # ASSEMBLE STRUCTURAL COMPONENTS
 ###########################################################################
+def get_EDP(isol_data):
+
+    EDP_data = isol_data[['accMax0', 'accMax1', 'accMax2', 'accMax3',
+                          'velMax0', 'velMax1', 'velMax2', 'velMax3',
+        'driftMax1', 'driftMax2', 'driftMax3',
+        'accMax0', 'accMax1', 'accMax2', 'accMax3',
+        'velMax0', 'velMax1', 'velMax2', 'velMax3',
+        'driftMax1', 'driftMax2', 'driftMax3']]
+
+    #type-floor-direction
+    EDP_data.columns = ['PFA-1-1', 'PFA-2-1', 'PFA-3-1', 'PFA-4-1',
+                        'PFV-1-1', 'PFV-2-1', 'PFV-3-1', 'PFV-4-1',
+        'PID-1-1', 'PID-2-1', 'PID-3-1',
+        'PFA-1-2', 'PFA-2-2', 'PFA-3-2', 'PFA-4-2',
+        'PFV-1-2', 'PFV-2-2', 'PFV-3-2', 'PFV-4-2',
+        'PID-1-2', 'PID-2-2', 'PID-3-2']
+    # EDP_data.columns = ['PFA-1-1', 'PFA-2-1', 'PFA-3-1', 'PFA-4-1',
+    #     'PID-1-1', 'PID-2-1', 'PID-3-1',
+    #     'PFA-1-2', 'PFA-2-2', 'PFA-3-2', 'PFA-4-2',
+    #     'PID-1-2', 'PID-2-2', 'PID-3-2']
+    
+    EDP_data.loc['Units'] = ['g','g','g','g',
+                             'inps', 'inps', 'inps', 'inps',
+                             'rad','rad','rad',
+                             'g','g','g','g',
+                             'inps', 'inps', 'inps', 'inps',
+                             'rad','rad','rad']
+
+    EDP_data["new"] = range(1,len(EDP_data)+1)
+    EDP_data.loc[EDP_data.index=='Units', 'new'] = 0
+    EDP_data = EDP_data.sort_values("new").drop('new', axis=1)
+
+    return(EDP_data)
 
 def get_structural_cmp_MF(run_info, metadata):
     cmp_strct = pd.DataFrame()
@@ -42,10 +75,10 @@ def get_structural_cmp_MF(run_info, metadata):
     cur_cmp = 'B.10.31.001'
     cmp_strct.loc[
         cur_cmp, ['Units', 'Location', 'Direction',
-                        'Theta_0', 'Theta_1', 'Family',
-                        'Blocks', 'Comment']] = ['ea', '1--3', '0',
-                                                 9*6, np.nan, np.nan,
-                                                 9*6, metadata[cur_cmp]['Description']]
+                  'Theta_0', 'Theta_1', 'Family',
+                  'Blocks', 'Comment']] = ['ea', '1--3', '0',
+                                           9*6, np.nan, np.nan,
+                                           9*6, metadata[cur_cmp]['Description']]
     # column base plates
     if col_wt < 150.0:
         cur_cmp = 'B.10.31.011a'
@@ -56,10 +89,10 @@ def get_structural_cmp_MF(run_info, metadata):
     
     cmp_strct.loc[
         cur_cmp, ['Units', 'Location', 'Direction',
-                        'Theta_0', 'Theta_1', 'Family',
-                        'Blocks', 'Comment']] = ['ea', '1', '1,2',
-                                                 4*4, np.nan, np.nan,
-                                                 4*4, metadata[cur_cmp]['Description']]
+                  'Theta_0', 'Theta_1', 'Family',
+                  'Blocks', 'Comment']] = ['ea', '1', '1,2',
+                                           4*4, np.nan, np.nan,
+                                           4*4, metadata[cur_cmp]['Description']]
     # assume no splice needed in column (39 ft)
     
     # moment connection, one beam (all roof beams are < 27.0)
@@ -67,50 +100,50 @@ def get_structural_cmp_MF(run_info, metadata):
         cur_cmp = 'B.10.35.021'
         cmp_strct.loc[
             cur_cmp, ['Units', 'Location', 'Direction',
-                            'Theta_0', 'Theta_1', 'Family',
-                            'Blocks', 'Comment']] = ['ea', '1--3', '1,2',
-                                                     8, np.nan, np.nan,
-                                                     8, metadata[cur_cmp]['Description']]
+                      'Theta_0', 'Theta_1', 'Family',
+                      'Blocks', 'Comment']] = ['ea', '1--3', '1,2',
+                                               8, np.nan, np.nan,
+                                               8, metadata[cur_cmp]['Description']]
     else:
         cur_cmp = 'B.10.35.022'
         cmp_strct.loc[
             cur_cmp, ['Units', 'Location', 'Direction',
-                            'Theta_0', 'Theta_1', 'Family',
-                            'Blocks', 'Comment']] = ['ea', '1--2', '1,2',
-                                                     8, np.nan, np.nan,
-                                                     8, metadata[cur_cmp]['Description']]
+                      'Theta_0', 'Theta_1', 'Family',
+                      'Blocks', 'Comment']] = ['ea', '1--2', '1,2',
+                                               8, np.nan, np.nan,
+                                               8, metadata[cur_cmp]['Description']]
         cur_cmp = 'B.10.35.021'
         cmp_strct.loc[
             cur_cmp, ['Units', 'Location', 'Direction',
-                            'Theta_0', 'Theta_1', 'Family',
-                            'Blocks', 'Comment']] = ['ea', '3', '1,2',
-                                                     8, np.nan, np.nan,
-                                                     8, metadata[cur_cmp]['Description']]
+                      'Theta_0', 'Theta_1', 'Family',
+                      'Blocks', 'Comment']] = ['ea', '3', '1,2',
+                                               8, np.nan, np.nan,
+                                               8, metadata[cur_cmp]['Description']]
                                                      
     # moment connection, two beams (all roof beams are < 27.0)
     if beam_depth <= 27.0:
         cur_cmp = 'B.10.35.031'
         cmp_strct.loc[
             cur_cmp, ['Units', 'Location', 'Direction',
-                            'Theta_0', 'Theta_1', 'Family',
-                            'Blocks', 'Comment']] = ['ea', '1--3', '1,2',
-                                                     8, np.nan, np.nan,
-                                                     8, metadata[cur_cmp]['Description']]
+                      'Theta_0', 'Theta_1', 'Family',
+                      'Blocks', 'Comment']] = ['ea', '1--3', '1,2',
+                                               8, np.nan, np.nan,
+                                               8, metadata[cur_cmp]['Description']]
     else:
         cur_cmp = 'B.10.35.032'
         cmp_strct.loc[
             cur_cmp, ['Units', 'Location', 'Direction',
-                            'Theta_0', 'Theta_1', 'Family',
-                            'Blocks', 'Comment']] = ['ea', '1--2', '1,2',
-                                                     8, np.nan, np.nan,
-                                                     8, metadata[cur_cmp]['Description']]
+                      'Theta_0', 'Theta_1', 'Family',
+                      'Blocks', 'Comment']] = ['ea', '1--2', '1,2',
+                                               8, np.nan, np.nan,
+                                               8, metadata[cur_cmp]['Description']]
         cur_cmp = 'B.10.35.031'
         cmp_strct.loc[
             cur_cmp, ['Units', 'Location', 'Direction',
-                            'Theta_0', 'Theta_1', 'Family',
-                            'Blocks', 'Comment']] = ['ea', '3', '1,2',
-                                                     8, np.nan, np.nan,
-                                                     8, metadata[cur_cmp]['Description']]
+                      'Theta_0', 'Theta_1', 'Family',
+                      'Blocks', 'Comment']] = ['ea', '3', '1,2',
+                                               8, np.nan, np.nan,
+                                               8, metadata[cur_cmp]['Description']]
         
     return(cmp_strct)
 

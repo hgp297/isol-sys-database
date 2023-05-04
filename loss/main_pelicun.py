@@ -19,58 +19,36 @@ pd.options.display.max_rows = 30
 
 # and import pelicun classes and methods
 from pelicun.base import convert_to_MultiIndex
-from loss import estimate_damage
+from loss import estimate_damage, get_EDP
 
 import warnings
 warnings.filterwarnings('ignore')
 
-# TODO: clean files (add to class?)
-
-print('Missing cleaner files!')
-
 #%% if files have been unprepared, prepare
-import sys
-sys.path.append('..')
-import tmp_cleaner
-from get_demand_data import get_EDP
-databasePath = '../sessionOut/'
-databaseFile = 'sessionSummary.csv'
+database_path = './data/tfp_mf/'
+database_file = 'run_data.csv'
 
 # clean data and add additional variables
-resultsDf = pd.read_csv(databasePath+databaseFile)
-data = tmp_cleaner.cleanDat(resultsDf)
-pelicunPath = './'
-data.to_csv(pelicunPath+'full_isolation_data.csv', index=True)
+full_isolation_data = pd.read_csv(database_path+database_file)
 
 # write into pelicun style EDP
-edp = get_EDP(data)
-edp.to_csv(pelicunPath+'demand_data.csv', index=True)
+edp = get_EDP(full_isolation_data)
+edp.to_csv(database_path+'demand_data.csv', index=True)
 
 #%% prepare whole set of runs
 
-full_isolation_data = pd.read_csv('full_isolation_data.csv', index_col=0)
-
-
 # load the component configuration
-cmp_marginals = pd.read_csv('cmp_marginals.csv', index_col=0)
+cmp_marginals = pd.read_csv(database_path+'cmp_marginals.csv', index_col=0)
 
 # Prepare demand data set to match format
-all_demands = pd.read_csv('demand_data.csv', index_col=None,header=None).transpose()
+all_demands = pd.read_csv(database_path+'demand_data.csv', 
+                          index_col=None,header=None).transpose()
 
 all_demands.columns = all_demands.loc[0]
 all_demands = all_demands.iloc[1:, :]
 all_demands.columns = all_demands.columns.fillna('EDP')
 
 all_demands = all_demands.set_index('EDP', drop=True)
-
-# run_idx = 45
-# #run_idx = 324
-# raw_demands = all_demands[['Units', str(run_idx)]]
-# raw_demands.columns = ['Units', 'Value']
-# raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
-# raw_demands.index.names = ['type','loc','dir']
-
-# run_data = full_isolation_data.loc[run_idx]
 
 #%% estimate loss for set
 
