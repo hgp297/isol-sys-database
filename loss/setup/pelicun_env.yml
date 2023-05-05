@@ -1,0 +1,8 @@
+name: pelicun_env
+dependencies:
+  - numpy
+  - pandas
+  - python=3.9
+  - scikit-learn
+  - matplotlib
+  - scipy

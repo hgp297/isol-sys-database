@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(100)
+main_obj = Database(1000)
 
 main_obj.design_bearings(filter_designs=True)
 
@@ -23,6 +23,9 @@ main_obj.design_structure()
 test_mf_tfp = main_obj.mf_designs.iloc[0]
 test_cbf = main_obj.cbf_designs.iloc[0]
 test_mf_lrb = main_obj.mf_designs.iloc[-1]
+
+main_obj.scale_gms()
+
 
 # # test build one building (MF, TFP only)
 # from building import Building

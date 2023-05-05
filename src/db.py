@@ -256,6 +256,7 @@ class Database:
         else:
             # keep the designs that look sensible
             mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
+            mf_designs = all_mf_designs.dropna(subset=['beam','column','roof'])
             
         tp = time.time() - t0
       
@@ -271,12 +272,15 @@ class Database:
         all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
                                         axis='columns', 
                                         result_type='expand')
-        
         all_cbf_designs.columns = ['brace', 'beam', 'column']
-        tp = time.time() - t0
+        if filter_designs == False:
+            cbf_designs = all_cbf_designs
+        else:
+            # keep the designs that look sensible
+            cbf_designs = all_cbf_designs.dropna(subset=['beam','column','brace'])
+            
         
-        # retain all for now
-        cbf_designs = all_cbf_designs
+        tp = time.time() - t0
         
         # get the design params of those bearings
         a = cbf_df[cbf_df.index.isin(cbf_designs.index)]
@@ -286,3 +290,32 @@ class Database:
               (cbf_df.shape[0], tp))
         
         # TODO: method to retain only flat n points
+        
+    def scale_gms(self):
+        
+        import pandas as pd
+        
+        # join both systems
+        all_des = pd.concat([self.mf_designs, self.cbf_designs], 
+                                     axis=0)
+        
+        # set seed to ensure same GMs are selected
+        from random import seed
+        seed(985)
+        
+        # scale and select ground motion
+        # TODO: this section is inefficient
+        from gms import scale_ground_motion
+        all_des[['gm_selected',
+                 'scale_factor',
+                 'sa_avg']] = all_des.apply(lambda row: scale_ground_motion(row),
+                                            axis='columns', result_type='expand')
+                                            
+        self.all_designs = all_des
+        
+        
+        
+        
+        
+        
+        

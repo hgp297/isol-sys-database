@@ -330,7 +330,6 @@ class Building:
         ops.model('basic', '-ndm', 3, '-ndf', 6)
         
         # model gravity masses corresponding to the frame placed on building edge
-        # TODO: check if "base" level should have mass
         import numpy as np
         m_grav_inner = w_floor * L_bay / g
         m_grav_outer = w_floor * L_bay / 2 /g
@@ -915,7 +914,8 @@ class Building:
         
         self.number_nodes()
         
-        selected_col = get_shape(self.column, 'column')
+        col_list = self.column
+        sample_column = get_shape(col_list[0], 'column')
         
         beam_list = self.beam
         sample_beam = get_shape(beam_list[0], 'beam')
@@ -926,7 +926,7 @@ class Building:
         
         (Ag_col, Iz_col, Iy_col,
          Zx_col, Sx_col, d_col,
-         bf_col, tf_col, tw_col) = get_properties(selected_col)
+         bf_col, tf_col, tw_col) = get_properties(sample_column)
         
         # base nodes
         base_nodes = self.node_tags['base']
@@ -1141,12 +1141,6 @@ class Building:
         steel_mat_tag = 31
         gp_mat_tag = 32
         steel_no_fatigue = 33
-    
-        # Section tags
-        col_sec_tag = 41
-        
-        # Integration tags
-        col_int_tag = 61
         
         # isolator tags
         friction_1_tag = 81
@@ -1157,17 +1151,15 @@ class Building:
         # Impact material tags
         impact_mat_tag = 91
         
-        # reserve 130-139 for beam sections
-        beam_sec = 130
+        # reserve blocks of 10 for integration and section tags
+        col_sec = 110
+        col_int = 150
         
-        # reserve 170-179 for beam integration
-        beam_int = 170
+        beam_sec = 120
+        beam_int = 160
         
-        # reserve 140-149 for brace section
-        br_sec = 140
-        
-        # reserve 160-169 for brace integration
-        br_int = 160
+        br_sec = 130
+        br_int = 170
         
 ################################################################################
 # define materials
@@ -1270,22 +1262,48 @@ class Building:
     
         ###################### columns #############################
         
+        for fl_col, col in enumerate(col_list):
+            current_col = get_shape(col, 'column')
+            
+            (Ag_col, Iz_col, Iy_col,
+             Zx_col, Sx_col, d_col,
+             bf_col, tf_col, tw_col) = get_properties(current_col)
+            
+            # column section: fiber wide flange section
+            # match the tag number with the floor's node number
+            # for column, this is the bottom node (col between 10 and 20 has tag 111)
+            # e.g. first col bot nodes at 3x -> tag 113 and 153
+            
+            current_col_sec = col_sec + fl_col + 1
+            
+            ops.section('Fiber', current_col_sec, '-GJ', Gs*J)
+            ops.patch('rect', steel_mat_tag, 
+                1, nff,  d_col/2-tf_col, -bf_col/2, d_col/2, bf_col/2)
+            ops.patch('rect', steel_mat_tag, 
+                1, nff, -d_col/2, -bf_col/2, -d_col/2+tf_col, bf_col/2)
+            ops.patch('rect', steel_mat_tag,
+                nfw, 1, -d_col/2+tf_col, -tw_col, d_col/2-tf_col, tw_col)
+            
+            
+            current_col_int = col_int + fl_col + 1
+            n_IP = 4
+            ops.beamIntegration('Lobatto', current_col_int, 
+                                current_col_sec, n_IP)
+        
         # define the columns
-        col_id = self.elem_ids['col']
-        col_elems = self.elem_tags['col']
         
-        # column section: fiber wide flange section
-        ops.section('Fiber', col_sec_tag, '-GJ', Gs*J)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff,  d_col/2-tf_col, -bf_col/2, d_col/2, bf_col/2)
-        ops.patch('rect', steel_mat_tag, 
-            1, nff, -d_col/2, -bf_col/2, -d_col/2+tf_col, bf_col/2)
-        ops.patch('rect', steel_mat_tag,
-            nfw, 1, -d_col/2+tf_col, -tw_col, d_col/2-tf_col, tw_col)
+        # # column section: fiber wide flange section
+        # ops.section('Fiber', col_sec_tag, '-GJ', Gs*J)
+        # ops.patch('rect', steel_mat_tag, 
+        #     1, nff,  d_col/2-tf_col, -bf_col/2, d_col/2, bf_col/2)
+        # ops.patch('rect', steel_mat_tag, 
+        #     1, nff, -d_col/2, -bf_col/2, -d_col/2+tf_col, bf_col/2)
+        # ops.patch('rect', steel_mat_tag,
+        #     nfw, 1, -d_col/2+tf_col, -tw_col, d_col/2-tf_col, tw_col)
         
-        # use a distributed plasticity integration with 4 IPs
-        n_IP = 4
-        ops.beamIntegration('Lobatto', col_int_tag, col_sec_tag, n_IP)
+        # # use a distributed plasticity integration with 4 IPs
+        # n_IP = 4
+        # ops.beamIntegration('Lobatto', col_int_tag, col_sec_tag, n_IP)
         
         col_id = self.elem_ids['col']
         col_elems = self.elem_tags['col']
@@ -1301,6 +1319,9 @@ class Building:
         for elem_tag in col_br_elems:
             i_nd = (elem_tag - col_id)*10 + 8
             j_nd = (elem_tag - col_id + 10)*10 + 6
+            col_floor = i_nd // 100
+            
+            col_int_tag = col_floor + col_int
             ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                         col_transf_tag, col_int_tag)
             
@@ -1912,7 +1933,6 @@ class Building:
         # line loads on elements
         # this loading scheme assumes that local-y is vertical direction (global-z)
         # this is currently true for both MRF and CBF beams
-        # TODO: adjust for the section of rigid offset that is not loaded
         for elem in brace_beams:
             attached_node = elem - brace_beam_id
             floor_idx = int(str(attached_node)[0]) - 1
@@ -1934,6 +1954,9 @@ class Building:
             ops.load(nd, 0, 0, -p_applied, 0, 0, 0)
             
         # TODO: adjustment of vertical load for TFP
+        isol_sys = self.isolator_system
+        if isol_sys == 'TFP':
+            print('do load')
         
         # ------------------------------
         # Start of analysis generation: gravity
