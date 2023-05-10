@@ -74,13 +74,13 @@ for run_idx in full_isolation_data.index:
                                                 run_data,
                                                 cmp_marginals)
     loss_summary = agg.describe([0.1, 0.5, 0.9])
-    cost = loss_summary['repair_cost']['mean']
-    time_l = loss_summary[('repair_time', 'parallel')]['mean']
-    time_u = loss_summary[('repair_time', 'sequential')]['mean']
+    cost = loss_summary['repair_cost']['50%']
+    time_l = loss_summary[('repair_time', 'parallel')]['50%']
+    time_u = loss_summary[('repair_time', 'sequential')]['50%']
     
-    print('Mean repair cost: ', f'${cost:,.2f}')
-    print('Mean lower bound repair time: ', f'{time_l:,.2f}', 'worker-days')
-    print('Mean upper bound repair time: ', f'{time_u:,.2f}', 'worker-days')
+    print('Median repair cost: ', f'${cost:,.2f}')
+    print('Median lower bound repair time: ', f'{time_l:,.2f}', 'worker-days')
+    print('Median upper bound repair time: ', f'{time_u:,.2f}', 'worker-days')
     print('Collapse frequency: ', f'{collapse_rate:.2%}')
     print('Irreparable RID frequency: ', f'{irr_rate:.2%}')
     print('Replacement frequency: ', f'{collapse_rate+irr_rate:.2%}')

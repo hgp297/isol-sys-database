@@ -189,7 +189,7 @@ def estimate_damage(raw_demands, run_data, cmp_marginals, mode='generate'):
                                'correlation': perfect_CORR})
 
     # generate demand sample
-    n_sample = 10000
+    n_sample = 1000
     PAL.demand.generate_sample({"SampleSize": n_sample})
 
     # extract the generated sample
@@ -482,12 +482,12 @@ def estimate_damage(raw_demands, run_data, cmp_marginals, mode='generate'):
         replacement_instances['collapse'] = loss_by_cmp['collapse']/replacement_cost
     except KeyError:
         loss_by_cmp['collapse'] = 0
-        replacement_instances['collapse'] = pd.DataFrame(np.zeros((10000, 1)))
+        replacement_instances['collapse'] = pd.DataFrame(np.zeros((n_sample, 1)))
     try:
         replacement_instances['irreparable'] = loss_by_cmp['irreparable']/replacement_cost
     except KeyError:
         loss_by_cmp['irreparable'] = 0
-        replacement_instances['irreparable'] = pd.DataFrame(np.zeros((10000, 1)))
+        replacement_instances['irreparable'] = pd.DataFrame(np.zeros((n_sample, 1)))
     replacement_instances = replacement_instances.astype(int)
             
     # summarize by groups

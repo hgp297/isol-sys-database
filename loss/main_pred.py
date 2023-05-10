@@ -31,16 +31,20 @@ warnings.filterwarnings('ignore')
 #collections.Callable = collections.abc.Callable
 
 #%% concat with other data
-loss_data = pd.read_csv('./results/loss_estimate_data.csv', index_col=None)
-full_isolation_data = pd.read_csv('full_isolation_data.csv', index_col=None)
+database_path = './data/tfp_mf/'
+database_file = 'run_data.csv'
+loss_data = pd.read_csv('./results/loss_estimate_data.csv', 
+                        index_col=None)
+full_isolation_data = pd.read_csv(database_path+database_file, 
+                                  index_col=None)
 
 df = pd.concat([full_isolation_data, loss_data], axis=1)
 df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 # df['max_accel'] = df[["accMax0", "accMax1", "accMax2", "accMax3"]].max(axis=1)
 # df['max_vel'] = df[["velMax0", "velMax1", "velMax2", "velMax3"]].max(axis=1)
 #%% Prepare data
-cost_var = 'cost_mean'
-time_var = 'time_u_mean'
+cost_var = 'cost_50%'
+time_var = 'time_u_50%'
 
 # make prediction objects for impacted and non-impacted datasets
 df_hit = df[df['impacted'] == 1]
