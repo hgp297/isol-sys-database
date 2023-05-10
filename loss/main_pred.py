@@ -33,7 +33,10 @@ warnings.filterwarnings('ignore')
 #%% concat with other data
 database_path = './data/tfp_mf/'
 database_file = 'run_data.csv'
-loss_data = pd.read_csv('./results/loss_estimate_data.csv', 
+
+results_path = './results/tfp_mf/'
+results_file = 'loss_estimate_data.csv'
+loss_data = pd.read_csv(results_path+results_file, 
                         index_col=None)
 full_isolation_data = pd.read_csv(database_path+database_file, 
                                   index_col=None)
@@ -196,8 +199,8 @@ ax.scatter(df_miss['gapRatio'], df_miss['RI'], df_miss[cost_var],
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions given no impact (SVR)')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions given no impact (SVR)')
 ax.set_zlim([0, 5e5])
 plt.show()
 
@@ -234,8 +237,8 @@ ax.scatter(df_miss['gapRatio'], df_miss['RI'], df_miss[cost_var],
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions given no impact (RBF kernel ridge)')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions given no impact (RBF kernel ridge)')
 ax.set_zlim([0, 5e5])
 plt.show()
 
@@ -272,8 +275,8 @@ ax.scatter(df_miss['gapRatio'], df_miss['RI'], df_miss[cost_var],
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions given no impact (GP regression)')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions given no impact (GP regression)')
 ax.set_zlim([0, 1e6])
 plt.show()
 
@@ -336,8 +339,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions: SVC-impact, SVR-loss')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions: SVC-impact, SVR-loss')
 plt.show()
 
 #%% Big cost prediction plot (SVC-KR)
@@ -372,8 +375,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions: SVC-impact, KR-loss')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions: SVC-impact, KR-loss')
 plt.show()
 
 #%% Big cost prediction plot (KLR-SVR)
@@ -408,8 +411,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions: KLR-impact, SVR-loss')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions: KLR-impact, SVR-loss')
 plt.show()
 
 #%% Big cost prediction plot (KLR-KR)
@@ -444,8 +447,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions: KLR-impact, KR-loss')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions: KLR-impact, KR-loss')
 plt.show()
 
 #%% Big cost prediction plot (GP-SVR)
@@ -480,8 +483,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions: GP-impact, SVR-loss')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions: GP-impact, SVR-loss')
 plt.show()
 
 
@@ -517,8 +520,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions: GP-impact, KR-loss')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions: GP-impact, KR-loss')
 plt.show()
 
 #%% Big cost prediction plot (GPC-GPR)
@@ -553,8 +556,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean loss ($)')
-ax.set_title('Mean cost predictions: GP-impact, GP-loss')
+ax.set_zlabel('Median loss ($)')
+ax.set_title('Median cost predictions: GP-impact, GP-loss')
 plt.show()
 
 #%% Fit downtime (SVR)
@@ -609,8 +612,8 @@ comparison_time_miss = np.array([mdl_time_miss.y_test,
 #
 #ax.set_xlabel('Gap ratio')
 #ax.set_ylabel('Ry')
-#ax.set_zlabel('Mean downtime (worker-day)')
-#ax.set_title('Mean sequential downtime predictions given no impact (SVR)')
+#ax.set_zlabel('Median downtime (worker-day)')
+#ax.set_title('Median sequential downtime predictions given no impact (SVR)')
 #ax.set_zlim([0, 500])
 #plt.show()
 
@@ -646,8 +649,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean downtime (worker-days)')
-ax.set_title('Mean sequential downtime predictions: GP-impact, SVR-time')
+ax.set_zlabel('Median downtime (worker-days)')
+ax.set_title('Median sequential downtime predictions: GP-impact, SVR-time')
 plt.show()
 
 #%% Big downtime prediction plot (GP-KR)
@@ -682,8 +685,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean downtime (worker-days)')
-ax.set_title('Mean sequential downtime predictions: GP-impact, KR-time')
+ax.set_zlabel('Median downtime (worker-days)')
+ax.set_title('Median sequential downtime predictions: GP-impact, KR-time')
 plt.show()
 
 #%% Big downtime prediction plot (SVC-KR)
@@ -718,8 +721,8 @@ cset = ax.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.coolwarm)
 
 ax.set_xlabel('Gap ratio')
 ax.set_ylabel('Ry')
-ax.set_zlabel('Mean downtime (worker-days)')
-ax.set_title('Mean sequential downtime predictions: SVC-impact, KR-time')
+ax.set_zlabel('Median downtime (worker-days)')
+ax.set_title('Median sequential downtime predictions: SVC-impact, KR-time')
 plt.show()
 
 #%% fit collapse models (SVR and KR)
@@ -1081,8 +1084,8 @@ print('Predicted peak interstory drift: ',
 #
 #ax.set_xlabel('Gap ratio')
 #ax.set_ylabel('Ry')
-#ax.set_zlabel('Mean loss ($)')
-#ax.set_title('Mean cost predictions across all data (SVR)')
+#ax.set_zlabel('Median loss ($)')
+#ax.set_title('Median cost predictions across all data (SVR)')
 #plt.show()
         
 
