@@ -146,7 +146,7 @@ class Prediction:
         return(self.X_plot)
         
     def make_design_space(self, res):
-        xx, yy, uu, vv = np.meshgrid(np.linspace(0.8, 2.2,
+        xx, yy, uu, vv = np.meshgrid(np.linspace(0.3, 1.8,
                                                  res),
                                      np.linspace(min(self.X['RI']),
                                                  max(self.X['RI']),

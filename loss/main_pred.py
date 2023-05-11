@@ -878,16 +878,16 @@ X_space = mdl.make_design_space(res_des)
 # HOWEVER, SVC is poorly calibrated for probablities
 # consider using GP if computational resources allow, and GP looks good
 
-# choice SVR bc behavior most closely resembles GPR
+# choice KR bc behavior most closely resembles GPR
 # also trend is visible: impact set looks like GPR, nonimpact set favors high R
 t0 = time.time()
 space_repair_cost = predict_DV(X_space,
                                       mdl.gpc,
-                                      mdl_hit.svr,
-                                      mdl_miss.svr,
+                                      mdl_hit.kr,
+                                      mdl_miss.kr,
                                       outcome=cost_var)
 tp = time.time() - t0
-print("GPC-SVR repair cost prediction for %d inputs in %.3f s" % (X_space.shape[0],
+print("GPC-KR repair cost prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                            tp))
 
 # choice KR bc smoother when predicting downtime
@@ -970,9 +970,6 @@ def get_steel_coefs(df, steel_per_unit=1.25, W=3037.5, Ws=2227.5):
     reg.fit(X=Vs, y=steel_cost)
     return({'coef':reg.coef_, 'intercept':reg.intercept_})
     
-# TODO: if full costs are accounted for, then must change land cost to include
-# bldg footprint, rather than just moat gap
-    
 # TODO: add economy of scale for land
     
 # TODO: investigate upfront cost's influence by Tm
@@ -1003,7 +1000,8 @@ def calc_upfront_cost(X_query, steel_coefs,
     
     steel_cost = np.array(steel_coefs['intercept'] +
                           steel_coefs['coef']*Vs).ravel()
-    land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
+    # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
+    land_area = (90.0*12.0 + moat_gap)**2
     land_cost = land_cost_per_sqft/144.0 * land_area
     
     return(steel_cost + land_cost)
@@ -1050,7 +1048,7 @@ print(best_design)
 
 print('Upfront cost of selected design: ',
       f'${design_upfront_cost:,.2f}')
-print('Predicted mean repair cost: ',
+print('Predicted median repair cost: ',
       f'${design_repair_cost:,.2f}')
 print('Predicted repair time (sequential): ',
       f'{design_downtime:,.2f}', 'worker-days')
