@@ -188,18 +188,18 @@ def run_pelicun(database_path, results_path,
 
 #%% validation run
 import pandas as pd
-data_path = './data/tfp_mf_val/'
-res_path = './results/tfp_mf_val/validation/'
-db_file = 'addl_TFP_val.csv'
-validation_input = pd.read_csv(data_path+db_file)
-validation_data = run_pelicun(data_path, res_path, 
-                              database_file=db_file, 
-                              mode='generate')
+# data_path = './data/tfp_mf_val/'
+# res_path = './results/tfp_mf_val/validation/'
+# db_file = 'addl_TFP_val.csv'
+# validation_input = pd.read_csv(data_path+db_file)
+# validation_data = run_pelicun(data_path, res_path, 
+#                               database_file=db_file, 
+#                               mode='generate')
 
-# below is taking the mean of median results (over 59 runs)
-validation_data = validation_data.astype('float')
-val_summary = validation_data.describe([0.1, 0.5, 0.9])
-val_input_summary = validation_input.describe([0.5])
+# # below is taking the mean of median results (over 59 runs)
+# validation_data = validation_data.astype('float')
+# val_summary = validation_data.describe([0.1, 0.5, 0.9])
+# val_input_summary = validation_input.describe([0.5])
 
 #%% baseline validation
 
@@ -208,9 +208,9 @@ res_path = './results/tfp_mf_val/baseline/'
 db_file = 'addl_TFP_baseline.csv'
 baseline_input = pd.read_csv(data_path+db_file)
 baseline_data = run_pelicun(data_path, res_path, 
-                            database_file='db_file', 
+                            database_file=db_file, 
                             mode='generate')
 
 # below is taking the mean of median results (over 59 runs)
 baseline_data = baseline_data.astype('float')
-baseline_summary = baseline_data.describe([0.1, 0.5, 0.9])
+baseline_summary = baseline_data.describe([0.5])

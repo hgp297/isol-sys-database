@@ -100,15 +100,23 @@ def calc_upfront_cost(X_query, steel_coefs,
     return(steel_cost + land_cost)
 
 #%% concat with other data
-loss_data = pd.read_csv('./results/loss_estimate_data.csv', index_col=None)
-full_isolation_data = pd.read_csv('full_isolation_data.csv', index_col=None)
+database_path = './data/tfp_mf/'
+database_file = 'run_data.csv'
+
+results_path = './results/tfp_mf/'
+results_file = 'loss_estimate_data.csv'
+
+loss_data = pd.read_csv(results_path+results_file, 
+                        index_col=None)
+full_isolation_data = pd.read_csv(database_path+database_file, 
+                                  index_col=None)
 
 df = pd.concat([full_isolation_data, loss_data], axis=1)
 df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 
 #%% Prepare data
-cost_var = 'cost_mean'
-time_var = 'time_u_mean'
+cost_var = 'cost_50%'
+time_var = 'time_u_50%'
 
 # make prediction objects for impacted and non-impacted datasets
 df_hit = df[df['impacted'] == 1]
@@ -335,27 +343,27 @@ import seaborn as sns
 
 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(13, 4))
 sns.boxplot(y=cost_var, x= "impacted", data=df,  showfliers=False,
-            boxprops={'facecolor': 'none'}, medianprops={'color': 'black'},
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
             width=0.6, ax=ax1)
 sns.stripplot(x='impacted', y=cost_var, data=df, ax=ax1,
               color='black', jitter=True)
-ax1.set_title('Mean repair cost', fontsize=subt_font)
+ax1.set_title('Median repair cost', fontsize=subt_font)
 ax1.set_ylabel('Cost [USD]', fontsize=axis_font)
 ax1.set_xlabel('Impact', fontsize=axis_font)
 ax1.set_yscale('log')
 
 sns.boxplot(y=time_var, x= "impacted", data=df,  showfliers=False,
-            boxprops={'facecolor': 'none'}, medianprops={'color': 'black'},
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
             width=0.6, ax=ax2)
 sns.stripplot(x='impacted', y=time_var, data=df, ax=ax2,
               color='black', jitter=True)
-ax2.set_title('Mean sequential repair time', fontsize=subt_font)
+ax2.set_title('Median sequential repair time', fontsize=subt_font)
 ax2.set_ylabel('Time [worker-day]', fontsize=axis_font)
 ax2.set_xlabel('Impact', fontsize=axis_font)
 ax2.set_yscale('log')
 
 sns.boxplot(y="replacement_freq", x= "impacted", data=df,  showfliers=False,
-            boxprops={'facecolor': 'none'}, medianprops={'color': 'black'},
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
             width=0.5, ax=ax3)
 sns.stripplot(x='impacted', y='replacement_freq', data=df, ax=ax3,
               color='black', jitter=True)
@@ -440,7 +448,7 @@ cset = ax1.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.gist_gray)
 
 ax1.set_xlabel('Gap ratio', fontsize=axis_font)
 ax1.set_ylabel('$R_y$', fontsize=axis_font)
-#ax1.set_zlabel('Mean loss ($)', fontsize=axis_font)
+#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
 ax1.set_title('a) Cost: GPC-SVR', fontsize=subt_font)
 
 #################################
@@ -568,7 +576,7 @@ import matplotlib as mpl
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-plt.close('all')
+# plt.close('all')
 
 xvar = 'Tm'
 yvar = 'gapRatio'
@@ -591,10 +599,10 @@ zz = np.array(grid_repair_cost)/8.1e6
 Z = zz.reshape(xx.shape)
 
 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(13, 4), sharey=True)
-plt.setp((ax1, ax2, ax3), yticks=np.arange(0.1, 1.1, step=0.1), ylim=[0.0, 1.0])
+plt.setp((ax1, ax2, ax3), yticks=np.arange(0.1, 1.1, step=0.1), ylim=[0.0, 0.8])
 
 plt.setp((ax1, ax2, ax3),
-         yticks=np.arange(0.1, 1.1, step=0.1), ylim=[0.0, 1.0])
+         yticks=np.arange(0.1, 1.1, step=0.1), ylim=[0.0, 0.8])
 
 yyy = yy[:,1]
 cs = ax1.contour(xx, Z, yy, linewidths=1.1, cmap='copper',
@@ -604,7 +612,7 @@ cs = ax1.contour(xx, Z, yy, linewidths=1.1, cmap='copper',
 ax1.clabel(cs, fontsize=label_size)
 ax1.set_ylabel('% of replacement cost', fontsize=axis_font)
 ax1.set_xlabel('$T_M$', fontsize=axis_font)
-ax1.grid()
+ax1.grid(visible=True)
 
 ####################################################################
 xvar = 'RI'
@@ -636,7 +644,7 @@ ax2.clabel(cs, fontsize=label_size)
 #ax2.set_ylabel('% of replacement', fontsize=axis_font)
 ax2.set_title('a) Repair cost (GPC-SVR)', fontsize=subt_font)
 ax2.set_xlabel('$R_y$', fontsize=axis_font)
-ax2.grid()
+ax2.grid(visible=True)
 
 ####################################################################
 xvar = 'zetaM'
@@ -666,7 +674,7 @@ ax3.clabel(cs, fontsize=label_size)
 
 #ax3.set_ylabel('% of replacement', fontsize=axis_font)
 ax3.set_xlabel('$\zeta_M$', fontsize=axis_font)
-ax3.grid()
+ax3.grid(visible=True)
 
 lines = [ cs.collections[0]]
 labels = ['Gap ratios']
@@ -686,7 +694,7 @@ import matplotlib as mpl
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-plt.close('all')
+# plt.close('all')
 
 xvar = 'Tm'
 yvar = 'gapRatio'
@@ -730,7 +738,7 @@ cs = ax1.contour(xx, Z, yy, linewidths=1.1, cmap='gist_yarg',
 ax1.clabel(cs, fontsize=label_size)
 ax1.set_ylabel('% of replacement cost', fontsize=axis_font)
 ax1.set_xlabel('$T_M$', fontsize=axis_font)
-ax1.grid()
+ax1.grid(visible=True)
 
 ####################################################################
 xvar = 'zetaM'
@@ -762,7 +770,7 @@ ax2.clabel(cs, fontsize=label_size)
 #ax2.set_ylabel('% of replacement', fontsize=axis_font)
 ax2.set_title('a) Repair cost (GPC-SVR)', fontsize=subt_font)
 ax2.set_xlabel('$\zeta_M$', fontsize=axis_font)
-ax2.grid()
+ax2.grid(visible=True)
 
 ####################################################################
 xvar = 'RI'
@@ -792,7 +800,7 @@ ax3.clabel(cs, fontsize=label_size)
 
 #ax3.set_ylabel('% of replacement', fontsize=axis_font)
 ax3.set_xlabel('$R_y$', fontsize=axis_font)
-ax3.grid()
+ax3.grid(visible=True)
 
 # lines = [ cs.collections[0]]
 # labels = ['Gap ratios']
@@ -833,7 +841,7 @@ cs = ax4.contour(xx, Z, yy, linewidths=1.1, cmap='gist_yarg',
 ax4.clabel(cs, fontsize=label_size)
 ax4.set_ylabel('% of replacement time', fontsize=axis_font)
 ax4.set_xlabel('$T_M$', fontsize=axis_font)
-ax4.grid()
+ax4.grid(visible=True)
 
 xvar = 'zetaM'
 yvar = 'gapRatio'
@@ -864,7 +872,7 @@ ax5.clabel(cs, fontsize=label_size)
 #ax2.set_ylabel('% of replacement', fontsize=axis_font)
 ax5.set_xlabel('$\zeta_M$', fontsize=axis_font)
 ax5.set_title('b) Downtime (GPC-KR)', fontsize=subt_font)
-ax5.grid()
+ax5.grid(visible=True)
 
 xvar = 'RI'
 yvar = 'gapRatio'
@@ -893,7 +901,7 @@ ax6.clabel(cs, fontsize=label_size)
 
 #ax3.set_ylabel('% of replacement', fontsize=axis_font)
 ax6.set_xlabel('$R_y$', fontsize=axis_font)
-ax6.grid()
+ax6.grid(visible=True)
 
 # dummy legend
 ax6.plot(0.65, 0.5, color='gray', label='Gap ratio')
@@ -943,7 +951,7 @@ cs = ax1.contour(xx, Z, yy, linewidths=1.1, cmap='copper',
 ax1.clabel(cs, fontsize=label_size)
 ax1.set_ylabel('% of replacement time', fontsize=axis_font)
 ax1.set_xlabel('$T_M$', fontsize=axis_font)
-ax1.grid()
+ax1.grid(visible=True)
 
 ####################################################################
 xvar = 'RI'
@@ -974,7 +982,7 @@ cs = ax2.contour(xx, Z, yy, linewidths=1.1, cmap='copper',
 ax2.clabel(cs, fontsize=label_size)
 #ax2.set_ylabel('% of replacement', fontsize=axis_font)
 ax2.set_xlabel('$R_y$', fontsize=axis_font)
-ax2.grid()
+ax2.grid(visible=True)
 
 ####################################################################
 xvar = 'zetaM'
@@ -1004,7 +1012,7 @@ ax3.clabel(cs, fontsize=label_size)
 
 #ax3.set_ylabel('% of replacement', fontsize=axis_font)
 ax3.set_xlabel('$\zeta_M$', fontsize=axis_font)
-ax3.grid()
+ax3.grid(visible=True)
 
 lines = [ cs.collections[0]]
 labels = ['Gap ratios']
@@ -1063,7 +1071,7 @@ cs = ax1.contour(xx, Z, yy, linewidths=1.1, cmap='copper',
 ax1.clabel(cs, fontsize=label_size)
 ax1.set_ylabel('Collapse risk', fontsize=axis_font)
 ax1.set_xlabel('$T_M$', fontsize=axis_font)
-ax1.grid()
+ax1.grid(visible=True)
 
 ####################################################################
 xvar = 'RI'
@@ -1095,7 +1103,7 @@ cs = ax2.contour(xx, Z, yy, linewidths=1.1, cmap='copper',
 ax2.clabel(cs, fontsize=label_size)
 #ax2.set_ylabel('% of replacement', fontsize=axis_font)
 ax2.set_xlabel('$R_y$', fontsize=axis_font)
-ax2.grid()
+ax2.grid(visible=True)
 
 ####################################################################
 xvar = 'zetaM'
@@ -1126,7 +1134,7 @@ ax3.clabel(cs, fontsize=label_size)
 
 #ax3.set_ylabel('% of replacement', fontsize=axis_font)
 ax3.set_xlabel('$\zeta_M$', fontsize=axis_font)
-ax3.grid()
+ax3.grid(visible=True)
 
 lines = [ cs.collections[0]]
 labels = ['Gap ratios']
@@ -1136,16 +1144,17 @@ plt.show()
 fig.tight_layout()
 
 #%% read out results
-
-df_val = pd.read_csv('./results/loss_estimate_val.csv', index_col=None)
-df_base = pd.read_csv('./results/loss_estimate_base.csv', index_col=None)
+val_dir='./results/tfp_mf_val/validation/'
+baseline_dir='./results/tfp_mf_val/baseline/'
+df_val = pd.read_csv(val_dir+'loss_estimate_data.csv', index_col=None)
+df_base = pd.read_csv(baseline_dir+'loss_estimate_data.csv', index_col=None)
 
 steel_price = 2.00
 coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 designs = pd.DataFrame({'gapRatio': [1.383, 1.000],
-                           'Tm': [3.93, 3.50],
+                           'Tm': [3.93, 3.0],
                            'zetaM': [0.1999, 0.15],
-                           'RI': [2.0, 1.0]})
+                           'RI': [2.0, 2.0]})
     
 upfront_costs = calc_upfront_cost(designs, coef_dict)
 upfront_costs = upfront_costs.values
@@ -1156,6 +1165,7 @@ design_downtime_med = df_val['time_u_50%'][2]
 design_collapse_risk = df_val['collapse_freq'][2]
 design_replacement_risk = df_val['replacement_freq'][2]
 design_upfront_cost = upfront_costs[0]
+
 print('====== INVERSE DESIGN ======')
 print('Estimated mean repair cost: ',
       f'${design_repair_cost:,.2f}')
@@ -1356,7 +1366,7 @@ print('Percent of realizations below cost limit: ', len(agg_test)/10000)
 agg_test = agg.loc[agg['time_u'] < (700)]
 print('Percent of realizations below cost limit: ', len(agg_test)/10000)
 
-plt.close('all')
+# plt.close('all')
 
 g1 = sns.JointGrid(data=agg_pl, x='cost', y='time_u')
 g1.plot_joint(sns.scatterplot, color='black', alpha = 0.1)
@@ -1372,7 +1382,7 @@ for ax in (g1.ax_joint, g1.ax_marg_y):
 g1.ax_joint.annotate('Cost limit', xy=(1.7e6, 2750), fontsize=label_size)
 g1.ax_joint.annotate('Downtime limit', xy=(2e6, 750), fontsize=label_size)
 
-g1.ax_joint.grid()
+g1.ax_joint.grid(visible=True)
 g1.ax_joint.set_xlim(-0.25e6, 3.5e6)
 g1.ax_joint.set_ylim(-100, 3e3)
 g1.set_axis_labels(xlabel='Repair cost [USD]',
@@ -1407,7 +1417,7 @@ for ax in (g2.ax_joint, g2.ax_marg_y):
 g2.ax_joint.annotate('Cost limit', xy=(1.7e6, 2750), fontsize=label_size)
 g2.ax_joint.annotate('Downtime limit', xy=(2e6, 750), fontsize=label_size)
     
-g2.ax_joint.grid()
+g2.ax_joint.grid(visible=True)
 g2.ax_joint.set_xlim(-0.25e6, 3.5e6)
 g2.ax_joint.set_ylim(-100, 3e3)
 g2.set_axis_labels(xlabel='Repair cost [USD]',
@@ -1461,7 +1471,7 @@ print('Percent of realizations below cost limit: ', len(agg_test)/10000)
 agg_test = agg.loc[agg['time_u'] < (700)]
 print('Percent of realizations below cost limit: ', len(agg_test)/10000)
 
-plt.close('all')
+# plt.close('all')
 import seaborn as sns
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 4), sharey=True)

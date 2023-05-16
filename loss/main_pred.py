@@ -27,8 +27,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 ## temporary spyder debugger error hack
-#import collections
-#collections.Callable = collections.abc.Callable
+import collections
+collections.Callable = collections.abc.Callable
 
 #%% concat with other data
 database_path = './data/tfp_mf/'
@@ -783,8 +783,12 @@ plt.show()
 # drift -> collapse risk
 from scipy.stats import lognorm
 from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
 beta_drift = 0.25
-mean_log_drift = exp(log(0.1) - beta_drift*0.9945)
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
 ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 Z = ln_dist.cdf(np.array(grid_drift))
@@ -828,7 +832,7 @@ yy = mdl.yy
 Z = np.array(grid_drift)
 Z = Z.reshape(xx.shape)
 
-plt.close('all')
+# plt.close('all')
 fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 # Plot the surface.
 surf = ax.plot_surface(xx, yy, Z, cmap=plt.cm.coolwarm,
@@ -846,8 +850,12 @@ plt.show()
 # drift -> collapse risk
 from scipy.stats import lognorm
 from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
 beta_drift = 0.25
-mean_log_drift = exp(log(0.1) - beta_drift*0.9945)
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
 ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 Z = ln_dist.cdf(np.array(grid_drift))
@@ -912,16 +920,62 @@ tp = time.time() - t0
 print("GPC-OR drift prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                tp))
 
-#%% Transform predicted drift into probability
+# Transform predicted drift into probability
 
+# drift -> collapse risk
 from scipy.stats import lognorm
 from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
 beta_drift = 0.25
-mean_log_drift = exp(log(0.1) - beta_drift*0.9945)
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
 ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 space_collapse_risk = pd.DataFrame(ln_dist.cdf(space_drift),
                                           columns=['collapse_risk_pred'])
+
+
+#%% baseline predictions
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+                          columns=['gapRatio', 'RI', 'Tm', 'zetaM'])
+baseline_repair_cost = predict_DV(X_baseline,
+                                      mdl.gpc,
+                                      mdl_hit.kr,
+                                      mdl_miss.kr,
+                                      outcome=cost_var)
+baseline_downtime = predict_DV(X_baseline,
+                                      mdl.gpc,
+                                      mdl_time_hit.kr,
+                                      mdl_time_miss.kr,
+                                      outcome=time_var)
+baseline_drift = predict_DV(X_baseline,
+                                      mdl.gpc,
+                                      mdl_drift_hit.o_ridge,
+                                      mdl_drift_miss.o_ridge,
+                                      outcome='max_drift')
+
+baseline_collapse_risk = ln_dist.cdf(baseline_drift)
+
+# drift -> collapse risk
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 #%% Calculate upfront cost of data
 # TODO: use PACT to get the replacement cost of these components
@@ -1007,7 +1061,7 @@ def calc_upfront_cost(X_query, steel_coefs,
     return(steel_cost + land_cost)
 
 #%% refine space to meet repair cost and downtime requirements
-    
+plt.close('all')
 steel_price = 2.00
 coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 

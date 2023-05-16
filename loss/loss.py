@@ -326,8 +326,10 @@ def estimate_damage(raw_demands, run_data, cmp_marginals, mode='generate'):
     # Yun and Hamburger has beta (logarithmic stdev) value of 0.3 for 
     # 3-story global collapse drift, lowered by 0.05 if nonlin dynamic anly
     from math import log, exp
+    from scipy.stats import norm
+    inv_norm = norm.ppf(0.84)
     beta_drift = 0.25
-    mean_log_drift = exp(log(0.1) - beta_drift*0.9945) # 0.9945 is inverse normCDF of 0.84
+    mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
     additional_fragility_db.loc[
         'collapse', [('Demand','Directional'),
                         ('Demand','Offset'),
