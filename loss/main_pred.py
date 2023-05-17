@@ -966,16 +966,6 @@ baseline_drift = predict_DV(X_baseline,
 
 baseline_collapse_risk = ln_dist.cdf(baseline_drift)
 
-# drift -> collapse risk
-from scipy.stats import lognorm
-from math import log, exp
-
-from scipy.stats import norm
-inv_norm = norm.ppf(0.84)
-beta_drift = 0.25
-mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
-
-ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 #%% Calculate upfront cost of data
 # TODO: use PACT to get the replacement cost of these components
@@ -1077,10 +1067,63 @@ risk_thresh = 0.025
 ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
                       risk_thresh]
 
-X_design = X_space[np.logical_and(
+X_design = X_space[np.logical_and.reduce((
         X_space.index.isin(ok_cost.index), 
         X_space.index.isin(ok_time.index),
-        X_space.index.isin(ok_risk.index))]
+        X_space.index.isin(ok_risk.index)))]
+    
+# in the filter-design process, only one of cost/dt is likely to control
+    
+# TODO: more clever selection criteria (not necessarily the cheapest)
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs.idxmin()
+design_upfront_cost = upfront_costs.min()
+
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_downtime = space_downtime.iloc[cheapest_design_idx].item()
+design_repair_cost = space_repair_cost.iloc[cheapest_design_idx].item()
+design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
+design_PID = space_drift.iloc[cheapest_design_idx].item()
+
+print(best_design)
+
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Predicted median repair cost: ',
+      f'${design_repair_cost:,.2f}')
+print('Predicted repair time (sequential): ',
+      f'{design_downtime:,.2f}', 'worker-days')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print('Predicted peak interstory drift: ',
+      f'{design_PID:.2%}')
+
+#%% test designs
+
+plt.close('all')
+steel_price = 2.00
+coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
+
+percent_of_replacement = 1.0
+cost_thresh = percent_of_replacement*8.1e6
+ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=cost_thresh]
+
+# <2 weeks for a team of 50
+dt_thresh = 1e6
+ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh]
+
+risk_thresh = 0.01
+ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
+                      risk_thresh]
+
+
+X_design = X_space[np.logical_and.reduce((
+        X_space.index.isin(ok_cost.index), 
+        X_space.index.isin(ok_time.index),
+        X_space.index.isin(ok_risk.index)))]
     
 # in the filter-design process, only one of cost/dt is likely to control
     

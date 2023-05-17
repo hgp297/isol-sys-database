@@ -257,7 +257,7 @@ ax1.scatter(miss.X_train[xvar][:plt_density],
 
 ax1.set_xlim(0.3, 2.5)
 ax1.set_title(r'$T_M = 3.25$ s, $\zeta_M = 0.15$', fontsize=subt_font)
-ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 ####################################################################
@@ -388,8 +388,7 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-
-#plt.close('all')
+plt.close('all')
 
 fig = plt.figure(figsize=(13, 8))
 
@@ -405,35 +404,36 @@ res = 100
 step = 0.01
 X_plot = mdl.make_2D_plotting_space(res, x_var=xvar, y_var=yvar)
 
-grid_repair_cost = predict_DV(X_plot,
+grid_repair_time = predict_DV(X_plot,
                                      mdl.gpc,
-                                     mdl_hit.svr,
-                                     mdl_miss.svr,
-                                     outcome=cost_var)
+                                     mdl_time_hit.kr,
+                                     mdl_time_miss.kr,
+                                     outcome=time_var)
 
 xx = mdl.xx
 yy = mdl.yy
-zz = np.array(grid_repair_cost)/8.1e6
+zz = np.array(grid_repair_time)/4764.71
 Z = zz.reshape(xx.shape)
 
-ax1=fig.add_subplot(2, 2, 1, projection='3d')
-surf = ax1.plot_surface(xx, yy, Z, cmap=plt.cm.gist_gray,
-                       linewidth=0, antialiased=False, alpha=0.4)
+ax1=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax1.plot_surface(xx, yy, Z, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.7,
+                       vmin=-0.1)
 
-ax1.scatter(df[xvar], df[yvar], df[cost_var]/8.1e6, color='white',
-           edgecolors='k', alpha = 0.5)
+ax1.scatter(df[xvar], df[yvar], df[time_var]/4764.71, color='white',
+           edgecolors='k', alpha = 0.7)
 
 xlim = ax1.get_xlim()
 ylim = ax1.get_ylim()
 zlim = ax1.get_zlim()
-cset = ax1.contour(xx, yy, Z, zdir='z', offset=zlim[0], cmap=plt.cm.gist_gray)
-cset = ax1.contour(xx, yy, Z, zdir='x', offset=xlim[0], cmap=plt.cm.gist_gray)
-cset = ax1.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.gist_gray)
+cset = ax1.contour(xx, yy, Z, zdir='z', offset=zlim[0], cmap='Blues')
+cset = ax1.contour(xx, yy, Z, zdir='x', offset=xlim[0], cmap='Blues')
+cset = ax1.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax1.set_xlabel('Gap ratio', fontsize=axis_font)
 ax1.set_ylabel('$R_y$', fontsize=axis_font)
 #ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
-ax1.set_title('a) Cost: GPC-SVR', fontsize=subt_font)
+ax1.set_title('a) Downtime: GPC-KR', fontsize=subt_font)
 
 #################################
 xvar = 'gapRatio'
@@ -454,19 +454,20 @@ yy = mdl.yy
 zz = np.array(grid_repair_cost)/8.1e6
 Z = zz.reshape(xx.shape)
 
-ax2=fig.add_subplot(2, 2, 2, projection='3d')
-surf = ax2.plot_surface(xx, yy, Z, cmap=plt.cm.gist_gray,
-                       linewidth=0, antialiased=False, alpha=0.4)
+ax2=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax2.plot_surface(xx, yy, Z, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.7,
+                       vmin=-0.1)
 
 ax2.scatter(df[xvar], df[yvar], df[cost_var]/8.1e6, color='white',
-           edgecolors='k', alpha = 0.5)
+           edgecolors='k', alpha = 0.7)
 
 xlim = ax2.get_xlim()
 ylim = ax2.get_ylim()
 zlim = ax2.get_zlim()
-cset = ax2.contour(xx, yy, Z, zdir='z', offset=zlim[0], cmap=plt.cm.gist_gray)
-cset = ax2.contour(xx, yy, Z, zdir='x', offset=xlim[0], cmap=plt.cm.gist_gray)
-cset = ax2.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.gist_gray)
+cset = ax2.contour(xx, yy, Z, zdir='z', offset=zlim[0], cmap='Blues')
+cset = ax2.contour(xx, yy, Z, zdir='x', offset=xlim[0], cmap='Blues')
+cset = ax2.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax2.set_xlabel('Gap ratio', fontsize=axis_font)
 ax2.set_ylabel('$R_y$', fontsize=axis_font)
@@ -475,81 +476,7 @@ ax2.set_title('b) Cost: GPC-KR', fontsize=subt_font)
 
 fig.tight_layout()
 
-#################################
-xvar = 'gapRatio'
-yvar = 'RI'
-
-X_plot = mdl.make_2D_plotting_space(100)
-
-grid_downtime = predict_DV(X_plot,
-                          mdl.gpc,
-                          mdl_time_hit.svr,
-                          mdl_time_miss.svr,
-                          outcome=time_var)
-
-xx = mdl.xx
-yy = mdl.yy
-zz = np.array(grid_downtime)/4764.71
-Z = zz.reshape(xx.shape)
-
-ax3=fig.add_subplot(2, 2, 3, projection='3d')
-surf = ax3.plot_surface(xx, yy, Z, cmap=plt.cm.gist_gray,
-                       linewidth=0, antialiased=False, alpha=0.4)
-
-ax3.scatter(df[xvar], df[yvar], df[time_var]/4764.71, color='white',
-           edgecolors='k', alpha = 0.5)
-
-xlim = ax3.get_xlim()
-ylim = ax3.get_ylim()
-zlim = ax3.get_zlim()
-cset = ax3.contour(xx, yy, Z, zdir='z', offset=zlim[0], cmap=plt.cm.gist_gray)
-cset = ax3.contour(xx, yy, Z, zdir='x', offset=xlim[0], cmap=plt.cm.gist_gray)
-cset = ax3.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.gist_gray)
-
-ax3.set_xlabel('Gap ratio', fontsize=axis_font)
-ax3.set_ylabel('$R_y$', fontsize=axis_font)
-ax3.set_title('c) Time: GPC-SVR', fontsize=subt_font)
-
-fig.tight_layout()
-
-#################################
-xvar = 'gapRatio'
-yvar = 'RI'
-
-X_plot = mdl.make_2D_plotting_space(100)
-
-grid_downtime = predict_DV(X_plot,
-                          mdl.gpc,
-                          mdl_time_hit.kr,
-                          mdl_time_miss.kr,
-                          outcome=time_var)
-
-xx = mdl.xx
-yy = mdl.yy
-zz = np.array(grid_downtime)/4764.71
-Z = zz.reshape(xx.shape)
-
-ax4=fig.add_subplot(2, 2, 4, projection='3d')
-surf = ax4.plot_surface(xx, yy, Z, cmap=plt.cm.gist_gray,
-                       linewidth=0, antialiased=False, alpha=0.4)
-
-ax4.scatter(df[xvar], df[yvar], df[time_var]/4764.71, color='white',
-           edgecolors='k', alpha = 0.5)
-
-xlim = ax4.get_xlim()
-ylim = ax4.get_ylim()
-zlim = ax4.get_zlim()
-cset = ax4.contour(xx, yy, Z, zdir='z', offset=zlim[0], cmap=plt.cm.gist_gray)
-cset = ax4.contour(xx, yy, Z, zdir='x', offset=xlim[0], cmap=plt.cm.gist_gray)
-cset = ax4.contour(xx, yy, Z, zdir='y', offset=ylim[1], cmap=plt.cm.gist_gray)
-
-ax4.set_xlabel('Gap ratio', fontsize=axis_font)
-ax4.set_ylabel('$R_y$', fontsize=axis_font)
-ax4.set_zlabel('% of replacement time', fontsize=axis_font)
-ax4.set_title('d) Time: GPC-KR', fontsize=subt_font)
-
 #%% read out results
-
 
 design_repair_cost = df_val['cost_mean'].mean()
 design_repair_cost_med = df_val['cost_50%'].mean()
@@ -592,3 +519,357 @@ print('Estimated collapse frequency: ',
       f'{baseline_collapse_risk:.2%}')
 print('Estimated replacement frequency: ',
       f'{baseline_replacement_risk:.2%}')
+
+#%% fit collapse models (OR)
+
+
+mdl_drift_hit = Prediction(df_hit)
+mdl_drift_hit.set_outcome('max_drift')
+mdl_drift_hit.test_train_split(0.2)
+
+mdl_drift_miss = Prediction(df_miss)
+mdl_drift_miss.set_outcome('max_drift')
+mdl_drift_miss.test_train_split(0.2)
+
+# fit impacted set
+mdl_drift_hit.fit_ols_ridge()
+        
+# fit no impact set
+mdl_drift_miss.fit_ols_ridge()
+
+#%% Drift model (GP-OR)
+plt.close('all')
+X_plot = mdl.make_2D_plotting_space(100)
+plt_density = 200
+grid_drift = predict_DV(X_plot,
+                        mdl.gpc,
+                        mdl_drift_hit.o_ridge,
+                        mdl_drift_miss.o_ridge,
+                                  outcome='max_drift')
+
+xx = mdl.xx
+yy = mdl.yy
+Z = np.array(grid_drift)
+Z = Z.reshape(xx.shape)
+
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+# Plot the surface.
+surf = ax.plot_surface(xx, yy, Z, cmap=plt.cm.Blues,
+                       linewidth=0, antialiased=False,
+                       alpha=0.7, vmin=0, vmax=0.075)
+
+ax.scatter(df['gapRatio'][:plt_density], df['RI'][:plt_density], 
+           df['max_drift'][:plt_density],
+           edgecolors='k')
+
+ax.set_xlabel('Gap ratio')
+ax.set_ylabel('Ry')
+ax.set_zlabel('PID (%)')
+ax.set_title('Peak interstory drift prediction (GPC-impact, OR-drift)')
+fig.tight_layout()
+plt.show()
+
+# drift -> collapse risk
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+
+Z = ln_dist.cdf(np.array(grid_drift))
+Z = Z.reshape(xx.shape)
+
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+# Plot the surface.
+surf = ax.plot_surface(xx, yy, Z, cmap=plt.cm.Blues,
+                       linewidth=0, antialiased=False,
+                       alpha=0.7, vmin=-0.1, vmax=0.5)
+
+ax.scatter(df['gapRatio'][:plt_density], df['RI'][:plt_density], 
+           df['collapse_freq'][:plt_density],
+           edgecolors='k')
+
+ax.set_xlabel('Gap ratio')
+ax.set_ylabel('Ry')
+ax.set_zlabel('Collapse risk')
+ax.set_zlim([0, 1.0])
+ax.set_title('Collapse risk prediction, LN transformed from drift (GPC-OR)')
+fig.tight_layout()
+plt.show()
+
+#%% dirty contours
+
+plt.close('all')
+import numpy as np
+# x is gap, y is Ry
+x_var = 'gapRatio'
+y_var = 'RI'
+third_var = 'Tm'
+fourth_var = 'zetaM'
+x_min = 0.3
+x_max = 2.0
+y_min = 0.5
+y_max = 2.0
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5])
+
+res = 100
+
+xx, yy = np.meshgrid(np.linspace(x_min,
+                                 x_max,
+                                 res),
+                     np.linspace(y_min,
+                                 y_max,
+                                 res))
+
+X_pl = pd.DataFrame({x_var:xx.ravel(),
+                     y_var:yy.ravel(),
+                     third_var:np.repeat(2.5,
+                                         res*res),
+                     fourth_var:np.repeat(0.15, 
+                                          res*res)})
+
+X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
+
+grid_drift = predict_DV(X_plot,
+                        mdl.gpc,
+                        mdl_drift_hit.o_ridge,
+                        mdl_drift_miss.o_ridge,
+                                  outcome='max_drift')
+
+
+# drift -> collapse risk
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+
+Z = ln_dist.cdf(np.array(grid_drift))
+Z = Z.reshape(xx.shape)
+
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(14, 4.5))
+plt.setp((ax1, ax2, ax3), xticks=np.arange(0.5, 4.0, step=0.5))
+
+cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+                 levels=lvls)
+
+from scipy.interpolate import RegularGridInterpolator
+RyList = [1.0, 2.0]
+for j in range(len(RyList)):
+    RyTest = RyList[j]
+    lpBox = Z
+    xq = np.linspace(0.3, 1.8, 200)
+    
+    interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = RyTest
+    lq = interp(pts)
+    probDes = 0.1
+    theGapIdx = np.argmin(abs(lq - probDes))
+    theGap = xq[theGapIdx]
+    ax1.axvline(theGap)
+    ax1.text(theGap+0.05, 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90)
+
+df_sc = df[(df['Tm']<=2.65) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
+
+ax1.scatter(df_sc[x_var],
+            df_sc[y_var],
+            c=df_sc['collapse_probs'], cmap='Blues',
+            s=30, edgecolors='k')
+
+ax1.clabel(cs, fontsize=label_size)
+ax1.set_xlim([0.3, 2.0])
+
+
+ax1.grid(visible=True)
+ax1.set_title(r'$T_M = 2.00$ s, $\zeta_M = 0.15$', fontsize=subt_font)
+ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+#####
+x_var = 'gapRatio'
+y_var = 'RI'
+third_var = 'Tm'
+fourth_var = 'zetaM'
+x_min = 0.3
+x_max = 2.0
+y_min = 0.5
+y_max = 2.0
+
+res = 100
+
+xx, yy = np.meshgrid(np.linspace(x_min,
+                                 x_max,
+                                 res),
+                     np.linspace(y_min,
+                                 y_max,
+                                 res))
+
+X_pl = pd.DataFrame({x_var:xx.ravel(),
+                     y_var:yy.ravel(),
+                     third_var:np.repeat(3.25,
+                                         res*res),
+                     fourth_var:np.repeat(0.15, 
+                                          res*res)})
+
+X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
+
+grid_drift = predict_DV(X_plot,
+                        mdl.gpc,
+                        mdl_drift_hit.o_ridge,
+                        mdl_drift_miss.o_ridge,
+                                  outcome='max_drift')
+
+
+# drift -> collapse risk
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+
+Z = ln_dist.cdf(np.array(grid_drift))
+Z = Z.reshape(xx.shape)
+
+cs = ax2.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+                 levels=lvls)
+
+from scipy.interpolate import RegularGridInterpolator
+RyList = [1.0, 2.0]
+for j in range(len(RyList)):
+    RyTest = RyList[j]
+    lpBox = Z
+    xq = np.linspace(0.3, 1.8, 200)
+    
+    interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = RyTest
+    lq = interp(pts)
+    probDes = 0.1
+    theGapIdx = np.argmin(abs(lq - probDes))
+    theGap = xq[theGapIdx]
+    ax2.axvline(theGap)
+    ax2.text(theGap+0.05, 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90)
+    
+ax2.clabel(cs, fontsize=label_size)
+ax2.set_xlim([0.3, 2.0])
+
+df_sc = df[(df['Tm']<=3.4) & (df['Tm']>=3.1) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
+
+ax2.scatter(df_sc[x_var],
+            df_sc[y_var],
+            c=df_sc['collapse_probs'], cmap='Blues',
+            s=30, edgecolors='k')
+
+ax2.grid(visible=True)
+ax2.set_title(r'$T_M = 3.25$ s, $\zeta_M = 0.15$', fontsize=subt_font)
+ax2.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
+#####
+x_var = 'gapRatio'
+y_var = 'RI'
+third_var = 'Tm'
+fourth_var = 'zetaM'
+x_min = 0.3
+x_max = 2.0
+y_min = 0.5
+y_max = 2.0
+
+res = 100
+
+xx, yy = np.meshgrid(np.linspace(x_min,
+                                 x_max,
+                                 res),
+                     np.linspace(y_min,
+                                 y_max,
+                                 res))
+
+X_pl = pd.DataFrame({x_var:xx.ravel(),
+                     y_var:yy.ravel(),
+                     third_var:np.repeat(4.0,
+                                         res*res),
+                     fourth_var:np.repeat(0.15, 
+                                          res*res)})
+
+X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
+
+grid_drift = predict_DV(X_plot,
+                        mdl.gpc,
+                        mdl_drift_hit.o_ridge,
+                        mdl_drift_miss.o_ridge,
+                                  outcome='max_drift')
+
+
+# drift -> collapse risk
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+
+Z = ln_dist.cdf(np.array(grid_drift))
+Z = Z.reshape(xx.shape)
+
+cs = ax3.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+                 levels=lvls)
+
+from scipy.interpolate import RegularGridInterpolator
+RyList = [0.5, 1.0, 2.0]
+for j in range(len(RyList)):
+    RyTest = RyList[j]
+    lpBox = Z
+    xq = np.linspace(0.3, 1.8, 200)
+    
+    interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = RyTest
+    lq = interp(pts)
+    probDes = 0.1
+    theGapIdx = np.argmin(abs(lq - probDes))
+    theGap = xq[theGapIdx]
+    ax3.axvline(theGap)
+    ax3.text(theGap+0.05, 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90)
+
+ax3.clabel(cs, fontsize=label_size)
+ax3.set_xlim([0.3, 2.0])
+
+df_sc = df[(df['Tm']>=3.80) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
+
+sc = ax3.scatter(df_sc[x_var],
+            df_sc[y_var],
+            c=df_sc['collapse_probs'], cmap='Blues',
+            s=30, edgecolors='k')
+
+ax3.grid(visible=True)
+ax3.set_title(r'$T_M = 4.00$ s, $\zeta_M = 0.15$', fontsize=subt_font)
+ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+handles, labels = sc.legend_elements(prop="colors", alpha=0.6)
+legend2 = ax3.legend(handles, labels, loc="lower right", title="% collapse")
+
+fig.tight_layout()
+
+#%%
+
+# TODO: import main run data and sort in order to facilitate upfront costs
