@@ -74,11 +74,12 @@ label_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-bins = pd.IntervalIndex.from_tuples([(0, 0.66), (0.66, 1.0), (1.0, 1.5), (1.5, 4.0)])
+bins = pd.IntervalIndex.from_tuples([(0, 0.5), (0.5, 1.0), (1.0, 1.5), (1.5, 4.0)])
 labels=['tiny', 'small', 'okay', 'large']
 df['gap_bin'] = pd.cut(df['gapRatio'], bins=bins, labels=labels)
-df.groupby(['gap_bin']).size()
 df_count = df.groupby('gap_bin')['max_drift'].apply(lambda x: (x>=0.10).sum()).reset_index(name='count')
+a = df.groupby(['gap_bin']).size()
+df_count['percent'] = df_count['count']/a
 
 plt.close('all')
 fig, ax1 = plt.subplots(1, 1, figsize=(10,6))
@@ -89,7 +90,7 @@ sns.boxplot(y="gap_bin", x= "max_drift", data=df,  showfliers=False,
             boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
             width=0.6, ax=ax1)
 ax1.set_ylabel('Gap ratio range', fontsize=axis_font)
-ax1.set_xlabel('Peak interstory drift', fontsize=axis_font)
+ax1.set_xlabel('Peak interstory drift (PID)', fontsize=axis_font)
 plt.xlim([0.0, 0.10])
 fig.tight_layout()
 
@@ -630,7 +631,7 @@ X_pl = pd.DataFrame({x_var:xx.ravel(),
                      y_var:yy.ravel(),
                      third_var:np.repeat(2.5,
                                          res*res),
-                     fourth_var:np.repeat(0.15, 
+                     fourth_var:np.repeat(0.15,
                                           res*res)})
 
 X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
@@ -662,6 +663,7 @@ plt.setp((ax1, ax2, ax3), xticks=np.arange(0.5, 4.0, step=0.5))
 cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
                  levels=lvls)
 
+probDes = 0.1
 from scipy.interpolate import RegularGridInterpolator
 RyList = [1.0, 2.0]
 for j in range(len(RyList)):
@@ -674,11 +676,13 @@ for j in range(len(RyList)):
     pts[:,1] = xq
     pts[:,0] = RyTest
     lq = interp(pts)
-    probDes = 0.1
+    
     theGapIdx = np.argmin(abs(lq - probDes))
     theGap = xq[theGapIdx]
-    ax1.axvline(theGap)
+    ax1.vlines(x=theGap, ymin=0.49, ymax=RyTest, color='goldenrod')
+    ax1.hlines(y=RyTest, xmin=0.3, xmax=theGap, color='goldenrod')
     ax1.text(theGap+0.05, 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90)
+    ax1.plot([theGap], [RyTest], marker='*', markersize=15, color="goldenrod")
 
 df_sc = df[(df['Tm']<=2.65) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
 
@@ -689,12 +693,14 @@ ax1.scatter(df_sc[x_var],
 
 ax1.clabel(cs, fontsize=label_size)
 ax1.set_xlim([0.3, 2.0])
+ax1.set_ylim([0.49, 2.01])
 
 
 ax1.grid(visible=True)
 ax1.set_title(r'$T_M = 2.00$ s, $\zeta_M = 0.15$', fontsize=subt_font)
 ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+
 
 #####
 x_var = 'gapRatio'
@@ -719,7 +725,7 @@ X_pl = pd.DataFrame({x_var:xx.ravel(),
                      y_var:yy.ravel(),
                      third_var:np.repeat(3.25,
                                          res*res),
-                     fourth_var:np.repeat(0.15, 
+                     fourth_var:np.repeat(0.15,
                                           res*res)})
 
 X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
@@ -760,14 +766,16 @@ for j in range(len(RyList)):
     pts[:,1] = xq
     pts[:,0] = RyTest
     lq = interp(pts)
-    probDes = 0.1
     theGapIdx = np.argmin(abs(lq - probDes))
     theGap = xq[theGapIdx]
-    ax2.axvline(theGap)
+    ax2.vlines(x=theGap, ymin=0.49, ymax=RyTest, color='goldenrod')
+    ax2.hlines(y=RyTest, xmin=0.3, xmax=theGap, color='goldenrod')
     ax2.text(theGap+0.05, 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90)
+    ax2.plot([theGap], [RyTest], marker='*', markersize=15, color="goldenrod")
     
 ax2.clabel(cs, fontsize=label_size)
 ax2.set_xlim([0.3, 2.0])
+ax2.set_ylim([0.49, 2.01])
 
 df_sc = df[(df['Tm']<=3.4) & (df['Tm']>=3.1) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
 
@@ -803,7 +811,7 @@ X_pl = pd.DataFrame({x_var:xx.ravel(),
                      y_var:yy.ravel(),
                      third_var:np.repeat(4.0,
                                          res*res),
-                     fourth_var:np.repeat(0.15, 
+                     fourth_var:np.repeat(0.15,
                                           res*res)})
 
 X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
@@ -844,14 +852,16 @@ for j in range(len(RyList)):
     pts[:,1] = xq
     pts[:,0] = RyTest
     lq = interp(pts)
-    probDes = 0.1
     theGapIdx = np.argmin(abs(lq - probDes))
     theGap = xq[theGapIdx]
-    ax3.axvline(theGap)
+    ax3.vlines(x=theGap, ymin=0.49, ymax=RyTest, color='goldenrod')
+    ax3.hlines(y=RyTest, xmin=0.3, xmax=theGap, color='goldenrod')
     ax3.text(theGap+0.05, 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90)
+    ax3.plot([theGap], [RyTest], marker='*', markersize=15, color="goldenrod")
 
 ax3.clabel(cs, fontsize=label_size)
 ax3.set_xlim([0.3, 2.0])
+ax3.set_ylim([0.49, 2.01])
 
 df_sc = df[(df['Tm']>=3.80) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
 
@@ -861,8 +871,8 @@ sc = ax3.scatter(df_sc[x_var],
             s=30, edgecolors='k')
 
 ax3.grid(visible=True)
-ax3.set_title(r'$T_M = 4.00$ s, $\zeta_M = 0.15$', fontsize=subt_font)
-ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax3.set_title(r'$T_M = 4.0$ s, $\zeta_M = 0.15$', fontsize=subt_font)
+ax3.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 handles, labels = sc.legend_elements(prop="colors", alpha=0.6)

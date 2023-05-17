@@ -1115,7 +1115,7 @@ ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=cost_thresh]
 dt_thresh = 1e6
 ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh]
 
-risk_thresh = 0.01
+risk_thresh = 0.1
 ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
                       risk_thresh]
 
