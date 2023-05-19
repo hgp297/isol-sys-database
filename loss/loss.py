@@ -450,6 +450,7 @@ def estimate_damage(raw_demands, run_data, cmp_marginals, mode='generate'):
     # use PACT
     # assume $250/sf
     # assume 40% of replacement cost is labor, $680/worker-day for SF Bay Area
+    # TODO: change this to a custom replacement time (e.g. 1 year?)
     replacement_cost = 250.0*90.0*90.0*4
     replacement_time = replacement_cost*0.4/680.0
     additional_consequences.loc[('replacement', 'Cost')] = [0, '1 EA',

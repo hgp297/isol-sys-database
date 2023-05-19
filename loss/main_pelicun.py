@@ -187,6 +187,7 @@ def run_pelicun(database_path, results_path,
 #                             database_file='run_data.csv', mode='generate')
 
 #%% validation run
+
 import pandas as pd
 # data_path = './data/tfp_mf_val/'
 # res_path = './results/tfp_mf_val/validation/'
@@ -210,6 +211,8 @@ baseline_input = pd.read_csv(data_path+db_file)
 baseline_data = run_pelicun(data_path, res_path, 
                             database_file=db_file, 
                             mode='generate')
+
+#%% validation run (full fragility)
 
 # below is taking the mean of median results (over 59 runs)
 baseline_data = baseline_data.astype('float')
