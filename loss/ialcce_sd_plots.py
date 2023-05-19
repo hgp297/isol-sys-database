@@ -169,7 +169,7 @@ a = df.groupby(['gap_bin']).size()
 df_count['percent'] = df_count['count']/a
 
 plt.close('all')
-fig, ax1 = plt.subplots(1, 1, figsize=(10,6))
+fig, ax1 = plt.subplots(1, 1, figsize=(9,6))
 import seaborn as sns
 sns.stripplot(data=df, x="max_drift", y="gap_bin", orient="h",
               hue='RI', size=10,
@@ -229,32 +229,60 @@ ax.plot([lower], [0.16], marker='*', markersize=15, color="red")
 ax.set_title('Collapse fragility definition', fontsize=axis_font)
 ax.grid()
 #%% overall data distribution
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 20
-subt_font = 18
+subt_font = 14
+title_font=22
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
 
 plt.close('all')
-import seaborn as sns
-with sns.plotting_context(rc={"legend.fontsize":axis_font}):
-    rel = sns.relplot(data=df, x="gapRatio", y="RI",
-                  hue='Tm', size='zetaM',
-                  legend='brief', palette='Blues')
 
-# plt.setp(ax1.get_legend().get_texts(), fontsize=subt_font) # for legend text
-# plt.setp(ax1.get_legend().get_title(), fontsize=axis_font) # for legend title
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
+
+sns.scatterplot(data=df, x="gapRatio", y="RI",
+              hue='Tm', size='zetaM',
+              legend='brief', palette='Blues',
+              ax=ax1)
+
+legend_handle = ax1.legend(fontsize=subt_font, loc='center right',
+                          title_fontsize=subt_font)
+legend_handle.get_texts()[0].set_text(r'$T_M$')
+legend_handle.get_texts()[6].set_text(r'$\zeta_M$')
+ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax1.set_title(r'Input distribution', fontsize=title_font)
+ax1.set_xlim([0.3, 2.5])
+ax1.grid()
+
+# plt.close('all')
+# import seaborn as sns
+# with sns.plotting_context(rc={"legend.fontsize":axis_font}):
+#     rel = sns.relplot(data=df, x="gapRatio", y="RI",
+#                   hue='Tm', size='zetaM',
+#                   legend='brief', palette='Blues')
+
+# # plt.setp(ax1.get_legend().get_texts(), fontsize=subt_font) # for legend text
+# # plt.setp(ax1.get_legend().get_title(), fontsize=axis_font) # for legend title
 
 
-for ax in rel.axes.flat:
-     ax.set_xlabel("Gap ratio", visible=True, fontsize=axis_font)
-     ax.set_ylabel(r'$R_y$', visible=True, fontsize=axis_font)
+# for ax in rel.axes.flat:
+#      ax.set_xlabel("Gap ratio", visible=True, fontsize=axis_font)
+#      ax.set_ylabel(r'$R_y$', visible=True, fontsize=axis_font)
      
-(rel.tight_layout(w_pad=0))
+#      legend_handle = ax.legend(fontsize=subt_font, loc='center right',
+#                                 title_fontsize=subt_font)
+# (rel.tight_layout(w_pad=0))
 
 #%% loss data
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 20
-subt_font = 12
+subt_font = 14
 title_font=22
 import matplotlib as mpl
 label_size = 16
@@ -264,21 +292,27 @@ mpl.rcParams['ytick.labelsize'] = label_size
 plt.close('all')
 # make grid and plot classification predictions
 
-fig = plt.figure(figsize=(13, 8))
+fig = plt.figure(figsize=(13, 10))
 ax1 = fig.add_subplot(2, 2, 1)
 
 sc = sns.scatterplot(data=df,
                      x='gapRatio', y='RI',
                      hue='cost_50%', size='Tm',
-                     ax=ax1, legend='brief')
+                     ax=ax1)
 
-legend_handles, _= ax1.get_legend_handles_labels()
-ax1.legend(fontsize=subt_font)
+# legend_handles, _= ax1.get_legend_handles_labels()
+# ax1.legend(fontsize=subt_font)
 
 ax1.set_title('Median repair cost', fontsize=title_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax1.set_xlabel(None)
 ax1.grid()
+
+legend_handle = ax1.legend(fontsize=subt_font, loc='center right',
+                           title_fontsize=subt_font)
+
+legend_handle.get_texts()[0].set_text('Cost ($M)')
+legend_handle.get_texts()[6].set_text(r'$T_M$')
 
 ax2 = fig.add_subplot(2, 2, 2)
 
@@ -292,6 +326,12 @@ ax2.set_xlabel(None)
 ax2.set_ylabel(None)
 ax2.grid()
 
+legend_handle = ax2.legend(fontsize=subt_font, loc='center right',
+                           title_fontsize=subt_font)
+
+legend_handle.get_texts()[0].set_text('Days')
+legend_handle.get_texts()[5].set_text(r'$T_M$')
+
 ax3 = fig.add_subplot(2, 2, 3)
 
 sc = sns.scatterplot(data=df,
@@ -304,6 +344,12 @@ ax3.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax3.grid()
 
+legend_handle = ax3.legend(fontsize=subt_font, loc='center right',
+                           title_fontsize=subt_font)
+
+legend_handle.get_texts()[0].set_text('PID')
+legend_handle.get_texts()[6].set_text(r'$T_M$')
+
 ax4 = fig.add_subplot(2, 2, 4)
 
 sc = sns.scatterplot(data=df,
@@ -315,6 +361,12 @@ ax4.set_title('Collapse frequency', fontsize=title_font)
 ax4.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 ax4.set_ylabel(None)
 ax4.grid()
+
+legend_handle = ax4.legend(fontsize=subt_font, loc='center right',
+                           title_fontsize=subt_font)
+
+legend_handle.get_texts()[0].set_text('% collapse')
+legend_handle.get_texts()[7].set_text(r'$T_M$')
 
 fig.tight_layout()
 
@@ -1305,7 +1357,7 @@ ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 handles, labels = sc.legend_elements(prop="colors", alpha=0.6)
 legend2 = ax3.legend(handles, labels, loc="lower right", title="% collapse",
-                     fontsize=subt_font)
+                     fontsize=subt_font, title_fontsize=subt_font)
 
 fig.tight_layout()
 
@@ -1424,7 +1476,7 @@ ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 handles, labels = sc.legend_elements(prop="colors", alpha=0.6)
 legend2 = ax1.legend(handles, labels, loc="lower right", title="% collapse",
-                     fontsize=subt_font)
+                     fontsize=subt_font, title_fontsize=subt_font)
 
 ax1.contour(xx, yy, Z, levels = prob_list, colors=('red', 'brown', 'black'),
             linestyles=('-'),linewidths=(2,))
@@ -1484,7 +1536,7 @@ Z = zz.reshape(xx.shape)
 
 fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
 
-cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-20,
+cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-50,
                  levels=lvls)
 
 
@@ -1950,6 +2002,7 @@ gap_price_grid = np.zeros([4,4])
 Ry_price_grid = np.zeros([4,4])
 Tm_price_grid = np.zeros([4,4])
 zetaM_price_grid = np.zeros([4,4])
+moat_price_grid = np.zeros([4,4])
 
 percent_of_replacement = 1.0
 cost_thresh = percent_of_replacement*8.1e6
@@ -1959,13 +2012,13 @@ ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=cost_thresh]
 dt_thresh = 1e6
 ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh]
 
-risk_thresh = 0.025
-ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
-                      risk_thresh]
-
 # risk_thresh = 0.025
-# ok_risk = X_space.loc[space_drift['max_drift_pred']<=
+# ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
 #                       risk_thresh]
+
+risk_thresh = 0.025
+ok_risk = X_space.loc[space_drift['max_drift_pred']<=
+                      risk_thresh]
 
 X_design = X_space[np.logical_and.reduce((
         X_space.index.isin(ok_cost.index), 
@@ -1990,3 +2043,328 @@ for idx_l, land in enumerate(land_costs):
         Ry_price_grid[idx_l][idx_s] = best_design['RI']
         Tm_price_grid[idx_l][idx_s] = best_design['Tm']
         zetaM_price_grid[idx_l][idx_s] = best_design['zetaM']
+
+        from numpy import interp
+        # from ASCE Ch. 17, get damping multiplier
+        zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+        BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+        
+        B_m = interp(best_design['zetaM'], zetaRef, BmRef)
+        
+        # design displacement
+        g = 386.4
+        pi = 3.14159
+        moat_price_grid[idx_l][idx_s] = (g*1.017*best_design['Tm']/
+                                         (4*pi**2*B_m)*best_design['gapRatio'])
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+steel_rows = ['$1.00', '$2.00', '$3.00', '$4.00']
+land_cols=['$200', '$300', '$400', '$500', ]
+# print(gap_price_grid)
+# print(Ry_price_grid)
+# print(Tm_price_grid)
+# print(zetaM_price_grid)
+
+gap_df = pd.DataFrame(data=gap_price_grid,
+                      index=land_cols,
+                      columns=steel_rows)
+
+Ry_df = pd.DataFrame(data=Ry_price_grid,
+                      index=land_cols,
+                      columns=steel_rows)
+
+Tm_df = pd.DataFrame(data=Tm_price_grid,
+                      index=land_cols,
+                      columns=steel_rows)
+
+moat_df = pd.DataFrame(data=moat_price_grid,
+                      index=land_cols,
+                      columns=steel_rows)
+
+# Draw a heatmap with the numeric values in each cell
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.close('all')
+fig, axs = plt.subplots(2, 2, figsize=(13, 9))
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[1][0]
+ax4 = axs[1][1]
+sns.heatmap(gap_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
+            linewidths=.5, ax=ax1)
+ax1.set_ylabel('Land cost per sq ft.', fontsize=axis_font)
+ax1.set_title('Gap ratio', fontsize=subt_font)
+
+sns.heatmap(Ry_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
+            linewidths=.5, ax=ax2, yticklabels=False)
+ax2.set_title(r'$R_y$', fontsize=subt_font)
+
+sns.heatmap(Tm_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
+            linewidths=.5, ax=ax3, yticklabels=False)
+ax3.set_xlabel('Steel cost per lb.', fontsize=axis_font)
+ax3.set_title(r'$T_M$', fontsize=subt_font)
+ax3.set_ylabel('Land cost per sq ft.', fontsize=axis_font)
+fig.tight_layout()
+
+sns.heatmap(moat_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
+            linewidths=.5, ax=ax4, yticklabels=False)
+ax4.set_xlabel('Steel cost per lb.', fontsize=axis_font)
+ax4.set_title(r'Moat gap', fontsize=subt_font)
+fig.tight_layout()
+
+#%% only 3 design (downtime plotting)
+
+res = 50
+
+xx, yy, uu = np.meshgrid(np.linspace(0.5, 2.0,
+                                         res),
+                             np.linspace(0.5, 2.0,
+                                         res),
+                             np.linspace(2.5, 4.0,
+                                         res))
+                             
+X_space = pd.DataFrame({'gapRatio':xx.ravel(),
+                      'RI':yy.ravel(),
+                      'Tm':uu.ravel(),
+                      'zetaM':np.repeat(0.2,res**3)})
+
+t0 = time.time()
+downtime_plot = predict_DV(X_space,
+                            mdl.gpc,
+                            mdl_time_hit.kr,
+                            mdl_time_miss.kr,
+                            outcome=time_var)
+tp = time.time() - t0
+print("GPC-KR downtime prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
+# choice O_ridge bc SVR seems to hang, and KR overestimates (may need CV)
+t0 = time.time()
+space_drift = predict_DV(X_space,
+                                      mdl.gpc,
+                                      mdl_drift_hit.o_ridge,
+                                      mdl_drift_miss.o_ridge,
+                                      outcome='max_drift')
+tp = time.time() - t0
+print("GPC-OR drift prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
+# Transform predicted drift into probability
+
+# drift -> collapse risk
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+
+space_collapse_risk = pd.DataFrame(ln_dist.cdf(space_drift),
+                                          columns=['collapse_risk_pred'])
+
+#%%
+
+plt.close('all')
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+# subset RI=2.0 in order to fit on 2d plot
+downtime_plot_Ry = downtime_plot[X_space['RI'] == 2.0]
+xx = np.array(X_space[X_space['RI'] == 2.0]['gapRatio']).reshape((50, 50))
+yy = np.array(X_space[X_space['RI'] == 2.0]['Tm']).reshape((50, 50))
+zz = np.array(downtime_plot_Ry)/50.0
+Z = zz.reshape((50, 50))
+
+
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
+
+lvls = np.array([7., 14., 21., 28., 56.])
+cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-50,
+                 levels=lvls)
+ax1.clabel(cs, fontsize=clabel_size)
+ax1.legend()
+
+steel_price = 2.00
+coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
+
+# <2 weeks for a team of 50
+dts = [7*50, 14*50., 28*50.]
+color_list = ['red', 'brown', 'black']
+for j, dt_thresh in enumerate(dts):
+    ok_time = X_space.loc[downtime_plot[time_var+'_pred']<=dt_thresh]
+    
+    X_design = X_space[X_space.index.isin(ok_time.index)]
+        
+    upfront_costs = calc_upfront_cost(X_design, coef_dict)
+    cheapest_design_idx = upfront_costs.idxmin()
+    design_upfront_cost = upfront_costs.min()
+    # least upfront cost of the viable designs
+    best_design = X_design.loc[cheapest_design_idx]
+    design_downtime = space_downtime.iloc[cheapest_design_idx].item()
+    design_repair_cost = space_repair_cost.iloc[cheapest_design_idx].item()
+    design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
+    design_PID = space_drift.iloc[cheapest_design_idx].item()
+    
+    theGap = best_design['gapRatio']
+    theTm = best_design['Tm']
+    
+    ax1.vlines(x=theGap, ymin=2.5, ymax=theTm, color=color_list[j],
+                linewidth=2.0)
+    ax1.hlines(y=theTm, xmin=0.5, xmax=theGap, color=color_list[j],
+                linewidth=2.0)
+    ax1.text(theGap+0.02, 2.55, r'GR = '+f'{theGap:,.2f}'+r', $T_M=$'+f'{theTm:,.2f}', 
+             rotation=90, fontsize=subt_font, color=color_list[j])
+    ax1.plot([theGap], [theTm], marker='*', markersize=15, color=color_list[j])
+    
+    print(best_design)
+    print(design_upfront_cost/1e6)
+    
+ax1.plot(0.5, 2.5, color='lightblue', label=r'Downtime (days)')
+ax1.legend(fontsize=label_size, loc='best')
+
+ax1.grid(visible=True)
+ax1.set_title(r'$R_y \sim 2.0$, $\zeta_M = 0.20$', fontsize=title_font)
+ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+ax1.set_ylabel(r'$T_M$', fontsize=axis_font)
+
+
+#%% only 3 design (Tm, zeta)
+
+res = 50
+
+xx, yy, uu = np.meshgrid(np.linspace(0.5, 2.0,
+                                         res),
+                             np.linspace(2.5, 4.0,
+                                         res),
+                             np.linspace(0.1, 0.2,
+                                         res))
+                             
+X_space = pd.DataFrame({'gapRatio':xx.ravel(),
+                      'RI':np.repeat(2.0, res**3),
+                      'Tm':yy.ravel(),
+                      'zetaM':uu.ravel()})
+
+t0 = time.time()
+downtime_plot = predict_DV(X_space,
+                            mdl.gpc,
+                            mdl_time_hit.kr,
+                            mdl_time_miss.kr,
+                            outcome=time_var)
+tp = time.time() - t0
+print("GPC-KR downtime prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
+# choice O_ridge bc SVR seems to hang, and KR overestimates (may need CV)
+t0 = time.time()
+space_drift = predict_DV(X_space,
+                                      mdl.gpc,
+                                      mdl_drift_hit.o_ridge,
+                                      mdl_drift_miss.o_ridge,
+                                      outcome='max_drift')
+tp = time.time() - t0
+print("GPC-OR drift prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
+# Transform predicted drift into probability
+
+# drift -> collapse risk
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+
+space_collapse_risk = pd.DataFrame(ln_dist.cdf(space_drift),
+                                          columns=['collapse_risk_pred'])
+
+#%%
+plt.close('all')
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+Tms = np.unique(yy)
+zetas = np.unique(uu)
+Tm_fix = [Tms[0], Tms[15], Tms[33], Tms[-1]]
+zeta_fix = [zetas[0], zetas[25], zetas[-1]]
+Tm_zeta_grid = np.zeros([4,3])
+
+risk_thresh = 0.1
+for i, Tm_cur in enumerate(Tm_fix):
+    for j, zeta_cur in enumerate(zeta_fix):
+        # subset RI=2.0 in order to fit on 2d plot
+        subset_space = X_space[(X_space['Tm']==Tm_cur) &
+                               (X_space['zetaM']==zeta_cur)]
+        
+        ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
+                              risk_thresh]
+        
+        X_design = X_space[np.logical_and.reduce((
+                X_space.index.isin(ok_risk.index),
+                X_space.index.isin(subset_space.index)))]
+        
+        upfront_costs = calc_upfront_cost(X_design, coef_dict)
+        cheapest_design_idx = upfront_costs.idxmin()
+        design_upfront_cost = upfront_costs.min()
+        # least upfront cost of the viable designs
+        best_design = X_design.loc[cheapest_design_idx]
+        Tm_zeta_grid[i][j] = best_design['gapRatio']
+        
+Tm_cols = [2.5, 3.0, 3.5, 4.0]
+zeta_cols = [0.10, 0.15, 0.20]
+Tm_zeta_df = pd.DataFrame(data=Tm_zeta_grid,
+                          index=Tm_cols,
+                          columns=zeta_cols).unstack(level=0).reset_index()
+Tm_zeta_df.columns = ['zetaM', 'Tm', 'min_gap']
+
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
+
+sns.barplot(data=Tm_zeta_df, x="min_gap", y="Tm", hue="zetaM",
+            orient='h', palette='Blues',
+            ax=ax1)
+
+legend_handles, _= ax1.get_legend_handles_labels()
+ax1.legend(title=r'$\zeta_M$', fontsize=subt_font, loc='center right',
+           title_fontsize=subt_font)
+
+ax1.axvline(x=1.0, color='black', linestyle='--',
+            linewidth=2.0)
+ax1.text(0.95, 2.5, 'ASCE 7-22 minimum', 
+         rotation=90, fontsize=subt_font, color='black')
+
+ax1.set_xlim([0.6, 1.8])
+ax1.grid(visible=True)
+ax1.set_title(r'Targeting 10% collapse, $R_y=2.0$', fontsize=title_font)
+ax1.set_xlabel(r'Recommended gap', fontsize=axis_font)
+ax1.set_ylabel(r'$T_M$', fontsize=axis_font)
+for container in ax1.containers:
+    ax1.bar_label(container, fmt='%.2f', fontsize=14)
+#%%
+plt.close('all')

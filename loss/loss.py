@@ -160,6 +160,7 @@ def estimate_damage(raw_demands, run_data, cmp_marginals, mode='generate'):
     ###########################################################################
     # DEMANDS
     ###########################################################################
+    # TODO: change validation? can do either deterministic or distro
     if mode=='validation':
         PAL.demand.load_sample(raw_demands)
         PAL.demand.calibrate_model(

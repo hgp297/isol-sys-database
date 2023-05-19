@@ -56,10 +56,15 @@ def run_pelicun(database_path, results_path,
     col_list = []
     irr_list = []
     
+    if mode=='validation':
+        IDA_list = []
+    
     for run_idx in full_isolation_data.index:
         run_data = full_isolation_data.loc[run_idx]
         
         # TODO: fix EDPs for validation (make suitable for distribution per IDA level)
+        # determine what to do for validation
+        # validation is currently same as generate
         if mode=='generate':
             raw_demands = all_demands[['Units', str(run_idx)]]
             raw_demands.columns = ['Units', 'Value']
@@ -67,10 +72,10 @@ def run_pelicun(database_path, results_path,
             raw_demands.index.names = ['type','loc','dir']
         # if mode is validation, treat the dataset as a distribution
         elif mode=='validation':
-            # get the unit row as well
-            # attach the matching rows of levels as EDP columns
-            str_idx_lst = list(map(str, all_demands.index.tolist()))
-            raw_demands = all_demands[['Units', *str_idx_lst]].transpose()
+            raw_demands = all_demands[['Units', str(run_idx)]]
+            raw_demands.columns = ['Units', 'Value']
+            raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
+            raw_demands.index.names = ['type','loc','dir']
         
         print('========================================')
         print('Estimating loss for run index', run_idx)
@@ -79,7 +84,7 @@ def run_pelicun(database_path, results_path,
          collapse_rate, irr_rate] = estimate_damage(raw_demands,
                                                     run_data,
                                                     cmp_marginals,
-                                                    mode=mode)
+                                                    mode='generate')
                                                     
         loss_summary = agg.describe([0.1, 0.5, 0.9])
         cost = loss_summary['repair_cost']['50%']
@@ -103,6 +108,9 @@ def run_pelicun(database_path, results_path,
         loss_cmp_group.append(loss_cmp)
         col_list.append(collapse_rate)
         irr_list.append(irr_rate)
+        
+        if mode=='validation':
+            IDA_list.append(run_data['IDALevel'])
         
     loss_file = 'loss_estimate_data.csv'
     by_cmp_file = 'loss_estimate_by_groups.csv'
@@ -143,6 +151,9 @@ def run_pelicun(database_path, results_path,
     loss_df_data['replacement_freq'] = [x + y for x, y
                                         in zip(col_list, irr_list)]
     
+    if mode=='validation':
+        loss_df_data['IDA_level'] = IDA_list
+    
     
     # clean loss_by_group results
     group_df = pd.read_csv(results_path+by_cmp_file, header=0)
@@ -181,6 +192,10 @@ def run_pelicun(database_path, results_path,
 
 #%% main run (analyze training set)
 
+## temporary spyder debugger error hack
+import collections
+collections.Callable = collections.abc.Callable
+
 # data_path = './data/tfp_mf/'
 # res_path = './results/tfp_mf/'
 # training_data = run_pelicun(data_path, res_path, 
@@ -204,16 +219,43 @@ import pandas as pd
 
 #%% baseline validation
 
-data_path = './data/tfp_mf_val/'
-res_path = './results/tfp_mf_val/baseline/'
-db_file = 'addl_TFP_baseline.csv'
-baseline_input = pd.read_csv(data_path+db_file)
-baseline_data = run_pelicun(data_path, res_path, 
-                            database_file=db_file, 
-                            mode='generate')
+# data_path = './data/tfp_mf_val/'
+# res_path = './results/tfp_mf_val/baseline/'
+# db_file = 'addl_TFP_baseline.csv'
+# baseline_input = pd.read_csv(data_path+db_file)
+# baseline_data = run_pelicun(data_path, res_path, 
+#                             database_file=db_file, 
+#                             mode='generate')
 
+# # below is taking the mean of median results (over 59 runs)
+# baseline_data = baseline_data.astype('float')
+# baseline_summary = baseline_data.describe([0.5])
 #%% validation run (full fragility)
 
+# data_path = './data/tfp_mf_val/'
+# res_path = './results/tfp_mf_val/validation_full/'
+# db_file = 'addl_TFP_val_full.csv'
+# validation_input = pd.read_csv(data_path+db_file)
+# validation_data = run_pelicun(data_path, res_path, 
+#                               database_file=db_file, 
+#                               mode='validation')
+
+# # below is taking the mean of median results (over 59 runs)
+# validation_data = validation_data.astype('float')
+# val_summary = validation_data.describe([0.1, 0.5, 0.9])
+# val_input_summary = validation_input.describe([0.5])
+
+#%% baseline run (full fragility)
+
+data_path = './data/tfp_mf_val/'
+res_path = './results/tfp_mf_val/validation_full/'
+db_file = 'addl_TFP_baseline_full.csv'
+validation_input = pd.read_csv(data_path+db_file)
+validation_data = run_pelicun(data_path, res_path, 
+                              database_file=db_file, 
+                              mode='validation')
+
 # below is taking the mean of median results (over 59 runs)
-baseline_data = baseline_data.astype('float')
-baseline_summary = baseline_data.describe([0.5])
+validation_data = validation_data.astype('float')
+val_summary = validation_data.describe([0.1, 0.5, 0.9])
+val_input_summary = validation_input.describe([0.5])
