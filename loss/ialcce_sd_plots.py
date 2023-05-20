@@ -1434,7 +1434,7 @@ cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
 
 prob_list = [0.025, 0.05, 0.1]
 offset_list = [1.03, 0.93, 0.85]
-color_list = ['red', 'brown', 'black']
+color_list = ['red', 'red', 'red']
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
     lpBox = Z
@@ -1452,9 +1452,11 @@ for j, prob_des in enumerate(prob_list):
     
     ax1.vlines(x=theGap, ymin=0.49, ymax=1.0, color=color_list[j],
                linewidth=2.0)
+    ax1.hlines(y=1.0, xmin=0.5, xmax=theGap, color='red', linewidth=2.0)
     ax1.text(offset_list[j], 0.75, r'GR = '+f'{theGap:,.2f}', rotation=90,
              fontsize=subt_font, color=color_list[j])
     ax1.plot([theGap], [1.0], marker='*', markersize=15, color=color_list[j])
+
 
 df_sc = df[(df['Tm']>=2.8) & (df['Tm']<=3.2) & 
            (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
@@ -1478,8 +1480,8 @@ handles, labels = sc.legend_elements(prop="colors", alpha=0.6)
 legend2 = ax1.legend(handles, labels, loc="lower right", title="% collapse",
                      fontsize=subt_font, title_fontsize=subt_font)
 
-ax1.contour(xx, yy, Z, levels = prob_list, colors=('red', 'brown', 'black'),
-            linestyles=('-'),linewidths=(2,))
+# ax1.contour(xx, yy, Z, levels = prob_list, colors=('red', 'brown', 'black'),
+#             linestyles=('-'),linewidths=(2,))
 
 #%% dirty contours (downtime edition)
 
@@ -1939,58 +1941,7 @@ print('Predicted collapse risk: ',
 print('Predicted peak interstory drift: ',
       f'{design_PID:.2%}')
 
-#%% test designs
 
-plt.close('all')
-steel_price = 2.00
-coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
-
-percent_of_replacement = 1.0
-cost_thresh = percent_of_replacement*8.1e6
-ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=cost_thresh]
-
-# <2 weeks for a team of 50
-dt_thresh = 700
-ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh]
-
-risk_thresh = 0.05
-ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
-                      risk_thresh]
-
-
-X_design = X_space[np.logical_and.reduce((
-        X_space.index.isin(ok_cost.index), 
-        X_space.index.isin(ok_time.index),
-        X_space.index.isin(ok_risk.index)))]
-    
-# in the filter-design process, only one of cost/dt is likely to control
-    
-# TODO: more clever selection criteria (not necessarily the cheapest)
-
-# select best viable design
-upfront_costs = calc_upfront_cost(X_design, coef_dict)
-cheapest_design_idx = upfront_costs.idxmin()
-design_upfront_cost = upfront_costs.min()
-
-# least upfront cost of the viable designs
-best_design = X_design.loc[cheapest_design_idx]
-design_downtime = space_downtime.iloc[cheapest_design_idx].item()
-design_repair_cost = space_repair_cost.iloc[cheapest_design_idx].item()
-design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
-design_PID = space_drift.iloc[cheapest_design_idx].item()
-
-print(best_design)
-
-print('Upfront cost of selected design: ',
-      f'${design_upfront_cost:,.2f}')
-print('Predicted median repair cost: ',
-      f'${design_repair_cost:,.2f}')
-print('Predicted repair time (sequential): ',
-      f'{design_downtime:,.2f}', 'worker-days')
-print('Predicted collapse risk: ',
-      f'{design_collapse_risk:.2%}')
-print('Predicted peak interstory drift: ',
-      f'{design_PID:.2%}')
 
 
 #%% cost sens
@@ -2099,26 +2050,27 @@ ax1 = axs[0][0]
 ax2 = axs[0][1]
 ax3 = axs[1][0]
 ax4 = axs[1][1]
+
 sns.heatmap(gap_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
-            linewidths=.5, ax=ax1)
+            linewidths=.5, ax=ax1,  annot_kws={'size': 18})
 ax1.set_ylabel('Land cost per sq ft.', fontsize=axis_font)
 ax1.set_title('Gap ratio', fontsize=subt_font)
 
 sns.heatmap(Ry_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
-            linewidths=.5, ax=ax2, yticklabels=False)
+            linewidths=.5, ax=ax2, yticklabels=False,  annot_kws={'size': 18})
 ax2.set_title(r'$R_y$', fontsize=subt_font)
 
 sns.heatmap(Tm_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
-            linewidths=.5, ax=ax3, yticklabels=False)
+            linewidths=.5, ax=ax3,  annot_kws={'size': 18})
 ax3.set_xlabel('Steel cost per lb.', fontsize=axis_font)
-ax3.set_title(r'$T_M$', fontsize=subt_font)
+ax3.set_title(r'$T_M$ (s)', fontsize=subt_font)
 ax3.set_ylabel('Land cost per sq ft.', fontsize=axis_font)
 fig.tight_layout()
 
 sns.heatmap(moat_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
-            linewidths=.5, ax=ax4, yticklabels=False)
+            linewidths=.5, ax=ax4, yticklabels=False,  annot_kws={'size': 18})
 ax4.set_xlabel('Steel cost per lb.', fontsize=axis_font)
-ax4.set_title(r'Moat gap', fontsize=subt_font)
+ax4.set_title(r'Moat gap (in)', fontsize=subt_font)
 fig.tight_layout()
 
 #%% only 3 design (downtime plotting)
