@@ -232,23 +232,23 @@ import pandas as pd
 # baseline_summary = baseline_data.describe([0.5])
 #%% validation run (full fragility)
 
-# data_path = './data/tfp_mf_val/'
-# res_path = './results/tfp_mf_val/validation_full/'
-# db_file = 'addl_TFP_val_full.csv'
-# validation_input = pd.read_csv(data_path+db_file)
-# validation_data = run_pelicun(data_path, res_path, 
-#                               database_file=db_file, 
-#                               mode='validation')
+data_path = './data/tfp_mf_val/'
+res_path = './results/tfp_mf_val/validation_full/'
+db_file = 'addl_TFP_val_full.csv'
+validation_input = pd.read_csv(data_path+db_file)
+validation_data = run_pelicun(data_path, res_path, 
+                              database_file=db_file, 
+                              mode='validation')
 
-# # below is taking the mean of median results (over 59 runs)
-# validation_data = validation_data.astype('float')
-# val_summary = validation_data.describe([0.1, 0.5, 0.9])
-# val_input_summary = validation_input.describe([0.5])
+# below is taking the mean of median results (over 59 runs)
+validation_data = validation_data.astype('float')
+val_summary = validation_data.describe([0.1, 0.5, 0.9])
+val_input_summary = validation_input.describe([0.5])
 
 #%% baseline run (full fragility)
 
 data_path = './data/tfp_mf_val/'
-res_path = './results/tfp_mf_val/validation_full/'
+res_path = './results/tfp_mf_val/baseline_full/'
 db_file = 'addl_TFP_baseline_full.csv'
 validation_input = pd.read_csv(data_path+db_file)
 validation_data = run_pelicun(data_path, res_path, 
