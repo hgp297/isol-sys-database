@@ -2366,5 +2366,128 @@ ax1.set_xlabel(r'Recommended gap', fontsize=axis_font)
 ax1.set_ylabel(r'$T_M$', fontsize=axis_font)
 for container in ax1.containers:
     ax1.bar_label(container, fmt='%.2f', fontsize=14)
+    
+#%% full validation (IDA data)
+
+val_dir = './data/tfp_mf_val/'
+val_dir_loss = './results/tfp_mf_val/validation_full/'
+val_file = 'addl_TFP_val.csv'
+
+baseline_dir = './data/tfp_mf_val/'
+baseline_dir_loss = './results/tfp_mf_val/baseline_full/'
+baseline_file = 'addl_TFP_baseline.csv'
+
+val_loss = pd.read_csv(val_dir_loss+'loss_estimate_data.csv', index_col=None)
+base_loss = pd.read_csv(baseline_dir_loss+'loss_estimate_data.csv', index_col=None)
+
+val_run = pd.read_csv(val_dir+val_file, index_col=None)
+base_run = pd.read_csv(baseline_dir+baseline_file, index_col=None)
+cost_var = 'cost_50%'
+time_var = 'time_u_50%'
+
+
+df_val = pd.concat([val_run, val_loss], axis=1)
+df_val['max_drift'] = df_val[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+df_val['collapse_probs'] = ln_dist.cdf(np.array(df_val['max_drift']))
+df_val['repair_time'] = df[time_var]/50.0
+
+df_base = pd.concat([base_run, base_loss], axis=1)
+df_base['max_drift'] = df_base[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+df_base['collapse_probs'] = ln_dist.cdf(np.array(df_base['max_drift']))
+df_base['repair_time'] = df[time_var]/50.0
+
+ida_levels = [1.0, 1.5, 2.0]
+validation_collapse = np.zeros((3,))
+baseline_collapse = np.zeros((3,))
+validation_cost  = np.zeros((3,))
+baseline_cost = np.zeros((3,))
+validation_downtime = np.zeros((3,))
+baseline_downtime = np.zeros((3,))
+
+for i, lvl in enumerate(ida_levels):
+    val_ida = val_loss[val_loss['IDA_level']==lvl]
+    base_ida = base_loss[base_loss['IDA_level']==lvl]
+    
+    validation_collapse[i] = val_ida['collapse_freq'].mean()
+    validation_downtime[i] = val_ida[time_var].mean()
+    validation_cost[i] = val_ida[cost_var].mean()
+    
+    baseline_collapse[i] = base_ida['collapse_freq'].mean()
+    baseline_downtime[i] = base_ida[time_var].mean()
+    baseline_cost[i] = base_ida[cost_var].mean()
+    
+#%% fit validation curve (curve fit, not MLE)
+
+from scipy.stats import lognorm
+from scipy.optimize import curve_fit
+f = lambda x,mu,sigma: lognorm(mu,sigma).cdf(x)
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(13, 6))
+
+
+theta, beta = curve_fit(f,ida_levels,validation_collapse)[0]
+xx = np.arange(0.01, 4.0, 0.01)
+p = f(xx, theta, beta)
+
+MCE_level = float(p[xx==1.0])
+ax1=fig.add_subplot(1, 2, 1)
+ax1.plot(xx, p)
+ax1.axhline(0.025, linestyle='--', color='black')
+ax1.axvline(1.0, linestyle='--', color='black')
+ax1.text(2.0, 0.04, r'2.5% collapse risk',
+         fontsize=subt_font, color='black')
+ax1.text(0.1, MCE_level+0.01, f'{MCE_level:,.4f}',
+         fontsize=subt_font, color='blue')
+ax1.text(0.8, 0.7, r'$MCE_R$ level', rotation=90,
+         fontsize=subt_font, color='black')
+
+ax1.set_ylabel('Collapse probability', fontsize=axis_font)
+ax1.set_xlabel(r'$MCE_R$ level', fontsize=axis_font)
+ax1.set_title('Inverse design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [validation_collapse[i]], 
+             marker='x', markersize=15, color="red")
+ax1.grid()
+ax1.set_xlim([0, 4.0])
+ax1.set_ylim([0, 1.0])
+
+####
+theta, beta = curve_fit(f,ida_levels,baseline_collapse)[0]
+xx = np.arange(0.01, 4.0, 0.01)
+p = f(xx, theta, beta)
+
+MCE_level = float(p[xx==1.0])
+ax2=fig.add_subplot(1, 2, 2)
+ax2.plot(xx, p)
+ax2.axhline(0.1, linestyle='--', color='black')
+ax2.axvline(1.0, linestyle='--', color='black')
+ax2.text(0.8, 0.7, r'$MCE_R$ level', rotation=90,
+         fontsize=subt_font, color='black')
+ax2.text(2.0, 0.12, r'10% collapse risk',
+         fontsize=subt_font, color='black')
+ax2.text(MCE_level, 0.12, f'{MCE_level:,.4f}',
+         fontsize=subt_font, color='blue')
+
+ax2.set_ylabel('Collapse probability', fontsize=axis_font)
+ax2.set_xlabel(r'$MCE_R$ level', fontsize=axis_font)
+ax2.set_title('Baseline design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax2.plot([lvl], [baseline_collapse[i]], 
+             marker='x', markersize=15, color="red")
+ax2.grid()
+ax2.set_xlim([0, 4.0])
+ax2.set_ylim([0, 1.0])
+
+fig.tight_layout()
+
 #%%
 plt.close('all')
