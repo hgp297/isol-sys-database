@@ -27,7 +27,8 @@ class Prediction:
         self.y = self._raw_data[[outcome_var]]
         
     # if classification is done, plot the predictions
-    def plot_classification(self, mdl_clf, xvar='gapRatio', yvar='RI'):
+    def plot_classification(self, mdl_clf, xvar='gapRatio', yvar='RI', 
+                            contour_pr=0.5, contour_pred=0):
         import matplotlib.pyplot as plt
         
         xx = self.xx
@@ -55,10 +56,10 @@ class Prediction:
         plt_density = 100
         
         if 'gpc' in mdl_clf.named_steps.keys():
-            plt.contour(xx, yy, Z, levels=[0.5],
+            plt.contour(xx, yy, Z, levels=[contour_pr],
                         linewidths=2, linestyles="dashed")
         else:
-            plt.contour(xx, yy, Z, levels=[0],
+            plt.contour(xx, yy, Z, levels=[contour_pred],
                         linewidths=2, linestyles="dashed")
         plt.scatter(self.X_train[xvar][:plt_density],
                     self.X_train[yvar][:plt_density],
@@ -67,13 +68,13 @@ class Prediction:
         plt.xlabel(xvar)
         plt.ylabel(yvar)
         if 'svc' in mdl_clf.named_steps.keys():
-            plt.title('Impact classification (SVC)')
+            plt.title('Classification (SVC)')
         elif 'log_reg' in mdl_clf.named_steps.keys():
-            plt.title('Impact classification (logistic)')
+            plt.title('Classification (logistic)')
         elif 'log_reg_kernel' in mdl_clf.named_steps.keys():
-            plt.title('Impact classification (kernel logistic)')
+            plt.title('Classification (kernel logistic)')
         elif 'gpc' in mdl_clf.named_steps.keys():
-            plt.title('Impact classification (GP)')
+            plt.title('Classification (GP)')
         plt.show()
         
     # make a generalized 2D plotting grid, defaulted to gap and Ry
@@ -184,7 +185,7 @@ class Prediction:
 ###############################################################################       
     
     # Train GP classifier
-    def fit_gpc(self, kernel_name):
+    def fit_gpc(self, kernel_name, noisy=True):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.gaussian_process import GaussianProcessClassifier
@@ -206,7 +207,8 @@ class Prediction:
                     length_scale=[1.0, 1.0, 1.0, 1.0], 
                     nu=1.5)
 
-        kernel = kernel + krn.WhiteKernel(noise_level=0.5)
+        if noisy==True:
+            kernel = kernel + krn.WhiteKernel(noise_level=0.5)
         # pipeline to scale -> GPC
         gp_pipe = Pipeline([
                 ('scaler', StandardScaler()),
@@ -520,3 +522,84 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
         #                                   axis=0).sort_index(ascending=True)
         
         return(expected_DV)
+    
+#%% Calculate upfront cost of data
+# TODO: use PACT to get the replacement cost of these components
+# TODO: include the deckings/slabs for more realistic initial costs
+
+def get_steel_coefs(df, steel_per_unit=1.25, W=3037.5, Ws=2227.5):
+    col_str = df['col']
+    beam_str = df['beam']
+    rbeam_str = df['roofBeam']
+    
+    col_wt = np.array([float(member.split('X',1)[1]) for member in col_str])
+    beam_wt = np.array([float(member.split('X',1)[1]) for member in beam_str])
+    rbeam_wt = np.array([float(member.split('X',1)[1]) for member in rbeam_str])
+    
+    # find true steel costs
+    n_frames = 4
+    n_cols = 12
+    L_col = 39.0 #ft
+    
+    n_beam_per_frame = 6
+    L_beam = 30.0 #ft
+    
+    n_roof_per_frame = 3
+    L_roof = 30.0 #ft
+    
+    bldg_wt = ((L_col * n_cols)*col_wt +
+               (L_beam * n_beam_per_frame * n_frames)*beam_wt +
+               (L_roof * n_roof_per_frame * n_frames)*rbeam_wt
+               )
+    
+    steel_cost = steel_per_unit*bldg_wt
+    
+    # find design base shear as a feature
+    pi = 3.14159
+    g = 386.4
+    kM = (1/g)*(2*pi/df['Tm'])**2
+    S1 = 1.017
+    Dm = g*S1*df['Tm']/(4*pi**2*df['Bm'])
+    Vb = Dm * kM * Ws / 2
+    Vst = Vb*(Ws/W)**(1 - 2.5*df['zetaM'])
+    Vs = np.array(Vst/df['RI']).reshape(-1,1)
+    
+    # linear regress cost as f(base shear)
+    from sklearn.linear_model import LinearRegression
+    reg = LinearRegression()
+    reg.fit(X=Vs, y=steel_cost)
+    return({'coef':reg.coef_, 'intercept':reg.intercept_})
+    
+# TODO: add economy of scale for land
+# TODO: investigate upfront cost's influence by Tm
+def calc_upfront_cost(X_query, steel_coefs,
+                      land_cost_per_sqft=2837/(3.28**2),
+                      W=3037.5, Ws=2227.5):
+    
+    from scipy.interpolate import interp1d
+    zeta_ref = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    Bm_ref = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    interp_f = interp1d(zeta_ref, Bm_ref)
+    Bm = interp_f(X_query['zetaM'])
+    
+    # calculate moat gap
+    pi = 3.14159
+    g = 386.4
+    S1 = 1.017
+    SaTm = S1/X_query['Tm']
+    moat_gap = X_query['gapRatio'] * (g*(SaTm/Bm)*X_query['Tm']**2)/(4*pi**2)
+    
+    # calculate design base shear
+    kM = (1/g)*(2*pi/X_query['Tm'])**2
+    Dm = g*S1*X_query['Tm']/(4*pi**2*Bm)
+    Vb = Dm * kM * Ws / 2
+    Vst = Vb*(Ws/W)**(1 - 2.5*X_query['zetaM'])
+    Vs = np.array(Vst/X_query['RI']).reshape(-1,1)
+    
+    steel_cost = np.array(steel_coefs['intercept'] +
+                          steel_coefs['coef']*Vs).ravel()
+    # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
+    land_area = (90.0*12.0 + moat_gap)**2
+    land_cost = land_cost_per_sqft/144.0 * land_area
+    
+    return(steel_cost + land_cost)

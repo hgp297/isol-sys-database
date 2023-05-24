@@ -967,90 +967,11 @@ baseline_drift = predict_DV(X_baseline,
 baseline_collapse_risk = ln_dist.cdf(baseline_drift)
 
 
-#%% Calculate upfront cost of data
-# TODO: use PACT to get the replacement cost of these components
-# TODO: include the deckings/slabs for more realistic initial costs
 
-def get_steel_coefs(df, steel_per_unit=1.25, W=3037.5, Ws=2227.5):
-    col_str = df['col']
-    beam_str = df['beam']
-    rbeam_str = df['roofBeam']
-    
-    col_wt = np.array([float(member.split('X',1)[1]) for member in col_str])
-    beam_wt = np.array([float(member.split('X',1)[1]) for member in beam_str])
-    rbeam_wt = np.array([float(member.split('X',1)[1]) for member in rbeam_str])
-    
-    # find true steel costs
-    n_frames = 4
-    n_cols = 12
-    L_col = 39.0 #ft
-    
-    n_beam_per_frame = 6
-    L_beam = 30.0 #ft
-    
-    n_roof_per_frame = 3
-    L_roof = 30.0 #ft
-    
-    bldg_wt = ((L_col * n_cols)*col_wt +
-               (L_beam * n_beam_per_frame * n_frames)*beam_wt +
-               (L_roof * n_roof_per_frame * n_frames)*rbeam_wt
-               )
-    
-    steel_cost = steel_per_unit*bldg_wt
-    
-    # find design base shear as a feature
-    pi = 3.14159
-    g = 386.4
-    kM = (1/g)*(2*pi/df['Tm'])**2
-    S1 = 1.017
-    Dm = g*S1*df['Tm']/(4*pi**2*df['Bm'])
-    Vb = Dm * kM * Ws / 2
-    Vst = Vb*(Ws/W)**(1 - 2.5*df['zetaM'])
-    Vs = np.array(Vst/df['RI']).reshape(-1,1)
-    
-    # linear regress cost as f(base shear)
-    from sklearn.linear_model import LinearRegression
-    reg = LinearRegression()
-    reg.fit(X=Vs, y=steel_cost)
-    return({'coef':reg.coef_, 'intercept':reg.intercept_})
-    
-# TODO: add economy of scale for land
-    
-# TODO: investigate upfront cost's influence by Tm
-    
-def calc_upfront_cost(X_query, steel_coefs,
-                      land_cost_per_sqft=2837/(3.28**2),
-                      W=3037.5, Ws=2227.5):
-    
-    from scipy.interpolate import interp1d
-    zeta_ref = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
-    Bm_ref = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
-    interp_f = interp1d(zeta_ref, Bm_ref)
-    Bm = interp_f(X_query['zetaM'])
-    
-    # calculate moat gap
-    pi = 3.14159
-    g = 386.4
-    S1 = 1.017
-    SaTm = S1/X_query['Tm']
-    moat_gap = X_query['gapRatio'] * (g*(SaTm/Bm)*X_query['Tm']**2)/(4*pi**2)
-    
-    # calculate design base shear
-    kM = (1/g)*(2*pi/X_query['Tm'])**2
-    Dm = g*S1*X_query['Tm']/(4*pi**2*Bm)
-    Vb = Dm * kM * Ws / 2
-    Vst = Vb*(Ws/W)**(1 - 2.5*X_query['zetaM'])
-    Vs = np.array(Vst/X_query['RI']).reshape(-1,1)
-    
-    steel_cost = np.array(steel_coefs['intercept'] +
-                          steel_coefs['coef']*Vs).ravel()
-    # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
-    land_area = (90.0*12.0 + moat_gap)**2
-    land_cost = land_cost_per_sqft/144.0 * land_area
-    
-    return(steel_cost + land_cost)
 
 #%% refine space to meet repair cost and downtime requirements
+from pred import get_steel_coefs, calc_upfront_cost
+
 plt.close('all')
 steel_price = 2.00
 coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
