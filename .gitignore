@@ -1,3 +1,12 @@
+# past results
+./old/data/
+*/ground_motions/
+*/inputs/
+*/outputs/
+*.eps
+*.pptx
+*.xlsx
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
