@@ -84,7 +84,7 @@ mdl.test_train_split(0.2)
 
 #%% fit collapse (gp classification)
 
-mdl.fit_gpc(kernel_name='rbf_ard', noisy=False)
+mdl.fit_gpc(kernel_name='rbf_iso', noisy=True)
 
 # predict the entire dataset
 preds_col = mdl.gpc.predict(mdl.X)
@@ -118,11 +118,11 @@ import time
 res = 75
 
 # xx, yy, uu = np.meshgrid(np.linspace(0.5, 2.0,
-#                                          res),
-#                              np.linspace(0.1, 0.2,
-#                                          res),
-#                              np.linspace(2.5, 4.0,
-#                                          res))
+#                                           res),
+#                               np.linspace(0.1, 0.2,
+#                                           res),
+#                               np.linspace(2.5, 4.0,
+#                                           res))
                              
 # X_space = pd.DataFrame({'gapRatio':xx.ravel(),
 #                       'RI':np.repeat(2.0,res**3),
@@ -131,16 +131,16 @@ res = 75
 
 
 xx, yy, uu = np.meshgrid(np.linspace(0.5, 2.0,
-                                     res),
-                         np.linspace(0.5, 2.0,
-                                     res),
-                         np.linspace(2.5, 4.0,
-                                     res))
+                                      res),
+                          np.linspace(0.5, 2.0,
+                                      res),
+                          np.linspace(2.5, 4.0,
+                                      res))
                              
 X_space = pd.DataFrame({'gapRatio':xx.ravel(),
                       'RI':yy.ravel(),
                       'Tm':uu.ravel(),
-                      'zetaM':np.repeat(0.15,res**3)})
+                      'zetaM':np.repeat(0.2,res**3)})
 
 t0 = time.time()
 space_collapse = mdl.gpc.predict_proba(X_space)
