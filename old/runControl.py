@@ -139,6 +139,13 @@ def generate(num_points=400, inputDir='./inputs/bearingInput.csv'):
     return(resultsDf)
 
 # TODO: DoE runs
+def run_doe(probTarget, baseDatStr, batch_size=10, tol=0.05, maxIter=600):
+    databasePath = './data/'
+    databaseFile = baseDatStr
+
+    unfilteredData = pd.read_csv(databasePath+databaseFile)
+    
+    
 
 def validate(inputStr, IDALevel=[1.0, 1.5, 2.0], 
              gmPath='./ground_motions/PEERNGARecords_Unscaled/'):
