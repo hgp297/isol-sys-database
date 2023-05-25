@@ -25,10 +25,10 @@ ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 #%%
 
-database_path = './data/tfp_mf/'
+database_path = './data/tfp_mf_old/'
 database_file = 'run_data.csv'
 
-results_path = './results/tfp_mf/'
+results_path = './results/tfp_mf_old/'
 results_file = 'loss_estimate_data.csv'
 
 val_dir = './data/tfp_mf_val/'
@@ -60,12 +60,12 @@ df['repair_time'] = df[time_var]/50.0
 df_val = pd.concat([val_run, val_loss], axis=1)
 df_val['max_drift'] = df_val[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df_val['collapse_probs'] = ln_dist.cdf(np.array(df_val['max_drift']))
-df_val['repair_time'] = df[time_var]/50.0
+df_val['repair_time'] = df_val[time_var]/50.0
 
 df_base = pd.concat([base_run, base_loss], axis=1)
 df_base['max_drift'] = df_base[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df_base['collapse_probs'] = ln_dist.cdf(np.array(df_base['max_drift']))
-df_val['repair_time'] = df[time_var]/50.0
+df_base['repair_time'] = df_base[time_var]/50.0
 
 
 
