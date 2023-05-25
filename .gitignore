@@ -2,6 +2,7 @@
 ./old/data/
 */ground_motions/
 */inputs/
+*/output/
 */outputs/
 *.eps
 *.pptx
