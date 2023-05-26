@@ -40,7 +40,7 @@ def empty_directory(path):
 ############################################################################
 import pandas as pd
 
-def run_pushover(inputStr, pushoverStr):
+def run_pushover(inputStr, pushoverStr, max_drift_ratio=0.1):
     
     empty_directory('pushover')
     
@@ -206,7 +206,7 @@ def run_pushover(inputStr, pushoverStr):
     # ------------------------------
 
     # Set some parameters
-    maxU = 0.1*hsx.sum()  # Max displacement
+    maxU = max_drift_ratio*hsx.sum()  # Max displacement
     nSteps = int(round(maxU/dU))
     ok = 0
 
@@ -367,10 +367,11 @@ def plot_pushover(data_dir):
     plt.show()
     
     # base shear vs roof
+    bldg_drift = (story3Disp['isol1']-isolDisp['isol1'])/(39*12)
     plt.figure()
-    plt.plot(story3Disp['isol1']-isolDisp['isol1'], baseShear)
+    plt.plot(bldg_drift, baseShear)
     plt.title('Pushover curve (superstructure only)')
-    plt.xlabel('roof_disp - isol_disp (in)')
+    plt.xlabel('Building drift (roof - isolation)')
     plt.ylabel('Base shear')
     plt.grid(True)
     plt.show()
@@ -424,9 +425,9 @@ def plot_pushover(data_dir):
 # run_pushover(inputString, outputString)
 #%%
 
-inputString = './inputs/bearingInputVal10.csv'
-outputString = 'pushover_addl_10.csv'
-run_pushover(inputString, outputString)
+inputString = './inputs/bearingInputVal2_5.csv'
+outputString = 'pushover_addl_2_5.csv'
+run_pushover(inputString, outputString, max_drift_ratio=0.15)
 
 #%%
 plot_pushover('./outputs/pushover/')

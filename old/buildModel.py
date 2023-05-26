@@ -89,6 +89,10 @@ def provideSuperDamping(regTag, w2, zetai=0.05, zetaj=0.05, modes=[1,3]):
         5427, 5437, 5447,
         '-rayleigh', x[0], betaK, betaKInit, x[1])
 
+# TODO: RBS?
+# Current values: Evaluation of seismic collapse performance of steel special moment resisting
+# frames using FEMA P695 (ATC-63) methodology (Zareian et al., 2010)
+
 def getModifiedIK(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi
@@ -103,13 +107,12 @@ def getModifiedIK(shape, L):
     c1 = 25.4
     c2 = 6.895
 
-    My = Fy * Sx
+    My = Fy * Sx  *1.1
     thy = My/(6*Es*Iz/L)
     Ke = My/thy
     # consider using Lb = 0 for beams bc of slab?
     Lb = L
     kappa = 0.4
-    thu = 0.055
 
     if d > 21.0:
         Lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
@@ -131,7 +134,7 @@ def getModifiedIK(shape, L):
     # Lam = 1000
     # thp = 0.025
     # thpc = 0.3
-    thu = 0.4
+    thu = 0.2
 
     return(Ke, My, Lam, thp, thpc, kappa, thu)
 
@@ -446,6 +449,7 @@ def build():
 ################################################################################
 # define beams and columns
 ################################################################################
+    
 
     # Modified IK steel
     cIK = 1.0
@@ -473,7 +477,7 @@ def build():
     KeBeam = n*6.0*Es*IzBeam/(0.8*LBeam)
     KeRoofBeam = n*6.0*Es*IzRoofBeam/(0.8*LBeam)
 
-    McMy = 1.05 # ratio of capping moment to yield moment, Mc / My
+    McMy = 1.1 # ratio of capping moment to yield moment, Mc / My
     a_mem_col = (n+1.0)*(MyCol*(McMy-1.0))/(KeCol*thpCol)
     b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
 
@@ -522,6 +526,8 @@ def build():
                 '-doRayleigh', 1)           # Create zero length element (spring), rotations allowed about local z axis
         # ops.equalDOF(nodeI, nodeJ, 1, 2, 3, 4, 6)
 
+    # TODO: should we physically move these hinges?
+    
     # column springs
     # diaphragm level top
     colMem = 1
