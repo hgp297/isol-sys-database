@@ -450,9 +450,12 @@ def build():
     # Modified IK steel
     cIK = 1.0
     DIK = 1.0
-    (KeCol, MyCol, LamCol, thpCol, thpcCol, kappaCol, thuCol) = getModifiedIK(selectedCol, LCol)
-    (KeBeam, MyBeam, LamBeam, thpBeam, thpcBeam, kappaBeam, thuBeam) = getModifiedIK(selectedBeam, LBeam)
-    (KeRoofBeam, MyRoofBeam, LamRoofBeam, thpRoofBeam, thpcRoofBeam, kappaRoofBeam, thuRoofBeam) = getModifiedIK(selectedRoofBeam, LBeam)
+    (KeCol, MyCol, LamCol, 
+     thpCol, thpcCol, kappaCol, thuCol) = getModifiedIK(selectedCol, LCol)
+    (KeBeam, MyBeam, LamBeam, 
+     thpBeam, thpcBeam, kappaBeam, thuBeam) = getModifiedIK(selectedBeam, LBeam)
+    (KeRoofBeam, MyRoofBeam, LamRoofBeam, 
+     thpRoofBeam, thpcRoofBeam, kappaRoofBeam, thuRoofBeam) = getModifiedIK(selectedRoofBeam, LBeam)
 
     # calculate modified section properties to account for spring stiffness being in series with the elastic element stiffness
     # Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
@@ -477,17 +480,26 @@ def build():
     a_mem_beam = (n+1.0)*(MyCol*(McMy-1.0))/(KeBeam*thpBeam)
     b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
 
-    ops.uniaxialMaterial('Bilin', steelColTag, KeCol, b_col, b_col, MyCol, -MyCol, LamCol, 
-        0, 0, 0, cIK, cIK, cIK, cIK, thpCol, thpCol, thpcCol, thpcCol, 
-        kappaCol, kappaCol, thuCol, thuCol, DIK, DIK)
+    ops.uniaxialMaterial('Bilin', steelColTag, KeCol, b_col, b_col, 
+                         MyCol, -MyCol, LamCol, 
+                         0, 0, 0, 
+                         cIK, cIK, cIK, cIK, 
+                         thpCol, thpCol, thpcCol, thpcCol, 
+                         kappaCol, kappaCol, thuCol, thuCol, DIK, DIK)
 
-    ops.uniaxialMaterial('Bilin', steelBeamTag, KeBeam, b_beam, b_beam, MyBeam, -MyBeam, LamBeam, 
-        0, 0, 0, cIK, cIK, cIK, cIK, thpBeam, thpBeam, thpcBeam, thpcBeam, 
-        kappaBeam, kappaBeam, thuBeam, thuBeam, DIK, DIK)
+    ops.uniaxialMaterial('Bilin', steelBeamTag, KeBeam, b_beam, b_beam, 
+                         MyBeam, -MyBeam, LamBeam, 
+                         0, 0, 0, 
+                         cIK, cIK, cIK, cIK, 
+                         thpBeam, thpBeam, thpcBeam, thpcBeam, 
+                         kappaBeam, kappaBeam, thuBeam, thuBeam, DIK, DIK)
 
-    ops.uniaxialMaterial('Bilin', steelRoofBeamTag, KeRoofBeam, b_beam, b_beam, MyRoofBeam, -MyRoofBeam, LamRoofBeam, 
-        0, 0, 0, cIK, cIK, cIK, cIK, thpRoofBeam, thpRoofBeam, thpcRoofBeam, thpcRoofBeam, 
-        kappaRoofBeam, kappaRoofBeam, thuRoofBeam, thuRoofBeam, DIK, DIK)
+    ops.uniaxialMaterial('Bilin', steelRoofBeamTag, KeRoofBeam, b_beam, b_beam, 
+                         MyRoofBeam, -MyRoofBeam, LamRoofBeam, 
+                         0, 0, 0, 
+                         cIK, cIK, cIK, cIK, 
+                         thpRoofBeam, thpRoofBeam, thpcRoofBeam, thpcRoofBeam, 
+                         kappaRoofBeam, kappaRoofBeam, thuRoofBeam, thuRoofBeam, DIK, DIK)
 
     # Create springs at column and beam ends
     # Springs follow Modified Ibarra Krawinkler model

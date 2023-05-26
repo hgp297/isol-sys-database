@@ -50,7 +50,7 @@ def run_pushover(inputStr, pushoverStr):
     
     # write the current target design to the main input file
     import csv
-    with open('./inputs/bearingInputVal.csv', 'w',newline='', encoding='utf-8') as file:  
+    with open('./inputs/bearingInput.csv', 'w',newline='', encoding='utf-8') as file:  
         writer = csv.writer(file)
         writer.writerow(['variable', 'value'])
         for key, value in param.items():
@@ -160,7 +160,7 @@ def run_pushover(inputStr, pushoverStr):
     #              Recorders
     ############################################################################
 
-    dataDir         = './pushover/'          # output folder
+    dataDir         = './outputs/pushover/'          # output folder
     #file mkdir $dataDir; # create output folder
 
     ops.printModel('-file', dataDir+'model.out')
@@ -292,7 +292,7 @@ def run_pushover(inputStr, pushoverStr):
     pushover_df = pd.DataFrame({'roof_disp': story3Disp['isol1'],
                                 'base_shear_normalized': baseShearNormalize,
                                 'base_shear': baseShear})
-    pushover_df.to_csv('./sessionOut/'+pushoverStr, index=False)
+    pushover_df.to_csv('./outputs/pushover/'+pushoverStr, index=False)
     
     return()
 
@@ -417,16 +417,19 @@ def plot_pushover(data_dir):
     plt.grid(True)
     plt.show()
     
-# main runs
+#%% main runs
+
 # inputString = './inputs/bearingInputVal_baseline.csv'
 # outputString = 'pushover_addl_baseline.csv'
 # run_pushover(inputString, outputString)
 #%%
+
 inputString = './inputs/bearingInputVal10.csv'
 outputString = 'pushover_addl_10.csv'
 run_pushover(inputString, outputString)
+
 #%%
-plot_pushover('./pushover/')
+plot_pushover('./outputs/pushover/')
 
 # inputString = './inputs/bearingInputVal5.csv'
 # outputString = 'pushover_addl_5.csv'
