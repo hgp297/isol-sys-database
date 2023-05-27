@@ -35,8 +35,10 @@ def opsExperiment(inputPath, gmPath='./groundMotions/PEERNGARecords_Unscaled/'):
 
     # scaler for GM needs to go here
     S1 = param['S1']
-    gmDatabase, specAvg     = gmSelector.cleanGMs(gmPath, PEERSummary, S1, 
-        32, 133, 176, 111, 290, 111)
+    gmDatabase, specAvg = gmSelector.cleanGMs(gmPath, PEERSummary, S1, 
+                                              summaryStart=32, nSummary=133, 
+                                              scaledStart=176, nScaled=111, 
+                                              unscaledStart=290, nUnscaled=111)
 
     # for each input file, run a random GM in the database
     # with random.randrange(len(gmDatabase.index)) as ind:
@@ -76,7 +78,8 @@ def opsExperiment(inputPath, gmPath='./groundMotions/PEERNGARecords_Unscaled/'):
 
     return(resultsDf)
 
-def generate(num_points=400, inputDir='./inputs/bearingInput.csv'):
+def generate(num_points=400, inputDir='./inputs/bearingInput.csv',
+             output_str='./data/run.csv'):
     import LHS
     # initialize dataframe as an empty object
     resultsDf = None
@@ -134,7 +137,7 @@ def generate(num_points=400, inputDir='./inputs/bearingInput.csv'):
         if (index % 10) == 0:
             resultsDf.to_csv('./data/temp_save.csv', index=False)
     
-    resultsDf.to_csv('./data/run.csv', index=False)
+    resultsDf.to_csv(output_str, index=False)
     
     return(resultsDf)
 
@@ -240,13 +243,14 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 
 #%% generate new data
 
-# run = generate(200)
+output_str = './data/run.csv'
+run = generate(1, output_str=output_str)
 
 #%% validate a building (specify design input file)
 
-inputString = './inputs/bearingInputVal_baseline.csv'
-valDf_base = validate(inputString, IDALevel=[1.0])
-valDf_base.to_csv('./data/validation.csv', index=False)
+# inputString = './inputs/bearingInputVal_baseline.csv'
+# valDf_base = validate(inputString, IDALevel=[1.0])
+# valDf_base.to_csv('./data/validation.csv', index=False)
 
 
 # TODO: auto clean
