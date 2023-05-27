@@ -53,7 +53,7 @@ class Prediction:
             cmap=plt.cm.PuOr_r,
         )
             
-        plt_density = 100
+        plt_density = 200
         
         if 'gpc' in mdl_clf.named_steps.keys():
             plt.contour(xx, yy, Z, levels=[contour_pr],
@@ -185,6 +185,7 @@ class Prediction:
 ###############################################################################       
     
     # Train GP classifier
+    # TODO: return variance
     def fit_gpc(self, kernel_name, noisy=True):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
@@ -226,6 +227,37 @@ class Prediction:
         te_scr = gp_pipe.score(self.X_test, self.y_test)
         print('GP testing score: %0.2f' %te_scr)
         self.gpc = gp_pipe
+        
+    def predict_gpc_latent(self, X):
+        """Return latent mean and variance for the test vector X.
+        Uses Laplace approximation (Williams & Rasmussen Algorithm 3.2)
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features) or list of object
+            Query points where the GP is evaluated for classification.
+    
+        Returns
+        -------
+        f_star : array-like of shape (n_samples, n_classes)
+            Latent mean
+        var_f_star : array-like of shape (n_samples, n_classes)
+            Latent variance
+        """
+        # Based on Algorithm 3.2 of GPML
+        from scipy.linalg import solve
+        import numpy as np
+        
+        mdl_gpc = self.gpc.named_steps.gpc.base_estimator_
+        
+        # Based on Algorithm 3.2 of GPML
+        K_star = mdl_gpc.kernel_(mdl_gpc.X_train_, X)  # K_star =k(x_star)
+        f_star = K_star.T.dot(mdl_gpc.y_train_ - mdl_gpc.pi_)  # Line 4
+        v = solve(mdl_gpc.L_, mdl_gpc.W_sr_[:, np.newaxis] * K_star)  # Line 5
+        # Line 6 (compute np.diag(v.T.dot(v)) via einsum)
+        var_f_star = mdl_gpc.kernel_.diag(X) - np.einsum("ij,ij->j", v, v)
+        
+        return(f_star, var_f_star)
         
     # Train logistic classification
     def fit_log_reg(self, neg_wt=1.0):
