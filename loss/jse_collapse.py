@@ -84,7 +84,7 @@ mdl.test_train_split(0.2)
 
 #%% fit collapse (gp classification)
 
-mdl.fit_gpc(kernel_name='rbf_iso', noisy=True)
+mdl.fit_gpc(kernel_name='rbf_ard', noisy=True)
 
 # predict the entire dataset
 preds_col = mdl.gpc.predict(mdl.X)
@@ -107,6 +107,7 @@ mdl.plot_classification(mdl.gpc, contour_pr=0.1)
 
 # X_plot = mdl.make_2D_plotting_space(100, x_var='gapRatio', y_var='zetaM')
 # mdl.plot_classification(mdl.gpc, xvar='gapRatio', yvar='zetaM', contour_pr=0.5)
+
 
 #%% make design space and predict collapse
 
@@ -142,11 +143,126 @@ X_space = pd.DataFrame({'gapRatio':xx.ravel(),
                       'Tm':uu.ravel(),
                       'zetaM':np.repeat(0.2,res**3)})
 
+
+
 t0 = time.time()
 space_collapse = mdl.gpc.predict_proba(X_space)
+
 tp = time.time() - t0
 print("GPC collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                tp))
+
+
+#%% predictive variance and weighted variance
+
+# latent variance
+fmu, fs2 = mdl.predict_gpc_latent(X_space)
+
+#%% plot gpc functions
+
+plt.close('all')
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+X_subset = X_space[X_space['Tm']==3.25]
+fs2_subset = fs2[X_space['Tm']==3.25]
+fmu_subset = fmu[X_space['Tm']==3.25]
+
+Z = fs2_subset.reshape(xx_pl.shape)
+
+plt.figure()
+plt.imshow(
+    Z,
+    interpolation="nearest",
+    extent=(xx_pl.min(), xx_pl.max(),
+            yy_pl.min(), yy_pl.max()),
+    aspect="auto",
+    origin="lower",
+    cmap=plt.cm.PuOr_r,
+) 
+plt.xlabel('Gap ratio', fontsize=axis_font)
+plt.ylabel(r'$R_y$', fontsize=axis_font)
+plt.title('Latent variance', fontsize=axis_font)
+plt.colorbar()
+plt.show()
+
+Z = fmu_subset.reshape(xx_pl.shape)
+
+plt.figure()
+plt.imshow(
+    Z,
+    interpolation="nearest",
+    extent=(xx_pl.min(), xx_pl.max(),
+            yy_pl.min(), yy_pl.max()),
+    aspect="auto",
+    origin="lower",
+    cmap=plt.cm.PuOr_r,
+) 
+plt.xlabel('Gap ratio', fontsize=axis_font)
+plt.ylabel(r'$R_y$', fontsize=axis_font)
+plt.title('Latent mean', fontsize=axis_font)
+plt.colorbar()
+plt.show()
+
+# TODO: transition from latent to predictive mean is in the __gpc code (line 7
+# of Algorithm 3.2, GPML) (it's the integral of sigmoid(x)*normpdf(x | fmu, fsigma))
+
+from scipy.stats import logistic
+
+Z = logistic.cdf(fmu_subset.reshape(xx_pl.shape))
+plt.figure()
+plt.imshow(
+    Z,
+    interpolation="nearest",
+    extent=(xx_pl.min(), xx_pl.max(),
+            yy_pl.min(), yy_pl.max()),
+    aspect="auto",
+    origin="lower",
+    cmap=plt.cm.PuOr_r,
+) 
+plt.xlabel('Gap ratio', fontsize=axis_font)
+plt.ylabel(r'$R_y$', fontsize=axis_font)
+plt.title('Predictive mean', fontsize=axis_font)
+plt.colorbar()
+plt.show()
+
+
+# TODO: reexamine DoE weight
+from numpy import exp
+T = logistic.ppf(0.1)
+pi = 3.14159
+Wx = 1/((2*pi*(fs2_subset))**0.5)*exp((-1/2)*((fmu_subset - T)**2/(fs2_subset)))
+
+criterion = np.multiply(Wx, fs2_subset)
+idx = np.argmax(criterion)
+
+Z = criterion.reshape(xx_pl.shape)
+plt.figure()
+plt.imshow(
+    Z,
+    interpolation="nearest",
+    extent=(xx_pl.min(), xx_pl.max(),
+            yy_pl.min(), yy_pl.max()),
+    aspect="auto",
+    origin="lower",
+    cmap=plt.cm.PuOr_r,
+) 
+plt.xlabel('Gap ratio', fontsize=axis_font)
+plt.ylabel(r'$R_y$', fontsize=axis_font)
+plt.title('Weighted variance', fontsize=axis_font)
+plt.colorbar()
+plt.show()
 
 #%% cost efficiency
 
