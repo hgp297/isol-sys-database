@@ -31,8 +31,11 @@ import collections
 collections.Callable = collections.abc.Callable
 
 #%% concat with other data
-database_path = './data/tfp_mf/'
-database_file = 'run_data.csv'
+# database_path = './data/tfp_mf/'
+# database_file = 'run_data.csv'
+
+database_path = '../tfp_mf/data/'
+database_file = 'mik_smrf.csv'
 
 # results_path = './results/tfp_mf/'
 # results_file = 'loss_estimate_data.csv'
@@ -84,7 +87,7 @@ mdl.test_train_split(0.2)
 
 #%% fit collapse (gp classification)
 
-mdl.fit_gpc(kernel_name='rbf_ard', noisy=True)
+mdl.fit_gpc(kernel_name='rbf_iso', noisy=True)
 
 # predict the entire dataset
 preds_col = mdl.gpc.predict(mdl.X)
@@ -100,7 +103,7 @@ print('False positives: ', fp)
 
 # make grid and plot classification predictions
 X_plot = mdl.make_2D_plotting_space(100)
-mdl.plot_classification(mdl.gpc, contour_pr=0.1)
+mdl.plot_classification(mdl.gpc, contour_pr=0.5)
 
 # X_plot = mdl.make_2D_plotting_space(100, y_var='Tm')
 # mdl.plot_classification(mdl.gpc, yvar='Tm', contour_pr=0.5)
