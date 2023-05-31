@@ -141,7 +141,7 @@ xx, yy, uu = np.meshgrid(np.linspace(0.5, 2.0,
 X_space = pd.DataFrame({'gapRatio':xx.ravel(),
                       'RI':yy.ravel(),
                       'Tm':uu.ravel(),
-                      'zetaM':np.repeat(0.2,res**3)})
+                      'zetaM':np.repeat(0.15,res**3)})
 
 
 
@@ -246,6 +246,7 @@ Wx = 1/((2*pi*(fs2_subset))**0.5)*exp((-1/2)*((fmu_subset - T)**2/(fs2_subset)))
 
 criterion = np.multiply(Wx, fs2_subset)
 idx = np.argmax(criterion)
+
 
 Z = criterion.reshape(xx_pl.shape)
 plt.figure()

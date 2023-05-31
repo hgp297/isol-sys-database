@@ -185,7 +185,6 @@ class Prediction:
 ###############################################################################       
     
     # Train GP classifier
-    # TODO: return variance
     def fit_gpc(self, kernel_name, noisy=True):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
@@ -246,16 +245,43 @@ class Prediction:
         """
         # Based on Algorithm 3.2 of GPML
         from scipy.linalg import solve
+        # from scipy.special import erf
         import numpy as np
+        from sklearn.preprocessing import StandardScaler
         
         mdl_gpc = self.gpc.named_steps.gpc.base_estimator_
         
         # Based on Algorithm 3.2 of GPML
-        K_star = mdl_gpc.kernel_(mdl_gpc.X_train_, X)  # K_star =k(x_star)
+        scaler = StandardScaler()
+        scaler.fit(self.X_train)
+        X_tr = scaler.transform(X)
+        K_star = mdl_gpc.kernel_(mdl_gpc.X_train_, X_tr)  # K_star =k(x_star)
         f_star = K_star.T.dot(mdl_gpc.y_train_ - mdl_gpc.pi_)  # Line 4
         v = solve(mdl_gpc.L_, mdl_gpc.W_sr_[:, np.newaxis] * K_star)  # Line 5
         # Line 6 (compute np.diag(v.T.dot(v)) via einsum)
         var_f_star = mdl_gpc.kernel_.diag(X) - np.einsum("ij,ij->j", v, v)
+        
+        # # Line 7:
+        # # Approximate \int log(z) * N(z | f_star, var_f_star)
+        # # Approximation is due to Williams & Barber, "Bayesian Classification
+        # # with Gaussian Processes", Appendix A: Approximate the logistic
+        # # sigmoid by a linear combination of 5 error functions.
+        # # For information on how this integral can be computed see
+        # # blitiri.blogspot.de/2012/11/gaussian-integral-of-error-function.html
+        # LAMBDAS = np.array([0.41, 0.4, 0.37, 0.44, 0.39])[:, np.newaxis]
+        # COEFS = np.array(
+        #     [-1854.8214151, 3516.89893646, 221.29346712, 128.12323805, -2010.49422654]
+        # )[:, np.newaxis]
+        
+        
+        # alpha = 1 / (2 * var_f_star)
+        # gamma = LAMBDAS * f_star
+        # integrals = (
+        #     np.sqrt(np.pi / alpha)
+        #     * erf(gamma * np.sqrt(alpha / (alpha + LAMBDAS**2)))
+        #     / (2 * np.sqrt(var_f_star * 2 * np.pi))
+        # )
+        # pi_star = (COEFS * integrals).sum(axis=0) + 0.5 * COEFS.sum()
         
         return(f_star, var_f_star)
         
