@@ -142,12 +142,26 @@ def generate(num_points=400, inputDir='./inputs/bearingInput.csv',
     return(resultsDf)
 
 # TODO: DoE runs
-def run_doe(probTarget, baseDatStr, batch_size=10, tol=0.05, maxIter=600):
-    databasePath = './data/'
-    databaseFile = baseDatStr
+def run_doe(prob_target, path, batch_size=10, tol=0.05, maxIter=600):
 
-    unfilteredData = pd.read_csv(databasePath+databaseFile)
+    df = pd.read_csv(path)
+    df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+    df.loc[df['collapsed'] == -1, 'collapsed'] = 0
     
+    # fit model with initial n points
+    from doe import GP
+    mdl = GP(df)
+    mdl.set_outcome('collapsed')
+    mdl.fit_gpc(kernel_name='rbf_ard', noisy=True)
+    
+    import LHS
+    # add more points as DoE
+    input_var, input_vals = LHS.generateInputs(maxIter)
+    
+    # get initial gap
+    fixTm = 3.0
+    fixZeta = 0.15
+    x_next = mdl.doe_tmse(prob_target)
     
 
 def validate(inputStr, IDALevel=[1.0, 1.5, 2.0], 
@@ -243,8 +257,8 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 
 #%% generate new data
 
-output_str = './data/run.csv'
-run = generate(1, output_str=output_str)
+# output_str = './data/run.csv'
+# run = generate(1, output_str=output_str)
 
 #%% validate a building (specify design input file)
 
@@ -252,5 +266,8 @@ run = generate(1, output_str=output_str)
 # valDf_base = validate(inputString, IDALevel=[1.0])
 # valDf_base.to_csv('./data/validation.csv', index=False)
 
-
+#%% run doe
+path = '../loss/data/tfp_mf/run_data.csv'
+run_doe(0.1, path)
+        
 # TODO: auto clean
