@@ -89,16 +89,19 @@ def provideSuperDamping(regTag, w2, zetai=0.05, zetaj=0.05, modes=[1,3]):
         5427, 5437, 5447,
         '-rayleigh', x[0], betaK, betaKInit, x[1])
 
-# TODO: RBS?
-# Current values: Evaluation of seismic collapse performance of steel special moment resisting
-# frames using FEMA P695 (ATC-63) methodology (Zareian et al., 2010)
+# TODO: list of changes
+# Sx -> Zx
+# isotropic hardening 1.1 -> 1.17
+# thu 0.4 -> 0.2
+# McMy 1.1 -> 1.11
 
 def getModifiedIK(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi
     Es = 29000 # ksi
 
-    Sx = float(shape['Sx'])
+    Zx = float(shape['Zx'])
+    # Sx = float(shape['Sx'])
     Iz = float(shape['Ix'])
     d = float(shape['d'])
     htw = float(shape['h/tw'])
@@ -107,7 +110,8 @@ def getModifiedIK(shape, L):
     c1 = 25.4
     c2 = 6.895
 
-    My = Fy * Sx  *1.1
+    # approximate adjustment for isotropic hardening
+    My = Fy * Zx * 1.17
     thy = My/(6*Es*Iz/L)
     Ke = My/thy
     # consider using Lb = 0 for beams bc of slab?
@@ -130,10 +134,7 @@ def getModifiedIK(shape, L):
             (c2*Fy/355)**(-0.230))
         thpc = (5.63*(htw)**(-0.565)*(bftf)**(-0.800)
             *(c1*d/533)**(-0.280)*(c2*Fy/355)**(-0.430))
-
-    # Lam = 1000
-    # thp = 0.025
-    # thpc = 0.3
+        
     thu = 0.2
 
     return(Ke, My, Lam, thp, thpc, kappa, thu)
@@ -473,37 +474,40 @@ def build():
     IyBeam_mod = IyBeam*(n+1)/n
     IyRoofBeam_mod = IyRoofBeam*(n+1)/n
 
+    # adjust for increased elastic zone strength to account for plastic hinges
+    # being moved 0.1 away from end
     KeCol = n*6.0*Es*IzCol/(0.8*LCol)
     KeBeam = n*6.0*Es*IzBeam/(0.8*LBeam)
     KeRoofBeam = n*6.0*Es*IzRoofBeam/(0.8*LBeam)
 
-    McMy = 1.1 # ratio of capping moment to yield moment, Mc / My
-    a_mem_col = (n+1.0)*(MyCol*(McMy-1.0))/(KeCol*thpCol)
-    b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
+    McMy = 1.11 # ratio of capping moment to yield moment, Mc / My
+    
+    # a_mem_col = (n+1.0)*(MyCol*(McMy-1.0))/(KeCol*thpCol)
+    # b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
 
-    a_mem_beam = (n+1.0)*(MyCol*(McMy-1.0))/(KeBeam*thpBeam)
-    b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
+    # a_mem_beam = (n+1.0)*(MyCol*(McMy-1.0))/(KeBeam*thpBeam)
+    # b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
 
-    ops.uniaxialMaterial('Bilin', steelColTag, KeCol, b_col, b_col, 
-                         MyCol, -MyCol, LamCol, 
-                         0, 0, 0, 
-                         cIK, cIK, cIK, cIK, 
-                         thpCol, thpCol, thpcCol, thpcCol, 
-                         kappaCol, kappaCol, thuCol, thuCol, DIK, DIK)
-
-    ops.uniaxialMaterial('Bilin', steelBeamTag, KeBeam, b_beam, b_beam, 
-                         MyBeam, -MyBeam, LamBeam, 
-                         0, 0, 0, 
-                         cIK, cIK, cIK, cIK, 
-                         thpBeam, thpBeam, thpcBeam, thpcBeam, 
-                         kappaBeam, kappaBeam, thuBeam, thuBeam, DIK, DIK)
-
-    ops.uniaxialMaterial('Bilin', steelRoofBeamTag, KeRoofBeam, b_beam, b_beam, 
-                         MyRoofBeam, -MyRoofBeam, LamRoofBeam, 
-                         0, 0, 0, 
-                         cIK, cIK, cIK, cIK, 
-                         thpRoofBeam, thpRoofBeam, thpcRoofBeam, thpcRoofBeam, 
-                         kappaRoofBeam, kappaRoofBeam, thuRoofBeam, thuRoofBeam, DIK, DIK)
+    ops.uniaxialMaterial('IMKBilin', steelColTag, KeCol,
+                         thpCol, thpcCol, thuCol, MyCol, McMy, kappaCol,
+                         thpCol, thpcCol, thuCol, MyCol, McMy, kappaCol,
+                         LamCol, LamCol, LamCol,
+                         cIK, cIK, cIK,
+                         DIK, DIK, DIK)
+    
+    ops.uniaxialMaterial('IMKBilin', steelRoofBeamTag, KeRoofBeam,
+                         thpRoofBeam, thpcRoofBeam, thuRoofBeam, MyRoofBeam, McMy, kappaRoofBeam,
+                         thpRoofBeam, thpcRoofBeam, thuRoofBeam, MyRoofBeam, McMy, kappaRoofBeam,
+                         LamRoofBeam, LamRoofBeam, LamRoofBeam,
+                         cIK, cIK, cIK,
+                         DIK, DIK, DIK)
+    
+    ops.uniaxialMaterial('IMKBilin', steelBeamTag, KeBeam,
+                         thpBeam, thpcBeam, thuBeam, MyBeam, McMy, kappaBeam,
+                         thpBeam, thpcBeam, thuBeam, MyBeam, McMy, kappaBeam,
+                         LamBeam, LamBeam, LamBeam,
+                         cIK, cIK, cIK,
+                         DIK, DIK, DIK)
 
     # Create springs at column and beam ends
     # Springs follow Modified Ibarra Krawinkler model
