@@ -139,6 +139,24 @@ class GP:
                                                             'zetaM'])
         return x_next
         
+    def fn_W(self, X_cand, pr):
+        from scipy.stats import logistic
+        T = logistic.ppf(pr)
+        
+        X_cand = X_cand.reshape(1,-1)
+        import pandas as pd
+        X_cand = pd.DataFrame(X_cand, columns=['gapRatio',
+                                               'RI',
+                                               'Tm',
+                                               'zetaM'])
+        fmu, fs2 = self.predict_gpc_latent(X_cand)
+        
+        from numpy import exp
+        pi = 3.14159
+        Wx = 1/((2*pi*(fs2))**0.5) * exp((-1/2)*((fmu - T)**2/(fs2)))
+        
+        return(Wx)
+    
     def fn_tmse(self, X_cand, pr):
         from scipy.stats import logistic
         T = logistic.ppf(pr)

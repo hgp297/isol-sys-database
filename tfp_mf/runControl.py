@@ -259,8 +259,8 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 
 #%% generate new data
 
-output_str = './data/mik_smrf.csv'
-run = generate(400, output_str=output_str)
+# output_str = './data/mik_smrf.csv'
+# run = generate(400, output_str=output_str)
 
 #%% validate a building (specify design input file)
 
