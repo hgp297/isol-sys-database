@@ -163,6 +163,8 @@ def run_doe(prob_target, path, batch_size=10, tol=0.05, maxIter=600):
     fixZeta = 0.15
     x_next = mdl.doe_tmse(prob_target)
     
+    return x_next
+    
 
 def validate(inputStr, IDALevel=[1.0, 1.5, 2.0], 
              gmPath='./ground_motions/PEERNGARecords_Unscaled/'):
@@ -268,6 +270,6 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 
 #%% run doe
 path = '../loss/data/tfp_mf/run_data.csv'
-run_doe(0.1, path)
+run_doe(0.5, path)
         
 # TODO: auto clean

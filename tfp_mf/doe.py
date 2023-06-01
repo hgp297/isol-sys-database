@@ -119,6 +119,7 @@ class GP:
         from scipy.optimize import minimize
         import random
         import numpy as np
+        import pandas as pd
         
         x0 = np.array([random.uniform(0.3, 2.0),
                        random.uniform(0.5, 2.0),
@@ -132,13 +133,22 @@ class GP:
                        method='Nelder-Mead', tol=1e-6,
                        bounds=bnds)
         
-        return res.x
+        x_next = pd.DataFrame(res.x.reshape(1,-1), columns=['gapRatio',
+                                                            'RI',
+                                                            'Tm',
+                                                            'zetaM'])
+        return x_next
         
     def fn_tmse(self, X_cand, pr):
         from scipy.stats import logistic
         T = logistic.ppf(pr)
         
         X_cand = X_cand.reshape(1,-1)
+        import pandas as pd
+        X_cand = pd.DataFrame(X_cand, columns=['gapRatio',
+                                               'RI',
+                                               'Tm',
+                                               'zetaM'])
         fmu, fs2 = self.predict_gpc_latent(X_cand)
         
         from numpy import exp
