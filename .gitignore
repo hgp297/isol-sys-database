@@ -1,3 +1,13 @@
+# past results
+./tfp_mf/data/
+*/ground_motions/
+*/inputs/
+*/output/
+*/outputs/
+*.eps
+*.pptx
+*.xlsx
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
