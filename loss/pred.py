@@ -52,7 +52,6 @@ class Prediction:
             origin="lower",
             cmap=plt.cm.PuOr_r,
         )
-            
         plt_density = 200
         
         if 'gpc' in mdl_clf.named_steps.keys():
@@ -61,12 +60,13 @@ class Prediction:
         else:
             plt.contour(xx, yy, Z, levels=[contour_pred],
                         linewidths=2, linestyles="dashed")
+        
         plt.scatter(self.X_train[xvar][:plt_density],
                     self.X_train[yvar][:plt_density],
                     s=30, c=self.y_train[:plt_density],
                     cmap=plt.cm.Paired, edgecolors="k")
-        plt.xlabel(xvar)
-        plt.ylabel(yvar)
+        plt.xlabel(xvar, fontsize=18)
+        plt.ylabel(yvar, fontsize=18)
         if 'svc' in mdl_clf.named_steps.keys():
             plt.title('Classification (SVC)')
         elif 'log_reg' in mdl_clf.named_steps.keys():

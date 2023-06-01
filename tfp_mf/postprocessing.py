@@ -93,12 +93,6 @@ def failurePostprocess(filename, scaleFactor, spectrumAverage, runStatus, Tfb,
     if IDALevel is not None:
         afterRun['IDALevel'] = IDALevel
 
-    # # calculate nondimensionalized parameters
-    # afterRun['Pi1']       = afterRun['mu1']/param['GMS1']
-    # afterRun['Pi2']       = param['Tm']**2/(386.4/afterRun['R1'])
-    # afterRun['Pi3']           = afterRun['T2']/afterRun['T1']
-    # afterRun['Pi4']           = afterRun['mu2']/afterRun['GMST2']
-
     # gather outputs
     dispColumns = ['time', 'isol1', 'isol2', 'isol3', 'isol4', 'isolLC']
 
@@ -384,9 +378,5 @@ def failurePostprocess(filename, scaleFactor, spectrumAverage, runStatus, Tfb,
     runDict         = {**param, **afterRun}
     runRecord       = pd.DataFrame.from_dict(runDict, 'index').transpose()          # 'index' puts keys as index column. transpose so results are in a row.
     runHeader       = list(runRecord.columns)                                       # pass column names to runControl
-    
-    return(runHeader, runRecord)
 
-if __name__ == '__main__':
-    thisHeader, thisRun     = failurePostprocess('RSN3964_TOTTORI_TTR007NS', 3.0, 0.6, -3, 1.21)
-    print(thisRun)
+    return(runHeader, runRecord)
