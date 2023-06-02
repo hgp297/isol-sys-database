@@ -148,11 +148,26 @@ def run_doe(prob_target, path, batch_size=10, tol=0.05, maxIter=600):
     df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
     df.loc[df['collapsed'] == -1, 'collapsed'] = 0
     
+    # collapse as a probability
+    from scipy.stats import lognorm
+    from math import log, exp
+    from scipy.stats import norm
+    inv_norm = norm.ppf(0.84)
+    beta_drift = 0.25
+    mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+    ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+    df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
+    
     # fit model with initial n points
+    # from doe import GP
+    # mdl = GP(df)
+    # mdl.set_outcome('collapsed')
+    # mdl.fit_gpc(kernel_name='rbf_ard', noisy=True)
+    
     from doe import GP
     mdl = GP(df)
-    mdl.set_outcome('collapsed')
-    mdl.fit_gpc(kernel_name='rbf_ard', noisy=True)
+    mdl.set_outcome('collapse_prob')
+    mdl.fit_gpr(kernel_name='rbf_ard')
     
     import LHS
     # add more points as DoE
@@ -162,6 +177,9 @@ def run_doe(prob_target, path, batch_size=10, tol=0.05, maxIter=600):
     fixTm = 3.0
     fixZeta = 0.15
     x_next = mdl.doe_tmse(prob_target)
+    
+    # TODO: set stopping criterion
+    # TODO: redefine DoE target zone
     
     return x_next
     

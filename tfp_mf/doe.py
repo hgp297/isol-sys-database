@@ -66,7 +66,44 @@ class GP:
               %tr_scr)
         
         self.gpc = gp_pipe
+    
+    # Train GP regression
+    def fit_gpr(self, kernel_name):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.gaussian_process import GaussianProcessRegressor
+        import sklearn.gaussian_process.kernels as krn
         
+        if kernel_name=='rbf_ard':
+            kernel = 1.0 * krn.RBF([1.0, 1.0, 1.0, 1.0])
+        elif kernel_name=='rbf_iso':
+            kernel = 1.0 * krn.RBF(1.0)
+        elif kernel_name=='rq':
+            kernel = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
+                                                    alpha=1.0)
+        elif kernel_name == 'matern_iso':
+            kernel = 1.0 * krn.Matern(
+                    length_scale=1.0, 
+                    nu=1.5)
+        elif kernel_name == 'matern_ard':
+            kernel = 1.0 * krn.Matern(
+                    length_scale=[1.0, 1.0, 1.0, 1.0], 
+                    nu=1.5)
+            
+        kernel = kernel + krn.WhiteKernel(noise_level=1, noise_level_bounds=(1e-5, 1e1))
+            
+        # pipeline to scale -> GPR
+        gp_pipe = Pipeline([
+                ('scaler', StandardScaler()),
+                ('gpr', GaussianProcessRegressor(kernel=kernel,
+                                                 random_state=985,
+                                                 n_restarts_optimizer=10))
+                ])
+    
+        gp_pipe.fit(self.X, self.y)
+        
+        self.gpr = gp_pipe
+            
     def predict_gpc_latent(self, X):
         """Return latent mean and variance for the test vector X.
         Uses Laplace approximation (Williams & Rasmussen Algorithm 3.2)
@@ -102,7 +139,8 @@ class GP:
         var_f_star = mdl_gpc.kernel_.diag(X) - np.einsum("ij,ij->j", v, v)
         
         return(f_star, var_f_star)
-        
+    
+  
     def doe_tmse(self, pr):
         """Return point that maximizes tMSE criterion (Lyu et al 2021)
         Latent variance is evaluated at the point according to current model 
@@ -121,13 +159,16 @@ class GP:
         import numpy as np
         import pandas as pd
         
+        # initialize a guess
         x0 = np.array([random.uniform(0.3, 2.0),
                        random.uniform(0.5, 2.0),
                        random.uniform(2.5, 4.0),
                        random.uniform(0.1, 0.2)])
         
+        # bounds for design space
         bnds = ((0.3, 2.0), (0.5, 2.0), (2.5, 4.0), (0.1, 0.2))
         
+        # find argmax tmse criterion
         res = minimize(self.fn_tmse, x0, 
                        args=(pr),
                        method='Nelder-Mead', tol=1e-6,
@@ -149,7 +190,14 @@ class GP:
                                                'RI',
                                                'Tm',
                                                'zetaM'])
-        fmu, fs2 = self.predict_gpc_latent(X_cand)
+        
+        # try GPC
+        try:
+            fmu, fs2 = self.predict_gpc_latent(X_cand)
+        # if fail, it's GPR
+        except:
+            fmu, fs1 = self.gpr.predict(X_cand, return_std=True)
+            fs2 = fs1**2
         
         from numpy import exp
         pi = 3.14159
@@ -157,9 +205,10 @@ class GP:
         
         return(Wx)
     
+    # returns single-point (myopic) tmse condition, Lyu 2021
     def fn_tmse(self, X_cand, pr):
-        from scipy.stats import logistic
-        T = logistic.ppf(pr)
+        # find target in logistic space
+        
         
         X_cand = X_cand.reshape(1,-1)
         import pandas as pd
@@ -167,8 +216,25 @@ class GP:
                                                'RI',
                                                'Tm',
                                                'zetaM'])
-        fmu, fs2 = self.predict_gpc_latent(X_cand)
         
+        # try GPC
+        try:
+            fmu, fs2 = self.predict_gpc_latent(X_cand)
+            
+            # find target in logistic space
+            from scipy.stats import logistic
+            T = logistic.ppf(pr)
+            
+        # if fail, it's GPR
+        except:
+            # function returns standard deviation
+            fmu, fs1 = self.gpr.predict(X_cand, return_std=True)
+            fs2 = fs1**2
+            
+            # target exists directly in probability space
+            T = pr
+        
+        # weight is from Lyu / Picheny
         from numpy import exp
         pi = 3.14159
         Wx = 1/((2*pi*(fs2))**0.5) * exp((-1/2)*((fmu - T)**2/(fs2)))
