@@ -23,7 +23,12 @@ import gmSelector
 import random
 
 random.seed(985)
-
+def write_to_csv(the_list, filename):
+    import csv
+    with open(filename, 'w') as file:
+        writer = csv.writer(file)
+        writer.writerow(the_list)
+        
 def opsExperiment(inputPath, gmPath='./groundMotions/PEERNGARecords_Unscaled/'):
         
     # filter GMs, then get ground motion database list
@@ -90,9 +95,9 @@ def generate(num_points=400, inputDir='./inputs/bearingInput.csv',
     
     # for each input sets, write input files
     pt_counter = 0
+    print('Starting database generation...')
     for index, row in enumerate(inputValues):
         
-        print('Starting database generation...')
         print('The run index is ' + str(index) + '.') # run counter
         print('Converged runs: ' + str(pt_counter) + '.') # run counter
    
@@ -141,10 +146,123 @@ def generate(num_points=400, inputDir='./inputs/bearingInput.csv',
     
     return(resultsDf)
 
-# TODO: DoE runs
-def run_doe(prob_target, path, batch_size=10, tol=0.05, maxIter=600):
+def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
+            inputPath = './inputs/', inputFile = 'bearingInput.csv'):
 
+    import numpy as np
+    np.random.seed(986)
+    random.seed(986)
+    
     df = pd.read_csv(path)
+    
+    
+    # fit model with initial n points
+    # from doe import GP
+    # mdl = GP(df)
+    # mdl.set_outcome('collapsed')
+    # mdl.fit_gpc(kernel_name='rbf_ard', noisy=True)
+    
+    import LHS
+    from postprocessing import cleanDat
+    # add more points as DoE
+    input_var, input_vals = LHS.generateInputs(maxIter, mode='doe')
+    
+    ame = 1.0
+    batch_idx = 0
+    batch_no = 0
+    
+    from doe import GP
+    ame_list = []
+    
+    for index, row in enumerate(input_vals):
+        print('The run index is ' + str(index) + '.')
+        print('The batch index is ' + str(batch_idx) + '.')
+        
+        if (batch_idx % (batch_size) == 0):
+            
+            df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+            df.loc[df['collapsed'] == -1, 'collapsed'] = 0
+            
+            # collapse as a probability
+            from scipy.stats import lognorm
+            from math import log, exp
+            from scipy.stats import norm
+            inv_norm = norm.ppf(0.84)
+            beta_drift = 0.25
+            # 0.9945 is inverse normCDF of 0.84
+            mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
+            ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+            df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
+            
+            mdl = GP(df)
+            mdl.set_outcome('collapse_prob')
+            mdl.fit_gpr(kernel_name='rbf_ard')
+            
+            rsc = mdl.gpr.score(mdl.X, mdl.y)
+            print('R-squared :', rsc)
+            y_hat = mdl.gpr.predict(mdl.X)
+            
+            from sklearn.metrics import mean_squared_error
+            import numpy as np
+            mse = mean_squared_error(mdl.y, y_hat)
+            print('Mean squared error: %.3f' % mse)
+            
+            # ame is average error in predicting collapse risk (expressed in relative %)
+            # denominator is 0.001 to prevent extreme outliers
+            y_true = np.array(mdl.y).ravel()
+            mape = np.abs(y_true-y_hat)/np.maximum(np.abs(y_true), 1e-3)
+            ame = np.average(mape, axis=0)
+            ame_list.append(ame)
+            write_to_csv(ame_list, './data/doe/mean_error.csv')
+            print('Average mean error (%%): %.2f' % ame)
+            
+            if ame < error_tol:
+                print('Stopping criterion reached.')
+                print('Number of added points: ' + str((batch_idx)*(batch_no)))
+                return (df)
+            else:
+                pass
+            batch_idx = 0
+            df.to_csv('./data/doe/temp_save.csv', index=False)
+            x_next = mdl.doe_rejection_sampler(batch_size, prob_target)
+            print('Convergence not reached yet. Resetting batch index to 0...')
+            
+        # write LHS half into a dataframe
+        lhs_vals = [float(val) for val in row]
+        inputDf = pd.DataFrame(list(zip(input_var, lhs_vals)), 
+            columns=['variable','value'])
+        
+        doe_vals = [float(val) for val in x_next[batch_idx]]
+        doe_vars = ['gapRatio', 'RI', 'Tm', 'zetaM']
+        doeDf = pd.DataFrame(list(zip(doe_vars, doe_vals)),
+            columns=['variable','value'])
+        
+        inputDf = inputDf.append(doeDf)
+        inputDf.to_csv(inputPath+inputFile, index=False)
+        
+        # run opsPy
+        try:
+            runResult = opsExperiment(inputPath+inputFile, 
+                                      gmPath='./ground_motions/PEERNGARecords_Unscaled/')
+        except ValueError:
+            print('Bearing solver returned negative friction coefficients. Skipping...')
+            continue
+        except IndexError:
+            print('SCWB check failed, no shape exists for design. Skipping...')
+            continue
+
+        # skip run if excessively scaled
+        if (type(runResult) == bool):
+            print('Scale factor exceeded 20.0.')
+            continue
+        
+        # if run succeeded, increase the batch index
+        batch_idx += 1
+
+        # clean new df, attach to existing data
+        newRes = cleanDat(runResult)
+        df = df.append(newRes, sort=True)
+    
     df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
     df.loc[df['collapsed'] == -1, 'collapsed'] = 0
     
@@ -154,34 +272,13 @@ def run_doe(prob_target, path, batch_size=10, tol=0.05, maxIter=600):
     from scipy.stats import norm
     inv_norm = norm.ppf(0.84)
     beta_drift = 0.25
-    mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+    # 0.9945 is inverse normCDF of 0.84
+    mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
     ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
     df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
     
-    # fit model with initial n points
-    # from doe import GP
-    # mdl = GP(df)
-    # mdl.set_outcome('collapsed')
-    # mdl.fit_gpc(kernel_name='rbf_ard', noisy=True)
-    
-    from doe import GP
-    mdl = GP(df)
-    mdl.set_outcome('collapse_prob')
-    mdl.fit_gpr(kernel_name='rbf_ard')
-    
-    import LHS
-    # add more points as DoE
-    input_var, input_vals = LHS.generateInputs(maxIter)
-    
-    # get initial gap
-    fixTm = 3.0
-    fixZeta = 0.15
-    x_next = mdl.doe_tmse(prob_target)
-    
-    # TODO: set stopping criterion
-    # TODO: redefine DoE target zone
-    
-    return x_next
+    print('Did not reach convergence after max runs.')
+    return df
     
 
 def validate(inputStr, IDALevel=[1.0, 1.5, 2.0], 
@@ -287,7 +384,9 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 # valDf_base.to_csv('./data/validation.csv', index=False)
 
 #%% run doe
-path = '../loss/data/tfp_mf/run_data.csv'
-run_doe(0.5, path)
+# path = './data/mik_smrf.csv'
+path = './data/doe_init.csv'
+doe_df = run_doe(0.5, path)
+doe_df.to_csv('./data/doe/mik_smrf_doe.csv', index=False)
         
 # TODO: auto clean

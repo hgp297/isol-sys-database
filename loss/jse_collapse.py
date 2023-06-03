@@ -227,14 +227,14 @@ mdl.test_train_split(0.2)
 mdl.fit_gpc(kernel_name='rbf_iso', noisy=False)
 
 # predict the entire dataset
-preds_col = mdl.gpc.predict(mdl.X)
+pReds_r_col = mdl.gpc.predict(mdl.X)
 probs_col = mdl.gpc.predict_proba(mdl.X)
 
 # we've done manual CV to pick the hyperparams that trades some accuracy
 # in order to lower false negatives
 from sklearn.metrics import confusion_matrix
 
-tn, fp, fn, tp = confusion_matrix(mdl.y, preds_col).ravel()
+tn, fp, fn, tp = confusion_matrix(mdl.y, pReds_r_col).ravel()
 print('False negatives: ', fn)
 print('False positives: ', fp)
 
@@ -258,16 +258,16 @@ mdl.fit_kernel_logistic(neg_wt=0.3, kernel_name=krn, gamma=gam)
 
 # predict the entire dataset
 K_data = mdl.get_kernel(mdl.X, kernel_name=krn, gamma=gam)
-preds_imp = mdl.log_reg_kernel.predict(K_data)
+pReds_r_imp = mdl.log_reg_kernel.predict(K_data)
 probs_imp = mdl.log_reg_kernel.predict_proba(K_data)
 
-cmpr = np.array([mdl.y.values.flatten(), preds_imp]).transpose()
+cmpr = np.array([mdl.y.values.flatten(), pReds_r_imp]).transpose()
 
 # we've done manual CV to pick the hyperparams that trades some accuracy
 # in order to lower false negatives
 from sklearn.metrics import confusion_matrix
 
-tn, fp, fn, tp = confusion_matrix(mdl.y, preds_imp).ravel()
+tn, fp, fn, tp = confusion_matrix(mdl.y, pReds_r_imp).ravel()
 print('False negatives: ', fn)
 print('False positives: ', fp)
 
@@ -324,8 +324,9 @@ print("GPC collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
 #%% predictive variance and weighted variance
 
 # latent variance
-fmu, fs2 = mdl.predict_gpc_latent(X_space)
-
+# fmu, fs2 = mdl.predict_gpc_latent(X_space)
+fmu, fs1 = mdl_collapse.gpr.predict(X_space, return_std=True)
+fs2 = fs1**2
 #%% plot gpc functions
 
 plt.close('all')
@@ -357,7 +358,7 @@ plt.imshow(
             yy_pl.min(), yy_pl.max()),
     aspect="auto",
     origin="lower",
-    cmap=plt.cm.PuOr_r,
+    cmap=plt.cm.Reds_r,
 ) 
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
@@ -375,7 +376,7 @@ plt.imshow(
             yy_pl.min(), yy_pl.max()),
     aspect="auto",
     origin="lower",
-    cmap=plt.cm.PuOr_r,
+    cmap=plt.cm.Reds_r,
 ) 
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
@@ -388,7 +389,32 @@ plt.show()
 
 from scipy.stats import logistic
 
-Z = logistic.cdf(fmu_subset.reshape(xx_pl.shape))
+# Z = logistic.cdf(fmu_subset.reshape(xx_pl.shape))
+# plt.figure()
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Reds_r,
+# ) 
+# plt.xlabel('Gap ratio', fontsize=axis_font)
+# plt.ylabel(r'$R_y$', fontsize=axis_font)
+# plt.title('Predictive mean', fontsize=axis_font)
+# plt.colorbar()
+# plt.show()
+
+
+# TODO: reexamine DoE weight
+from numpy import exp
+T = logistic.ppf(0.5)
+pi = 3.14159
+Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - T)**2/(fs2_subset)))
+# Wx = exp((-1/2)*((fmu_subset - T)**2/(fs2_subset)))
+
+Z = Wx.reshape(xx_pl.shape)
 plt.figure()
 plt.imshow(
     Z,
@@ -397,20 +423,13 @@ plt.imshow(
             yy_pl.min(), yy_pl.max()),
     aspect="auto",
     origin="lower",
-    cmap=plt.cm.PuOr_r,
+    cmap=plt.cm.Reds_r,
 ) 
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
-plt.title('Predictive mean', fontsize=axis_font)
+plt.title('Weight', fontsize=axis_font)
 plt.colorbar()
 plt.show()
-
-
-# TODO: reexamine DoE weight
-from numpy import exp
-T = logistic.ppf(0.1)
-pi = 3.14159
-Wx = 1/((2*pi*(fs2_subset))**0.5)*exp((-1/2)*((fmu_subset - T)**2/(fs2_subset)))
 
 criterion = np.multiply(Wx, fs2_subset)
 idx = np.argmax(criterion)
@@ -425,7 +444,7 @@ plt.imshow(
             yy_pl.min(), yy_pl.max()),
     aspect="auto",
     origin="lower",
-    cmap=plt.cm.PuOr_r,
+    cmap=plt.cm.Reds_r,
 ) 
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
@@ -435,35 +454,35 @@ plt.show()
 
 #%% cost efficiency
 
-from pred import get_steel_coefs, calc_upfront_cost
-plt.close('all')
-steel_price = 2.00
-coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
+# from pred import get_steel_coefs, calc_upfront_cost
+# plt.close('all')
+# steel_price = 2.00
+# coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 
-risk_thresh = 0.1
-space_collapse_pred = pd.DataFrame(space_collapse,
-                                   columns=['safe probability', 'collapse probability'])
-ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
-                      risk_thresh]
+# risk_thresh = 0.1
+# space_collapse_pred = pd.DataFrame(space_collapse,
+#                                    columns=['safe probability', 'collapse probability'])
+# ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+#                       risk_thresh]
 
-X_design = X_space[X_space.index.isin(ok_risk.index)]
+# X_design = X_space[X_space.index.isin(ok_risk.index)]
     
-# in the filter-design process, only one of cost/dt is likely to control
+# # in the filter-design process, only one of cost/dt is likely to control
     
-# TODO: more clever selection criteria (not necessarily the cheapest)
+# # TODO: more clever selection criteria (not necessarily the cheapest)
 
-# select best viable design
-upfront_costs = calc_upfront_cost(X_design, coef_dict)
-cheapest_design_idx = upfront_costs.idxmin()
-design_upfront_cost = upfront_costs.min()
+# # select best viable design
+# upfront_costs = calc_upfront_cost(X_design, coef_dict)
+# cheapest_design_idx = upfront_costs.idxmin()
+# design_upfront_cost = upfront_costs.min()
 
-# least upfront cost of the viable designs
-best_design = X_design.loc[cheapest_design_idx]
-design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+# # least upfront cost of the viable designs
+# best_design = X_design.loc[cheapest_design_idx]
+# design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
-print(best_design)
+# print(best_design)
 
-print('Upfront cost of selected design: ',
-      f'${design_upfront_cost:,.2f}')
-print('Predicted collapse risk: ',
-      f'{design_collapse_risk:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${design_upfront_cost:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{design_collapse_risk:.2%}')
