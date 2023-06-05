@@ -57,7 +57,7 @@ def run_pushover(inputStr, pushoverStr, max_drift_ratio=0.1):
             writer.writerow([key, value])
             
     # build the structure
-    import buildModel as bm
+    import build as bm
     import numpy as np
     
     from openseespy import opensees as ops

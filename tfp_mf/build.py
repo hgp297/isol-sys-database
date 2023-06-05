@@ -167,7 +167,7 @@ def build():
     # command: model('basic', '-ndm', ndm, '-ndf', ndf=ndm*(ndm+1)/2)
     ops.model('basic', '-ndm', 3, '-ndf', 6)
 
-    import superStructDesign as sd
+    import design as sd
     (mu1, mu2, mu3, R1, R2, R3, moatGap, selectedBeam, selectedRoofBeam, selectedCol) = sd.design()
 
     (AgCol, IzCol, IyCol, ZxCol, SxCol, dCol, bfCol, tfCol, twCol) = getProperties(selectedCol)

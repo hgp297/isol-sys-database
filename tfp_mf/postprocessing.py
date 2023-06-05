@@ -19,7 +19,7 @@
 import pandas as pd
 import numpy as np
 import math
-import gmSelector
+import gm
 
 # functions to standardize csv output
 def getShape(shape):
@@ -51,7 +51,7 @@ def failurePostprocess(filename, scaleFactor, spectrumAverage, runStatus, Tfb,
     
 
     # get selections and append to non-input dictionary
-    import superStructDesign as sd
+    import design as sd
     (mu1, mu2, mu3, R1, R2, R3, moatGap, selectedBeam, selectedRoofBeam, selectedCol) = sd.design()
 
     fromDesign      = {
@@ -82,13 +82,13 @@ def failurePostprocess(filename, scaleFactor, spectrumAverage, runStatus, Tfb,
 
     # spectral accels of GM
     afterRun['GMSavg']      = spectrumAverage
-    afterRun['GMS1']        = gmSelector.getST(gmDir, resultsCSV,
+    afterRun['GMS1']        = gm.getST(gmDir, resultsCSV,
         filename, scaleFactor, 1.0, 32, 133, 290, 111)
-    afterRun['GMST1']       = gmSelector.getST(gmDir, resultsCSV,
+    afterRun['GMST1']       = gm.getST(gmDir, resultsCSV,
         filename, scaleFactor, afterRun['T1'], 32, 133, 290, 111)
-    afterRun['GMST2']       = gmSelector.getST(gmDir, resultsCSV,
+    afterRun['GMST2']       = gm.getST(gmDir, resultsCSV,
         filename, scaleFactor, afterRun['T2'], 32, 133, 290, 111)
-    afterRun['GMSTm']       = gmSelector.getST(gmDir, resultsCSV,
+    afterRun['GMSTm']       = gm.getST(gmDir, resultsCSV,
         filename, scaleFactor, param['Tm'], 32, 133, 290, 111)
     if IDALevel is not None:
         afterRun['IDALevel'] = IDALevel

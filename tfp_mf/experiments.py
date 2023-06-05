@@ -18,8 +18,8 @@
 ############################################################################
 import pandas as pd
 import postprocessing
-import eqAnly as eq
-import gmSelector
+import dynamic as eq
+import gm
 import random
 
 random.seed(985)
@@ -40,7 +40,7 @@ def opsExperiment(inputPath, gmPath='./groundMotions/PEERNGARecords_Unscaled/'):
 
     # scaler for GM needs to go here
     S1 = param['S1']
-    gmDatabase, specAvg = gmSelector.cleanGMs(gmPath, PEERSummary, S1, 
+    gmDatabase, specAvg = gm.cleanGMs(gmPath, PEERSummary, S1, 
                                               summaryStart=32, nSummary=133, 
                                               scaledStart=176, nScaled=111, 
                                               unscaledStart=290, nUnscaled=111)
@@ -315,7 +315,7 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
         # scale S1 to match MCE_R level
         actualS1    = param['S1']*lvl
 
-        gmDatabase, specAvg = gmSelector.cleanGMs(gmPath, PEERSummary, actualS1, lvl,
+        gmDatabase, specAvg = gm.cleanGMs(gmPath, PEERSummary, actualS1, lvl,
             32, 133, 176, 111, 290, 111)
 
         # Run eq analysis for 
