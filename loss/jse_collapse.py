@@ -34,8 +34,8 @@ collections.Callable = collections.abc.Callable
 # database_path = './data/tfp_mf/'
 # database_file = 'run_data.csv'
 
-database_path = '../tfp_mf/data/'
-database_file = 'mik_smrf.csv'
+database_path = '../tfp_mf/data/doe/'
+database_file = 'mik_smrf_doe.csv'
 
 # results_path = './results/tfp_mf/'
 # results_file = 'loss_estimate_data.csv'
@@ -227,14 +227,14 @@ mdl.test_train_split(0.2)
 mdl.fit_gpc(kernel_name='rbf_iso', noisy=False)
 
 # predict the entire dataset
-pReds_r_col = mdl.gpc.predict(mdl.X)
+preds_col = mdl.gpc.predict(mdl.X)
 probs_col = mdl.gpc.predict_proba(mdl.X)
 
 # we've done manual CV to pick the hyperparams that trades some accuracy
 # in order to lower false negatives
 from sklearn.metrics import confusion_matrix
 
-tn, fp, fn, tp = confusion_matrix(mdl.y, pReds_r_col).ravel()
+tn, fp, fn, tp = confusion_matrix(mdl.y, preds_col).ravel()
 print('False negatives: ', fn)
 print('False positives: ', fp)
 
@@ -454,35 +454,35 @@ plt.show()
 
 #%% cost efficiency
 
-# from pred import get_steel_coefs, calc_upfront_cost
-# plt.close('all')
-# steel_price = 2.00
-# coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
+from pred import get_steel_coefs, calc_upfront_cost
+plt.close('all')
+steel_price = 2.00
+coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 
-# risk_thresh = 0.1
-# space_collapse_pred = pd.DataFrame(space_collapse,
-#                                    columns=['safe probability', 'collapse probability'])
-# ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
-#                       risk_thresh]
+risk_thresh = 0.1
+space_collapse_pred = pd.DataFrame(space_collapse,
+                                    columns=['safe probability', 'collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
 
-# X_design = X_space[X_space.index.isin(ok_risk.index)]
+X_design = X_space[X_space.index.isin(ok_risk.index)]
     
-# # in the filter-design process, only one of cost/dt is likely to control
+# in the filter-design process, only one of cost/dt is likely to control
     
-# # TODO: more clever selection criteria (not necessarily the cheapest)
+# TODO: more clever selection criteria (not necessarily the cheapest)
 
-# # select best viable design
-# upfront_costs = calc_upfront_cost(X_design, coef_dict)
-# cheapest_design_idx = upfront_costs.idxmin()
-# design_upfront_cost = upfront_costs.min()
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs.idxmin()
+design_upfront_cost = upfront_costs.min()
 
-# # least upfront cost of the viable designs
-# best_design = X_design.loc[cheapest_design_idx]
-# design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
-# print(best_design)
+print(best_design)
 
-# print('Upfront cost of selected design: ',
-#       f'${design_upfront_cost:,.2f}')
-# print('Predicted collapse risk: ',
-#       f'{design_collapse_risk:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')

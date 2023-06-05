@@ -384,9 +384,9 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 # valDf_base.to_csv('./data/validation.csv', index=False)
 
 #%% run doe
-# path = './data/mik_smrf.csv'
-path = './data/doe_init.csv'
-doe_df = run_doe(0.5, path)
-doe_df.to_csv('./data/doe/mik_smrf_doe.csv', index=False)
+# # path = './data/mik_smrf.csv'
+# path = './data/doe_init.csv'
+# doe_df = run_doe(0.5, path)
+# doe_df.to_csv('./data/doe/mik_smrf_doe.csv', index=False)
         
 # TODO: auto clean
