@@ -162,17 +162,19 @@ def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
     # mdl.set_outcome('collapsed')
     # mdl.fit_gpc(kernel_name='rbf_ard', noisy=True)
     
+    # TODO: change max iter so that it's fixed instead of trial-and-keep
     import LHS
     from postprocessing import cleanDat
     # add more points as DoE
     input_var, input_vals = LHS.generateInputs(maxIter, mode='doe')
     
-    ame = 1.0
+    rmse = 1.0
     batch_idx = 0
     batch_no = 0
     
     from doe import GP
-    ame_list = []
+    rmse_list = []
+    mae_list = []
     
     for index, row in enumerate(input_vals):
         print('The run index is ' + str(index) + '.')
@@ -202,21 +204,20 @@ def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
             print('R-squared :', rsc)
             y_hat = mdl.gpr.predict(mdl.X)
             
-            from sklearn.metrics import mean_squared_error
+            from sklearn.metrics import mean_squared_error, mean_absolute_error
             import numpy as np
             mse = mean_squared_error(mdl.y, y_hat)
-            print('Mean squared error: %.3f' % mse)
+            rmse = mse**0.5
+            print('Root mean squared error: %.3f' % rmse)
+            rmse_list.append(rmse)
+            write_to_csv(rmse_list, './data/doe/rmse.csv')
+
+            mae = mean_absolute_error(mdl.y, y_hat)
+            print('Mean absolute error: %.3f' % mae)
+            mae_list.append(mae)
+            write_to_csv(mae_list, './data/doe/mae.csv')
             
-            # ame is average error in predicting collapse risk (expressed in relative %)
-            # denominator is 0.001 to prevent extreme outliers
-            y_true = np.array(mdl.y).ravel()
-            mape = np.abs(y_true-y_hat)/np.maximum(np.abs(y_true), 1e-3)
-            ame = np.average(mape, axis=0)
-            ame_list.append(ame)
-            write_to_csv(ame_list, './data/doe/mean_error.csv')
-            print('Average mean error (%%): %.2f' % ame)
-            
-            if ame < error_tol:
+            if rmse < error_tol:
                 print('Stopping criterion reached.')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
                 return (df)
@@ -272,8 +273,9 @@ def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
     from scipy.stats import norm
     inv_norm = norm.ppf(0.84)
     beta_drift = 0.25
+    
     # 0.9945 is inverse normCDF of 0.84
-    mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
+    mean_log_drift = exp(log(0.1) - beta_drift*inv_norm)
     ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
     df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
     
@@ -384,9 +386,14 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 # valDf_base.to_csv('./data/validation.csv', index=False)
 
 #%% run doe
-# # path = './data/mik_smrf.csv'
-# path = './data/doe_init.csv'
-# doe_df = run_doe(0.5, path)
-# doe_df.to_csv('./data/doe/mik_smrf_doe.csv', index=False)
+# path = './data/mik_smrf.csv'
+path = './data/doe_init.csv'
+
+# DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
+# Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 400 support points
+# whichever comes first
+
+doe_df = run_doe(0.5, path, error_tol=0.1, maxIter=400)
+doe_df.to_csv('./data/doe/mik_smrf_doe.csv', index=False)
         
 # TODO: auto clean

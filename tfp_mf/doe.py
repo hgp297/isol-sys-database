@@ -180,14 +180,14 @@ class GP:
         fx = -self.fn_tmse(x_var, pr).T
         x_keep = x_var[u_var.ravel() < fx,:]
         
-        import matplotlib.pyplot as plt
-        plt.rcParams["font.family"] = "serif"
-        plt.rcParams["mathtext.fontset"] = "dejavuserif"
-        import matplotlib as mpl
-        label_size = 16
-        mpl.rcParams['xtick.labelsize'] = label_size
-        mpl.rcParams['ytick.labelsize'] = label_size
-        plt.scatter(x_keep[:,0], x_keep[:,1])
+        # import matplotlib.pyplot as plt
+        # plt.rcParams["font.family"] = "serif"
+        # plt.rcParams["mathtext.fontset"] = "dejavuserif"
+        # import matplotlib as mpl
+        # label_size = 16
+        # mpl.rcParams['xtick.labelsize'] = label_size
+        # mpl.rcParams['ytick.labelsize'] = label_size
+        # plt.scatter(x_keep[:,0], x_keep[:,1])
         
         return x_keep[np.random.choice(x_keep.shape[0], n_pts, replace=False),:]
         

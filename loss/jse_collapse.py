@@ -34,6 +34,9 @@ collections.Callable = collections.abc.Callable
 # database_path = './data/tfp_mf/'
 # database_file = 'run_data.csv'
 
+# database_path = '../tfp_mf/data/'
+# database_file = 'doe_init.csv'
+
 database_path = '../tfp_mf/data/doe/'
 database_file = 'mik_smrf_doe.csv'
 
@@ -64,6 +67,10 @@ ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
 df_miss = df[df['impacted'] == 0]
 df_hit = df[df['impacted'] == 1]
+
+df["collapse_binary"] = 0
+df['collapse_binary'] = np.where(df["max_drift"] > mean_log_drift, 1,
+                                 df["collapse_binary"])
 
 #%% Fit collapse probability (GP regression)
 
@@ -240,7 +247,7 @@ print('False positives: ', fp)
 
 # make grid and plot classification predictions
 X_plot = mdl.make_2D_plotting_space(100)
-mdl.plot_classification(mdl.gpc, contour_pr=0.1)
+mdl.plot_classification(mdl.gpc, contour_pr=0.5)
 
 # X_plot = mdl.make_2D_plotting_space(100, y_var='Tm')
 # mdl.plot_classification(mdl.gpc, yvar='Tm', contour_pr=0.5)
@@ -309,7 +316,7 @@ xx, yy, uu = np.meshgrid(np.linspace(0.5, 2.0,
 X_space = pd.DataFrame({'gapRatio':xx.ravel(),
                       'RI':yy.ravel(),
                       'Tm':uu.ravel(),
-                      'zetaM':np.repeat(0.15,res**3)})
+                      'zetaM':np.repeat(0.2,res**3)})
 
 
 
@@ -327,6 +334,7 @@ print("GPC collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
 # fmu, fs2 = mdl.predict_gpc_latent(X_space)
 fmu, fs1 = mdl_collapse.gpr.predict(X_space, return_std=True)
 fs2 = fs1**2
+
 #%% plot gpc functions
 
 plt.close('all')
