@@ -21,7 +21,7 @@ import openseespy.opensees as ops
 #              Build model
 ############################################################################
 
-import buildModel as bm
+import build as bm
 
 def runGM(gmFilename, gmDefScale, dtTransient, 
           GMDir= "./ground_motions/PEERNGARecords_Unscaled/",

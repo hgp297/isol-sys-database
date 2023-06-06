@@ -34,8 +34,11 @@ collections.Callable = collections.abc.Callable
 # database_path = './data/tfp_mf/'
 # database_file = 'run_data.csv'
 
-database_path = '../tfp_mf/data/'
-database_file = 'mik_smrf.csv'
+# database_path = '../tfp_mf/data/'
+# database_file = 'doe_init.csv'
+
+database_path = '../tfp_mf/data/doe/'
+database_file = 'mik_smrf_doe.csv'
 
 # results_path = './results/tfp_mf/'
 # results_file = 'loss_estimate_data.csv'
@@ -64,6 +67,10 @@ ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
 df_miss = df[df['impacted'] == 0]
 df_hit = df[df['impacted'] == 1]
+
+df["collapse_binary"] = 0
+df['collapse_binary'] = np.where(df["max_drift"] > mean_log_drift, 1,
+                                 df["collapse_binary"])
 
 #%% Fit collapse probability (GP regression)
 
@@ -240,7 +247,7 @@ print('False positives: ', fp)
 
 # make grid and plot classification predictions
 X_plot = mdl.make_2D_plotting_space(100)
-mdl.plot_classification(mdl.gpc, contour_pr=0.1)
+mdl.plot_classification(mdl.gpc, contour_pr=0.5)
 
 # X_plot = mdl.make_2D_plotting_space(100, y_var='Tm')
 # mdl.plot_classification(mdl.gpc, yvar='Tm', contour_pr=0.5)
@@ -258,16 +265,16 @@ mdl.fit_kernel_logistic(neg_wt=0.3, kernel_name=krn, gamma=gam)
 
 # predict the entire dataset
 K_data = mdl.get_kernel(mdl.X, kernel_name=krn, gamma=gam)
-preds_imp = mdl.log_reg_kernel.predict(K_data)
+pReds_r_imp = mdl.log_reg_kernel.predict(K_data)
 probs_imp = mdl.log_reg_kernel.predict_proba(K_data)
 
-cmpr = np.array([mdl.y.values.flatten(), preds_imp]).transpose()
+cmpr = np.array([mdl.y.values.flatten(), pReds_r_imp]).transpose()
 
 # we've done manual CV to pick the hyperparams that trades some accuracy
 # in order to lower false negatives
 from sklearn.metrics import confusion_matrix
 
-tn, fp, fn, tp = confusion_matrix(mdl.y, preds_imp).ravel()
+tn, fp, fn, tp = confusion_matrix(mdl.y, pReds_r_imp).ravel()
 print('False negatives: ', fn)
 print('False positives: ', fp)
 
@@ -309,7 +316,7 @@ xx, yy, uu = np.meshgrid(np.linspace(0.5, 2.0,
 X_space = pd.DataFrame({'gapRatio':xx.ravel(),
                       'RI':yy.ravel(),
                       'Tm':uu.ravel(),
-                      'zetaM':np.repeat(0.15,res**3)})
+                      'zetaM':np.repeat(0.2,res**3)})
 
 
 
@@ -324,7 +331,9 @@ print("GPC collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
 #%% predictive variance and weighted variance
 
 # latent variance
-fmu, fs2 = mdl.predict_gpc_latent(X_space)
+# fmu, fs2 = mdl.predict_gpc_latent(X_space)
+fmu, fs1 = mdl_collapse.gpr.predict(X_space, return_std=True)
+fs2 = fs1**2
 
 #%% plot gpc functions
 
@@ -357,7 +366,7 @@ plt.imshow(
             yy_pl.min(), yy_pl.max()),
     aspect="auto",
     origin="lower",
-    cmap=plt.cm.PuOr_r,
+    cmap=plt.cm.Reds_r,
 ) 
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
@@ -375,7 +384,7 @@ plt.imshow(
             yy_pl.min(), yy_pl.max()),
     aspect="auto",
     origin="lower",
-    cmap=plt.cm.PuOr_r,
+    cmap=plt.cm.Reds_r,
 ) 
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
@@ -388,7 +397,32 @@ plt.show()
 
 from scipy.stats import logistic
 
-Z = logistic.cdf(fmu_subset.reshape(xx_pl.shape))
+# Z = logistic.cdf(fmu_subset.reshape(xx_pl.shape))
+# plt.figure()
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Reds_r,
+# ) 
+# plt.xlabel('Gap ratio', fontsize=axis_font)
+# plt.ylabel(r'$R_y$', fontsize=axis_font)
+# plt.title('Predictive mean', fontsize=axis_font)
+# plt.colorbar()
+# plt.show()
+
+
+# TODO: reexamine DoE weight
+from numpy import exp
+T = logistic.ppf(0.5)
+pi = 3.14159
+Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - T)**2/(fs2_subset)))
+# Wx = exp((-1/2)*((fmu_subset - T)**2/(fs2_subset)))
+
+Z = Wx.reshape(xx_pl.shape)
 plt.figure()
 plt.imshow(
     Z,
@@ -397,20 +431,13 @@ plt.imshow(
             yy_pl.min(), yy_pl.max()),
     aspect="auto",
     origin="lower",
-    cmap=plt.cm.PuOr_r,
+    cmap=plt.cm.Reds_r,
 ) 
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
-plt.title('Predictive mean', fontsize=axis_font)
+plt.title('Weight', fontsize=axis_font)
 plt.colorbar()
 plt.show()
-
-
-# TODO: reexamine DoE weight
-from numpy import exp
-T = logistic.ppf(0.1)
-pi = 3.14159
-Wx = 1/((2*pi*(fs2_subset))**0.5)*exp((-1/2)*((fmu_subset - T)**2/(fs2_subset)))
 
 criterion = np.multiply(Wx, fs2_subset)
 idx = np.argmax(criterion)
@@ -425,7 +452,7 @@ plt.imshow(
             yy_pl.min(), yy_pl.max()),
     aspect="auto",
     origin="lower",
-    cmap=plt.cm.PuOr_r,
+    cmap=plt.cm.Reds_r,
 ) 
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
@@ -442,7 +469,7 @@ coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 
 risk_thresh = 0.1
 space_collapse_pred = pd.DataFrame(space_collapse,
-                                   columns=['safe probability', 'collapse probability'])
+                                    columns=['safe probability', 'collapse probability'])
 ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
                       risk_thresh]
 

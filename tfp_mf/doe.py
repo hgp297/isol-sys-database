@@ -66,7 +66,44 @@ class GP:
               %tr_scr)
         
         self.gpc = gp_pipe
+    
+    # Train GP regression
+    def fit_gpr(self, kernel_name):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.gaussian_process import GaussianProcessRegressor
+        import sklearn.gaussian_process.kernels as krn
         
+        if kernel_name=='rbf_ard':
+            kernel = 1.0 * krn.RBF([1.0, 1.0, 1.0, 1.0])
+        elif kernel_name=='rbf_iso':
+            kernel = 1.0 * krn.RBF(1.0)
+        elif kernel_name=='rq':
+            kernel = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
+                                                    alpha=1.0)
+        elif kernel_name == 'matern_iso':
+            kernel = 1.0 * krn.Matern(
+                    length_scale=1.0, 
+                    nu=1.5)
+        elif kernel_name == 'matern_ard':
+            kernel = 1.0 * krn.Matern(
+                    length_scale=[1.0, 1.0, 1.0, 1.0], 
+                    nu=1.5)
+            
+        kernel = kernel + krn.WhiteKernel(noise_level=1, noise_level_bounds=(1e-5, 1e1))
+            
+        # pipeline to scale -> GPR
+        gp_pipe = Pipeline([
+                ('scaler', StandardScaler()),
+                ('gpr', GaussianProcessRegressor(kernel=kernel,
+                                                 random_state=985,
+                                                 n_restarts_optimizer=10))
+                ])
+    
+        gp_pipe.fit(self.X, self.y)
+        
+        self.gpr = gp_pipe
+            
     def predict_gpc_latent(self, X):
         """Return latent mean and variance for the test vector X.
         Uses Laplace approximation (Williams & Rasmussen Algorithm 3.2)
@@ -102,7 +139,59 @@ class GP:
         var_f_star = mdl_gpc.kernel_.diag(X) - np.einsum("ij,ij->j", v, v)
         
         return(f_star, var_f_star)
+    
+    def doe_rejection_sampler(self, n_pts, pr):
+        import numpy as np
+        n_max = 1000
         
+        # start with a sample of x's from a uniform distribution
+        x_var = np.array([np.random.uniform(0.3, 2.0, n_max),
+                       np.random.uniform(0.5, 2.0, n_max),
+                       np.random.uniform(2.5, 4.0, n_max),
+                       np.random.uniform(0.1, 0.2, n_max)]).T
+        
+        # TODO: parameterize the function
+        # find the maximum that the function will be in the domain
+        # bounds for design space
+        from scipy.optimize import basinhopping
+        bnds = ((0.3, 2.0), (0.5, 2.0), (2.5, 4.0), (0.1, 0.2))
+        
+        x0 = np.array([[np.random.uniform(0.3, 2.0),
+                       np.random.uniform(0.5, 2.0),
+                       np.random.uniform(2.5, 4.0),
+                       np.random.uniform(0.1, 0.2)]])
+        
+        # use basin hopping to avoid local minima
+        minimizer_kwargs={'args':(pr),'bounds':bnds}
+        res = basinhopping(self.fn_tmse, x0, minimizer_kwargs=minimizer_kwargs,
+                           niter=100, seed=985)
+        
+        # res = minimize(self.fn_test, x0, 
+        #                args=(pr),
+        #                method='Nelder-Mead', tol=1e-8,
+        #                bounds=bnds)
+        
+        c_max = -res.fun
+        
+        # sample rejection variable
+        u_var = np.array([np.random.uniform(0.0, c_max, n_max)]).T
+        
+        # evaluate the function at x
+        fx = -self.fn_tmse(x_var, pr).T
+        x_keep = x_var[u_var.ravel() < fx,:]
+        
+        # import matplotlib.pyplot as plt
+        # plt.rcParams["font.family"] = "serif"
+        # plt.rcParams["mathtext.fontset"] = "dejavuserif"
+        # import matplotlib as mpl
+        # label_size = 16
+        # mpl.rcParams['xtick.labelsize'] = label_size
+        # mpl.rcParams['ytick.labelsize'] = label_size
+        # plt.scatter(x_keep[:,0], x_keep[:,1])
+        
+        return x_keep[np.random.choice(x_keep.shape[0], n_pts, replace=False),:]
+        
+  
     def doe_tmse(self, pr):
         """Return point that maximizes tMSE criterion (Lyu et al 2021)
         Latent variance is evaluated at the point according to current model 
@@ -121,13 +210,16 @@ class GP:
         import numpy as np
         import pandas as pd
         
-        x0 = np.array([random.uniform(0.3, 2.0),
+        # initialize a guess
+        x0 = np.array([[random.uniform(0.3, 2.0),
                        random.uniform(0.5, 2.0),
                        random.uniform(2.5, 4.0),
-                       random.uniform(0.1, 0.2)])
+                       random.uniform(0.1, 0.2)]])
         
+        # bounds for design space
         bnds = ((0.3, 2.0), (0.5, 2.0), (2.5, 4.0), (0.1, 0.2))
         
+        # find argmax tmse criterion
         res = minimize(self.fn_tmse, x0, 
                        args=(pr),
                        method='Nelder-Mead', tol=1e-6,
@@ -139,21 +231,90 @@ class GP:
                                                             'zetaM'])
         return x_next
         
-    def fn_tmse(self, X_cand, pr):
-        from scipy.stats import logistic
-        T = logistic.ppf(pr)
+    def fn_W(self, X_cand, pr):
         
-        X_cand = X_cand.reshape(1,-1)
         import pandas as pd
+        import numpy as np
+        if X_cand.ndim == 1:
+            X_cand = np.array([X_cand])
         X_cand = pd.DataFrame(X_cand, columns=['gapRatio',
                                                'RI',
                                                'Tm',
                                                'zetaM'])
-        fmu, fs2 = self.predict_gpc_latent(X_cand)
         
+        # try GPC
+        try:
+            fmu, fs2 = self.predict_gpc_latent(X_cand)
+            
+            # find target in logistic space
+            from scipy.stats import logistic
+            T = logistic.ppf(pr)
+            
+        # if fail, it's GPR
+        except:
+            # function returns standard deviation
+            fmu, fs1 = self.gpr.predict(X_cand, return_std=True)
+            fs2 = fs1**2
+            
+            # target exists directly in probability space
+            T = pr
+        
+        # weight is from Lyu / Picheny
+        from numpy import exp
+        pi = 3.14159
+        Wx = 1/((2*pi*(fs2))**0.5) * exp((-1/2)*((fmu - T)**2/(fs2)))
+        
+        return(-Wx)
+    
+    # returns single-point (myopic) tmse condition, Lyu 2021
+    def fn_tmse(self, X_cand, pr):
+        
+        import pandas as pd
+        import numpy as np
+        if X_cand.ndim == 1:
+            X_cand = np.array([X_cand])
+            
+        X_cand = pd.DataFrame(X_cand, columns=['gapRatio',
+                                               'RI',
+                                               'Tm',
+                                               'zetaM'])
+        
+        # try GPC
+        try:
+            fmu, fs2 = self.predict_gpc_latent(X_cand)
+            
+            # find target in logistic space
+            from scipy.stats import logistic
+            T = logistic.ppf(pr)
+            
+        # if fail, it's GPR
+        except:
+            # function returns standard deviation
+            fmu, fs1 = self.gpr.predict(X_cand, return_std=True)
+            fs2 = fs1**2
+            
+            # target exists directly in probability space
+            T = pr
+        
+        # weight is from Lyu / Picheny
         from numpy import exp
         pi = 3.14159
         Wx = 1/((2*pi*(fs2))**0.5) * exp((-1/2)*((fmu - T)**2/(fs2)))
         
         return(-fs2 * Wx)
+    
+    def fn_test(self, X_cand, pr):
         
+        import pandas as pd
+        import numpy as np
+        if X_cand.ndim == 1:
+            X_cand = np.array([X_cand])
+            
+        X_cand = pd.DataFrame(X_cand, columns=['gapRatio',
+                                               'RI',
+                                               'Tm',
+                                               'zetaM'])
+        
+        # function returns latent mean
+        fmu = self.gpr.predict(X_cand)
+        return(-fmu)

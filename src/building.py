@@ -518,6 +518,7 @@ class Building:
         a_mem_beam = (n+1.0)*(My_col*(McMy-1.0))/(Ke_beam*thp_beam)
         b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
     
+        # TODO: change this to the new IMKBilin element
         ops.uniaxialMaterial('Bilin', steel_col_tag, Ke_col, b_col, b_col,
                               My_col, -My_col, lam_col, 
                               0, 0, 0, cIK, cIK, cIK, cIK, 
@@ -2120,12 +2121,13 @@ def get_properties(shape):
 #              Bilinear deteriorating model parameters
 ###############################################################################
 
+# TODO: update parameters to match SMRF definitions
 def modified_IK_params(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi
     Es = 29000 # ksi
 
-    Sx = float(shape['Sx'])
+    Zx = float(shape['Zx'])
     Iz = float(shape['Ix'])
     d = float(shape['d'])
     htw = float(shape['h/tw'])
@@ -2134,7 +2136,7 @@ def modified_IK_params(shape, L):
     c1 = 25.4
     c2 = 6.895
 
-    My = Fy * Sx
+    My = Fy * Zx * 1.17
     thy = My/(6*Es*Iz/L)
     Ke = My/thy
     # consider using Lb = 0 for beams bc of slab?

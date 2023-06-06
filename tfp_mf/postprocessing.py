@@ -19,7 +19,7 @@
 import pandas as pd
 import numpy as np
 import math
-import gmSelector
+import gm
 
 # functions to standardize csv output
 def getShape(shape):
@@ -51,7 +51,7 @@ def failurePostprocess(filename, scaleFactor, spectrumAverage, runStatus, Tfb,
     
 
     # get selections and append to non-input dictionary
-    import superStructDesign as sd
+    import design as sd
     (mu1, mu2, mu3, R1, R2, R3, moatGap, selectedBeam, selectedRoofBeam, selectedCol) = sd.design()
 
     fromDesign      = {
@@ -82,13 +82,13 @@ def failurePostprocess(filename, scaleFactor, spectrumAverage, runStatus, Tfb,
 
     # spectral accels of GM
     afterRun['GMSavg']      = spectrumAverage
-    afterRun['GMS1']        = gmSelector.getST(gmDir, resultsCSV,
+    afterRun['GMS1']        = gm.getST(gmDir, resultsCSV,
         filename, scaleFactor, 1.0, 32, 133, 290, 111)
-    afterRun['GMST1']       = gmSelector.getST(gmDir, resultsCSV,
+    afterRun['GMST1']       = gm.getST(gmDir, resultsCSV,
         filename, scaleFactor, afterRun['T1'], 32, 133, 290, 111)
-    afterRun['GMST2']       = gmSelector.getST(gmDir, resultsCSV,
+    afterRun['GMST2']       = gm.getST(gmDir, resultsCSV,
         filename, scaleFactor, afterRun['T2'], 32, 133, 290, 111)
-    afterRun['GMSTm']       = gmSelector.getST(gmDir, resultsCSV,
+    afterRun['GMSTm']       = gm.getST(gmDir, resultsCSV,
         filename, scaleFactor, param['Tm'], 32, 133, 290, 111)
     if IDALevel is not None:
         afterRun['IDALevel'] = IDALevel
@@ -380,3 +380,53 @@ def failurePostprocess(filename, scaleFactor, spectrumAverage, runStatus, Tfb,
     runHeader       = list(runRecord.columns)                                       # pass column names to runControl
 
     return(runHeader, runRecord)
+
+def cleanDat(oldDf):
+    # remove excessive scaling
+    newDf = oldDf[oldDf.GMScale <= 20]
+    
+    newDf = newDf.astype({"collapseDrift1": int,
+                          "collapseDrift2": int,
+                          "collapseDrift3": int,
+                          "serviceDrift1": int,
+                          "serviceDrift2": int,
+                          "serviceDrift3": int,})
+
+    # collapsed
+    newDf['collapsed'] = (newDf['collapseDrift1'] | newDf['collapseDrift2']) | \
+        newDf['collapseDrift3']
+    newDf.loc[newDf.collapsed == 0, 'collapsed'] = -1
+    newDf['collapsed'] = newDf['collapsed'].astype(float)
+    
+    # service lvl
+    newDf['serviceFailure'] = (newDf['serviceDrift1'] | newDf['serviceDrift2']) | \
+        newDf['serviceDrift3']
+    newDf.loc[newDf.serviceFailure == 0, 'serviceFailure'] = -1
+    newDf['serviceFailure'] = newDf['serviceFailure'].astype(float)
+
+    # get Bm
+    g = 386.4
+    zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    newDf['Bm'] = np.interp(newDf['zetaM'], zetaRef, BmRef)
+
+    # expected Dm from design spectrum
+    newDf['DesignDm'] = g*newDf['S1']*newDf['Tm']/(4*np.pi**2*newDf['Bm'])
+
+    # expected Dm from ground motion
+    newDf['earthquakeDm'] = g*(newDf['GMSTm']/newDf['Bm'])*(newDf['Tm']**2)/(4*np.pi**2)
+
+    # back calculate moatAmpli
+    if 'moatAmpli' not in newDf:
+        newDf['moatAmpli'] = newDf['moatGap']/newDf['earthquakeDm']
+
+    # gapRatio, recalculated for true rounded up gap
+    newDf['gapRatio'] = (newDf['moatGap']*4*np.pi**2)/ \
+        (g*(newDf['GMSTm']/newDf['Bm'])*newDf['Tm']**2)
+
+    # TmRatio
+    newDf['Ss'] = 2.2815
+    newDf['Tshort'] = newDf['S1']/newDf['Ss']
+    # newDf['TmRatio'] = newDf['Tm']/newDf['Tshort']
+
+    return(newDf)

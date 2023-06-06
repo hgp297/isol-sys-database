@@ -15,19 +15,26 @@
 from scipy.stats import qmc
 import numpy as np
 
-def generateInputs(num):
+def generateInputs(num, mode='generate'):
 
     # range of desired inputs
     # currently, this is approx'd to match MCER level (no site mod)
-    inputDict   = {
-        'S1'            : [0.8, 1.3],
-        'Tm'            : [2.5, 4.0],
-        'zetaM'         : [0.10, 0.20],
-        'mu1'           : [0.01, 0.05],
-        'R1'            : [15, 45],
-        'moatAmpli'       : [0.3, 1.8],
-        'RI'            : [0.5, 2.0]
-    }
+    if mode=='doe':
+        inputDict 	= {
+    		'S1' 			: [0.8, 1.3],
+    		'mu1' 			: [0.01, 0.05],
+    		'R1' 			: [15, 45],
+    	}
+    else:
+        inputDict   = {
+            'S1'            : [0.8, 1.3],
+            'Tm'            : [2.5, 4.0],
+            'zetaM'         : [0.10, 0.20],
+            'mu1'           : [0.01, 0.05],
+            'R1'            : [15, 45],
+            'moatAmpli'       : [0.3, 1.8],
+            'RI'            : [0.5, 2.0]
+        }
 
     # create array of limits, then run LHS
     paramNames      = list(inputDict.keys())
