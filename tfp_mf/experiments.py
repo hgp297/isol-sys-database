@@ -203,7 +203,7 @@ def run_doe(prob_target, training_set_path, testing_set_path,
             
             y_hat = mdl.gpr.predict(test_set.X)
             
-            print('===== Training model size: ', mdl.X.shape[0], '=====')
+            print('===== Training model size:', mdl.X.shape[0], '=====')
             from sklearn.metrics import mean_squared_error, mean_absolute_error
             import numpy as np
             mse = mean_squared_error(test_set.y, y_hat)
