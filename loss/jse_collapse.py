@@ -34,9 +34,6 @@ collections.Callable = collections.abc.Callable
 # database_path = './data/tfp_mf/'
 # database_file = 'run_data.csv'
 
-# database_path = '../tfp_mf/data/'
-# database_file = 'doe_init.csv'
-
 database_path = '../tfp_mf/data/doe/'
 database_file = 'mik_smrf_doe.csv'
 
