@@ -209,13 +209,11 @@ def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
             mse = mean_squared_error(mdl.y, y_hat)
             rmse = mse**0.5
             print('Root mean squared error: %.3f' % rmse)
-            rmse_list.append(rmse)
-            write_to_csv(rmse_list, './data/doe/rmse.csv')
 
             mae = mean_absolute_error(mdl.y, y_hat)
             print('Mean absolute error: %.3f' % mae)
-            mae_list.append(mae)
-            write_to_csv(mae_list, './data/doe/mae.csv')
+            
+            
             
             if rmse < error_tol:
                 print('Stopping criterion reached.')
@@ -257,7 +255,14 @@ def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
             print('Scale factor exceeded 20.0.')
             continue
         
-        # if run succeeded, increase the batch index
+        # if run is successful and is batch marker, record error metric
+        if (batch_idx % (batch_size) == 0):
+            rmse_list.append(rmse)
+            write_to_csv(rmse_list, './data/doe/rmse.csv')
+            
+            mae_list.append(mae)
+            write_to_csv(mae_list, './data/doe/mae.csv')
+        
         batch_idx += 1
 
         # clean new df, attach to existing data
@@ -393,7 +398,8 @@ path = './data/doe_init.csv'
 # Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 400 support points
 # whichever comes first
 
-doe_df = run_doe(0.5, path, error_tol=0.1, maxIter=400)
+# use batch size 20 to help with increasing RMSE issue
+doe_df = run_doe(0.5, path, error_tol=0.1, batch_size=30, maxIter=600)
 doe_df.to_csv('./data/doe/mik_smrf_doe.csv', index=False)
         
 # TODO: auto clean
