@@ -146,21 +146,34 @@ def generate(num_points=400, inputDir='./inputs/bearingInput.csv',
     
     return(resultsDf)
 
-def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
+def run_doe(prob_target, training_set_path, testing_set_path, 
+            batch_size=10, error_tol=0.15, maxIter=600,
             inputPath = './inputs/', inputFile = 'bearingInput.csv'):
 
     import numpy as np
     np.random.seed(986)
     random.seed(986)
+    from doe import GP
     
-    df = pd.read_csv(path)
+    # use a test set to evaluate error metric
+    df = pd.read_csv(training_set_path)
+    df_test = pd.read_csv(testing_set_path)
     
     
-    # fit model with initial n points
-    # from doe import GP
-    # mdl = GP(df)
-    # mdl.set_outcome('collapsed')
-    # mdl.fit_gpc(kernel_name='rbf_ard', noisy=True)
+    # collapse as a probability
+    from scipy.stats import lognorm
+    from math import log, exp
+    from scipy.stats import norm
+    inv_norm = norm.ppf(0.84)
+    beta_drift = 0.25
+    # 0.9945 is inverse normCDF of 0.84
+    mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
+    ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+    
+    df_test['max_drift'] = df_test[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+    df_test['collapse_prob'] = ln_dist.cdf(df_test['max_drift'])
+    test_set = GP(df_test)
+    test_set.set_outcome('collapse_prob')
     
     # TODO: change max iter so that it's fixed instead of trial-and-keep
     import LHS
@@ -172,7 +185,6 @@ def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
     batch_idx = 0
     batch_no = 0
     
-    from doe import GP
     rmse_list = []
     mae_list = []
     
@@ -183,40 +195,35 @@ def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
         if (batch_idx % (batch_size) == 0):
             
             df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
-            df.loc[df['collapsed'] == -1, 'collapsed'] = 0
-            
-            # collapse as a probability
-            from scipy.stats import lognorm
-            from math import log, exp
-            from scipy.stats import norm
-            inv_norm = norm.ppf(0.84)
-            beta_drift = 0.25
-            # 0.9945 is inverse normCDF of 0.84
-            mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
-            ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
             df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
             
             mdl = GP(df)
             mdl.set_outcome('collapse_prob')
             mdl.fit_gpr(kernel_name='rbf_ard')
             
-            rsc = mdl.gpr.score(mdl.X, mdl.y)
-            print('R-squared :', rsc)
-            y_hat = mdl.gpr.predict(mdl.X)
+            y_hat = mdl.gpr.predict(test_set.X)
             
+            print('===== Training model size: ', mdl.X.shape[0], '=====')
             from sklearn.metrics import mean_squared_error, mean_absolute_error
             import numpy as np
-            mse = mean_squared_error(mdl.y, y_hat)
+            mse = mean_squared_error(test_set.y, y_hat)
             rmse = mse**0.5
-            print('Root mean squared error: %.3f' % rmse)
+            print('Test set RMSE: %.3f' % rmse)
 
-            mae = mean_absolute_error(mdl.y, y_hat)
-            print('Mean absolute error: %.3f' % mae)
+            mae = mean_absolute_error(test_set.y, y_hat)
+            print('Test set MAE: %.3f' % mae)
             
-            
+            if len(rmse_list) == 0:
+                conv = rmse
+            else:
+                conv = abs(rmse - rmse_list[-1])/rmse_list[-1]
             
             if rmse < error_tol:
-                print('Stopping criterion reached.')
+                print('Stopping criterion reached. Ending DoE...')
+                print('Number of added points: ' + str((batch_idx)*(batch_no)))
+                return (df)
+            elif conv < 1e-3:
+                print('RMSE did not improve beyond convergence tolerance. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
                 return (df)
             else:
@@ -271,17 +278,6 @@ def run_doe(prob_target, path, batch_size=10, error_tol=0.15, maxIter=600,
     
     df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
     df.loc[df['collapsed'] == -1, 'collapsed'] = 0
-    
-    # collapse as a probability
-    from scipy.stats import lognorm
-    from math import log, exp
-    from scipy.stats import norm
-    inv_norm = norm.ppf(0.84)
-    beta_drift = 0.25
-    
-    # 0.9945 is inverse normCDF of 0.84
-    mean_log_drift = exp(log(0.1) - beta_drift*inv_norm)
-    ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
     df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
     
     print('Did not reach convergence after max runs.')
@@ -392,14 +388,18 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 
 #%% run doe
 # path = './data/mik_smrf.csv'
-path = './data/doe_init.csv'
+
+training_path = './data/training_set.csv'
+testing_path = './data/testing_set.csv'
 
 # DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
-# Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 400 support points
+# Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 600 support points
+# or no improvements to the RMSE (<0.001 in RMSE change)
 # whichever comes first
 
 # use batch size 20 to help with increasing RMSE issue
-doe_df = run_doe(0.5, path, error_tol=0.1, batch_size=30, maxIter=600)
-doe_df.to_csv('./data/doe/mik_smrf_doe.csv', index=False)
+doe_df = run_doe(0.5, training_path, testing_path, 
+                 error_tol=0.15, batch_size=10, maxIter=600)
+doe_df.to_csv('./data/doe/rmse_doe_set.csv', index=False)
         
 # TODO: auto clean
