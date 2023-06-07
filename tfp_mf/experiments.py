@@ -147,7 +147,7 @@ def generate(num_points=400, inputDir='./inputs/bearingInput.csv',
     return(resultsDf)
 
 def run_doe(prob_target, training_set_path, testing_set_path, 
-            batch_size=10, error_tol=0.15, maxIter=600,
+            batch_size=10, error_tol=0.15, maxIter=600, conv_tol=1e-2,
             inputPath = './inputs/', inputFile = 'bearingInput.csv'):
 
     import numpy as np
@@ -222,7 +222,7 @@ def run_doe(prob_target, training_set_path, testing_set_path,
                 print('Stopping criterion reached. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
                 return (df)
-            elif conv < 1e-3:
+            elif conv < conv_tol:
                 print('RMSE did not improve beyond convergence tolerance. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
                 return (df)
@@ -394,7 +394,7 @@ testing_path = './data/testing_set.csv'
 
 # DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
 # Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 600 support points
-# or no improvements to the RMSE (<0.001 in RMSE change)
+# or no improvements to the RMSE (<1% in RMSE change)
 # whichever comes first
 
 # use batch size 20 to help with increasing RMSE issue
