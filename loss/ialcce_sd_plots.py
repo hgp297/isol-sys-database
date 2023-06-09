@@ -31,13 +31,13 @@ database_file = 'run_data.csv'
 results_path = './results/tfp_mf_doe/'
 results_file = 'loss_estimate_data.csv'
 
-val_dir = './data/tfp_mf_val/'
-val_dir_loss = './results/tfp_mf_val/validation/'
+val_dir = './data/tfp_mf_val/sd_material/'
+val_dir_loss = './results/tfp_mf_val/old/validation/'
 val_file = 'addl_TFP_val.csv'
 
-baseline_dir = './data/tfp_mf_val/'
+baseline_dir = './data/tfp_mf_baseline/'
 baseline_dir_loss = './results/tfp_mf_val/baseline/'
-baseline_file = 'addl_TFP_baseline.csv'
+baseline_file = 'ida_baseline.csv'
 
 val_loss = pd.read_csv(val_dir_loss+'loss_estimate_data.csv', index_col=None)
 base_loss = pd.read_csv(baseline_dir_loss+'loss_estimate_data.csv', index_col=None)
@@ -1946,21 +1946,25 @@ baseline_repair_cost = predict_DV(X_baseline,
                                       mdl.gpc,
                                       mdl_hit.kr,
                                       mdl_miss.kr,
-                                      outcome=cost_var)
+                                      outcome=cost_var)[cost_var+'_pred'].item()
 baseline_downtime = predict_DV(X_baseline,
                                       mdl.gpc,
                                       mdl_time_hit.kr,
                                       mdl_time_miss.kr,
-                                      outcome=time_var)
+                                      outcome=time_var)[time_var+'_pred'].item()
 baseline_drift = predict_DV(X_baseline,
                                       mdl.gpc,
                                       mdl_drift_hit.o_ridge,
                                       mdl_drift_miss.o_ridge,
-                                      outcome='max_drift')
+                                      outcome='max_drift')['max_drift_pred'].item()
 
-baseline_collapse_risk = ln_dist.cdf(baseline_drift)
+baseline_collapse_risk = ln_dist.cdf(baseline_drift).item()
 
-
+baseline_repl_risk = predict_DV(X_baseline,
+                                      mdl.gpc,
+                                      mdl_repl_hit.kr,
+                                      mdl_repl_miss.kr,
+                                      outcome='replacement_freq')['replacement_freq_pred'].item()
 #%% refine space to meet repair cost and downtime requirements
 plt.close('all')
 steel_price = 2.00
@@ -2005,8 +2009,19 @@ design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
 design_PID = space_drift.iloc[cheapest_design_idx].item()
 design_repl_risk = space_repl.iloc[cheapest_design_idx].item()
 
-print(best_design)
+print('==================================')
+print('            Predictions           ')
+print('==================================')
+print('\n')
+print('======= Targets =======')
+print('Replacement cost fraction:', percent_of_replacement)
+print('Replacement time (days):', dt_thresh/n_worker_parallel)
+print('Collapse risk:', risk_thresh)
+print('Replacement risk:', repl_thresh)
 
+
+print('======= Overall inverse design =======')
+print(best_design)
 print('Upfront cost of selected design: ',
       f'${design_upfront_cost:,.2f}')
 print('Predicted median repair cost: ',
@@ -2020,6 +2035,20 @@ print('Predicted replacement risk: ',
 print('Predicted peak interstory drift: ',
       f'{design_PID:.2%}')
 
+baseline_upfront_cost = calc_upfront_cost(X_baseline, coef_dict).item()
+print('======= Predicted baseline performance =======')
+print('Upfront cost of baseline design: ',
+      f'${baseline_upfront_cost:,.2f}')
+print('Baseline median repair cost: ',
+      f'${baseline_repair_cost:,.2f}')
+print('Baseline repair time (sequential): ',
+      f'{baseline_downtime:,.2f}', 'worker-days')
+print('Baseline collapse risk: ',
+      f'{baseline_collapse_risk:.2%}')
+print('Baseline replacement risk: ',
+      f'{baseline_repl_risk:.2%}')
+print('Baseline peak interstory drift: ',
+      f'{baseline_drift:.2%}')
 
 #%% cost sens
 land_costs = [2151., 3227., 4303., 5379.]
@@ -2235,7 +2264,7 @@ steel_price = 2.00
 coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 
 # <2 weeks for a team of 50
-dts = [7*n_worker_parallel, 14*n_worker_parallel, 28*n_worker_parallel]
+dts = [14*n_worker_parallel, 28*n_worker_parallel, 56*n_worker_parallel]
 color_list = ['red', 'brown', 'black']
 for j, dt_thresh in enumerate(dts):
     ok_time = X_space.loc[downtime_plot[time_var+'_pred']<=dt_thresh]
@@ -2410,12 +2439,12 @@ for container in ax1.containers:
     
 #%% full validation (IDA data)
 
-val_dir = './data/tfp_mf_val/'
-val_dir_loss = './results/tfp_mf_val/validation_full/'
+val_dir = './data/tfp_mf_val/sd_material/'
+val_dir_loss = './results/tfp_mf_val/old/validation_full/'
 val_file = 'addl_TFP_val.csv'
 
-baseline_dir = './data/tfp_mf_val/'
-baseline_dir_loss = './results/tfp_mf_val/baseline_full/'
+baseline_dir = './data/tfp_mf_val/sd_material/'
+baseline_dir_loss = './results/tfp_mf_val/old/baseline_full/'
 baseline_file = 'addl_TFP_baseline.csv'
 
 val_loss = pd.read_csv(val_dir_loss+'loss_estimate_data.csv', index_col=None)

@@ -397,8 +397,8 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 #%% validate a building (specify design input file)
 
 inputString = './inputs/bearingInputVal_baseline.csv'
-valDf_base = validate(inputString, IDALevel=[1.0])
-valDf_base.to_csv('./data/validation.csv', index=False)
+valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
+valDf_base.to_csv('./data/val/ida.csv', index=False)
 
 #%% run doe
 # # path = './data/mik_smrf.csv'

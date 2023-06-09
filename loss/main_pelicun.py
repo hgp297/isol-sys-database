@@ -197,10 +197,10 @@ import pandas as pd
 import collections
 collections.Callable = collections.abc.Callable
 
-data_path = './data/tfp_mf_doe/'
-res_path = './results/tfp_mf_doe/'
-training_data = run_pelicun(data_path, res_path, 
-                            database_file='run_data.csv', mode='generate')
+# data_path = './data/tfp_mf_doe/'
+# res_path = './results/tfp_mf_doe/'
+# training_data = run_pelicun(data_path, res_path, 
+#                             database_file='run_data.csv', mode='generate')
 
 #%% validation run
 
@@ -220,17 +220,17 @@ training_data = run_pelicun(data_path, res_path,
 
 #%% baseline validation
 
-# data_path = './data/tfp_mf_val/'
-# res_path = './results/tfp_mf_val/baseline/'
-# db_file = 'addl_TFP_baseline.csv'
-# baseline_input = pd.read_csv(data_path+db_file)
-# baseline_data = run_pelicun(data_path, res_path, 
-#                             database_file=db_file, 
-#                             mode='generate')
+data_path = './data/tfp_mf_baseline/'
+res_path = './results/tfp_mf_val/baseline/'
+db_file = 'ida_baseline.csv'
+baseline_input = pd.read_csv(data_path+db_file)
+baseline_data = run_pelicun(data_path, res_path, 
+                            database_file=db_file, 
+                            mode='generate')
 
-# # below is taking the mean of median results (over 59 runs)
-# baseline_data = baseline_data.astype('float')
-# baseline_summary = baseline_data.describe([0.5])
+# below is taking the mean of median results (over 59 runs)
+baseline_data = baseline_data.astype('float')
+baseline_summary = baseline_data.describe([0.5])
 #%% validation run (full fragility)
 
 # data_path = './data/tfp_mf_val/'
