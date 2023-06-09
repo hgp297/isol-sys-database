@@ -197,8 +197,8 @@ import pandas as pd
 import collections
 collections.Callable = collections.abc.Callable
 
-data_path = './data/tfp_mf_old/'
-res_path = './results/tfp_mf_old/'
+data_path = './data/tfp_mf_doe/'
+res_path = './results/tfp_mf_doe/'
 training_data = run_pelicun(data_path, res_path, 
                             database_file='run_data.csv', mode='generate')
 

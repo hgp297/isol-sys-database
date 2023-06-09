@@ -38,7 +38,7 @@ y_true = np.array(mdl.y).ravel()
 mae = mean_absolute_error(mdl.y, y_hat)
 print('Mean absolute error: %.3f' % mae)
 
-print('======= after doe (~170 points) =======')
+print('======= after doe (~210 points) =======')
 
 df_doe = pd.read_csv(doe_path+'rmse_doe_set.csv')
 
@@ -175,7 +175,7 @@ bas = balanced_accuracy_score(df_test['col_thresh'], df_test['col_thresh_pred'])
 print('F1 score: %.3f' % f1)
 print('Balanced accuracy score: %.3f' % bas)
 
-print('======= test results trained on 170 points =======')
+print('======= test results trained on 210 points =======')
 df_doe = pd.read_csv(doe_path+'rmse_doe_set.csv')
 df_doe['max_drift'] = df_doe[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df_doe['collapse_prob'] = ln_dist.cdf(df_doe['max_drift'])
@@ -206,9 +206,6 @@ f1 = f1_score(df_test['col_thresh'], df_test['col_thresh_pred'])
 bas = balanced_accuracy_score(df_test['col_thresh'], df_test['col_thresh_pred'])
 print('F1 score: %.3f' % f1)
 print('Balanced accuracy score: %.3f' % bas)
-
-compare = pd.DataFrame([y_hat, y_true]).T
-compare.columns = ['predicted %', 'true %']
 
 #%% new points
 

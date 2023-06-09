@@ -396,23 +396,23 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 
 #%% validate a building (specify design input file)
 
-# inputString = './inputs/bearingInputVal_baseline.csv'
-# valDf_base = validate(inputString, IDALevel=[1.0])
-# valDf_base.to_csv('./data/validation.csv', index=False)
+inputString = './inputs/bearingInputVal_baseline.csv'
+valDf_base = validate(inputString, IDALevel=[1.0])
+valDf_base.to_csv('./data/validation.csv', index=False)
 
 #%% run doe
-# path = './data/mik_smrf.csv'
+# # path = './data/mik_smrf.csv'
 
-training_path = './data/training_set.csv'
-testing_path = './data/testing_set.csv'
+# training_path = './data/training_set.csv'
+# testing_path = './data/testing_set.csv'
 
-# DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
-# Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 600 support points
-# or no improvements to the RMSE (<0.1% in RMSE change)
-# whichever comes first
+# # DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
+# # Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 600 support points
+# # or no improvements to the RMSE (<0.1% in RMSE change)
+# # whichever comes first
 
-doe_df = run_doe(0.5, training_path, testing_path, 
-                 error_tol=0.15, conv_tol=0.001, batch_size=10, maxIter=600)
-doe_df.to_csv('./data/doe/rmse_doe_set_tol.csv', index=False)
+# doe_df = run_doe(0.5, training_path, testing_path, 
+#                  error_tol=0.15, conv_tol=0.001, batch_size=10, maxIter=600)
+# doe_df.to_csv('./data/doe/rmse_doe_set_tol.csv', index=False)
         
 # TODO: auto clean

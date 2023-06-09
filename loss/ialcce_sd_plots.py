@@ -25,10 +25,10 @@ ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 #%%
 
-database_path = './data/tfp_mf_old/'
+database_path = './data/tfp_mf_doe/'
 database_file = 'run_data.csv'
 
-results_path = './results/tfp_mf_old/'
+results_path = './results/tfp_mf_doe/'
 results_file = 'loss_estimate_data.csv'
 
 val_dir = './data/tfp_mf_val/'
@@ -52,21 +52,29 @@ full_isolation_data = pd.read_csv(database_path+database_file,
 cost_var = 'cost_50%'
 time_var = 'time_u_50%'
 
+# assume $600/sf
+replacement_cost = 600.0*90.0*90.0*4
+
+# assume 2 years timeline
+# assume 1 worker per 1000 sf, but can work in parallel of 2 floors
+n_worker_series = 90*90*4/1000
+n_worker_parallel = n_worker_series/2
+replacement_time = n_worker_parallel*365*2
+
 df = pd.concat([full_isolation_data, loss_data], axis=1)
 df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df['collapse_probs'] = ln_dist.cdf(np.array(df['max_drift']))
-df['repair_time'] = df[time_var]/50.0
+df['repair_time'] = df[time_var]/n_worker_parallel
 
 df_val = pd.concat([val_run, val_loss], axis=1)
 df_val['max_drift'] = df_val[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df_val['collapse_probs'] = ln_dist.cdf(np.array(df_val['max_drift']))
-df_val['repair_time'] = df_val[time_var]/50.0
+df_val['repair_time'] = df_val[time_var]/n_worker_parallel
 
 df_base = pd.concat([base_run, base_loss], axis=1)
 df_base['max_drift'] = df_base[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df_base['collapse_probs'] = ln_dist.cdf(np.array(df_base['max_drift']))
-df_base['repair_time'] = df_base[time_var]/50.0
-
+df_base['repair_time'] = df_base[time_var]/n_worker_parallel
 
 
 #%% engineering data
@@ -104,6 +112,7 @@ ax1.set_ylabel('Gap ratio range', fontsize=axis_font)
 ax1.set_xlabel('Peak interstory drift (PID)', fontsize=axis_font)
 plt.xlim([0.0, 0.20])
 fig.tight_layout()
+plt.show()
 
 #%% collapse fragility def
 import numpy as np
@@ -146,6 +155,7 @@ ax.plot([lower], [0.16], marker='*', markersize=15, color="red")
 
 ax.set_title('Collapse fragility definition', fontsize=axis_font)
 ax.grid()
+plt.show()
 #%% overall data distribution
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -175,7 +185,7 @@ ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax1.set_title(r'Input distribution', fontsize=title_font)
 ax1.set_xlim([0.3, 2.5])
 ax1.grid()
-
+plt.show()
 # plt.close('all')
 # import seaborn as sns
 # with sns.plotting_context(rc={"legend.fontsize":axis_font}):
@@ -287,7 +297,7 @@ legend_handle.get_texts()[0].set_text('% collapse')
 legend_handle.get_texts()[7].set_text(r'$T_M$')
 
 fig.tight_layout()
-
+plt.show()
 #%% impact effect
 
 plt.rcParams["font.family"] = "serif"
@@ -330,7 +340,7 @@ ax3.set_title('Replacement frequency', fontsize=subt_font)
 ax3.set_ylabel('Replacement frequency', fontsize=axis_font)
 ax3.set_xlabel('Impact', fontsize=axis_font)
 fig.tight_layout()
-
+plt.show()
 #%% ml training
 
 # make prediction objects for impacted and non-impacted datasets
@@ -372,6 +382,14 @@ mdl_drift_hit.test_train_split(0.2)
 mdl_drift_miss = Prediction(df_miss)
 mdl_drift_miss.set_outcome('max_drift')
 mdl_drift_miss.test_train_split(0.2)
+
+mdl_repl_hit = Prediction(df_hit)
+mdl_repl_hit.set_outcome('replacement_freq')
+mdl_repl_hit.test_train_split(0.2)
+
+mdl_repl_miss = Prediction(df_miss)
+mdl_repl_miss.set_outcome('replacement_freq')
+mdl_repl_miss.test_train_split(0.2)
 
 #%% fit impact (gp classification)
 
@@ -565,6 +583,10 @@ mdl_time_hit.fit_kernel_ridge(kernel_name='rbf')
 mdl_drift_hit.fit_kernel_ridge(kernel_name='rbf')
 mdl_drift_hit.fit_ols_ridge()
 
+mdl_repl_hit.fit_kernel_ridge(kernel_name='rbf')
+mdl_repl_hit.fit_gpr(kernel_name='rbf_ard')
+mdl_repl_hit.fit_ols_ridge()
+
 # fit no impact set
 mdl_miss.fit_svr()
 mdl_miss.fit_kernel_ridge(kernel_name='rbf')
@@ -574,6 +596,10 @@ mdl_time_miss.fit_kernel_ridge(kernel_name='rbf')
 
 mdl_drift_miss.fit_kernel_ridge(kernel_name='rbf')
 mdl_drift_miss.fit_ols_ridge()
+
+mdl_repl_miss.fit_kernel_ridge(kernel_name='rbf')
+mdl_repl_miss.fit_gpr(kernel_name='rbf_ard')
+mdl_repl_miss.fit_ols_ridge()
 
 #%% plot no-impact regressions
 axis_font = 20
@@ -689,6 +715,7 @@ ax2.grid(visible=True)
 ax2.plot(0.65, 0.5, color='red', label=r'Gap ratio')
 ax2.legend(fontsize=label_size, loc='upper left')
 ax2.set_ylim([0, 5e5])
+plt.show()
 
 #%% 3d surf
 plt.rcParams["font.family"] = "serif"
@@ -761,7 +788,7 @@ grid_repair_cost = predict_DV(X_plot,
 
 xx = mdl.xx
 yy = mdl.yy
-zz = np.array(grid_repair_cost)/8.1e6
+zz = np.array(grid_repair_cost)/replacement_cost
 Z = zz.reshape(xx.shape)
 
 ax2=fig.add_subplot(1, 2, 2, projection='3d')
@@ -769,7 +796,7 @@ surf = ax2.plot_surface(xx, yy, Z, cmap='Blues',
                        linewidth=0, antialiased=False, alpha=0.7,
                        vmin=-0.1)
 
-ax2.scatter(df[xvar], df[yvar], df[cost_var]/8.1e6, color='white',
+ax2.scatter(df[xvar], df[yvar], df[cost_var]/replacement_cost, color='white',
            edgecolors='k', alpha = 0.7)
 
 xlim = ax2.get_xlim()
@@ -785,7 +812,7 @@ ax2.set_zlabel('% of replacement cost', fontsize=axis_font)
 ax2.set_title('b) Cost: GPC-KR', fontsize=subt_font)
 
 fig.tight_layout()
-
+plt.show()
 
 #%% read out results
 
@@ -951,7 +978,7 @@ grid_repair_cost = predict_DV(X_plot,
 
 xx = mdl.xx
 yy = mdl.yy
-zz = np.array(grid_repair_cost)/8.1e6
+zz = np.array(grid_repair_cost)/replacement_cost
 Z = zz.reshape(xx.shape)*100.
 
 ax4=fig.add_subplot(2, 2, 4, projection='3d')
@@ -960,7 +987,7 @@ surf = ax4.plot_surface(xx, yy, Z, cmap='Blues',
                        linewidth=0, antialiased=False, alpha=0.7,
                        vmin=-0.1)
 
-ax4.scatter(df[xvar], df[yvar], df[cost_var]/8.1e6*100,
+ax4.scatter(df[xvar], df[yvar], df[cost_var]/replacement_cost*100,
            edgecolors='k')
 
 # xlim = ax2.get_xlim()
@@ -1278,7 +1305,7 @@ legend2 = ax3.legend(handles, labels, loc="lower right", title="% collapse",
                      fontsize=subt_font, title_fontsize=subt_font)
 
 fig.tight_layout()
-
+plt.show()
 #%% dirty contours (probability edition)
 
 plt.rcParams["font.family"] = "serif"
@@ -1400,6 +1427,120 @@ legend2 = ax1.legend(handles, labels, loc="lower right", title="% collapse",
 
 # ax1.contour(xx, yy, Z, levels = prob_list, colors=('red', 'brown', 'black'),
 #             linestyles=('-'),linewidths=(2,))
+plt.show()
+
+#%% dirty contours (replacement edition)
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=20
+axis_font = 18
+subt_font = 18
+label_size = 16
+clabel_size = 14
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+import numpy as np
+# x is gap, y is Ry
+x_var = 'gapRatio'
+y_var = 'RI'
+third_var = 'Tm'
+fourth_var = 'zetaM'
+x_min = 0.3
+x_max = 2.5
+y_min = 0.5
+y_max = 2.0
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5])
+
+res = 200
+
+xx, yy = np.meshgrid(np.linspace(x_min,
+                                 x_max,
+                                 res),
+                     np.linspace(y_min,
+                                 y_max,
+                                 res))
+
+X_pl = pd.DataFrame({x_var:xx.ravel(),
+                     y_var:yy.ravel(),
+                     third_var:np.repeat(3.0,
+                                         res*res),
+                     fourth_var:np.repeat(0.15,
+                                          res*res)})
+
+X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
+
+grid_repl = predict_DV(X_plot,
+                        mdl.gpc,
+                        mdl_repl_hit.kr,
+                        mdl_repl_hit.kr,
+                                  outcome='replacement_freq')
+
+
+Z = np.array(grid_repl)
+Z = Z.reshape(xx.shape)
+
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
+
+cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+                 levels=lvls)
+
+
+prob_list = [0.025, 0.05, 0.1]
+offset_list = [1.4, 1.26, 1.15]
+color_list = ['red', 'red', 'red']
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    lpBox = Z
+    xq = np.linspace(0.3, 1.8, 200)
+    
+    interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = 1.0
+    lq = interp(pts)
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    
+    ax1.vlines(x=theGap, ymin=0.49, ymax=1.0, color=color_list[j],
+               linewidth=2.0)
+    ax1.hlines(y=1.0, xmin=0.5, xmax=theGap, color='red', linewidth=2.0)
+    ax1.text(offset_list[j], 0.75, r'GR = '+f'{theGap:,.2f}', rotation=90,
+             fontsize=subt_font, color=color_list[j])
+    ax1.plot([theGap], [1.0], marker='*', markersize=15, color=color_list[j])
+
+
+df_sc = df[(df['Tm']>=2.8) & (df['Tm']<=3.2) & 
+           (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
+
+ax1.scatter(df_sc[x_var],
+            df_sc[y_var],
+            c=df_sc['replacement_freq'], cmap='Blues',
+            s=30, edgecolors='k')
+
+ax1.clabel(cs, fontsize=clabel_size)
+ax1.set_xlim([0.5, 2.5])
+ax1.set_ylim([0.5, 2.0])
+
+
+ax1.grid(visible=True)
+ax1.set_title(r'$T_M = 3.00$ s, $\zeta_M = 0.15$', fontsize=title_font)
+ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+handles, labels = sc.legend_elements(prop="colors", alpha=0.6)
+legend2 = ax1.legend(handles, labels, loc="lower right", title="% replacement",
+                     fontsize=subt_font, title_fontsize=subt_font)
+
+# ax1.contour(xx, yy, Z, levels = prob_list, colors=('red', 'brown', 'black'),
+#             linestyles=('-'),linewidths=(2,))
+plt.show()
+
 
 #%% dirty contours (downtime edition)
 
@@ -1451,7 +1592,7 @@ grid_repair_time = predict_DV(X_plot,
                                      mdl_time_miss.kr,
                                      outcome=time_var)
 
-zz = np.array(grid_repair_time)/50.0
+zz = np.array(grid_repair_time)/n_worker_parallel
 Z = zz.reshape(xx.shape)
 
 fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
@@ -1506,7 +1647,7 @@ ax1.set_ylabel(r'$T_M$', fontsize=axis_font)
 # handles, labels = sc.legend_elements(prop="colors", alpha=0.6)
 # legend2 = ax1.legend(handles, labels, loc="lower right", title="% collapse",
 #                      fontsize=subt_font)
-
+plt.show()
 #%% filter design graphic
 ## start with the probability graph
 
@@ -1612,7 +1753,7 @@ grid_repair_cost = predict_DV(X_plot,
                                      mdl_miss.kr,
                                      outcome=cost_var)
 
-zz = np.array(grid_repair_cost)/8.1e6
+zz = np.array(grid_repair_cost)/replacement_cost
 Z_cost = zz.reshape(xx.shape)
 
 
@@ -1655,7 +1796,7 @@ grid_repair_time = predict_DV(X_plot,
                                      mdl_time_miss.kr,
                                      outcome=time_var)
 
-zz = np.array(grid_repair_time)/50.0
+zz = np.array(grid_repair_time)/n_worker_parallel
 Z_time = zz.reshape(xx.shape)
 
 ax3 = fig.add_subplot(2, 2, 3)
@@ -1672,7 +1813,7 @@ cs = ax3.contour(xx, yy, Z_time, linewidths=1.1, cmap='Blues',
                  levels=lvls, vmin=-20)
 ax3.clabel(cs, fontsize=clabel_size, colors='black')
 nm, lbl = cs.legend_elements()
-lbl = ['Days (50 workers)']
+lbl = ['Days']
 plt.legend(nm, lbl, title= '', fontsize= subt_font) 
 
 
@@ -1714,13 +1855,13 @@ ax4.text(1.75, 1.25, 'OK space',
           fontsize=axis_font, color='green')
 
 fig.tight_layout()
-
+plt.show()
 #%% Testing the design space
 # TODO: MOVE PAST GRID SPACE DESIGN
 
 import time
 
-res_des = 20
+res_des = 25
 X_space = mdl.make_design_space(res_des)
 #K_space = mdl.get_kernel(X_space, kernel_name='rbf', gamma=gam)
 
@@ -1761,6 +1902,18 @@ space_drift = predict_DV(X_space,
 tp = time.time() - t0
 print("GPC-OR drift prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                tp))
+
+# choice KR bc reasonably linear when predicting replacement risk
+t0 = time.time()
+space_repl = predict_DV(X_space,
+                                      mdl.gpc,
+                                      mdl_repl_hit.kr,
+                                      mdl_repl_miss.kr,
+                                      outcome='replacement_freq')
+tp = time.time() - t0
+print("GPC-KR replacement prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
 
 # Transform predicted drift into probability
 
@@ -1814,21 +1967,26 @@ steel_price = 2.00
 coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 
 percent_of_replacement = 0.2
-cost_thresh = percent_of_replacement*8.1e6
+cost_thresh = percent_of_replacement*replacement_cost
 ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=cost_thresh]
 
 # <2 weeks for a team of 50
-dt_thresh = 50*14
+dt_thresh = n_worker_parallel*14
 ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh]
 
 risk_thresh = 0.025
 ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
                       risk_thresh]
 
+repl_thresh = 0.1
+ok_repl = X_space.loc[space_repl['replacement_freq_pred']<=
+                      repl_thresh]
+
 X_design = X_space[np.logical_and.reduce((
         X_space.index.isin(ok_cost.index), 
         X_space.index.isin(ok_time.index),
-        X_space.index.isin(ok_risk.index)))]
+        X_space.index.isin(ok_risk.index),
+        X_space.index.isin(ok_repl.index)))]
     
 # in the filter-design process, only one of cost/dt is likely to control
     
@@ -1845,6 +2003,7 @@ design_downtime = space_downtime.iloc[cheapest_design_idx].item()
 design_repair_cost = space_repair_cost.iloc[cheapest_design_idx].item()
 design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
 design_PID = space_drift.iloc[cheapest_design_idx].item()
+design_repl_risk = space_repl.iloc[cheapest_design_idx].item()
 
 print(best_design)
 
@@ -1856,10 +2015,10 @@ print('Predicted repair time (sequential): ',
       f'{design_downtime:,.2f}', 'worker-days')
 print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
+print('Predicted replacement risk: ',
+      f'{design_repl_risk:.2%}')
 print('Predicted peak interstory drift: ',
       f'{design_PID:.2%}')
-
-
 
 
 #%% cost sens
@@ -1874,7 +2033,7 @@ zetaM_price_grid = np.zeros([4,4])
 moat_price_grid = np.zeros([4,4])
 
 percent_of_replacement = 1.0
-cost_thresh = percent_of_replacement*8.1e6
+cost_thresh = percent_of_replacement*replacement_cost
 ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=cost_thresh]
 
 # <2 weeks for a team of 50
@@ -1990,7 +2149,7 @@ sns.heatmap(moat_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
 ax4.set_xlabel('Steel cost per lb.', fontsize=axis_font)
 ax4.set_title(r'Moat gap (in)', fontsize=subt_font)
 fig.tight_layout()
-
+plt.show()
 #%% only 3 design (downtime plotting)
 
 res = 50
@@ -2043,7 +2202,7 @@ ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 space_collapse_risk = pd.DataFrame(ln_dist.cdf(space_drift),
                                           columns=['collapse_risk_pred'])
-
+plt.show()
 #%%
 
 plt.close('all')
@@ -2076,7 +2235,7 @@ steel_price = 2.00
 coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 
 # <2 weeks for a team of 50
-dts = [7*50, 14*50., 28*50.]
+dts = [7*n_worker_parallel, 14*n_worker_parallel, 28*n_worker_parallel]
 color_list = ['red', 'brown', 'black']
 for j, dt_thresh in enumerate(dts):
     ok_time = X_space.loc[downtime_plot[time_var+'_pred']<=dt_thresh]
@@ -2115,6 +2274,7 @@ ax1.set_title(r'$R_y \sim 2.0$, $\zeta_M = 0.20$', fontsize=title_font)
 ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 ax1.set_ylabel(r'$T_M$', fontsize=axis_font)
 
+plt.show()
 
 #%% only 3 design (Tm, zeta)
 
@@ -2153,6 +2313,17 @@ tp = time.time() - t0
 print("GPC-OR drift prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                tp))
 
+# choice KR bc reasonably linear when predicting replacement risk
+t0 = time.time()
+space_repl = predict_DV(X_space,
+                                      mdl.gpc,
+                                      mdl_repl_hit.kr,
+                                      mdl_repl_miss.kr,
+                                      outcome='replacement_freq')
+tp = time.time() - t0
+print("GPC-KR replacement prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
 # Transform predicted drift into probability
 
 # drift -> collapse risk
@@ -2168,7 +2339,7 @@ ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 space_collapse_risk = pd.DataFrame(ln_dist.cdf(space_drift),
                                           columns=['collapse_risk_pred'])
-
+plt.show()
 #%%
 plt.close('all')
 plt.rcParams["font.family"] = "serif"
@@ -2193,7 +2364,7 @@ for i, Tm_cur in enumerate(Tm_fix):
         subset_space = X_space[(X_space['Tm']==Tm_cur) &
                                (X_space['zetaM']==zeta_cur)]
         
-        ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
+        ok_risk = X_space.loc[space_repl['replacement_freq_pred']<=
                               risk_thresh]
         
         X_design = X_space[np.logical_and.reduce((
@@ -2259,12 +2430,12 @@ time_var = 'time_u_50%'
 df_val = pd.concat([val_run, val_loss], axis=1)
 df_val['max_drift'] = df_val[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df_val['collapse_probs'] = ln_dist.cdf(np.array(df_val['max_drift']))
-df_val['repair_time'] = df[time_var]/50.0
+df_val['repair_time'] = df[time_var]/n_worker_parallel
 
 df_base = pd.concat([base_run, base_loss], axis=1)
 df_base['max_drift'] = df_base[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df_base['collapse_probs'] = ln_dist.cdf(np.array(df_base['max_drift']))
-df_base['repair_time'] = df[time_var]/50.0
+df_base['repair_time'] = df[time_var]/n_worker_parallel
 
 ida_levels = [1.0, 1.5, 2.0]
 validation_collapse = np.zeros((3,))
