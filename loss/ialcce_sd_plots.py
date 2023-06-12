@@ -31,12 +31,12 @@ database_file = 'run_data.csv'
 results_path = './results/tfp_mf_doe/'
 results_file = 'loss_estimate_data.csv'
 
-val_dir = './data/tfp_mf_val/sd_material/'
-val_dir_loss = './results/tfp_mf_val/old/validation/'
-val_file = 'addl_TFP_val.csv'
+val_dir = './data/tfp_mf_val/inverse/mce/'
+val_dir_loss = './results/tfp_mf_val/inverse/mce/'
+val_file = 'ida_inv.csv'
 
-baseline_dir = './data/tfp_mf_baseline/'
-baseline_dir_loss = './results/tfp_mf_val/baseline/'
+baseline_dir = './data/tfp_mf_val/baseline/mce/'
+baseline_dir_loss = './results/tfp_mf_val/baseline/mce/'
 baseline_file = 'ida_baseline.csv'
 
 val_loss = pd.read_csv(val_dir_loss+'loss_estimate_data.csv', index_col=None)
@@ -813,53 +813,6 @@ ax2.set_title('b) Cost: GPC-KR', fontsize=subt_font)
 
 fig.tight_layout()
 plt.show()
-
-#%% read out results
-
-design_repair_cost = df_val['cost_mean'].mean()
-design_repair_cost_med = df_val['cost_50%'].mean()
-design_downtime = df_val['time_u_mean'].mean()
-design_downtime_med = df_val['time_u_50%'].mean()
-design_collapse_risk = df_val['collapse_freq'].mean()
-design_replacement_risk = df_val['replacement_freq'].mean()
-
-print('====== INVERSE DESIGN ======')
-print('Estimated mean repair cost: ',
-      f'${design_repair_cost:,.2f}')
-print('Estimated median repair cost: ',
-      f'${design_repair_cost_med:,.2f}')
-print('Estimated mean repair time (sequential): ',
-      f'{design_downtime:,.2f}', 'worker-days')
-print('Estimated median repair time (sequential): ',
-      f'{design_downtime_med:,.2f}', 'worker-days')
-print('Estimated collapse frequency: ',
-      f'{design_collapse_risk:.2%}')
-print('Estimated replacement frequency: ',
-      f'{design_replacement_risk:.2%}')
-
-baseline_repair_cost = df_base['cost_mean'].mean()
-baseline_repair_cost_med = df_base['cost_50%'].mean()
-baseline_downtime = df_base['time_u_mean'].mean()
-baseline_downtime_med = df_base['time_u_50%'].mean()
-baseline_collapse_risk = df_base['collapse_freq'].mean()
-baseline_replacement_risk = df_base['replacement_freq'].mean()
-
-print('====== BASELINE DESIGN ======')
-print('Estimated mean repair cost: ',
-      f'${baseline_repair_cost:,.2f}')
-print('Estimated median repair cost: ',
-      f'${baseline_repair_cost_med:,.2f}')
-print('Estimated mean repair time (sequential): ',
-      f'{baseline_downtime:,.2f}', 'worker-days')
-print('Estimated median repair time (sequential): ',
-      f'{baseline_downtime_med:,.2f}', 'worker-days')
-print('Estimated collapse frequency: ',
-      f'{baseline_collapse_risk:.2%}')
-print('Estimated replacement frequency: ',
-      f'{baseline_replacement_risk:.2%}')
-
-
-
 
 #%% Prediction 3ds
 plt.rcParams["font.family"] = "serif"
@@ -1951,7 +1904,7 @@ baseline_downtime = predict_DV(X_baseline,
                                       mdl.gpc,
                                       mdl_time_hit.kr,
                                       mdl_time_miss.kr,
-                                      outcome=time_var)[time_var+'_pred'].item()
+                                      outcome=time_var)[time_var+'_pred'].item()/n_worker_parallel
 baseline_drift = predict_DV(X_baseline,
                                       mdl.gpc,
                                       mdl_drift_hit.o_ridge,
@@ -2003,7 +1956,7 @@ design_upfront_cost = upfront_costs.min()
 
 # least upfront cost of the viable designs
 best_design = X_design.loc[cheapest_design_idx]
-design_downtime = space_downtime.iloc[cheapest_design_idx].item()
+design_downtime = space_downtime.iloc[cheapest_design_idx].item()/n_worker_parallel
 design_repair_cost = space_repair_cost.iloc[cheapest_design_idx].item()
 design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
 design_PID = space_drift.iloc[cheapest_design_idx].item()
@@ -2012,9 +1965,9 @@ design_repl_risk = space_repl.iloc[cheapest_design_idx].item()
 print('==================================')
 print('            Predictions           ')
 print('==================================')
-print('\n')
 print('======= Targets =======')
 print('Replacement cost fraction:', percent_of_replacement)
+print('Repair cost:', f'${cost_thresh:,.2f}')
 print('Replacement time (days):', dt_thresh/n_worker_parallel)
 print('Collapse risk:', risk_thresh)
 print('Replacement risk:', repl_thresh)
@@ -2027,7 +1980,7 @@ print('Upfront cost of selected design: ',
 print('Predicted median repair cost: ',
       f'${design_repair_cost:,.2f}')
 print('Predicted repair time (sequential): ',
-      f'{design_downtime:,.2f}', 'worker-days')
+      f'{design_downtime:,.2f}', 'days')
 print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
 print('Predicted replacement risk: ',
@@ -2042,13 +1995,14 @@ print('Upfront cost of baseline design: ',
 print('Baseline median repair cost: ',
       f'${baseline_repair_cost:,.2f}')
 print('Baseline repair time (sequential): ',
-      f'{baseline_downtime:,.2f}', 'worker-days')
+      f'{baseline_downtime:,.2f}', 'days')
 print('Baseline collapse risk: ',
       f'{baseline_collapse_risk:.2%}')
 print('Baseline replacement risk: ',
       f'{baseline_repl_risk:.2%}')
 print('Baseline peak interstory drift: ',
       f'{baseline_drift:.2%}')
+
 
 #%% cost sens
 land_costs = [2151., 3227., 4303., 5379.]
@@ -2439,13 +2393,13 @@ for container in ax1.containers:
     
 #%% full validation (IDA data)
 
-val_dir = './data/tfp_mf_val/sd_material/'
-val_dir_loss = './results/tfp_mf_val/old/validation_full/'
-val_file = 'addl_TFP_val.csv'
+val_dir = './data/tfp_mf_val/inverse/full/'
+val_dir_loss = './results/tfp_mf_val/inverse/full/'
+val_file = 'ida_inv.csv'
 
-baseline_dir = './data/tfp_mf_val/sd_material/'
-baseline_dir_loss = './results/tfp_mf_val/old/baseline_full/'
-baseline_file = 'addl_TFP_baseline.csv'
+baseline_dir = './data/tfp_mf_val/baseline/full/'
+baseline_dir_loss = './results/tfp_mf_val/baseline/full/'
+baseline_file = 'ida_baseline.csv'
 
 val_loss = pd.read_csv(val_dir_loss+'loss_estimate_data.csv', index_col=None)
 base_loss = pd.read_csv(baseline_dir_loss+'loss_estimate_data.csv', index_col=None)
@@ -2468,7 +2422,9 @@ df_base['repair_time'] = df[time_var]/n_worker_parallel
 
 ida_levels = [1.0, 1.5, 2.0]
 validation_collapse = np.zeros((3,))
+validation_replacement = np.zeros((3,))
 baseline_collapse = np.zeros((3,))
+baseline_replacement = np.zeros((3,))
 validation_cost  = np.zeros((3,))
 baseline_cost = np.zeros((3,))
 validation_downtime = np.zeros((3,))
@@ -2479,13 +2435,48 @@ for i, lvl in enumerate(ida_levels):
     base_ida = base_loss[base_loss['IDA_level']==lvl]
     
     validation_collapse[i] = val_ida['collapse_freq'].mean()
-    validation_downtime[i] = val_ida[time_var].mean()
+    validation_replacement[i] = val_ida['replacement_freq'].mean()
+    validation_downtime[i] = val_ida[time_var].mean()/n_worker_parallel
     validation_cost[i] = val_ida[cost_var].mean()
     
     baseline_collapse[i] = base_ida['collapse_freq'].mean()
-    baseline_downtime[i] = base_ida[time_var].mean()
+    baseline_downtime[i] = base_ida[time_var].mean()/n_worker_parallel
     baseline_cost[i] = base_ida[cost_var].mean()
+    baseline_replacement[i] = base_ida['replacement_freq'].mean()
     
+print('==================================')
+print('   Validation results  (1.0 MCE)  ')
+print('==================================')
+
+inverse_cost = validation_cost[0]
+inverse_downtime = validation_downtime[0]
+inverse_replacement = validation_replacement[0]
+inverse_collapse = validation_collapse[0]
+
+print('====== INVERSE DESIGN ======')
+print('Average median repair cost: ',
+      f'${inverse_cost:,.2f}')
+print('Average median repair time: ',
+      f'{inverse_downtime:,.2f}', 'days')
+print('Estimated collapse frequency: ',
+      f'{inverse_collapse:.2%}')
+print('Estimated replacement frequency: ',
+      f'{inverse_replacement:.2%}')
+
+baseline_cost_mce = baseline_cost[0]
+baseline_downtime_mce = baseline_downtime[0]
+baseline_replacement_mce = baseline_replacement[0]
+baseline_collapse_mce = baseline_collapse[0]
+
+print('====== BASELINE DESIGN ======')
+print('Average median repair cost: ',
+      f'${baseline_cost_mce:,.2f}')
+print('Average median repair time: ',
+      f'{baseline_downtime_mce:,.2f}', 'days')
+print('Estimated collapse frequency: ',
+      f'{baseline_collapse_mce:.2%}')
+print('Estimated replacement frequency: ',
+      f'{baseline_replacement_mce:.2%}')
 #%% fit validation curve (curve fit, not MLE)
 
 from scipy.stats import lognorm
@@ -2558,6 +2549,6 @@ ax2.set_xlim([0, 4.0])
 ax2.set_ylim([0, 1.0])
 
 fig.tight_layout()
-
+plt.show()
 #%%
 plt.close('all')
