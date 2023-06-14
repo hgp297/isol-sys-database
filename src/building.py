@@ -1491,9 +1491,8 @@ class Building:
                     '-dir', 4, 6, 
                     '-orient', *brace_x_axis_R, *vecxy_brace)
                 
-            # put a rotational pin around the local y (global-y rotation)
-            # to enable buckling
-            ops.equalDOF(j_nd, i_nd, 1, 2, 3, 5)
+            # global z-rotation is restrained
+            ops.equalDOF(j_nd, i_nd, 1, 2, 3, 6)
             
 ################################################################################
 # define rigid links in the braced bays
