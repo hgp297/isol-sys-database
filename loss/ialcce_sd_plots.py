@@ -2331,6 +2331,7 @@ design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
 design_PID = space_drift.iloc[cheapest_design_idx].item()
 design_repl_risk = space_repl.iloc[cheapest_design_idx].item()
 
+# read out predictions
 print('==================================')
 print('            Predictions           ')
 print('==================================')
@@ -2462,7 +2463,7 @@ Ry_df = pd.DataFrame(data=Ry_price_grid,
                       index=land_cols,
                       columns=steel_rows)
 
-Tm_df = pd.DataFrame(data=Tm_price_grid,
+Tm_df = pd.DataFrame(data=zetaM_price_grid,
                       index=land_cols,
                       columns=steel_rows)
 
@@ -2493,7 +2494,7 @@ ax2.set_title(r'$R_y$', fontsize=subt_font)
 sns.heatmap(Tm_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
             linewidths=.5, ax=ax3,  annot_kws={'size': 18})
 ax3.set_xlabel('Steel cost per lb.', fontsize=axis_font)
-ax3.set_title(r'$T_M$ (s)', fontsize=subt_font)
+ax3.set_title(r'$\zeta_M$ (s)', fontsize=subt_font)
 ax3.set_ylabel('Land cost per sq ft.', fontsize=axis_font)
 fig.tight_layout()
 
@@ -2806,12 +2807,12 @@ for i, lvl in enumerate(ida_levels):
     
     validation_collapse[i] = val_ida['collapse_freq'].mean()
     validation_replacement[i] = val_ida['replacement_freq'].mean()
-    validation_downtime[i] = val_ida[time_var].mean()/n_worker_parallel
-    validation_cost[i] = val_ida[cost_var].mean()
+    validation_downtime[i] = val_ida[time_var].median()/n_worker_parallel
+    validation_cost[i] = val_ida[cost_var].median()
     
     baseline_collapse[i] = base_ida['collapse_freq'].mean()
-    baseline_downtime[i] = base_ida[time_var].mean()/n_worker_parallel
-    baseline_cost[i] = base_ida[cost_var].mean()
+    baseline_downtime[i] = base_ida[time_var].median()/n_worker_parallel
+    baseline_cost[i] = base_ida[cost_var].median()
     baseline_replacement[i] = base_ida['replacement_freq'].mean()
     
 print('==================================')
@@ -2996,5 +2997,91 @@ ax2.set_ylim([0, 1.0])
 fig.tight_layout()
 plt.show()
 
+#%% predicting downtime slices
+xx = np.arange(0.2, 2.0, 0.01)
+X_sl = pd.DataFrame({x_var:xx,
+                     y_var:np.repeat(1.66, len(xx)),
+                     third_var:np.repeat(4.0,len(xx)),
+                     fourth_var:np.repeat(0.13,len(xx))
+                     })
+
+slice_repair_time = predict_DV(X_sl,
+                                     mdl.gpc,
+                                     mdl_time_hit.kr,
+                                     mdl_time_miss.kr,
+                                     outcome=time_var)/n_worker_parallel
+
+
+
+plt.close('all')
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 14
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+# plt.close('all')
+
+xvar = 'gapRatio'
+
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(13, 6))
+ax1 = axes
+
+
+ax1.plot(xx, slice_repair_time, linewidth=1.1)
+ax1.scatter(df[xvar], df[time_var]/n_worker_parallel, c=df[yvar],
+          edgecolors='k', cmap='coolwarm')
+ax1.set_ylabel('Median repair time (days)', fontsize=axis_font)
+ax1.set_xlabel('Gap ratio', fontsize=axis_font)
+ax1.grid(visible=True)
+# ax1.plot(1.0, 0.01, color='navy', label=r'$R_y$')
+# ax1.legend(fontsize=label_size)
+# ax1.set_ylim([0, 750])
+ax1.set_ylim([0, 100])
+ax1.set_xlim([xx[0], xx[-1]])
+ax1.axhline(14, linestyle='--', color='black')
+plt.show()
+
 #%%
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+val_ida = val_loss[val_loss['IDA_level']==1.0]
+base_ida = base_loss[base_loss['IDA_level']==1.0]
+val_ida['repair_days'] = val_ida[time_var]/n_worker_parallel
+base_ida['repair_days'] = base_ida[time_var]/n_worker_parallel
+
+base_repl_cases = base_ida[base_ida[time_var] == replacement_time].count()[time_var]
+inv_repl_cases = val_ida[val_ida[time_var] == replacement_time].count()[time_var]
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(13, 6))
+df_dt = pd.DataFrame.from_dict(
+    data=dict(Inverse=val_ida['repair_days'], Baseline=base_ida['repair_days']),
+    orient='index',
+).T
+
+ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+ax.set_xlim(0, 60)
+sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4)
+# ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel('Median repair time (days)', fontsize=axis_font)
+ax.axvline(14, linestyle='--', color='black')
+ax.grid(visible=True)
+plt.show()
+#%%
+
 plt.close('all')
