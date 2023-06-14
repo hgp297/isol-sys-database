@@ -110,7 +110,7 @@ ax1.get_legend().get_title().set_text(r'$R_y$') # for legend title
 
 ax1.set_ylabel('Gap ratio range', fontsize=axis_font)
 ax1.set_xlabel('Peak interstory drift (PID)', fontsize=axis_font)
-plt.xlim([0.0, 0.20])
+plt.xlim([0.0, 0.15])
 fig.tight_layout()
 plt.show()
 
@@ -128,33 +128,58 @@ p = ln_dist.cdf(np.array(x))
 plt.close('all')
 fig, ax = plt.subplots(1, 1, figsize=(8,6))
 
-ax.plot(x, p)
+ax.plot(x, p, label='Collapse', color='blue')
+
+mu_irr = log(0.01)
+ln_dist_irr = lognorm(s=0.3, scale=exp(mu_irr))
+p_irr = ln_dist_irr.cdf(np.array(x))
+
+ax.plot(x, p_irr, color='red', label='Irreparable')
 
 axis_font = 20
 subt_font = 18
+xleft = 0.15
 ax.set_ylim([0,1])
-ax.set_xlim([0, 0.15])
-ax.set_ylabel('Collapse probability', fontsize=axis_font)
-ax.set_xlabel('Peak interstory drift (PID)', fontsize=axis_font)
+ax.set_xlim([0, xleft])
+ax.set_ylabel('Limit state probability', fontsize=axis_font)
+ax.set_xlabel('Drift ratio', fontsize=axis_font)
 
-ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='red')
-ax.hlines(y=0.5, xmin=0.0, xmax=exp(mu), color='red')
-ax.text(0.001, 0.51, r'50% collapse: PID = 0.078', fontsize=axis_font, color='red')
-ax.plot([exp(mu)], [0.5], marker='*', markersize=15, color="red")
+ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='blue', linestyle=":")
+ax.hlines(y=0.5, xmin=exp(mu), xmax=0.15, color='blue')
+ax.text(0.105, 0.52, r'PID = 0.078', fontsize=axis_font, color='blue')
+ax.plot([exp(mu)], [0.5], marker='*', markersize=15, color="blue", linestyle=":")
 
-ax.vlines(x=0.1, ymin=0, ymax=0.84, color='red')
-ax.hlines(y=0.84, xmin=0.0, xmax=0.1, color='red')
-ax.text(0.001, 0.85, r'84% collapse: PID = 0.10', fontsize=axis_font, color='red')
-ax.plot([0.10], [0.84], marker='*', markersize=15, color="red")
+ax.vlines(x=0.1, ymin=0, ymax=0.84, color='blue', linestyle=":")
+ax.hlines(y=0.84, xmin=0.1, xmax=xleft, color='blue', linestyle=":")
+ax.text(0.105, 0.87, r'PID = 0.10', fontsize=axis_font, color='blue')
+ax.plot([0.10], [0.84], marker='*', markersize=15, color="blue", linestyle=":")
 
 lower= ln_dist.ppf(0.16)
-ax.vlines(x=lower, ymin=0, ymax=0.16, color='red')
-ax.hlines(y=0.16, xmin=0.0, xmax=lower, color='red')
-ax.text(0.001, 0.17, r'16% collapse: PID = 0.061', fontsize=axis_font, color='red')
-ax.plot([lower], [0.16], marker='*', markersize=15, color="red")
+ax.vlines(x=lower, ymin=0, ymax=0.16, color='blue', linestyle=":")
+ax.hlines(y=0.16, xmin=lower, xmax=xleft, color='blue', linestyle=":")
+ax.text(0.105, 0.19, r'PID = 0.061', fontsize=axis_font, color='blue')
+ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
 
-ax.set_title('Collapse fragility definition', fontsize=axis_font)
+
+ax.hlines(y=0.5, xmin=0.0, xmax=exp(mu_irr), color='red', linestyle=":")
+lower = ln_dist_irr.ppf(0.16)
+ax.hlines(y=0.16, xmin=0.0, xmax=lower, color='red', linestyle=":")
+upper = ln_dist_irr.ppf(0.84)
+ax.hlines(y=0.84, xmin=0.0, xmax=upper, color='red')
+ax.plot([lower], [0.16], marker='*', markersize=15, color="red", linestyle=":")
+ax.plot([0.01], [0.5], marker='*', markersize=15, color="red", linestyle=":")
+ax.plot([upper], [0.84], marker='*', markersize=15, color="red", linestyle=":")
+ax.vlines(x=upper, ymin=0, ymax=0.84, color='red', linestyle=":")
+ax.vlines(x=0.01, ymin=0, ymax=0.5, color='red', linestyle=":")
+ax.vlines(x=lower, ymin=0, ymax=0.16, color='red', linestyle=":")
+
+ax.text(0.005, 0.19, r'RID = 0.007', fontsize=axis_font, color='red')
+ax.text(0.005, 0.87, r'RID = 0.013', fontsize=axis_font, color='red')
+ax.text(0.005, 0.53, r'RID = 0.010', fontsize=axis_font, color='red')
+
+ax.set_title('Replacement fragility definition', fontsize=axis_font)
 ax.grid()
+ax.legend(fontsize=label_size, loc='upper center')
 plt.show()
 #%% overall data distribution
 plt.rcParams["font.family"] = "serif"
@@ -864,17 +889,14 @@ fig.tight_layout()
 # plt.show()
 
 # drift -> collapse risk
-from scipy.stats import lognorm
-from math import log, exp
+grid_repl = predict_DV(X_plot,
+                        mdl.gpc,
+                        mdl_repl_hit.kr,
+                        mdl_repl_miss.kr,
+                                  outcome='replacement_freq')
 
-from scipy.stats import norm
-inv_norm = norm.ppf(0.84)
-beta_drift = 0.25
-mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
 
-ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
-
-Z = ln_dist.cdf(np.array(grid_drift))
+Z = np.array(grid_repl)
 Z = Z.reshape(xx.shape)
 
 ax2=fig.add_subplot(2, 2, 2, projection='3d')
@@ -884,13 +906,13 @@ surf = ax2.plot_surface(xx, yy, Z*100, cmap=plt.cm.Blues,
                        alpha=0.7, vmin=-10, vmax=70)
 
 ax2.scatter(df['gapRatio'][:plt_density], df['RI'][:plt_density], 
-           df['collapse_freq'][:plt_density]*100,
+           df['replacement_freq'][:plt_density]*100,
            edgecolors='k')
 
 ax2.set_xlabel('\nGap ratio', fontsize=axis_font, linespacing=0.5)
 ax2.set_ylabel('\n$R_y$', fontsize=axis_font, linespacing=1.0)
-ax2.set_zlabel('\nCollapse risk (%)', fontsize=axis_font, linespacing=3.0)
-ax2.set_title('Collapse risk prediction', fontsize=title_font)
+ax2.set_zlabel('\Replacement risk (%)', fontsize=axis_font, linespacing=3.0)
+ax2.set_title('Replacement risk prediction', fontsize=title_font)
 
 #################################
 
@@ -2530,32 +2552,16 @@ tp = time.time() - t0
 print("GPC-KR downtime prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                tp))
 
-# choice O_ridge bc SVR seems to hang, and KR overestimates (may need CV)
+# choice KR bc reasonably linear when predicting replacement risk
 t0 = time.time()
-space_drift = predict_DV(X_space,
+repl_plot = predict_DV(X_space,
                                       mdl.gpc,
-                                      mdl_drift_hit.o_ridge,
-                                      mdl_drift_miss.o_ridge,
-                                      outcome='max_drift')
+                                      mdl_repl_hit.kr,
+                                      mdl_repl_miss.kr,
+                                      outcome='replacement_freq')
 tp = time.time() - t0
-print("GPC-OR drift prediction for %d inputs in %.3f s" % (X_space.shape[0],
+print("GPC-KR replacement prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                tp))
-
-# Transform predicted drift into probability
-
-# drift -> collapse risk
-from scipy.stats import lognorm
-from math import log, exp
-
-from scipy.stats import norm
-inv_norm = norm.ppf(0.84)
-beta_drift = 0.25
-mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
-
-ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
-
-space_collapse_risk = pd.DataFrame(ln_dist.cdf(space_drift),
-                                          columns=['collapse_risk_pred'])
 
 #%%
 
@@ -2593,8 +2599,10 @@ dts = [14*n_worker_parallel, 28*n_worker_parallel, 56*n_worker_parallel]
 color_list = ['red', 'brown', 'black']
 for j, dt_thresh in enumerate(dts):
     ok_time = X_space.loc[downtime_plot[time_var+'_pred']<=dt_thresh]
-    
-    X_design = X_space[X_space.index.isin(ok_time.index)]
+    ok_risk = X_space.loc[repl_plot['replacement_freq_pred']<=0.1]
+    X_design = X_space[np.logical_and.reduce((
+            X_space.index.isin(ok_risk.index), 
+            X_space.index.isin(ok_time.index)))]
         
     upfront_costs = calc_upfront_cost(X_design, coef_dict)
     cheapest_design_idx = upfront_costs.idxmin()
@@ -2603,8 +2611,8 @@ for j, dt_thresh in enumerate(dts):
     best_design = X_design.loc[cheapest_design_idx]
     design_downtime = space_downtime.iloc[cheapest_design_idx].item()
     design_repair_cost = space_repair_cost.iloc[cheapest_design_idx].item()
-    design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
-    design_PID = space_drift.iloc[cheapest_design_idx].item()
+    # design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
+    # design_PID = space_drift.iloc[cheapest_design_idx].item()
     
     theGap = best_design['gapRatio']
     theTm = best_design['Tm']
@@ -2618,7 +2626,7 @@ for j, dt_thresh in enumerate(dts):
     ax1.plot([theGap], [theTm], marker='*', markersize=15, color=color_list[j])
     
     print(best_design)
-    # print(design_upfront_cost/1e6)
+    print(design_upfront_cost/1e6)
     
 ax1.plot(0.5, 2.5, color='lightblue', label=r'Downtime (days)')
 ax1.legend(fontsize=label_size, loc='best')
@@ -2761,7 +2769,8 @@ ax1.set_xlabel(r'Recommended gap', fontsize=axis_font)
 ax1.set_ylabel(r'$T_M$', fontsize=axis_font)
 for container in ax1.containers:
     ax1.bar_label(container, fmt='%.2f', fontsize=14)
-    
+ 
+plt.show()
 #%% full validation (IDA data)
 
 val_dir = './data/tfp_mf_val/inverse/full/'
@@ -3028,23 +3037,36 @@ mpl.rcParams['ytick.labelsize'] = label_size
 xvar = 'gapRatio'
 
 
-fig, axes = plt.subplots(1, 1, 
-                         figsize=(13, 6))
-ax1 = axes
+fig, axes = plt.subplots(2, 1, 
+                         figsize=(13, 9))
+ax1 = axes[0]
+ax2 = axes[1]
 
 
 ax1.plot(xx, slice_repair_time, linewidth=1.1)
 ax1.scatter(df[xvar], df[time_var]/n_worker_parallel, c=df[yvar],
           edgecolors='k', cmap='coolwarm')
 ax1.set_ylabel('Median repair time (days)', fontsize=axis_font)
-ax1.set_xlabel('Gap ratio', fontsize=axis_font)
+# ax1.set_xlabel('Gap ratio', fontsize=axis_font)
 ax1.grid(visible=True)
 # ax1.plot(1.0, 0.01, color='navy', label=r'$R_y$')
 # ax1.legend(fontsize=label_size)
-# ax1.set_ylim([0, 750])
-ax1.set_ylim([0, 100])
+ax1.set_ylim([0, 750])
 ax1.set_xlim([xx[0], xx[-1]])
 ax1.axhline(14, linestyle='--', color='black')
+
+ax2.plot(xx, slice_repair_time, linewidth=1.1)
+ax2.scatter(df[xvar], df[time_var]/n_worker_parallel, c=df[yvar],
+          edgecolors='k', cmap='coolwarm')
+ax2.set_ylabel('Median repair time (days)', fontsize=axis_font)
+ax2.set_xlabel('Gap ratio', fontsize=axis_font)
+ax2.grid(visible=True)
+# ax1.plot(1.0, 0.01, color='navy', label=r'$R_y$')
+# ax1.legend(fontsize=label_size)
+ax2.set_ylim([0, 100])
+# ax1.set_ylim([0, 100])
+ax2.set_xlim([xx[0], xx[-1]])
+ax2.axhline(14, linestyle='--', color='black')
 plt.show()
 
 #%%
@@ -3064,6 +3086,8 @@ base_ida['repair_days'] = base_ida[time_var]/n_worker_parallel
 
 base_repl_cases = base_ida[base_ida[time_var] == replacement_time].count()[time_var]
 inv_repl_cases = val_ida[val_ida[time_var] == replacement_time].count()[time_var]
+print('Inverse runs requiring replacement:', inv_repl_cases)
+print('Baseline runs requiring replacement:', base_repl_cases)
 
 fig, axes = plt.subplots(1, 1, 
                          figsize=(13, 6))
