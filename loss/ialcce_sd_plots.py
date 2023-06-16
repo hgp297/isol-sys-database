@@ -3069,7 +3069,7 @@ ax2.set_xlim([xx[0], xx[-1]])
 ax2.axhline(14, linestyle='--', color='black')
 plt.show()
 
-#%%
+#%% downtime validation distr
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -3090,7 +3090,7 @@ print('Inverse runs requiring replacement:', inv_repl_cases)
 print('Baseline runs requiring replacement:', base_repl_cases)
 
 fig, axes = plt.subplots(1, 1, 
-                         figsize=(13, 6))
+                         figsize=(10, 6))
 df_dt = pd.DataFrame.from_dict(
     data=dict(Inverse=val_ida['repair_days'], Baseline=base_ida['repair_days']),
     orient='index',
@@ -3098,14 +3098,86 @@ df_dt = pd.DataFrame.from_dict(
 
 ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
                    edgecolor='black', linewidth=1.0)
-ax.set_xlim(0, 60)
+ax.set_xlim(0, 50)
 sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
             width=0.4)
 # ax.set_ylabel('Design case', fontsize=axis_font)
 ax.set_xlabel('Median repair time (days)', fontsize=axis_font)
 ax.axvline(14, linestyle='--', color='black')
 ax.grid(visible=True)
+
+ax.text(33, 0, u'3 replacements \u2192', fontsize=axis_font, color='red')
+ax.text(33, 1, u'11 replacements \u2192', fontsize=axis_font, color='red')
+ax.text(14.5, 1.45, r'14 days threshold', fontsize=axis_font, color='black')
+plt.show()
+
+#%% cost validation distr
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+val_ida = val_loss[val_loss['IDA_level']==1.0]
+base_ida = base_loss[base_loss['IDA_level']==1.0]
+val_ida['repair_coef'] = val_ida[cost_var]/replacement_cost*100
+base_ida['repair_coef'] = base_ida[cost_var]/replacement_cost*100
+
+base_repl_cases = base_ida[base_ida[cost_var] == replacement_cost].count()[cost_var]
+inv_repl_cases = val_ida[val_ida[cost_var] == replacement_cost].count()[cost_var]
+print('Inverse runs requiring replacement:', inv_repl_cases)
+print('Baseline runs requiring replacement:', base_repl_cases)
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+df_dt = pd.DataFrame.from_dict(
+    data=dict(Inverse=val_ida['repair_coef'], Baseline=base_ida['repair_coef']),
+    orient='index',
+).T
+
+ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+ax.set_xlim(0, 8)
+sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4)
+# # ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel(r'% of replacement cost', fontsize=axis_font)
+# ax.axvline(14, linestyle='--', color='black')
+ax.grid(visible=True)
+
+ax.text(5.5, 0, u'3 replacements \u2192', fontsize=axis_font, color='red')
+ax.text(5.5, 1, u'11 replacements \u2192', fontsize=axis_font, color='red')
+# ax.text(14.5, 1.45, r'14 days threshold', fontsize=axis_font, color='black')
+plt.show()
+#%% classic Sa PID plot
+
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+plt.close('all')
+
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
+
+sns.scatterplot(data=df, x="max_drift", y="GMSavg",
+              legend='brief', palette='Blues',
+              ax=ax1)
+
+# legend_handle = ax1.legend(fontsize=subt_font, loc='center right',
+                          # title_fontsize=subt_font)
+# legend_handle.get_texts()[0].set_text(r'$T_M$')
+# legend_handle.get_texts()[6].set_text(r'$\zeta_M$')
+
+ax1.set_xlabel(r'PID', fontsize=axis_font)
+ax1.set_ylabel(r'$Sa_{avg}$', fontsize=axis_font)
+ax1.set_title(r'Overall structural performance', fontsize=title_font)
+# ax1.set_xlim([0.3, 2.5])
+ax1.grid()
 plt.show()
 #%%
-
 plt.close('all')
