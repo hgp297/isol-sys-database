@@ -1,5 +1,4 @@
 # past results
-./tfp_mf/data/
 */ground_motions/
 */inputs/
 */output/
@@ -7,6 +6,11 @@
 *.eps
 *.pptx
 *.xlsx
+
+# repeated pelicun files
+*cmp_marginal*
+*demand_data*
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

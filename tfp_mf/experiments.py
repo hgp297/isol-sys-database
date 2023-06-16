@@ -147,7 +147,7 @@ def generate(num_points=400, inputDir='./inputs/bearingInput.csv',
     return(resultsDf)
 
 def run_doe(prob_target, training_set_path, testing_set_path, 
-            batch_size=10, error_tol=0.15, maxIter=600,
+            batch_size=10, error_tol=0.15, maxIter=600, conv_tol=1e-2,
             inputPath = './inputs/', inputFile = 'bearingInput.csv'):
 
     import numpy as np
@@ -203,7 +203,7 @@ def run_doe(prob_target, training_set_path, testing_set_path,
             
             y_hat = mdl.gpr.predict(test_set.X)
             
-            print('===== Training model size: ', mdl.X.shape[0], '=====')
+            print('===== Training model size:', mdl.X.shape[0], '=====')
             from sklearn.metrics import mean_squared_error, mean_absolute_error
             import numpy as np
             mse = mean_squared_error(test_set.y, y_hat)
@@ -221,10 +221,24 @@ def run_doe(prob_target, training_set_path, testing_set_path,
             if rmse < error_tol:
                 print('Stopping criterion reached. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
+                
+                rmse_list.append(rmse)
+                write_to_csv(rmse_list, './data/doe/rmse.csv')
+                
+                mae_list.append(mae)
+                write_to_csv(mae_list, './data/doe/mae.csv')
+                
                 return (df)
-            elif conv < 1e-3:
+            elif conv < conv_tol:
                 print('RMSE did not improve beyond convergence tolerance. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
+                
+                rmse_list.append(rmse)
+                write_to_csv(rmse_list, './data/doe/rmse.csv')
+                
+                mae_list.append(mae)
+                write_to_csv(mae_list, './data/doe/mae.csv')
+                
                 return (df)
             else:
                 pass
@@ -383,23 +397,26 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 #%% validate a building (specify design input file)
 
 # inputString = './inputs/bearingInputVal_baseline.csv'
-# valDf_base = validate(inputString, IDALevel=[1.0])
-# valDf_base.to_csv('./data/validation.csv', index=False)
+# valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
+# valDf_base.to_csv('./data/val/ida.csv', index=False)
+
+inputString = './inputs/bearingInputVal_repl_risk.csv'
+valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
+valDf_base.to_csv('./data/val/ida_ialcce.csv', index=False)
 
 #%% run doe
-# path = './data/mik_smrf.csv'
+# # path = './data/mik_smrf.csv'
 
-training_path = './data/training_set.csv'
-testing_path = './data/testing_set.csv'
+# training_path = './data/training_set.csv'
+# testing_path = './data/testing_set.csv'
 
-# DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
-# Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 600 support points
-# or no improvements to the RMSE (<0.001 in RMSE change)
-# whichever comes first
+# # DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
+# # Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 600 support points
+# # or no improvements to the RMSE (<0.1% in RMSE change)
+# # whichever comes first
 
-# use batch size 20 to help with increasing RMSE issue
-doe_df = run_doe(0.5, training_path, testing_path, 
-                 error_tol=0.15, batch_size=10, maxIter=600)
-doe_df.to_csv('./data/doe/rmse_doe_set.csv', index=False)
+# doe_df = run_doe(0.5, training_path, testing_path, 
+#                  error_tol=0.15, conv_tol=0.001, batch_size=10, maxIter=600)
+# doe_df.to_csv('./data/doe/rmse_doe_set_tol.csv', index=False)
         
 # TODO: auto clean

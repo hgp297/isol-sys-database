@@ -142,7 +142,7 @@ class GP:
     
     def doe_rejection_sampler(self, n_pts, pr):
         import numpy as np
-        n_max = 1000
+        n_max = 10000
         
         # start with a sample of x's from a uniform distribution
         x_var = np.array([np.random.uniform(0.3, 2.0, n_max),
