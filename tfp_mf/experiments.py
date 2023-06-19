@@ -400,9 +400,9 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 # valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
 # valDf_base.to_csv('./data/val/ida.csv', index=False)
 
-inputString = './inputs/bearingInputVal_repl_risk.csv'
+inputString = './inputs/bearingInputVal_cost_only.csv'
 valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
-valDf_base.to_csv('./data/val/ida_ialcce.csv', index=False)
+valDf_base.to_csv('./data/val/ida_ialcce_cost.csv', index=False)
 
 #%% run doe
 # # path = './data/mik_smrf.csv'

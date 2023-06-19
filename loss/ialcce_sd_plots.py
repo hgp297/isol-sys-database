@@ -323,6 +323,52 @@ legend_handle.get_texts()[7].set_text(r'$T_M$')
 
 fig.tight_layout()
 plt.show()
+
+#%% DV plot
+
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+plt.close('all')
+
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
+
+df_mini = df[df['B_std'].notnull()]
+df_mini['struct_costs'] = df_mini['B_50%'] + df_mini['C_50%']
+df_mini['nsc_costs'] = df_mini['D_50%'] + df_mini['E_50%']
+
+sns.scatterplot(data=df_mini, x='struct_costs', y='nsc_costs',
+              legend='brief', palette='Blues',
+              ax=ax1)
+
+# legend_handle = ax1.legend(fontsize=subt_font, loc='center right',
+                          # title_fontsize=subt_font)
+# legend_handle.get_texts()[0].set_text(r'$T_M$')
+# legend_handle.get_texts()[6].set_text(r'$\zeta_M$')
+
+ax1.set_xlabel(r'Repair time (days)', fontsize=axis_font)
+ax1.set_ylabel(r'Repair cost (USD)', fontsize=axis_font)
+ax1.set_title(r'Decision variables', fontsize=title_font)
+# ax1.set_xlim([0, 200])
+
+# sns.scatterplot(data=df, x='repair_time', y='replacement_freq',
+#               legend='brief', palette='Blues',
+#               ax=ax1)
+
+# # legend_handle = ax1.legend(fontsize=subt_font, loc='center right',
+#                           # title_fontsize=subt_font)
+# # legend_handle.get_texts()[0].set_text(r'$T_M$')
+# # legend_handle.get_texts()[6].set_text(r'$\zeta_M$')
+
+# ax1.set_xlabel(r'Repair time (days)', fontsize=axis_font)
+# ax1.set_ylabel(r'Repair cost (USD)', fontsize=axis_font)
+# ax1.set_title(r'Decision variables', fontsize=title_font)
+# ax1.set_xlim([0, 200])
+ax1.grid()
+plt.show()
+
 #%% impact effect
 
 plt.rcParams["font.family"] = "serif"
@@ -2395,6 +2441,91 @@ print('Baseline replacement risk: ',
 print('Baseline peak interstory drift: ',
       f'{baseline_drift:.2%}')
 
+#%% refine space to meet repair cost ONLY
+plt.close('all')
+steel_price = 2.00
+coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
+
+percent_of_replacement = 0.2
+cost_thresh = percent_of_replacement*replacement_cost
+ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=cost_thresh]
+
+# <2 weeks for a team of 50
+dt_thresh = n_worker_parallel*100000
+ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh]
+
+risk_thresh = 1.0
+ok_risk = X_space.loc[space_collapse_risk['collapse_risk_pred']<=
+                      risk_thresh]
+
+repl_thresh = 1.0
+ok_repl = X_space.loc[space_repl['replacement_freq_pred']<=
+                      repl_thresh]
+
+X_design = X_space[np.logical_and.reduce((
+        X_space.index.isin(ok_cost.index), 
+        X_space.index.isin(ok_time.index),
+        X_space.index.isin(ok_risk.index),
+        X_space.index.isin(ok_repl.index)))]
+    
+# in the filter-design process, only one of cost/dt is likely to control
+    
+# TODO: more clever selection criteria (not necessarily the cheapest)
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs.idxmin()
+design_upfront_cost = upfront_costs.min()
+
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_downtime = space_downtime.iloc[cheapest_design_idx].item()/n_worker_parallel
+design_repair_cost = space_repair_cost.iloc[cheapest_design_idx].item()
+design_collapse_risk = space_collapse_risk.iloc[cheapest_design_idx].item()
+design_PID = space_drift.iloc[cheapest_design_idx].item()
+design_repl_risk = space_repl.iloc[cheapest_design_idx].item()
+
+# read out predictions
+print('==================================')
+print('            Predictions           ')
+print('==================================')
+print('======= Targets =======')
+print('Replacement cost fraction:', percent_of_replacement)
+print('Repair cost:', f'${cost_thresh:,.2f}')
+print('Replacement time (days):', dt_thresh/n_worker_parallel)
+print('Collapse risk:', risk_thresh)
+print('Replacement risk:', repl_thresh)
+
+
+print('======= Overall inverse design =======')
+print(best_design)
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Predicted median repair cost: ',
+      f'${design_repair_cost:,.2f}')
+print('Predicted repair time (sequential): ',
+      f'{design_downtime:,.2f}', 'days')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print('Predicted replacement risk: ',
+      f'{design_repl_risk:.2%}')
+print('Predicted peak interstory drift: ',
+      f'{design_PID:.2%}')
+
+baseline_upfront_cost = calc_upfront_cost(X_baseline, coef_dict).item()
+print('======= Predicted baseline performance =======')
+print('Upfront cost of baseline design: ',
+      f'${baseline_upfront_cost:,.2f}')
+print('Baseline median repair cost: ',
+      f'${baseline_repair_cost:,.2f}')
+print('Baseline repair time (sequential): ',
+      f'{baseline_downtime:,.2f}', 'days')
+print('Baseline collapse risk: ',
+      f'{baseline_collapse_risk:.2%}')
+print('Baseline replacement risk: ',
+      f'{baseline_repl_risk:.2%}')
+print('Baseline peak interstory drift: ',
+      f'{baseline_drift:.2%}')
 
 #%% cost sens
 land_costs = [2151., 3227., 4303., 5379.]
@@ -3069,7 +3200,7 @@ ax2.set_xlim([xx[0], xx[-1]])
 ax2.axhline(14, linestyle='--', color='black')
 plt.show()
 
-#%%
+#%% downtime validation distr
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -3090,7 +3221,7 @@ print('Inverse runs requiring replacement:', inv_repl_cases)
 print('Baseline runs requiring replacement:', base_repl_cases)
 
 fig, axes = plt.subplots(1, 1, 
-                         figsize=(13, 6))
+                         figsize=(10, 6))
 df_dt = pd.DataFrame.from_dict(
     data=dict(Inverse=val_ida['repair_days'], Baseline=base_ida['repair_days']),
     orient='index',
@@ -3098,14 +3229,87 @@ df_dt = pd.DataFrame.from_dict(
 
 ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
                    edgecolor='black', linewidth=1.0)
-ax.set_xlim(0, 60)
+ax.set_xlim(0, 50)
 sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
             width=0.4)
 # ax.set_ylabel('Design case', fontsize=axis_font)
 ax.set_xlabel('Median repair time (days)', fontsize=axis_font)
 ax.axvline(14, linestyle='--', color='black')
 ax.grid(visible=True)
+
+ax.text(33, 0, u'3 replacements \u2192', fontsize=axis_font, color='red')
+ax.text(33, 1, u'11 replacements \u2192', fontsize=axis_font, color='red')
+ax.text(14.5, 1.45, r'14 days threshold', fontsize=axis_font, color='black')
+plt.show()
+
+#%% cost validation distr
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+val_ida = val_loss[val_loss['IDA_level']==1.0]
+base_ida = base_loss[base_loss['IDA_level']==1.0]
+val_ida['repair_coef'] = val_ida[cost_var]/replacement_cost*100
+base_ida['repair_coef'] = base_ida[cost_var]/replacement_cost*100
+
+base_repl_cases = base_ida[base_ida[cost_var] == replacement_cost].count()[cost_var]
+inv_repl_cases = val_ida[val_ida[cost_var] == replacement_cost].count()[cost_var]
+print('Inverse runs requiring replacement:', inv_repl_cases)
+print('Baseline runs requiring replacement:', base_repl_cases)
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+df_dt = pd.DataFrame.from_dict(
+    data=dict(Inverse=val_ida['repair_coef'], Baseline=base_ida['repair_coef']),
+    orient='index',
+).T
+
+ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+ax.set_xlim(0, 8)
+sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4)
+# # ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel(r'% of replacement cost', fontsize=axis_font)
+# ax.axvline(14, linestyle='--', color='black')
+ax.grid(visible=True)
+
+ax.text(5.5, 0, u'3 replacements \u2192', fontsize=axis_font, color='red')
+ax.text(5.5, 1, u'11 replacements \u2192', fontsize=axis_font, color='red')
+# ax.text(14.5, 1.45, r'14 days threshold', fontsize=axis_font, color='black')
+plt.show()
+#%% classic Sa PID plot
+
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+plt.close('all')
+
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
+
+df['Sa_ratio'] = df['GMST1']/df['ST1']
+sns.scatterplot(data=df, x="max_drift", y="Sa_ratio",
+              legend='brief', palette='Blues',
+              ax=ax1)
+
+# legend_handle = ax1.legend(fontsize=subt_font, loc='center right',
+                          # title_fontsize=subt_font)
+# legend_handle.get_texts()[0].set_text(r'$T_M$')
+# legend_handle.get_texts()[6].set_text(r'$\zeta_M$')
+
+ax1.set_xlabel(r'PID', fontsize=axis_font)
+ax1.set_ylabel(r'$Sa_{actual} / Sa_{design}$', fontsize=axis_font)
+ax1.set_title(r'Overall structural performance', fontsize=title_font)
+# ax1.set_xlim([0.3, 2.5])
+ax1.grid()
 plt.show()
 #%%
-
 plt.close('all')
