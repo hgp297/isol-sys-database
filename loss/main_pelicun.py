@@ -204,9 +204,9 @@ collections.Callable = collections.abc.Callable
 
 #%% inverse design validation 
 
-data_path = './data/tfp_mf_val/inverse/mce/'
-res_path = './results/tfp_mf_val/inverse/mce/'
-db_file = 'ida_inv.csv'
+data_path = './data/tfp_mf_val/inverse_2/mce/'
+res_path = './results/tfp_mf_val/inverse_2/mce/'
+db_file = 'ida_ialcce_cost.csv'
 validation_input = pd.read_csv(data_path+db_file)
 validation_data = run_pelicun(data_path, res_path, 
                               database_file=db_file, 
@@ -233,9 +233,9 @@ val_input_summary = validation_input.describe([0.5])
 
 #%% inverse design validation run (full fragility)
 
-data_path = './data/tfp_mf_val/inverse/full/'
-res_path = './results/tfp_mf_val/inverse/full/'
-db_file = 'ida_inv.csv'
+data_path = './data/tfp_mf_val/inverse_2/full/'
+res_path = './results/tfp_mf_val/inverse_2/full/'
+db_file = 'ida_ialcce_cost.csv'
 validation_input = pd.read_csv(data_path+db_file)
 validation_data = run_pelicun(data_path, res_path, 
                               database_file=db_file, 
