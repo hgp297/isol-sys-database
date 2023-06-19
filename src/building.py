@@ -1283,7 +1283,7 @@ class Building:
             ops.patch('rect', steel_mat_tag, 
                 1, nff, -d_col/2, -bf_col/2, -d_col/2+tf_col, bf_col/2)
             ops.patch('rect', steel_mat_tag,
-                nfw, 1, -d_col/2+tf_col, -tw_col, d_col/2-tf_col, tw_col)
+                nfw, 1, -d_col/2+tf_col, -tw_col/2, d_col/2-tf_col, tw_col/2)
             
             
             current_col_int = col_int + fl_col + 1
@@ -1346,7 +1346,7 @@ class Building:
             ops.patch('rect', steel_mat_tag, 
                 1, nff, -d_beam/2, -bf_beam/2, -d_beam/2+tf_beam, bf_beam/2)
             ops.patch('rect', steel_mat_tag,
-                nfw, 1, -d_beam/2+tf_beam, -tw_beam, d_beam/2-tf_beam, tw_beam)
+                nfw, 1, -d_beam/2+tf_beam, -tw_beam/2, d_beam/2-tf_beam, tw_beam/2)
             
             
             current_brace_beam_int = beam_int + fl_beam + 2
