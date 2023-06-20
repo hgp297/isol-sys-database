@@ -327,7 +327,7 @@ plt.show()
 #%% DV plot
 
 import matplotlib as mpl
-label_size = 16
+label_size = 14
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
@@ -336,21 +336,27 @@ plt.close('all')
 fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
 
 df_mini = df[df['B_std'].notnull()]
-df_mini['struct_costs'] = df_mini['B_50%'] + df_mini['C_50%']
-df_mini['nsc_costs'] = df_mini['D_50%'] + df_mini['E_50%']
+struct_max = df_mini['B_max'].max() + df_mini['C_max'].max()
+nsc_max = df_mini['D_max'].max() + df_mini['E_max'].max()
+df_mini['struct_costs'] = (df_mini['B_50%'] + df_mini['C_50%'])/struct_max*100
+df_mini['nsc_costs'] = (df_mini['D_50%'] + df_mini['E_50%'])/nsc_max*100
+df_mini['Moat impact?'] = np.where(df_mini['impacted']==1, 'Impact', 'No impact')
+df_mini['Gap ratio'] = df_mini['gapRatio']
+markers = {"Impact": "X", "No impact": "o"}
 
-sns.scatterplot(data=df_mini, x='struct_costs', y='nsc_costs',
-              legend='brief', palette='Blues',
-              ax=ax1)
+sns.scatterplot(data=df_mini, x='struct_costs', y='nsc_costs', style='Moat impact?',
+                hue='Gap ratio', s=100,
+                legend='brief', markers=markers, palette='seismic',
+                ax=ax1)
 
 # legend_handle = ax1.legend(fontsize=subt_font, loc='center right',
                           # title_fontsize=subt_font)
 # legend_handle.get_texts()[0].set_text(r'$T_M$')
 # legend_handle.get_texts()[6].set_text(r'$\zeta_M$')
 
-ax1.set_xlabel(r'Repair time (days)', fontsize=axis_font)
-ax1.set_ylabel(r'Repair cost (USD)', fontsize=axis_font)
-ax1.set_title(r'Decision variables', fontsize=title_font)
+ax1.set_xlabel(r'Structural damage (%)', fontsize=axis_font)
+ax1.set_ylabel(r'Non-structural damage (%)', fontsize=axis_font)
+ax1.set_title(r'Repair cost as percent of replacement', fontsize=title_font)
 # ax1.set_xlim([0, 200])
 
 # sns.scatterplot(data=df, x='repair_time', y='replacement_freq',
@@ -366,9 +372,46 @@ ax1.set_title(r'Decision variables', fontsize=title_font)
 # ax1.set_ylabel(r'Repair cost (USD)', fontsize=axis_font)
 # ax1.set_title(r'Decision variables', fontsize=title_font)
 # ax1.set_xlim([0, 200])
+
+ax1.legend(fontsize=label_size)
 ax1.grid()
 plt.show()
 
+#%% weird pie
+
+def plot_pie(x, ax, r=1): 
+    # radius for pieplot size on a scatterplot
+    patches, texts = ax.pie(x[['B_50%','C_50%','D_50%','E_50%']], 
+           center=(x['gapRatio'],x['RI']), radius=r, 
+           colors=['r', 'b', 'g', 'y'])
+    
+    return(patches)
+
+    
+fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+
+df_pie = df_mini[df_mini['gapRatio']<=2.0]
+ax.scatter(x=df_pie['gapRatio'], y=df_pie['RI'], s=0)
+# git min/max values for the axes
+# y_init = ax.get_ylim()
+# x_init = ax.get_xlim()
+df_pie.apply(lambda x : plot_pie(x, ax, r=0.04), axis=1)
+patch = plot_pie(df_pie.iloc[-1], ax, r=0.04)
+
+ax.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_title(r'Repair cost makeup by component', fontsize=title_font)
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.0])
+_ = ax.yaxis.set_ticks(np.arange(0.5, 2.1, 0.5))
+_ = ax.xaxis.set_ticks(np.arange(0.5, 2.1, 0.5))
+# _ = ax.set_title('My')
+ax.set_frame_on(True)
+labels = ['Structure & facade', 'Partitions & lighting', 'MEP', 'Storage']
+plt.legend(patch, labels, loc='lower right', fontsize=14)
+# plt.axis('equal')
+plt.tight_layout()
+ax.grid()
 #%% impact effect
 
 plt.rcParams["font.family"] = "serif"
