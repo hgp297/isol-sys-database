@@ -151,7 +151,7 @@ plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.xlim([0.3, 2.0])
 plt.title('Collapse risk', fontsize=axis_font)
-
+plt.show()
 #%% post-doe data
 
 # database_path = './data/doe/old/rmse_1_percent/'
@@ -180,7 +180,7 @@ y_true = mdl_doe.y
 plt.figure()
 plt.scatter(y_hat, y_true)
 
-plt.title('Prediction accuracy, pre-DOE')
+plt.title('Prediction accuracy, post-DOE')
 plt.xlabel('Predicted log drift')
 plt.ylabel('True log drift')
 
@@ -190,8 +190,8 @@ plt.ylabel('True log drift')
 # plt.plot([0, 1.0], [0, 1.1], linestyle='--',color='black')
 # plt.plot([0, 1.0], [0, 0.9], linestyle='--',color='black')
 
-# plt.xlim([-6, 0])
-# plt.ylim([-6, 0])
+plt.xlim([-6, 0])
+plt.ylim([-6, 0])
 
 plt.grid(True)
 plt.show()
