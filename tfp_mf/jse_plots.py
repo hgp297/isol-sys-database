@@ -115,7 +115,7 @@ plt.colorbar()
 plt.scatter(df_train['gapRatio'], df_train['RI'], 
             c=df_train['collapse_prob'],
             edgecolors='k', s=20.0, cmap=plt.cm.Reds_r)
-plt.contour(xx_pl, yy_pl, Z, levels=[0.1])
+plt.contour(xx_pl, yy_pl, Z, levels=[0.025, 0.05, 0.1])
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.xlim([0.3, 2.0])

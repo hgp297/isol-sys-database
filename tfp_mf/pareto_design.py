@@ -142,7 +142,7 @@ def is_pareto_efficient(costs, return_mask = True):
         return is_efficient
 
 #%% try for design
-res = 50
+res = 30
 xx, yy, uu = np.meshgrid(np.linspace(0.3, 2.0,
                                       res),
                               np.linspace(0.5, 2.0,
@@ -242,6 +242,17 @@ plt.ylabel(r'$T_M$', fontsize=axis_font)
 plt.xlim([0.3, 2.0])
 plt.title('Pareto front of designs', fontsize=axis_font)
 plt.show()
+
+#%% 3d plot
+
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+ax.scatter(X_feasible['gapRatio'], X_feasible['Tm'], X_feasible['RI'], 
+           c=drifts[probs < prob_target],
+           edgecolors='k', alpha = 0.7)
+plt.xlabel('Gap ratio', fontsize=axis_font)
+plt.ylabel(r'$T_M$', fontsize=axis_font)
+ax.set_xlim([0.3, 2.0])
+ax.set_zlabel(r'$R_y$', fontsize=axis_font)
 #%% example
 # inputPoints = [[1,1,1], [1,2,3], [3,2,1], [4,1,1]]
 # paretoPoints, dominatedPoints = simple_cull(inputPoints, dominates)
