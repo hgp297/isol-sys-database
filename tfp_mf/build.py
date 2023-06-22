@@ -54,8 +54,8 @@ def giveLoads():
 # add superstructure damping (dependent on eigenvalue anly)
 def provideSuperDamping(regTag, w2, zetai=0.05, zetaj=0.05, modes=[1,3]):
     # Pick your modes and damping ratios
-    wi = w2[modes[0]-1]**0.5; zetai = 0.05 # 5% in mode 1
-    wj = w2[modes[1]-1]**0.5; zetaj = 0.02 # 2% in mode 3
+    wi = w2[modes[0]-1]**0.5;
+    wj = w2[modes[1]-1]**0.5;
     
     import numpy as np
     
@@ -68,26 +68,42 @@ def provideSuperDamping(regTag, w2, zetai=0.05, zetaj=0.05, modes=[1,3]):
     betaK       = 0.0
     betaKInit   = 0.0
     # a1          = 2*zetaTarget/omega1
+    a1 = 2*zetai/wi
+    
+    all_elems = ops.getEleTags()
+    non_damped_elems = [51, 52, 53, 54,
+                        881, 884,
+                        314, 324, 334, 344,
+                        611, 612, 613,
+                        115, 125, 135]
+    
+    damped_elems = [elem for elem in all_elems if elem not in non_damped_elems]
+    
+    # stiffness proportional
     ops.region(regTag, '-ele',
-        111, 112, 113, 114,
-        121, 122, 123, 124,
-        131, 132, 133, 134,
-        221, 222, 223,
-        231, 232, 233,
-        241, 242, 243,
-        5118, 5128, 5138, 5148,
-        5216, 5226, 5236, 5246,
-        5218, 5228, 5238, 5248,
-        5316, 5326, 5336, 5346,
-        5318, 5328, 5338, 5348,
-        5416, 5426, 5436, 5446,
-        5219, 5229, 5239,
-        5227, 5237, 5247,
-        5319, 5329, 5339,
-        5327, 5337, 5347,
-        5419, 5429, 5439,
-        5427, 5437, 5447,
-        '-rayleigh', x[0], betaK, betaKInit, x[1])
+        *damped_elems,
+        '-rayleigh', 0.0, betaK, betaKInit, a1)
+    
+    # ops.region(regTag, '-ele',
+    #     111, 112, 113, 114,
+    #     121, 122, 123, 124,
+    #     131, 132, 133, 134,
+    #     221, 222, 223,
+    #     231, 232, 233,
+    #     241, 242, 243,
+    #     5118, 5128, 5138, 5148,
+    #     5216, 5226, 5236, 5246,
+    #     5218, 5228, 5238, 5248,
+    #     5316, 5326, 5336, 5346,
+    #     5318, 5328, 5338, 5348,
+    #     5416, 5426, 5436, 5446,
+    #     5219, 5229, 5239,
+    #     5227, 5237, 5247,
+    #     5319, 5329, 5339,
+    #     5327, 5337, 5347,
+    #     5419, 5429, 5439,
+    #     5427, 5437, 5447,
+    #     '-rayleigh', x[0], betaK, betaKInit, x[1])
 
 # TODO: list of changes
 # Sx -> Zx
