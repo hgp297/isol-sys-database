@@ -6,6 +6,8 @@
 *.eps
 *.pptx
 *.xlsx
+*/old/*
+*temp_save.csv
 
 # repeated pelicun files
 *cmp_marginal*
