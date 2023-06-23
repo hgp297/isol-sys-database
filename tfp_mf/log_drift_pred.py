@@ -50,7 +50,7 @@ df_train['log_drift'] = np.log(df_train['max_drift'])
 df_train['collapse_prob'] = ln_dist.cdf(df_train['max_drift'])
 
 mdl_init = GP(df_train)
-mdl_init.set_outcome('log_drift')
+mdl_init.set_outcome('max_drift')
 mdl_init.fit_gpr(kernel_name='rbf_ard')
 
 #%%
@@ -60,11 +60,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 plt.close('all')
-y_hat = mdl_init.gpr.predict(mdl_init.X)
+y_hat, fs1 = mdl_init.gpr.predict(mdl_init.X, return_std=True)
+fs2 = fs1**2
 y_true = mdl_init.y
+y_safe = y_hat + 1.96*fs2
 
 plt.figure()
 plt.scatter(y_hat, y_true)
+plt.scatter(y_safe, y_true, c='red')
 
 plt.title('Prediction accuracy, pre-DOE')
 plt.xlabel('Predicted log drift')
@@ -76,8 +79,8 @@ plt.ylabel('True log drift')
 # plt.plot([0, 1.0], [0, 1.1], linestyle='--',color='black')
 # plt.plot([0, 1.0], [0, 0.9], linestyle='--',color='black')
 
-plt.xlim([-6, 0])
-plt.ylim([-6, 0])
+# plt.xlim([-6, 0])
+# plt.ylim([-6, 0])
 plt.grid(True)
 plt.show()
 
@@ -129,7 +132,7 @@ fs2_subset = fs2[X_space['Tm']==3.25]
 fmu_subset = fmu[X_space['Tm']==3.25]
 
 
-Z = np.exp(fmu_subset)
+Z = fmu_subset
 Z = ln_dist.cdf(Z).reshape(xx_pl.shape)
 
 plt.figure()
@@ -166,7 +169,7 @@ df_doe['log_drift'] = np.log(df_doe['max_drift'])
 df_doe['collapse_prob'] = ln_dist.cdf(df_doe['max_drift'])
 
 mdl_doe = GP(df_doe)
-mdl_doe.set_outcome('log_drift')
+mdl_doe.set_outcome('max_drift')
 mdl_doe.fit_gpr(kernel_name='rbf_ard')
 
 #%% prediction accuracy doe
@@ -174,15 +177,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 plt.close('all')
-y_hat = mdl_doe.gpr.predict(mdl_doe.X)
+y_hat, fs1 = mdl_doe.gpr.predict(mdl_doe.X, return_std=True)
+fs2 = fs1**2
 y_true = mdl_doe.y
+y_safe = y_hat + 1.96*fs2
 
 plt.figure()
 plt.scatter(y_hat, y_true)
-
-plt.title('Prediction accuracy, post-DOE')
-plt.xlabel('Predicted log drift')
-plt.ylabel('True log drift')
+plt.scatter(y_safe, y_true, c='red')
 
 # plt.xlim([0, 0.3])
 # plt.ylim([0, 0.3])
@@ -190,8 +192,8 @@ plt.ylabel('True log drift')
 # plt.plot([0, 1.0], [0, 1.1], linestyle='--',color='black')
 # plt.plot([0, 1.0], [0, 0.9], linestyle='--',color='black')
 
-plt.xlim([-6, 0])
-plt.ylim([-6, 0])
+# plt.xlim([-6, 0])
+# plt.ylim([-6, 0])
 
 plt.grid(True)
 plt.show()
@@ -229,7 +231,7 @@ fs2_subset = fs2[X_space['Tm']==3.25]
 fmu_subset = fmu[X_space['Tm']==3.25]
 
 
-Z = np.exp(fmu_subset)
+Z = fmu_subset
 Z = ln_dist.cdf(Z).reshape(xx_pl.shape)
 
 plt.figure()
