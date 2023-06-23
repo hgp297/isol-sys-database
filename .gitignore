@@ -6,7 +6,7 @@
 *.eps
 *.pptx
 *.xlsx
-*/old/*
+old/
 *temp_save.csv
 
 # repeated pelicun files
