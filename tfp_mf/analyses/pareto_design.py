@@ -28,7 +28,7 @@ beta_drift = 0.25
 mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
 ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
-database_path = './data/doe/'
+database_path = '../data/doe/'
 database_file = 'rmse_doe_set.csv'
 
 df_doe = pd.read_csv(database_path+database_file, 
@@ -38,7 +38,7 @@ df_doe['max_drift'] = df_doe[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1
 df_doe['collapse_prob'] = ln_dist.cdf(df_doe['max_drift'])
 
 mdl_doe = GP(df_doe)
-mdl_doe.set_outcome('max_drift')
+mdl_doe.set_outcome('collapse_prob')
 mdl_doe.fit_gpr(kernel_name='rbf_ard')
 
 #%% pareto front 
@@ -142,7 +142,7 @@ def is_pareto_efficient(costs, return_mask = True):
         return is_efficient
 
 #%% try for design
-res = 30
+res = 50
 xx, yy, uu = np.meshgrid(np.linspace(0.3, 2.0,
                                       res),
                               np.linspace(0.5, 2.0,
@@ -205,8 +205,9 @@ X_pareto = X_space.iloc[pareto_mask]
 #%%
 
 prob_target = 0.1
-drifts = mdl_doe.gpr.predict(X_pareto, return_std=False)
-probs = ln_dist.cdf(drifts)
+# drifts = mdl_doe.gpr.predict(X_pareto, return_std=False)
+# probs = ln_dist.cdf(drifts)
+probs = mdl_doe.gpr.predict(X_pareto, return_std=False)
 X_feasible = X_pareto[probs < prob_target]
 
 #%% plot
@@ -223,31 +224,33 @@ mpl.rcParams['ytick.labelsize'] = label_size
 
 
 plt.scatter(X_feasible['gapRatio'], X_feasible['RI'], 
-            c=drifts[probs < prob_target],
+            c=probs[probs < prob_target],
             edgecolors='k', s=20.0, cmap=plt.cm.Reds_r)
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.xlim([0.3, 2.0])
 plt.title('Pareto front of designs', fontsize=axis_font)
+plt.grid()
 plt.show()
 
 
 
 plt.figure()
 plt.scatter(X_feasible['gapRatio'], X_feasible['Tm'], 
-            c=drifts[probs < prob_target],
+            c=probs[probs < prob_target],
             edgecolors='k', s=20.0, cmap=plt.cm.Reds_r)
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$T_M$', fontsize=axis_font)
 plt.xlim([0.3, 2.0])
 plt.title('Pareto front of designs', fontsize=axis_font)
+plt.grid()
 plt.show()
 
 #%% 3d plot
 
 fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 ax.scatter(X_feasible['gapRatio'], X_feasible['Tm'], X_feasible['RI'], 
-           c=drifts[probs < prob_target],
+           c=probs[probs < prob_target],
            edgecolors='k', alpha = 0.7)
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$T_M$', fontsize=axis_font)

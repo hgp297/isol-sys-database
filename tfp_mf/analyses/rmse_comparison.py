@@ -1,11 +1,11 @@
 from doe import GP
 import pandas as pd
 
-# doe_path = './data/doe/old/rmse_1_percent/'
-doe_path = './data/doe/'
+# doe_path = '../data/doe/old/rmse_1_percent/'
+doe_path = '../data/doe/'
 
 print('======= starting at 100 points =======')
-df = pd.read_csv('./data/training_set.csv')
+df = pd.read_csv('../data/training_set.csv')
 df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df.loc[df['collapsed'] == -1, 'collapsed'] = 0
 
@@ -120,10 +120,10 @@ plt.show()
 #%% fixed test set
 
 print('======= test results trained on 100 points =======')
-df_train = pd.read_csv('./data/training_set.csv')
+df_train = pd.read_csv('../data/training_set.csv')
 df_train['max_drift'] = df_train[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 
-df_test = pd.read_csv('./data/testing_set.csv')
+df_test = pd.read_csv('../data/testing_set.csv')
 df_test['max_drift'] = df_test[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 
 # collapse as a probability
