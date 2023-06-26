@@ -153,7 +153,7 @@ def run_doe(prob_target, training_set_path, testing_set_path,
     import numpy as np
     np.random.seed(986)
     random.seed(986)
-    from doe import GP
+    from analyses.doe import GP
     
     # use a test set to evaluate error metric
     df = pd.read_csv(training_set_path)

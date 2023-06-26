@@ -39,7 +39,7 @@ ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 #%% pre-doe data
 
-database_path = './data/'
+database_path = '../data/'
 database_file = 'training_set.csv'
 
 df_train = pd.read_csv(database_path+database_file, 
@@ -66,7 +66,7 @@ xx, yy, uu = np.meshgrid(np.linspace(0.3, 2.0,
 X_space = pd.DataFrame({'gapRatio':xx.ravel(),
                       'RI':yy.ravel(),
                       'Tm':uu.ravel(),
-                      'zetaM':np.repeat(0.15,res**3)})
+                      'zetaM':np.repeat(0.2,res**3)})
 
 
 
@@ -125,8 +125,8 @@ plt.title('Collapse risk', fontsize=axis_font)
 
 #%% post-doe data
 
-# database_path = './data/doe/old/rmse_1_percent/'
-database_path = './data/doe/'
+# database_path = '../data/doe/old/rmse_1_percent/'
+database_path = '../data/doe/'
 database_file = 'rmse_doe_set.csv'
 
 df_doe = pd.read_csv(database_path+database_file, 
@@ -285,6 +285,65 @@ plt.close('all')
 steel_price = 2.00
 coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
 
+risk_thresh = 0.1
+space_collapse_pred = pd.DataFrame(fmu, columns=['collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_space[X_space.index.isin(ok_risk.index)]
+    
+# in the filter-design process, only one of cost/dt is likely to control
+    
+# TODO: more clever selection criteria (not necessarily the cheapest)
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs.idxmin()
+design_upfront_cost = upfront_costs.min()
+
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+
+
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
+risk_thresh = 0.05
+space_collapse_pred = pd.DataFrame(fmu, columns=['collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_space[X_space.index.isin(ok_risk.index)]
+    
+# in the filter-design process, only one of cost/dt is likely to control
+    
+# TODO: more clever selection criteria (not necessarily the cheapest)
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs.idxmin()
+design_upfront_cost = upfront_costs.min()
+
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
 risk_thresh = 0.025
 space_collapse_pred = pd.DataFrame(fmu, columns=['collapse probability'])
 ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
@@ -305,142 +364,143 @@ design_upfront_cost = upfront_costs.min()
 best_design = X_design.loc[cheapest_design_idx]
 design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
-print(best_design)
 
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
 print('Upfront cost of selected design: ',
       f'${design_upfront_cost:,.2f}')
 print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
+print(best_design)
 
+# #%% full validation (IDA data)
 
+# val_dir = '../data/val/'
+# val_file = 'ida_jse_10.csv'
 
-#%% full validation (IDA data)
+# baseline_dir = '../data/val/'
+# baseline_file = 'ida_baseline.csv'
 
-val_dir = './data/val/'
-val_file = 'ida_jse_10.csv'
+# df_val = pd.read_csv(val_dir+val_file, index_col=None)
+# df_base = pd.read_csv(baseline_dir+baseline_file, index_col=None)
+# cost_var = 'cost_50%'
+# time_var = 'time_u_50%'
 
-baseline_dir = './data/val/'
-baseline_file = 'ida_baseline.csv'
+# from scipy.stats import lognorm
+# from math import log, exp
+# from scipy.stats import norm
+# inv_norm = norm.ppf(0.84)
+# beta_drift = 0.25
+# mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+# ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
-df_val = pd.read_csv(val_dir+val_file, index_col=None)
-df_base = pd.read_csv(baseline_dir+baseline_file, index_col=None)
-cost_var = 'cost_50%'
-time_var = 'time_u_50%'
+# df_val['max_drift'] = df_val[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+# df_val['collapse_probs'] = ln_dist.cdf(np.array(df_val['max_drift']))
 
-from scipy.stats import lognorm
-from math import log, exp
-from scipy.stats import norm
-inv_norm = norm.ppf(0.84)
-beta_drift = 0.25
-mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
-ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+# df_base['max_drift'] = df_base[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+# df_base['collapse_probs'] = ln_dist.cdf(np.array(df_base['max_drift']))
 
-df_val['max_drift'] = df_val[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
-df_val['collapse_probs'] = ln_dist.cdf(np.array(df_val['max_drift']))
+# ida_levels = [1.0, 1.5, 2.0]
+# validation_collapse = np.zeros((3,))
+# baseline_collapse = np.zeros((3,))
 
-df_base['max_drift'] = df_base[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
-df_base['collapse_probs'] = ln_dist.cdf(np.array(df_base['max_drift']))
-
-ida_levels = [1.0, 1.5, 2.0]
-validation_collapse = np.zeros((3,))
-baseline_collapse = np.zeros((3,))
-
-for i, lvl in enumerate(ida_levels):
-    val_ida = df_val[df_val['IDALevel']==lvl]
-    base_ida = df_base[df_base['IDALevel']==lvl]
+# for i, lvl in enumerate(ida_levels):
+#     val_ida = df_val[df_val['IDALevel']==lvl]
+#     base_ida = df_base[df_base['IDALevel']==lvl]
     
-    validation_collapse[i] = val_ida['collapse_probs'].mean()
+#     validation_collapse[i] = val_ida['collapse_probs'].mean()
     
-    baseline_collapse[i] = base_ida['collapse_probs'].mean()
+#     baseline_collapse[i] = base_ida['collapse_probs'].mean()
     
-print('==================================')
-print('   Validation results  (1.0 MCE)  ')
-print('==================================')
+# print('==================================')
+# print('   Validation results  (1.0 MCE)  ')
+# print('==================================')
 
-inverse_collapse = validation_collapse[0]
+# inverse_collapse = validation_collapse[0]
 
-print('====== INVERSE DESIGN ======')
-print('Estimated collapse frequency: ',
-      f'{inverse_collapse:.2%}')
-
-
-baseline_collapse_mce = baseline_collapse[0]
-
-print('====== BASELINE DESIGN ======')
-print('Estimated collapse frequency: ',
-      f'{baseline_collapse_mce:.2%}')
-
-#%% fit validation curve (curve fit, not MLE)
-
-from scipy.stats import lognorm
-from scipy.optimize import curve_fit
-f = lambda x,mu,sigma: lognorm(mu,sigma).cdf(x)
-
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
-
-fig = plt.figure(figsize=(13, 6))
+# print('====== INVERSE DESIGN ======')
+# print('Estimated collapse frequency: ',
+#       f'{inverse_collapse:.2%}')
 
 
-theta, beta = curve_fit(f,ida_levels,validation_collapse)[0]
-xx = np.arange(0.01, 4.0, 0.01)
-p = f(xx, theta, beta)
+# baseline_collapse_mce = baseline_collapse[0]
 
-MCE_level = float(p[xx==1.0])
-ax1=fig.add_subplot(1, 2, 1)
-ax1.plot(xx, p)
-ax1.axhline(0.1, linestyle='--', color='black')
-ax1.axvline(1.0, linestyle='--', color='black')
-ax1.text(2.0, 0.12, r'10% collapse risk',
-         fontsize=subt_font, color='black')
-ax1.text(0.1, MCE_level+0.01, f'{MCE_level:,.4f}',
-         fontsize=subt_font, color='blue')
-ax1.text(0.8, 0.7, r'$MCE_R$ level', rotation=90,
-         fontsize=subt_font, color='black')
+# print('====== BASELINE DESIGN ======')
+# print('Estimated collapse frequency: ',
+#       f'{baseline_collapse_mce:.2%}')
 
-ax1.set_ylabel('Collapse probability', fontsize=axis_font)
-ax1.set_xlabel(r'$MCE_R$ level', fontsize=axis_font)
-ax1.set_title('Inverse design', fontsize=title_font)
-for i, lvl in enumerate(ida_levels):
-    ax1.plot([lvl], [validation_collapse[i]], 
-             marker='x', markersize=15, color="red")
-ax1.grid()
-ax1.set_xlim([0, 4.0])
-ax1.set_ylim([0, 1.0])
+# #%% fit validation curve (curve fit, not MLE)
 
-####
-theta, beta = curve_fit(f,ida_levels,baseline_collapse)[0]
-xx = np.arange(0.01, 4.0, 0.01)
-p = f(xx, theta, beta)
+# from scipy.stats import lognorm
+# from scipy.optimize import curve_fit
+# f = lambda x,mu,sigma: lognorm(mu,sigma).cdf(x)
 
-MCE_level = float(p[xx==1.0])
-ax2=fig.add_subplot(1, 2, 2)
-ax2.plot(xx, p)
-ax2.axhline(0.1, linestyle='--', color='black')
-ax2.axvline(1.0, linestyle='--', color='black')
-ax2.text(0.8, 0.7, r'$MCE_R$ level', rotation=90,
-         fontsize=subt_font, color='black')
-ax2.text(2.0, 0.12, r'10% collapse risk',
-         fontsize=subt_font, color='black')
-ax2.text(MCE_level, 0.12, f'{MCE_level:,.4f}',
-         fontsize=subt_font, color='blue')
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 18
+# subt_font = 18
+# label_size = 16
+# title_font=20
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
 
-# ax2.set_ylabel('Collapse probability', fontsize=axis_font)
-ax2.set_xlabel(r'$MCE_R$ level', fontsize=axis_font)
-ax2.set_title('Baseline design', fontsize=title_font)
-for i, lvl in enumerate(ida_levels):
-    ax2.plot([lvl], [baseline_collapse[i]], 
-             marker='x', markersize=15, color="red")
-ax2.grid()
-ax2.set_xlim([0, 4.0])
-ax2.set_ylim([0, 1.0])
+# fig = plt.figure(figsize=(13, 6))
 
-fig.tight_layout()
-plt.show()
+
+# theta, beta = curve_fit(f,ida_levels,validation_collapse)[0]
+# xx = np.arange(0.01, 4.0, 0.01)
+# p = f(xx, theta, beta)
+
+# MCE_level = float(p[xx==1.0])
+# ax1=fig.add_subplot(1, 2, 1)
+# ax1.plot(xx, p)
+# ax1.axhline(0.1, linestyle='--', color='black')
+# ax1.axvline(1.0, linestyle='--', color='black')
+# ax1.text(2.0, 0.12, r'10% collapse risk',
+#          fontsize=subt_font, color='black')
+# ax1.text(0.1, MCE_level+0.01, f'{MCE_level:,.4f}',
+#          fontsize=subt_font, color='blue')
+# ax1.text(0.8, 0.7, r'$MCE_R$ level', rotation=90,
+#          fontsize=subt_font, color='black')
+
+# ax1.set_ylabel('Collapse probability', fontsize=axis_font)
+# ax1.set_xlabel(r'$MCE_R$ level', fontsize=axis_font)
+# ax1.set_title('Inverse design', fontsize=title_font)
+# for i, lvl in enumerate(ida_levels):
+#     ax1.plot([lvl], [validation_collapse[i]], 
+#              marker='x', markersize=15, color="red")
+# ax1.grid()
+# ax1.set_xlim([0, 4.0])
+# ax1.set_ylim([0, 1.0])
+
+# ####
+# theta, beta = curve_fit(f,ida_levels,baseline_collapse)[0]
+# xx = np.arange(0.01, 4.0, 0.01)
+# p = f(xx, theta, beta)
+
+# MCE_level = float(p[xx==1.0])
+# ax2=fig.add_subplot(1, 2, 2)
+# ax2.plot(xx, p)
+# ax2.axhline(0.1, linestyle='--', color='black')
+# ax2.axvline(1.0, linestyle='--', color='black')
+# ax2.text(0.8, 0.7, r'$MCE_R$ level', rotation=90,
+#          fontsize=subt_font, color='black')
+# ax2.text(2.0, 0.12, r'10% collapse risk',
+#          fontsize=subt_font, color='black')
+# ax2.text(MCE_level, 0.12, f'{MCE_level:,.4f}',
+#          fontsize=subt_font, color='blue')
+
+# # ax2.set_ylabel('Collapse probability', fontsize=axis_font)
+# ax2.set_xlabel(r'$MCE_R$ level', fontsize=axis_font)
+# ax2.set_title('Baseline design', fontsize=title_font)
+# for i, lvl in enumerate(ida_levels):
+#     ax2.plot([lvl], [baseline_collapse[i]], 
+#              marker='x', markersize=15, color="red")
+# ax2.grid()
+# ax2.set_xlim([0, 4.0])
+# ax2.set_ylim([0, 1.0])
+
+# fig.tight_layout()
+# plt.show()
