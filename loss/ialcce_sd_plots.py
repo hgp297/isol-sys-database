@@ -530,18 +530,18 @@ print('False positives: ', fp)
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 20
+axis_font = 22
 subt_font = 18
 import matplotlib as mpl
-label_size = 16
+label_size = 18
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
 plt.close('all')
 # make grid and plot classification predictions
 
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(14, 4.5))
-plt.setp((ax1, ax2, ax3), xticks=np.arange(0.5, 4.0, step=0.5))
+fig, ax = plt.subplots(1, 1, figsize=(9,7))
+plt.setp(ax, xticks=np.arange(0.5, 4.0, step=0.5))
 
 xvar = 'gapRatio'
 yvar = 'RI'
@@ -561,31 +561,31 @@ Z = Z.reshape(xx.shape)
 #        cmap=plt.cm.Greys,
 #    )
 
-plt_density = 50
-cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=np.linspace(0.1,1.0,num=10))
-ax1.clabel(cs, fontsize=label_size)
+# plt_density = 50
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=np.linspace(0.1,1.0,num=10))
+# ax1.clabel(cs, fontsize=label_size)
 
-# sc = ax3.scatter(mdl.X_train[xvar][:plt_density],
-#             mdl.X_train[yvar][:plt_density],
-#             s=30, c=mdl.y_train[:plt_density],
-#             cmap=plt.cm.copper, edgecolors='w')
+# # sc = ax3.scatter(mdl.X_train[xvar][:plt_density],
+# #             mdl.X_train[yvar][:plt_density],
+# #             s=30, c=mdl.y_train[:plt_density],
+# #             cmap=plt.cm.copper, edgecolors='w')
 
-#ax1.contour(xx, yy, Z, levels=[0.5], linewidths=2,
-#            linestyles="dashed", colors='black')
+# #ax1.contour(xx, yy, Z, levels=[0.5], linewidths=2,
+# #            linestyles="dashed", colors='black')
 
-ax1.scatter(hit.X_train[xvar][:plt_density],
-            hit.X_train[yvar][:plt_density],
-            s=30, c='darkblue', marker='v', edgecolors='k', label='Impacted')
+# ax1.scatter(hit.X_train[xvar][:plt_density],
+#             hit.X_train[yvar][:plt_density],
+#             s=30, c='darkblue', marker='v', edgecolors='k', label='Impacted')
 
-ax1.scatter(miss.X_train[xvar][:plt_density],
-            miss.X_train[yvar][:plt_density],
-            s=30, c='azure', edgecolors='k', label='No impact')
+# ax1.scatter(miss.X_train[xvar][:plt_density],
+#             miss.X_train[yvar][:plt_density],
+#             s=30, c='azure', edgecolors='k', label='No impact')
 
-ax1.set_xlim(0.3, 2.5)
-ax1.set_title(r'$T_M = 3.25$ s, $\zeta_M = 0.15$', fontsize=subt_font)
-ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
-ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax1.set_xlim(0.3, 2.5)
+# ax1.set_title(r'$T_M = 3.25$ s, $\zeta_M = 0.15$', fontsize=subt_font)
+# ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 ####################################################################
 xvar = 'gapRatio'
@@ -607,72 +607,72 @@ Z = Z.reshape(xx.shape)
 #    )
 
 plt_density = 50
-cs = ax2.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+cs = ax.contour(xx, yy, Z, linewidths=1.8, cmap='Blues', vmin=-1,
                  levels=np.linspace(0.1,1.0,num=10))
-ax2.clabel(cs, fontsize=label_size)
+ax.clabel(cs, fontsize=label_size)
 
 #ax1.contour(xx, yy, Z, levels=[0.5], linewidths=2,
 #            linestyles="dashed", colors='black')
 
-ax2.scatter(hit.X_train[xvar][:plt_density],
+ax.scatter(hit.X_train[xvar][:plt_density],
             hit.X_train[yvar][:plt_density],
-            s=30, c='darkblue', marker='v', edgecolors='k', label='Impacted')
+            s=60, c='darkblue', marker='v', edgecolors='k', label='Impacted')
 
-ax2.scatter(miss.X_train[xvar][:plt_density],
+ax.scatter(miss.X_train[xvar][:plt_density],
             miss.X_train[yvar][:plt_density],
-            s=30, c='azure', edgecolors='k', label='No impact')
+            s=60, c='azure', edgecolors='k', label='No impact')
 
-ax2.set_xlim(0.3, 2.5)
-ax2.set_title(r'$R_y= 1.25$ , $\zeta_M = 0.15$', fontsize=subt_font)
-ax2.set_xlabel(r'Gap ratio', fontsize=axis_font)
-ax2.set_ylabel(r'$T_M$', fontsize=axis_font)
+ax.set_xlim(0.3, 2.5)
+ax.set_title(r'$R_y= 1.25$ , $\zeta_M = 0.15$', fontsize=axis_font)
+ax.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax.set_ylabel(r'$T_M$', fontsize=axis_font)
 
 ####################################################################
-xvar = 'gapRatio'
-yvar = 'zetaM'
-X_plot = mdl.make_2D_plotting_space(100, x_var=xvar, y_var=yvar)
-xx = mdl.xx
-yy = mdl.yy
-Z = mdl.gpc.predict_proba(mdl.X_plot)[:, 1]
-Z = Z.reshape(xx.shape)
+# xvar = 'gapRatio'
+# yvar = 'zetaM'
+# X_plot = mdl.make_2D_plotting_space(100, x_var=xvar, y_var=yvar)
+# xx = mdl.xx
+# yy = mdl.yy
+# Z = mdl.gpc.predict_proba(mdl.X_plot)[:, 1]
+# Z = Z.reshape(xx.shape)
 
-#ax1.imshow(
-#        Z,
-#        interpolation="nearest",
-#        extent=(xx.min(), xx.max(),
-#                yy.min(), yy.max()),
-#        aspect="auto",
-#        origin="lower",
-#        cmap=plt.cm.Greys,
-#    )
+# #ax1.imshow(
+# #        Z,
+# #        interpolation="nearest",
+# #        extent=(xx.min(), xx.max(),
+# #                yy.min(), yy.max()),
+# #        aspect="auto",
+# #        origin="lower",
+# #        cmap=plt.cm.Greys,
+# #    )
 
-plt_density = 50
-cs = ax3.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=np.linspace(0.1,1.0,num=10))
-ax3.clabel(cs, fontsize=label_size)
+# plt_density = 50
+# cs = ax3.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=np.linspace(0.1,1.0,num=10))
+# ax3.clabel(cs, fontsize=label_size)
 
-#ax1.contour(xx, yy, Z, levels=[0.5], linewidths=2,
-#            linestyles="dashed", colors='black')
+# #ax1.contour(xx, yy, Z, levels=[0.5], linewidths=2,
+# #            linestyles="dashed", colors='black')
 
-ax3.scatter(hit.X_train[xvar][:plt_density],
-            hit.X_train[yvar][:plt_density],
-            s=30, c='darkblue', marker='v', edgecolors='k', label='Impacted')
+# ax3.scatter(hit.X_train[xvar][:plt_density],
+#             hit.X_train[yvar][:plt_density],
+#             s=30, c='darkblue', marker='v', edgecolors='k', label='Impacted')
 
-ax3.scatter(miss.X_train[xvar][:plt_density],
-            miss.X_train[yvar][:plt_density],
-            s=30, c='azure', edgecolors='k', label='No impact')
+# ax3.scatter(miss.X_train[xvar][:plt_density],
+#             miss.X_train[yvar][:plt_density],
+#             s=30, c='azure', edgecolors='k', label='No impact')
 
-# sc = ax3.scatter(mdl.X_train[xvar][:plt_density],
-#             mdl.X_train[yvar][:plt_density],
-#             s=30, c=mdl.y_train[:plt_density],
-#             cmap=plt.cm.copper, edgecolors='w')
+# # sc = ax3.scatter(mdl.X_train[xvar][:plt_density],
+# #             mdl.X_train[yvar][:plt_density],
+# #             s=30, c=mdl.y_train[:plt_density],
+# #             cmap=plt.cm.copper, edgecolors='w')
 
-ax3.set_xlim(0.3, 2.5)
-ax3.set_title(r'$R_y= 1.25$ , $T_M = 3.25$ s', fontsize=subt_font)
-ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
-ax3.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+# ax3.set_xlim(0.3, 2.5)
+# ax3.set_title(r'$R_y= 1.25$ , $T_M = 3.25$ s', fontsize=subt_font)
+# ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
+# ax3.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 
-ax3.legend(loc="lower right", fontsize=subt_font)
+ax.legend(loc="lower right", fontsize=axis_font)
 
 # lg = ax3.legend(*sc.legend_elements(), loc="lower right", title="Impact",
 #            fontsize=subt_font)
@@ -760,9 +760,9 @@ plt.show()
 plt.close('all')
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
+axis_font = 22
 subt_font = 18
-label_size = 14
+label_size = 18
 import matplotlib as mpl
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
@@ -786,26 +786,26 @@ Z = Z.reshape(xx.shape)
 #fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(13, 4), sharey=True)
 #plt.setp((ax1, ax2, ax3), yticks=np.arange(0.1, 1.1, step=0.1), ylim=[0.0, 1.0])
 
-fig, axes = plt.subplots(1, 2, 
-                         figsize=(13, 6))
-ax1 = axes[0]
-ax2 = axes[1]
+fig, ax = plt.subplots(1, 1, 
+                         figsize=(9,7))
+# ax1 = axes[0]
+# ax2 = axes[1]
 
 
-yyy = yy[:,1]
-cs = ax1.contour(xx, Z/replacement_cost, yy, linewidths=1.1, cmap='coolwarm',
-                 levels=np.arange(0.5, 2.0, step=0.1))
-ax1.scatter(df_miss[xvar], df_miss[cost_var]/replacement_cost, c=df_miss[yvar],
-          edgecolors='k', cmap='coolwarm')
-ax1.clabel(cs, fontsize=label_size)
-ax1.set_ylabel('Median repair cost (% replacement)', fontsize=axis_font)
-ax1.set_xlabel('Gap ratio', fontsize=axis_font)
-ax1.grid(visible=True)
-ax1.plot(1.0, 0.01, color='navy', label=r'$R_y$')
-ax1.legend(fontsize=label_size)
-# ax1.set_ylim([0, 0.1])
+# yyy = yy[:,1]
+# cs = ax1.contour(xx, Z/replacement_cost, yy, linewidths=1.1, cmap='coolwarm',
+#                  levels=np.arange(0.5, 2.0, step=0.1))
+# ax1.scatter(df_miss[xvar], df_miss[cost_var]/replacement_cost, c=df_miss[yvar],
+#           edgecolors='k', cmap='coolwarm')
+# ax1.clabel(cs, fontsize=label_size)
+# ax1.set_ylabel('Median repair cost (% replacement)', fontsize=axis_font)
+# ax1.set_xlabel('Gap ratio', fontsize=axis_font)
+# ax1.grid(visible=True)
+# ax1.plot(1.0, 0.01, color='navy', label=r'$R_y$')
+# ax1.legend(fontsize=label_size)
+# # ax1.set_ylim([0, 0.1])
 
-##
+# ##
 
 xvar = 'RI'
 yvar = 'gapRatio'
@@ -823,16 +823,17 @@ Z = mdl_miss.kr.predict(mdl_miss.X_plot)
 Z = Z.reshape(xx.shape)
 
 yyy = yy[:,1]
-cs = ax2.contour(xx, Z/replacement_cost, yy, linewidths=1.1, cmap='coolwarm',
+cs = ax.contour(xx, Z/1e6, yy, linewidths=1.1, cmap='coolwarm',
                  levels=np.arange(1.0, 3.0, step=0.1))
-ax2.scatter(df_miss[xvar], df_miss[cost_var]/replacement_cost, c=df_miss[yvar],
+ax.scatter(df_miss[xvar], df_miss[cost_var]/1e6, c=df_miss[yvar],
           edgecolors='k', cmap='coolwarm')
-ax2.clabel(cs, fontsize=label_size)
-ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
-ax2.grid(visible=True)
-ax2.plot(0.65, 0.01, color='red', label=r'Gap ratio')
-ax2.legend(fontsize=label_size, loc='upper left')
-# ax2.set_ylim([0, 0.1])
+ax.clabel(cs, fontsize=label_size)
+ax.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax.grid(visible=True)
+ax.plot(0.65, 0.01, color='red', label=r'Gap ratio')
+ax.legend(fontsize=axis_font, loc='upper left')
+ax.set_ylabel('Repair cost ($M USD)', fontsize=axis_font)
+ax.set_ylim([0.1, 0.5])
 plt.show()
 
 #%% 3d surf
@@ -1077,11 +1078,11 @@ plt.show()
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-title_font=20
-axis_font = 18
-subt_font = 15
-label_size = 16
-clabel_size = 12
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 plt.close('all')
@@ -1117,64 +1118,64 @@ X_pl = pd.DataFrame({x_var:xx.ravel(),
 
 X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
 
-grid_repl = predict_DV(X_plot,
-                        mdl.gpc,
-                        mdl_repl_hit.kr,
-                        mdl_repl_miss.kr,
-                                  outcome='replacement_freq')
+# grid_repl = predict_DV(X_plot,
+#                         mdl.gpc,
+#                         mdl_repl_hit.kr,
+#                         mdl_repl_miss.kr,
+#                                   outcome='replacement_freq')
 
 
-Z = np.array(grid_repl)
-Z = Z.reshape(xx.shape)
+# Z = np.array(grid_repl)
+# Z = Z.reshape(xx.shape)
 
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(14, 4.5))
-plt.setp((ax1, ax2, ax3), xticks=np.arange(0.5, 4.0, step=0.5))
+fig, ax = plt.subplots(1, 1, figsize=(9,7))
+plt.setp(ax, xticks=np.arange(0.5, 4.0, step=0.5))
 
-cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=lvls)
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
 
 probDes = 0.1
-from scipy.interpolate import RegularGridInterpolator
-RyList = [0.5, 1.0, 2.0]
-for j in range(len(RyList)):
-    RyTest = RyList[j]
-    lpBox = Z
-    xq = np.linspace(0.3, 1.8, 200)
+# from scipy.interpolate import RegularGridInterpolator
+# RyList = [0.5, 1.0, 2.0]
+# for j in range(len(RyList)):
+#     RyTest = RyList[j]
+#     lpBox = Z
+#     xq = np.linspace(0.3, 1.8, 200)
     
-    interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
-    pts = np.zeros((200,2))
-    pts[:,1] = xq
-    pts[:,0] = RyTest
-    lq = interp(pts)
+#     interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
+#     pts = np.zeros((200,2))
+#     pts[:,1] = xq
+#     pts[:,0] = RyTest
+#     lq = interp(pts)
     
-    theGapIdx = np.argmin(abs(lq - probDes))
-    theGap = xq[theGapIdx]
-    ax1.vlines(x=theGap, ymin=0.49, ymax=RyTest, color='red')
-    ax1.hlines(y=RyTest, xmin=0.3, xmax=theGap, color='red')
-    ax1.text(theGap+0.05, 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90,
-             fontsize=subt_font, color='red')
-    ax1.plot([theGap], [RyTest], marker='*', markersize=15, color="red")
+#     theGapIdx = np.argmin(abs(lq - probDes))
+#     theGap = xq[theGapIdx]
+#     ax1.vlines(x=theGap, ymin=0.49, ymax=RyTest, color='red')
+#     ax1.hlines(y=RyTest, xmin=0.3, xmax=theGap, color='red')
+#     ax1.text(theGap+0.05, 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90,
+#              fontsize=subt_font, color='red')
+#     ax1.plot([theGap], [RyTest], marker='*', markersize=15, color="red")
 
-df_sc = df[(df['Tm']<=2.65) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
+# df_sc = df[(df['Tm']<=2.65) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
 
-ax1.scatter(df_sc[x_var],
-            df_sc[y_var],
-            c=df_sc['replacement_freq'], cmap='Blues',
-            s=30, edgecolors='k')
+# ax1.scatter(df_sc[x_var],
+#             df_sc[y_var],
+#             c=df_sc['replacement_freq'], cmap='Blues',
+#             s=30, edgecolors='k')
 
-ax1.clabel(cs, fontsize=clabel_size)
+# ax1.clabel(cs, fontsize=clabel_size)
 
-ax1.contour(xx, yy, Z, levels = [0.1], colors=('red'),
-            linestyles=('-'),linewidths=(2,))
+# ax1.contour(xx, yy, Z, levels = [0.1], colors=('red'),
+#             linestyles=('-'),linewidths=(2,))
 
-ax1.set_xlim([0.3, 2.0])
-ax1.set_ylim([0.49, 2.01])
+# ax1.set_xlim([0.3, 2.0])
+# ax1.set_ylim([0.49, 2.01])
 
 
-ax1.grid(visible=True)
-ax1.set_title(r'$T_M = 2.00$ s, $\zeta_M = 0.15$', fontsize=title_font)
-ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
-ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax1.grid(visible=True)
+# ax1.set_title(r'$T_M = 2.00$ s, $\zeta_M = 0.15$', fontsize=title_font)
+# ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 
 #####
@@ -1213,7 +1214,7 @@ grid_repl = predict_DV(X_plot,
 Z = np.array(grid_repl)
 Z = Z.reshape(xx.shape)
 
-cs = ax2.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+cs = ax.contour(xx, yy, Z, linewidths=2.0, cmap='Blues', vmin=-1,
                  levels=lvls)
 
 from scipy.interpolate import RegularGridInterpolator
@@ -1231,113 +1232,114 @@ for j in range(len(RyList)):
     lq = interp(pts)
     theGapIdx = np.argmin(abs(lq - probDes))
     theGap = xq[theGapIdx]
-    ax2.vlines(x=theGap, ymin=0.49, ymax=RyTest, color='red')
-    ax2.hlines(y=RyTest, xmin=0.3, xmax=theGap, color='red')
-    ax2.text(theGap+adj_list[j], 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90,
+    ax.vlines(x=theGap, ymin=0.49, ymax=RyTest, color='red')
+    ax.hlines(y=RyTest, xmin=0.3, xmax=theGap, color='red')
+    ax.text(theGap+adj_list[j], 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90,
              fontsize=subt_font, color='red')
-    ax2.plot([theGap], [RyTest], marker='*', markersize=15, color="red")
+    ax.plot([theGap], [RyTest], marker='*', markersize=15, color="red")
     
-ax2.clabel(cs, fontsize=clabel_size)
+ax.clabel(cs, fontsize=clabel_size)
 
-ax2.contour(xx, yy, Z, levels = [0.1], colors=('red'),
-            linestyles=('-'),linewidths=(2,))
+ax.contour(xx, yy, Z, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2.5,))
 
-ax2.set_xlim([0.3, 2.0])
-ax2.set_ylim([0.49, 2.01])
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.49, 2.01])
 
 df_sc = df[(df['Tm']<=3.4) & (df['Tm']>=3.1) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
 
-ax2.scatter(df_sc[x_var],
+ax.scatter(df_sc[x_var],
             df_sc[y_var],
             c=df_sc['replacement_freq'], cmap='Blues',
-            s=30, edgecolors='k')
+            s=60, edgecolors='k')
 
-ax2.grid(visible=True)
-ax2.set_title(r'$T_M = 3.25$ s, $\zeta_M = 0.15$', fontsize=title_font)
-ax2.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
-# ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
-#####
-x_var = 'gapRatio'
-y_var = 'RI'
-third_var = 'Tm'
-fourth_var = 'zetaM'
-x_min = 0.3
-x_max = 2.5
-y_min = 0.5
-y_max = 2.0
+ax.grid(visible=True)
+ax.set_title(r'$T_M = 3.25$ s, $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
-xx, yy = np.meshgrid(np.linspace(x_min,
-                                 x_max,
-                                 res),
-                     np.linspace(y_min,
-                                 y_max,
-                                 res))
+# #####
+# x_var = 'gapRatio'
+# y_var = 'RI'
+# third_var = 'Tm'
+# fourth_var = 'zetaM'
+# x_min = 0.3
+# x_max = 2.5
+# y_min = 0.5
+# y_max = 2.0
 
-X_pl = pd.DataFrame({x_var:xx.ravel(),
-                     y_var:yy.ravel(),
-                     third_var:np.repeat(4.0,
-                                         res*res),
-                     fourth_var:np.repeat(0.15,
-                                          res*res)})
+# xx, yy = np.meshgrid(np.linspace(x_min,
+#                                  x_max,
+#                                  res),
+#                      np.linspace(y_min,
+#                                  y_max,
+#                                  res))
 
-X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
+# X_pl = pd.DataFrame({x_var:xx.ravel(),
+#                      y_var:yy.ravel(),
+#                      third_var:np.repeat(4.0,
+#                                          res*res),
+#                      fourth_var:np.repeat(0.15,
+#                                           res*res)})
 
-grid_repl = predict_DV(X_plot,
-                        mdl.gpc,
-                        mdl_repl_hit.kr,
-                        mdl_repl_miss.kr,
-                                  outcome='replacement_freq')
+# X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
+
+# grid_repl = predict_DV(X_plot,
+#                         mdl.gpc,
+#                         mdl_repl_hit.kr,
+#                         mdl_repl_miss.kr,
+#                                   outcome='replacement_freq')
 
 
-Z = np.array(grid_repl)
-Z = Z.reshape(xx.shape)
+# Z = np.array(grid_repl)
+# Z = Z.reshape(xx.shape)
 
-cs = ax3.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=lvls)
+# cs = ax3.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
 
-from scipy.interpolate import RegularGridInterpolator
-RyList = [0.5, 1.0, 2.0]
-adj_list = [-0.12, 0.05, 0.05]
-for j in range(len(RyList)):
-    RyTest = RyList[j]
-    lpBox = Z
-    xq = np.linspace(0.3, 1.8, 200)
+# from scipy.interpolate import RegularGridInterpolator
+# RyList = [0.5, 1.0, 2.0]
+# adj_list = [-0.12, 0.05, 0.05]
+# for j in range(len(RyList)):
+#     RyTest = RyList[j]
+#     lpBox = Z
+#     xq = np.linspace(0.3, 1.8, 200)
     
-    interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
-    pts = np.zeros((200,2))
-    pts[:,1] = xq
-    pts[:,0] = RyTest
-    lq = interp(pts)
-    theGapIdx = np.argmin(abs(lq - probDes))
-    theGap = xq[theGapIdx]
-    ax3.vlines(x=theGap, ymin=0.49, ymax=RyTest, color='red')
-    ax3.hlines(y=RyTest, xmin=0.3, xmax=theGap, color='red')
-    ax3.text(theGap+adj_list[j], 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90,
-             fontsize=subt_font, color='red')
-    ax3.plot([theGap], [RyTest], marker='*', markersize=15, color="red")
+#     interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
+#     pts = np.zeros((200,2))
+#     pts[:,1] = xq
+#     pts[:,0] = RyTest
+#     lq = interp(pts)
+#     theGapIdx = np.argmin(abs(lq - probDes))
+#     theGap = xq[theGapIdx]
+#     ax3.vlines(x=theGap, ymin=0.49, ymax=RyTest, color='red')
+#     ax3.hlines(y=RyTest, xmin=0.3, xmax=theGap, color='red')
+#     ax3.text(theGap+adj_list[j], 0.5, r'GR = '+f'{theGap:,.2f}', rotation=90,
+#              fontsize=subt_font, color='red')
+#     ax3.plot([theGap], [RyTest], marker='*', markersize=15, color="red")
 
-ax3.clabel(cs, fontsize=clabel_size)
+# ax3.clabel(cs, fontsize=clabel_size)
 
-ax3.contour(xx, yy, Z, levels = [0.1], colors=('red'),
-            linestyles=('-'),linewidths=(2,))
+# ax3.contour(xx, yy, Z, levels = [0.1], colors=('red'),
+#             linestyles=('-'),linewidths=(2,))
 
-ax3.set_xlim([0.3, 2.0])
-ax3.set_ylim([0.49, 2.01])
+# ax3.set_xlim([0.3, 2.0])
+# ax3.set_ylim([0.49, 2.01])
 
-df_sc = df[(df['Tm']>=3.80) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
+# df_sc = df[(df['Tm']>=3.80) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
 
-sc = ax3.scatter(df_sc[x_var],
-            df_sc[y_var],
-            c=df_sc['replacement_freq'], cmap='Blues',
-            s=30, edgecolors='k')
+# sc = ax3.scatter(df_sc[x_var],
+#             df_sc[y_var],
+#             c=df_sc['replacement_freq'], cmap='Blues',
+#             s=30, edgecolors='k')
 
-ax3.grid(visible=True)
-ax3.set_title(r'$T_M = 4.0$ s, $\zeta_M = 0.15$', fontsize=title_font)
-ax3.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax3.grid(visible=True)
+# ax3.set_title(r'$T_M = 4.0$ s, $\zeta_M = 0.15$', fontsize=title_font)
+# ax3.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 # ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 handles, labels = sc.legend_elements(prop="colors", alpha=0.6)
-legend2 = ax3.legend(handles, labels, loc="lower right", title="% replacement",
+legend2 = ax.legend(handles, labels, loc="lower right", title="% replacement",
                      fontsize=subt_font, title_fontsize=subt_font)
 
 fig.tight_layout()
