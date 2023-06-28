@@ -327,7 +327,7 @@ plt.show()
 #%% DV plot
 
 import matplotlib as mpl
-label_size = 14
+label_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
@@ -335,18 +335,24 @@ plt.close('all')
 
 fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
 
-df_mini = df[df['B_std'].notnull()]
-struct_max = df_mini['B_max'].max() + df_mini['C_max'].max()
-nsc_max = df_mini['D_max'].max() + df_mini['E_max'].max()
-df_mini['struct_costs'] = (df_mini['B_50%'] + df_mini['C_50%'])/struct_max*100
-df_mini['nsc_costs'] = (df_mini['D_50%'] + df_mini['E_50%'])/nsc_max*100
+df_mini = df[df['B_50%'].notnull()]
+# df_mini['B_50%'].fillna(df_mini['B_max'].max()*df_mini['replacement_freq'], inplace=True)
+# df_mini['C_50%'].fillna(df_mini['C_max'].max()*df_mini['replacement_freq'], inplace=True)
+# df_mini['D_50%'].fillna(df_mini['D_max'].max()*df_mini['replacement_freq'], inplace=True)
+# df_mini['E_50%'].fillna(df_mini['E_max'].max()*df_mini['replacement_freq'], inplace=True)
+
+struct_max = df_mini['B_max'].max() 
+nsc_max = df_mini['D_max'].max() + df_mini['E_max'].max() + df_mini['C_max'].max()
+
+df_mini['struct_costs'] = (df_mini['B_50%'])/1e6
+df_mini['nsc_costs'] = (df_mini['D_50%'] + df_mini['E_50%'] + df_mini['C_50%'])/1e6
 df_mini['Moat impact?'] = np.where(df_mini['impacted']==1, 'Impact', 'No impact')
 df_mini['Gap ratio'] = df_mini['gapRatio']
 markers = {"Impact": "X", "No impact": "o"}
 
 sns.scatterplot(data=df_mini, x='struct_costs', y='nsc_costs', style='Moat impact?',
                 hue='Gap ratio', s=100,
-                legend='brief', markers=markers, palette='seismic',
+                legend='brief', markers=markers, palette='seismic_r',
                 ax=ax1)
 
 # legend_handle = ax1.legend(fontsize=subt_font, loc='center right',
@@ -354,9 +360,9 @@ sns.scatterplot(data=df_mini, x='struct_costs', y='nsc_costs', style='Moat impac
 # legend_handle.get_texts()[0].set_text(r'$T_M$')
 # legend_handle.get_texts()[6].set_text(r'$\zeta_M$')
 
-ax1.set_xlabel(r'Structural damage (%)', fontsize=axis_font)
-ax1.set_ylabel(r'Non-structural damage (%)', fontsize=axis_font)
-ax1.set_title(r'Repair cost as percent of replacement', fontsize=title_font)
+ax1.set_xlabel(r'Structural damage ($M USD)', fontsize=axis_font)
+ax1.set_ylabel(r'Non-structural damage ($M USD)', fontsize=axis_font)
+ax1.set_title(r'Median repair costs', fontsize=title_font)
 # ax1.set_xlim([0, 200])
 
 # sns.scatterplot(data=df, x='repair_time', y='replacement_freq',
