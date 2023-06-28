@@ -8,6 +8,7 @@
 *.xlsx
 old/
 *temp_save.csv
+*.zip
 
 # repeated pelicun files
 *cmp_marginal*

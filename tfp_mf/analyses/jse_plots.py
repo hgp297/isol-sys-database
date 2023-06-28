@@ -213,183 +213,183 @@ mdl_drift = GP(df_doe)
 mdl_drift.set_outcome('max_drift')
 mdl_drift.fit_gpr(kernel_name='rbf_ard')
 
-#%% predict the plotting space
+# #%% predict the plotting space
 
-###############################################################################
-# collapse predictions via drifts
-###############################################################################
+# ###############################################################################
+# # collapse predictions via drifts
+# ###############################################################################
 
-t0 = time.time()
+# t0 = time.time()
 
-fmu_dr, fs1_dr = mdl_drift.gpr.predict(X_space, return_std=True)
-fs2_dr = fs1_dr**2
+# fmu_dr, fs1_dr = mdl_drift.gpr.predict(X_space, return_std=True)
+# fs2_dr = fs1_dr**2
 
-tp = time.time() - t0
-print("GPR collapse prediction (from drift) for %d inputs in %.3f s" % (X_space.shape[0],
-                                                                        tp))
+# tp = time.time() - t0
+# print("GPR collapse prediction (from drift) for %d inputs in %.3f s" % (X_space.shape[0],
+#                                                                         tp))
 
-#%% predicting baseline
+# #%% predicting baseline
 
-X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
-                          columns=['gapRatio', 'RI', 'Tm', 'zetaM'])
-baseline_drift = mdl_drift.gpr.predict(X_baseline).item()
-baseline_risk = ln_dist.cdf(baseline_drift)
-#%% plots
+# X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+#                           columns=['gapRatio', 'RI', 'Tm', 'zetaM'])
+# baseline_drift = mdl_drift.gpr.predict(X_baseline).item()
+# baseline_risk = ln_dist.cdf(baseline_drift)
+# #%% plots
 
-plt.close('all')
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 20
-subt_font = 18
-import matplotlib as mpl
-label_size = 16
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 20
+# subt_font = 18
+# import matplotlib as mpl
+# label_size = 16
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
 
-x_pl = np.unique(xx)
-y_pl = np.unique(yy)
+# x_pl = np.unique(xx)
+# y_pl = np.unique(yy)
 
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_space[X_space['Tm']==3.25]
-fs2_subset = fs2_dr[X_space['Tm']==3.25]
-fmu_subset = fmu_dr[X_space['Tm']==3.25]
-Z = ln_dist.cdf(fmu_subset)
-Z = Z.reshape(xx_pl.shape)
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# X_subset = X_space[X_space['Tm']==3.25]
+# fs2_subset = fs2_dr[X_space['Tm']==3.25]
+# fmu_subset = fmu_dr[X_space['Tm']==3.25]
+# Z = ln_dist.cdf(fmu_subset)
+# Z = Z.reshape(xx_pl.shape)
 
-plt.figure()
-# plt.imshow(
-#     Z,
-#     interpolation="nearest",
-#     extent=(xx_pl.min(), xx_pl.max(),
-#             yy_pl.min(), yy_pl.max()),
-#     aspect="auto",
-#     origin="lower",
-#     cmap=plt.cm.Blues,
-# ) 
-lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=lvls)
-plt.clabel(cs, fontsize=clabel_size)
-plt.scatter(df_doe['gapRatio'], df_doe['RI'], 
-            c=df_doe['collapse_prob'],
-            edgecolors='k', s=20.0, cmap=plt.cm.Blues)
-plt.xlim([0.3, 2.0])
-plt.xlim([0.3, 2.0])
-plt.grid()
-# plt.contour(xx_pl, yy_pl, Z, levels=[0.025, 0.05, 0.1], cmap=plt.cm.Blues)
-plt.xlabel('Gap ratio', fontsize=axis_font)
-plt.ylabel(r'$R_y$', fontsize=axis_font)
-plt.title('Collapse risk (from drift)', fontsize=axis_font)
+# plt.figure()
+# # plt.imshow(
+# #     Z,
+# #     interpolation="nearest",
+# #     extent=(xx_pl.min(), xx_pl.max(),
+# #             yy_pl.min(), yy_pl.max()),
+# #     aspect="auto",
+# #     origin="lower",
+# #     cmap=plt.cm.Blues,
+# # ) 
+# lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+# cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+# plt.clabel(cs, fontsize=clabel_size)
+# plt.scatter(df_doe['gapRatio'], df_doe['RI'], 
+#             c=df_doe['collapse_prob'],
+#             edgecolors='k', s=20.0, cmap=plt.cm.Blues)
+# plt.xlim([0.3, 2.0])
+# plt.xlim([0.3, 2.0])
+# plt.grid()
+# # plt.contour(xx_pl, yy_pl, Z, levels=[0.025, 0.05, 0.1], cmap=plt.cm.Blues)
+# plt.xlabel('Gap ratio', fontsize=axis_font)
+# plt.ylabel(r'$R_y$', fontsize=axis_font)
+# plt.title('Collapse risk (from drift)', fontsize=axis_font)
 
-plt.show()
+# plt.show()
 
-#%% designing 
+# #%% designing 
 
-from pred import get_steel_coefs, calc_upfront_cost
-plt.close('all')
-steel_price = 2.00
-coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
+# from pred import get_steel_coefs, calc_upfront_cost
+# plt.close('all')
+# steel_price = 2.00
+# coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
 
-risk_thresh = 0.1
-space_collapse_pred = pd.DataFrame(ln_dist.cdf(fmu_dr), 
-                                   columns=['collapse probability'])
-ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
-                      risk_thresh]
+# risk_thresh = 0.1
+# space_collapse_pred = pd.DataFrame(ln_dist.cdf(fmu_dr), 
+#                                    columns=['collapse probability'])
+# ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+#                       risk_thresh]
 
-X_design = X_space[X_space.index.isin(ok_risk.index)]
+# X_design = X_space[X_space.index.isin(ok_risk.index)]
     
-# in the filter-design process, only one of cost/dt is likely to control
+# # in the filter-design process, only one of cost/dt is likely to control
 
-baseline_costs = calc_upfront_cost(X_baseline, coef_dict).item()
+# baseline_costs = calc_upfront_cost(X_baseline, coef_dict).item()
 
-# least upfront cost of the viable designs
-
-
-
-print('========== Baseline design ============')
-print('Design target', f'{risk_thresh:.2%}')
-print('Upfront cost of selected design: ',
-      f'${baseline_costs:,.2f}')
-print('Predicted collapse risk: ',
-      f'{baseline_risk:.4%}')
-print(X_baseline)
-
-
-# select best viable design
-upfront_costs = calc_upfront_cost(X_design, coef_dict)
-cheapest_design_idx = upfront_costs.idxmin()
-design_upfront_cost = upfront_costs.min()
-
-# least upfront cost of the viable designs
-best_design = X_design.loc[cheapest_design_idx]
-design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+# # least upfront cost of the viable designs
 
 
 
-print('========== Inverse design ============')
-print('Design target', f'{risk_thresh:.2%}')
-print('Upfront cost of selected design: ',
-      f'${design_upfront_cost:,.2f}')
-print('Predicted collapse risk: ',
-      f'{design_collapse_risk:.2%}')
-print(best_design)
+# print('========== Baseline design ============')
+# print('Design target', f'{risk_thresh:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${baseline_costs:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{baseline_risk:.4%}')
+# print(X_baseline)
 
-risk_thresh = 0.05
-space_collapse_pred = pd.DataFrame(ln_dist.cdf(fmu_dr), 
-                                   columns=['collapse probability'])
-ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
-                      risk_thresh]
 
-X_design = X_space[X_space.index.isin(ok_risk.index)]
+# # select best viable design
+# upfront_costs = calc_upfront_cost(X_design, coef_dict)
+# cheapest_design_idx = upfront_costs.idxmin()
+# design_upfront_cost = upfront_costs.min()
+
+# # least upfront cost of the viable designs
+# best_design = X_design.loc[cheapest_design_idx]
+# design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+
+
+
+# print('========== Inverse design ============')
+# print('Design target', f'{risk_thresh:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${design_upfront_cost:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{design_collapse_risk:.2%}')
+# print(best_design)
+
+# risk_thresh = 0.05
+# space_collapse_pred = pd.DataFrame(ln_dist.cdf(fmu_dr), 
+#                                    columns=['collapse probability'])
+# ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+#                       risk_thresh]
+
+# X_design = X_space[X_space.index.isin(ok_risk.index)]
     
-# in the filter-design process, only one of cost/dt is likely to control
+# # in the filter-design process, only one of cost/dt is likely to control
 
-# select best viable design
-upfront_costs = calc_upfront_cost(X_design, coef_dict)
-cheapest_design_idx = upfront_costs.idxmin()
-design_upfront_cost = upfront_costs.min()
+# # select best viable design
+# upfront_costs = calc_upfront_cost(X_design, coef_dict)
+# cheapest_design_idx = upfront_costs.idxmin()
+# design_upfront_cost = upfront_costs.min()
 
-# least upfront cost of the viable designs
-best_design = X_design.loc[cheapest_design_idx]
-design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+# # least upfront cost of the viable designs
+# best_design = X_design.loc[cheapest_design_idx]
+# design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
 
-print('========== Inverse design ============')
-print('Design target', f'{risk_thresh:.2%}')
-print('Upfront cost of selected design: ',
-      f'${design_upfront_cost:,.2f}')
-print('Predicted collapse risk: ',
-      f'{design_collapse_risk:.2%}')
-print(best_design)
+# print('========== Inverse design ============')
+# print('Design target', f'{risk_thresh:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${design_upfront_cost:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{design_collapse_risk:.2%}')
+# print(best_design)
 
-risk_thresh = 0.025
-space_collapse_pred = pd.DataFrame(ln_dist.cdf(fmu_dr), 
-                                   columns=['collapse probability'])
-ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
-                      risk_thresh]
+# risk_thresh = 0.025
+# space_collapse_pred = pd.DataFrame(ln_dist.cdf(fmu_dr), 
+#                                    columns=['collapse probability'])
+# ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+#                       risk_thresh]
 
-X_design = X_space[X_space.index.isin(ok_risk.index)]
+# X_design = X_space[X_space.index.isin(ok_risk.index)]
     
-# in the filter-design process, only one of cost/dt is likely to control
+# # in the filter-design process, only one of cost/dt is likely to control
 
-# select best viable design
-upfront_costs = calc_upfront_cost(X_design, coef_dict)
-cheapest_design_idx = upfront_costs.idxmin()
-design_upfront_cost = upfront_costs.min()
+# # select best viable design
+# upfront_costs = calc_upfront_cost(X_design, coef_dict)
+# cheapest_design_idx = upfront_costs.idxmin()
+# design_upfront_cost = upfront_costs.min()
 
-# least upfront cost of the viable designs
-best_design = X_design.loc[cheapest_design_idx]
-design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+# # least upfront cost of the viable designs
+# best_design = X_design.loc[cheapest_design_idx]
+# design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
 
 
-print('========== Inverse design ============')
-print('Design target', f'{risk_thresh:.2%}')
-print('Upfront cost of selected design: ',
-      f'${design_upfront_cost:,.2f}')
-print('Predicted collapse risk: ',
-      f'{design_collapse_risk:.2%}')
-print(best_design)
+# print('========== Inverse design ============')
+# print('Design target', f'{risk_thresh:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${design_upfront_cost:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{design_collapse_risk:.2%}')
+# print(best_design)
 
 
 #%% predict the plotting space
