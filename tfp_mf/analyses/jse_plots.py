@@ -534,7 +534,7 @@ T = 0.5
 Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
 criterion = np.multiply(Wx, fs2_subset)
 
-ax3=fig.add_subplot(2, 2, 3)
+ax3=fig.add_subplot(2, 2, 4)
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 X_subset = X_space[X_space['Tm']==3.25]
@@ -552,12 +552,12 @@ ax3.set_xlim([0.3, 2.0])
 ax3.set_ylim([0.5, 2.0])
 ax3.set_title('Weighted variance, last iteration', fontsize=axis_font)
 ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
-ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax3.grid()
 
 # then show final results
 
-ax4=fig.add_subplot(2, 2, 4)
+ax4=fig.add_subplot(2, 2, 3)
 # collapse predictions
 Z = fmu_subset.reshape(xx_pl.shape)
 new_pts = df_doe.tail(n_new)
@@ -575,7 +575,7 @@ ax4.set_xlim([0.3, 2.0])
 ax4.set_ylim([0.5, 2.0])
 ax4.set_title('Collapse risk, post-DoE', fontsize=axis_font)
 ax4.set_xlabel(r'Gap ratio', fontsize=axis_font)
-# ax4.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax4.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax4.grid()
 
 fig.tight_layout()
