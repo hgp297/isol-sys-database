@@ -1342,56 +1342,47 @@ ax4.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 
 fig.tight_layout()
 plt.show()
-#%% contour plots, Tm vs zeta
+
+#%% contour plots, highlight different targets
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-title_font=22
-axis_font = 22
-subt_font = 20
-label_size = 20
-clabel_size = 16
+title_font=20
+axis_font = 18
+subt_font = 18
+label_size = 16
+clabel_size = 14
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 plt.close('all')
 
-
-fig, ax = plt.subplots(2, 2, figsize=(13, 10))
-plt.setp(ax, xticks=np.arange(0.5, 4.0, step=0.5))
-
-
-ax1 = ax[0][0]
-ax2 = ax[0][1]
-ax3 = ax[1][0]
-ax4 = ax[1][1]
-
 import numpy as np
 # x is gap, y is Ry
-x_var = 'Tm'
-y_var = 'zetaM'
-third_var = 'gapRatio'
-fourth_var = 'RI'
-x_min = 2.5
-x_max = 4.0
-y_min = 0.1
-y_max = 0.2
+x_var = 'gapRatio'
+y_var = 'RI'
+third_var = 'Tm'
+fourth_var = 'zetaM'
+x_min = 0.3
+x_max = 2.5
+y_min = 0.5
+y_max = 2.0
 
 lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5])
 
 res = 200
 
 xx, yy = np.meshgrid(np.linspace(x_min,
-                                 x_max,
-                                 res),
-                     np.linspace(y_min,
-                                 y_max,
-                                 res))
+                                  x_max,
+                                  res),
+                      np.linspace(y_min,
+                                  y_max,
+                                  res))
 
 X_pl = pd.DataFrame({x_var:xx.ravel(),
-                     y_var:yy.ravel(),
-                     third_var:np.repeat(1.0,
-                                         res*res),
-                     fourth_var:np.repeat(1.0,
+                      y_var:yy.ravel(),
+                      third_var:np.repeat(3.0,
+                                          res*res),
+                      fourth_var:np.repeat(0.15,
                                           res*res)})
 
 X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
@@ -1399,30 +1390,170 @@ X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
 fmu = mdl_doe.gpr.predict(X_plot)
 Z = fmu.reshape(xx.shape)
 
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
+
 cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
                   levels=lvls)
 
-df_sc = df_doe[(df_doe['gapRatio']<=1.15) & (df_doe['gapRatio']>=0.85) & 
-               (df_doe['RI']<=1.15) & (df_doe['RI']>=0.85)]
+
+prob_list = [0.025, 0.05, 0.1]
+offset_list = [0.95, 0.72, 0.55]
+color_list = ['red', 'red', 'red']
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    lpBox = Z
+    xq = np.linspace(0.3, 1.8, 200)
+    
+    interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = 1.0
+    lq = interp(pts)
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    
+    ax1.vlines(x=theGap, ymin=0.49, ymax=1.0, color=color_list[j],
+                linewidth=2.0)
+    ax1.hlines(y=1.0, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax1.text(offset_list[j], 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color=color_list[j])
+    ax1.plot([theGap], [1.0], marker='*', markersize=15, color=color_list[j])
+    
+prob_list = [0.025, 0.05, 0.1]
+offset_list = [1.5, 1.02, 0.8]
+color_list = ['blue', 'blue', 'blue']
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    lpBox = Z
+    xq = np.linspace(0.3, 1.8, 200)
+    
+    interp = RegularGridInterpolator((yy[:,0], xx[0,:]), lpBox)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = 2.0
+    lq = interp(pts)
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    
+    ax1.vlines(x=theGap, ymin=0.49, ymax=2.0, color=color_list[j],
+                linewidth=2.0)
+    ax1.hlines(y=1.995, xmin=0.3, xmax=theGap, color='blue', linewidth=2.0)
+    ax1.text(offset_list[j], 1.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color=color_list[j])
+    ax1.plot([theGap], [2.0], marker='*', markersize=15, color=color_list[j])
+
+
+df_sc = df_doe[(df_doe['Tm']>=2.8) & (df_doe['Tm']<=3.2) & 
+            (df_doe['zetaM']<=0.17) & (df_doe['zetaM']>=0.13)]
 
 ax1.scatter(df_sc[x_var],
             df_sc[y_var],
             c=df_sc['collapse_prob'], cmap='Blues',
-            s=30, edgecolors='k')
+            s=60, edgecolors='k')
 
 ax1.clabel(cs, fontsize=clabel_size)
-
-ax1.contour(xx, yy, Z, levels = [0.1], colors=('red'),
-            linestyles=('-'),linewidths=(2,))
-
-ax1.set_xlim([2.5, 4.0])
-ax1.set_ylim([0.1, 0.2])
+ax1.set_xlim([0.3, 2.0])
+ax1.set_ylim([0.5, 2.0])
 
 
 ax1.grid(visible=True)
-ax1.set_title(r'$R_y = 1.0$ s, Gap ratio $= 0.15$', fontsize=title_font)
-ax1.set_xlabel(r'$T_M$', fontsize=axis_font)
-ax1.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax1.set_title(r'$T_M = 3.00$ s, $\zeta_M = 0.15$', fontsize=title_font)
+ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+# handles, labels = sc.legend_elements(prop="colors", alpha=0.6)
+# legend2 = ax1.legend(handles, labels, loc="lower right", title="% collapse",
+#                       fontsize=subt_font, title_fontsize=subt_font)
+
+# ax1.contour(xx, yy, Z, levels = prob_list, colors=('red', 'brown', 'black'),
+#             linestyles=('-'),linewidths=(2,))
+plt.show()
+
+#%% contour plots, Tm vs zeta
+
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# title_font=22
+# axis_font = 22
+# subt_font = 20
+# label_size = 20
+# clabel_size = 16
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+
+# fig, ax = plt.subplots(2, 2, figsize=(13, 10))
+# plt.setp(ax, xticks=np.arange(0.5, 4.0, step=0.5))
+
+
+# ax1 = ax[0][0]
+# ax2 = ax[0][1]
+# ax3 = ax[1][0]
+# ax4 = ax[1][1]
+
+# import numpy as np
+# # x is gap, y is Ry
+# x_var = 'Tm'
+# y_var = 'zetaM'
+# third_var = 'gapRatio'
+# fourth_var = 'RI'
+# x_min = 2.5
+# x_max = 4.0
+# y_min = 0.1
+# y_max = 0.2
+
+# lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5])
+
+# res = 200
+
+# xx, yy = np.meshgrid(np.linspace(x_min,
+#                                  x_max,
+#                                  res),
+#                      np.linspace(y_min,
+#                                  y_max,
+#                                  res))
+
+# X_pl = pd.DataFrame({x_var:xx.ravel(),
+#                      y_var:yy.ravel(),
+#                      third_var:np.repeat(1.0,
+#                                          res*res),
+#                      fourth_var:np.repeat(1.0,
+#                                           res*res)})
+
+# X_plot = X_pl[['gapRatio', 'RI', 'Tm', 'zetaM']]
+
+# fmu = mdl_doe.gpr.predict(X_plot)
+# Z = fmu.reshape(xx.shape)
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                   levels=lvls)
+
+# df_sc = df_doe[(df_doe['gapRatio']<=1.15) & (df_doe['gapRatio']>=0.85) & 
+#                (df_doe['RI']<=1.15) & (df_doe['RI']>=0.85)]
+
+# ax1.scatter(df_sc[x_var],
+#             df_sc[y_var],
+#             c=df_sc['collapse_prob'], cmap='Blues',
+#             s=30, edgecolors='k')
+
+# ax1.clabel(cs, fontsize=clabel_size)
+
+# ax1.contour(xx, yy, Z, levels = [0.1], colors=('red'),
+#             linestyles=('-'),linewidths=(2,))
+
+# ax1.set_xlim([2.5, 4.0])
+# ax1.set_ylim([0.1, 0.2])
+
+
+# ax1.grid(visible=True)
+# ax1.set_title(r'$R_y = 1.0$ s, Gap ratio $= 0.15$', fontsize=title_font)
+# ax1.set_xlabel(r'$T_M$', fontsize=axis_font)
+# ax1.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 
 #%% cost sens
 land_costs = [2151., 3227., 4303., 5379.]
@@ -1437,7 +1568,7 @@ zetaM_price_grid = np.zeros([4,4])
 moat_price_grid = np.zeros([4,4])
 
 risk_thresh = 0.1
-ok_risk = X_space.loc[space_collapse_pred['collapse_probability']<=
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
                       risk_thresh]
 
 # risk_thresh = 0.025
@@ -1502,7 +1633,7 @@ Ry_df = pd.DataFrame(data=Ry_price_grid,
                       index=land_cols,
                       columns=steel_rows)
 
-Tm_df = pd.DataFrame(data=zetaM_price_grid,
+Tm_df = pd.DataFrame(data=Tm_price_grid,
                       index=land_cols,
                       columns=steel_rows)
 
@@ -1533,7 +1664,7 @@ ax2.set_title(r'$R_y$', fontsize=subt_font)
 sns.heatmap(Tm_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
             linewidths=.5, ax=ax3,  annot_kws={'size': 18})
 ax3.set_xlabel('Steel cost per lb.', fontsize=axis_font)
-ax3.set_title(r'$\zeta_M$ (s)', fontsize=subt_font)
+ax3.set_title(r'$T_M$ (s)', fontsize=subt_font)
 ax3.set_ylabel('Land cost per sq ft.', fontsize=axis_font)
 fig.tight_layout()
 
@@ -1913,3 +2044,55 @@ print('2.5% fit mean:', exp(theta_2))
 print('2.5% fit beta:', beta_2)
 print('Baseline fit mean:', exp(theta_base))
 print('Baseline fit beta:', beta_base)
+
+#%% dumb scatters
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+y_var = 'max_drift'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+
+ax1.scatter(df_doe['gapRatio'], df_doe[y_var])
+ax1.set_ylabel('Peak story drift', fontsize=axis_font)
+ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_title('Gap', fontsize=title_font)
+ax1.grid(True)
+
+ax2=fig.add_subplot(2, 2, 2)
+
+ax2.scatter(df_doe['RI'], df_doe[y_var])
+ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title('Superstructure strength', fontsize=title_font)
+ax2.grid(True)
+
+ax3=fig.add_subplot(2, 2, 3)
+
+ax3.scatter(df_doe['Tm'], df_doe[y_var])
+ax3.set_ylabel('Peak story drift', fontsize=axis_font)
+ax3.set_xlabel(r'$T_M$', fontsize=axis_font)
+ax3.set_title('Bearing period', fontsize=title_font)
+ax3.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+
+ax4.scatter(df_doe['zetaM'], df_doe[y_var])
+ax4.set_xlabel(r'$\zeta_M$', fontsize=axis_font)
+ax4.set_title('Bearing damping', fontsize=title_font)
+ax4.grid(True)
+
+fig.tight_layout()
+plt.show()
