@@ -1254,7 +1254,7 @@ ax.set_ylim([0.49, 2.01])
 
 df_sc = df[(df['Tm']<=3.4) & (df['Tm']>=3.1) & (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
 
-ax.scatter(df_sc[x_var],
+sc = ax.scatter(df_sc[x_var],
             df_sc[y_var],
             c=df_sc['replacement_freq'], cmap='Blues',
             s=60, edgecolors='k')
@@ -1346,7 +1346,7 @@ ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 handles, labels = sc.legend_elements(prop="colors", alpha=0.6)
 legend2 = ax.legend(handles, labels, loc="lower right", title="% replacement",
-                     fontsize=subt_font, title_fontsize=subt_font)
+                      fontsize=subt_font, title_fontsize=subt_font)
 
 fig.tight_layout()
 plt.show()
@@ -1863,7 +1863,7 @@ for j, prob_des in enumerate(prob_list):
 df_sc = df[(df['Tm']>=2.8) & (df['Tm']<=3.2) & 
            (df['zetaM']<=0.17) & (df['zetaM']>=0.13)]
 
-ax1.scatter(df_sc[x_var],
+sc = ax1.scatter(df_sc[x_var],
             df_sc[y_var],
             c=df_sc['replacement_freq'], cmap='Blues',
             s=30, edgecolors='k')
@@ -2178,7 +2178,7 @@ ax1.set_ylim([0.5, 2.0])
 
 ax1.grid(visible=True)
 ax1.set_title('Replacement risk < 10.0%', fontsize=title_font)
-ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax1.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 cs = ax1.contour(xx, yy, Z, levels = [0.1], colors=('red'),
@@ -2224,8 +2224,8 @@ ax2.clabel(cs, fontsize=clabel_size, colors='red')
 
 ax2.grid(visible=True)
 ax2.set_title('Repair cost <20% replacement', fontsize=title_font)
-ax2.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
-ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax2.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax2.set_xlim([0.5, 2.5])
 ax2.set_ylim([0.5, 2.0])
 
@@ -2282,7 +2282,7 @@ ax4.clabel(cs, fontsize=clabel_size, colors='black')
 ax4.grid(visible=True)
 ax4.set_title('Acceptable design space', fontsize=title_font)
 ax4.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
-ax4.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax4.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax4.set_xlim([0.5, 2.5])
 ax4.set_ylim([0.5, 2.0])
 
