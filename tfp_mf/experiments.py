@@ -297,6 +297,149 @@ def run_doe(prob_target, training_set_path, testing_set_path,
     print('Did not reach convergence after max runs.')
     return df
     
+def run_naive(training_set_path, testing_set_path, 
+            batch_size=10, error_tol=0.15, maxIter=600, conv_tol=1e-2,
+            inputPath = './inputs/', inputFile = 'bearingInput.csv'):
+
+    import numpy as np
+    np.random.seed(986)
+    random.seed(986)
+    from analyses.doe import GP
+    
+    # use a test set to evaluate error metric
+    df = pd.read_csv(training_set_path)
+    df_test = pd.read_csv(testing_set_path)
+    
+    
+    # collapse as a probability
+    from scipy.stats import lognorm
+    from math import log, exp
+    from scipy.stats import norm
+    inv_norm = norm.ppf(0.84)
+    beta_drift = 0.25
+    # 0.9945 is inverse normCDF of 0.84
+    mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
+    ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+    
+    df_test['max_drift'] = df_test[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+    df_test['collapse_prob'] = ln_dist.cdf(df_test['max_drift'])
+    test_set = GP(df_test)
+    test_set.set_outcome('collapse_prob')
+    
+    
+    import LHS
+    from postprocessing import cleanDat
+    # add more points as DoE
+    input_var, input_vals = LHS.generateInputs(maxIter)
+    
+    rmse = 1.0
+    batch_idx = 0
+    batch_no = 0
+    
+    rmse_list = []
+    mae_list = []
+    
+    for index, row in enumerate(input_vals):
+        print('The run index is ' + str(index) + '.')
+        print('The batch index is ' + str(batch_idx) + '.')
+        
+        if (batch_idx % (batch_size) == 0):
+            
+            df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+            df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
+            
+            mdl = GP(df)
+            mdl.set_outcome('collapse_prob')
+            mdl.fit_gpr(kernel_name='rbf_ard')
+            
+            y_hat = mdl.gpr.predict(test_set.X)
+            
+            print('===== Training model size:', mdl.X.shape[0], '=====')
+            from sklearn.metrics import mean_squared_error, mean_absolute_error
+            import numpy as np
+            mse = mean_squared_error(test_set.y, y_hat)
+            rmse = mse**0.5
+            print('Test set RMSE: %.3f' % rmse)
+
+            mae = mean_absolute_error(test_set.y, y_hat)
+            print('Test set MAE: %.3f' % mae)
+            
+            if len(rmse_list) == 0:
+                conv = rmse
+            else:
+                conv = abs(rmse - rmse_list[-1])/rmse_list[-1]
+            
+            if rmse < error_tol:
+                print('Stopping criterion reached. Ending DoE...')
+                print('Number of added points: ' + str((batch_idx)*(batch_no)))
+                
+                rmse_list.append(rmse)
+                write_to_csv(rmse_list, './data/doe/rmse_naive.csv')
+                
+                mae_list.append(mae)
+                write_to_csv(mae_list, './data/doe/mae_naive.csv')
+                
+                return (df)
+            elif conv < conv_tol:
+                print('RMSE did not improve beyond convergence tolerance. Ending DoE...')
+                print('Number of added points: ' + str((batch_idx)*(batch_no)))
+                
+                rmse_list.append(rmse)
+                write_to_csv(rmse_list, './data/doe/rmse_naive.csv')
+                
+                mae_list.append(mae)
+                write_to_csv(mae_list, './data/doe/mae_naive.csv')
+                
+                return (df)
+            else:
+                pass
+            batch_idx = 0
+            df.to_csv('./data/doe/temp_save_naive.csv', index=False)
+            print('Convergence not reached yet. Resetting batch index to 0...')
+        
+        # write input files as csv columns
+        bearingIndex = pd.DataFrame(input_var, columns=['variable'])
+        bearingValue = pd.DataFrame(row, columns=['value'])
+
+        bearingIndex   = bearingIndex.join(bearingValue)
+        bearingIndex.to_csv(inputFile, index=False)
+        
+        # run opsPy
+        try:
+            runResult = opsExperiment(inputPath+inputFile, 
+                                      gmPath='./ground_motions/PEERNGARecords_Unscaled/')
+        except ValueError:
+            print('Bearing solver returned negative friction coefficients. Skipping...')
+            continue
+        except IndexError:
+            print('SCWB check failed, no shape exists for design. Skipping...')
+            continue
+
+        # skip run if excessively scaled
+        if (type(runResult) == bool):
+            print('Scale factor exceeded 20.0.')
+            continue
+        
+        # if run is successful and is batch marker, record error metric
+        if (batch_idx % (batch_size) == 0):
+            rmse_list.append(rmse)
+            write_to_csv(rmse_list, './data/doe/rmse_naive.csv')
+            
+            mae_list.append(mae)
+            write_to_csv(mae_list, './data/doe/mae_naive.csv')
+        
+        batch_idx += 1
+
+        # clean new df, attach to existing data
+        newRes = cleanDat(runResult)
+        df = df.append(newRes, sort=True)
+    
+    df['max_drift'] = df[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+    df.loc[df['collapsed'] == -1, 'collapsed'] = 0
+    df['collapse_prob'] = ln_dist.cdf(df['max_drift'])
+    
+    print('Did not reach convergence after max runs.')
+    return df
 
 def validate(inputStr, IDALevel=[1.0, 1.5, 2.0], 
              gmPath='./ground_motions/PEERNGARecords_Unscaled/'):
@@ -398,17 +541,17 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 
 #%% validate a building (specify design input file)
 
-inputString = './inputs/bearingInputVal10.csv'
-valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
-valDf_base.to_csv('./data/val/ida_jse_10.csv', index=False)
+# inputString = './inputs/bearingInputVal10.csv'
+# valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
+# valDf_base.to_csv('./data/val/ida_jse_10.csv', index=False)
 
-inputString = './inputs/bearingInputVal5.csv'
-valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
-valDf_base.to_csv('./data/val/ida_jse_5.csv', index=False)
+# inputString = './inputs/bearingInputVal5.csv'
+# valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
+# valDf_base.to_csv('./data/val/ida_jse_5.csv', index=False)
 
-inputString = './inputs/bearingInputVal2_5.csv'
-valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
-valDf_base.to_csv('./data/val/ida_jse_2_5.csv', index=False)
+# inputString = './inputs/bearingInputVal2_5.csv'
+# valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
+# valDf_base.to_csv('./data/val/ida_jse_2_5.csv', index=False)
 
 #%% run doe
 # path = './data/mik_smrf.csv'
@@ -431,3 +574,19 @@ valDf_base.to_csv('./data/val/ida_jse_2_5.csv', index=False)
 # valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
 # valDf_base.to_csv('./data/val/ida_jse_baseline.csv', index=False)     
 
+#%% run naive doe
+
+# path = './data/mik_smrf.csv'
+
+training_path = './data/training_set.csv'
+testing_path = './data/testing_set.csv'
+
+# DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
+# Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 600 support points
+# or no improvements to the RMSE (<0.1% in RMSE change)
+# whichever comes first
+
+naive_df = run_naive(training_path, testing_path, 
+                  error_tol=0.15, conv_tol=0.001, batch_size=10, maxIter=230)
+
+naive_df.to_csv('./data/doe/rmse_naive_set.csv', index=False)
