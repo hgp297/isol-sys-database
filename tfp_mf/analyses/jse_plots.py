@@ -313,22 +313,51 @@ mae_df.columns = ['mae']
 rmse_df = rmse_df.transpose()
 rmse_df.columns = ['rmse']
 
+rmse_df_naive = pd.read_csv(database_path+'rmse_naive.csv', header=None)
+mae_df_naive = pd.read_csv(database_path+'mae_naive.csv', header=None)
+mae_df_naive = mae_df_naive.transpose()
+mae_df_naive.columns = ['mae']
+rmse_df_naive = rmse_df_naive.transpose()
+rmse_df_naive.columns = ['rmse']
+
 plt.close('all')
 
-fig = plt.figure(figsize=(13, 6))
-ax1=fig.add_subplot(1, 2, 1)
+fig = plt.figure(figsize=(13, 10))
+ax1=fig.add_subplot(2, 2, 1)
 
-ax1.plot(rmse_df.index, rmse_df['rmse'])
-ax1.set_title(r'Root mean squared error (collapse %)', fontsize=axis_font)
-ax1.set_xlabel(r'Batches', fontsize=axis_font)
+ax1.plot(rmse_df.index*10, rmse_df['rmse'])
+ax1.set_title(r'Root mean squared error (adaptive DoE)', fontsize=axis_font)
+# ax1.set_xlabel(r'Points added', fontsize=axis_font)
 ax1.set_ylabel(r'Metric', fontsize=axis_font)
+ax1.set_xlim([0, 140])
+ax1.set_ylim([0.19, 0.28])
 plt.grid(True)
 
 
-ax2=fig.add_subplot(1, 2, 2)
-ax2.plot(rmse_df.index, mae_df['mae'])
-ax2.set_title('Mean absolute error (collapse %)', fontsize=axis_font)
-ax2.set_xlabel('Batches', fontsize=axis_font)
+ax2=fig.add_subplot(2, 2, 3)
+ax2.plot(rmse_df.index*10, mae_df['mae'])
+ax2.set_title('Mean absolute error (adaptive DoE)', fontsize=axis_font)
+ax2.set_xlabel('Points added', fontsize=axis_font)
+ax2.set_ylabel('Metric', fontsize=axis_font)
+ax2.set_xlim([0, 140])
+ax2.set_ylim([0.05, 0.14])
+plt.grid(True)
+
+ax3=fig.add_subplot(2, 2, 2)
+ax3.plot(rmse_df_naive.index*10, rmse_df_naive['rmse'])
+ax3.set_title('Root mean squared error (naive DoE)', fontsize=axis_font)
+# ax3.set_xlabel('Points added', fontsize=axis_font)
+# ax3.set_ylabel(r'Metric', fontsize=axis_font)
+ax3.set_xlim([0, 140])
+ax3.set_ylim([0.19, 0.28])
+plt.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+ax4.plot(rmse_df_naive.index*10, mae_df_naive['mae'])
+ax4.set_title('Mean absolute error (naive DoE)', fontsize=axis_font)
+ax4.set_xlabel('Points added', fontsize=axis_font)
+ax4.set_xlim([0, 140])
+ax4.set_ylim([0.05, 0.14])
 plt.grid(True)
 
 fig.tight_layout()

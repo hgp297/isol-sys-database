@@ -302,8 +302,8 @@ def run_naive(training_set_path, testing_set_path,
             inputPath = './inputs/', inputFile = 'bearingInput.csv'):
 
     import numpy as np
-    np.random.seed(986)
-    random.seed(986)
+    np.random.seed(987)
+    random.seed(987)
     from analyses.doe import GP
     
     # use a test set to evaluate error metric
@@ -587,6 +587,6 @@ testing_path = './data/testing_set.csv'
 # whichever comes first
 
 naive_df = run_naive(training_path, testing_path, 
-                  error_tol=0.15, conv_tol=0.001, batch_size=10, maxIter=230)
+                  error_tol=0.15, conv_tol=0.001, batch_size=10, maxIter=400)
 
 naive_df.to_csv('./data/doe/rmse_naive_set.csv', index=False)
