@@ -192,6 +192,114 @@ plt.xlim([0.3, 2.0])
 plt.title('Collapse risk (direct), pre-DoE', fontsize=axis_font)
 plt.show()
 
+#%% inverse design: mean
+
+from pred import get_steel_coefs, calc_upfront_cost
+plt.close('all')
+steel_price = 2.00
+coef_dict = get_steel_coefs(df_train, steel_per_unit=steel_price)
+
+risk_thresh = 0.1
+space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_space[X_space.index.isin(ok_risk.index)]
+    
+# in the filter-design process, only one of cost/dt is likely to control
+
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+                          columns=['gapRatio', 'RI', 'Tm', 'zetaM'])
+baseline_risk = mdl_init.gpr.predict(X_baseline)
+baseline_risk = baseline_risk.item()
+baseline_costs = calc_upfront_cost(X_baseline, coef_dict).item()
+
+# least upfront cost of the viable designs
+
+
+
+print('========== Baseline design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${baseline_costs:,.2f}')
+print('Predicted collapse risk: ',
+      f'{baseline_risk:.2%}')
+print(X_baseline)
+
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs.idxmin()
+design_upfront_cost = upfront_costs.min()
+
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+
+
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
+risk_thresh = 0.05
+space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_space[X_space.index.isin(ok_risk.index)]
+    
+# in the filter-design process, only one of cost/dt is likely to control
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs.idxmin()
+design_upfront_cost = upfront_costs.min()
+
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
+risk_thresh = 0.025
+space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_space[X_space.index.isin(ok_risk.index)]
+    
+# in the filter-design process, only one of cost/dt is likely to control
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs.idxmin()
+design_upfront_cost = upfront_costs.min()
+
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+
+
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
 #%% doe convergence plots
 database_path = '../data/doe/'
 
@@ -1556,7 +1664,8 @@ plt.show()
 # ax1.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 
 #%% cost sens
-land_costs = [2151., 3227., 4303., 5379.]
+# land_costs = [2151., 3227., 4303., 5379.]
+land_costs = [200., 300., 400., 500.]
 # steel_costs = [1., 2., 3., 4.]
 steel_costs = [0.5, 0.75, 1., 2.]
 
@@ -1582,7 +1691,8 @@ for idx_l, land in enumerate(land_costs):
         steel_price = steel
         coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
         
-        lcps = land/(3.28**2)
+        # lcps = land/(3.28**2)
+        lcps = land
         upfront_costs = calc_upfront_cost(X_design, coef_dict, 
                                           land_cost_per_sqft=lcps)
         
@@ -1830,20 +1940,20 @@ ax.set_xlabel('Collapse probability', fontsize=axis_font)
 ax.axvline(0.10, linestyle='--', color='black')
 ax.grid(visible=True)
 
-ax.text(0.095, 0, u'\u2192', fontsize=axis_font, color='red')
-ax.text(0.095, 1, u'\u2192', fontsize=axis_font, color='red')
-ax.text(0.095, 2, u'\u2192', fontsize=axis_font, color='red')
-ax.text(0.095, 3, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 0, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 1, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 2, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 3, u'\u2192', fontsize=axis_font, color='red')
 
-ax.text(0.084, 0, f'{repl_cases_10} runs', fontsize=axis_font, color='red')
-ax.text(0.084, 1, f'{repl_cases_5} runs', fontsize=axis_font, color='red')
-ax.text(0.084, 2, f'{repl_cases_2} runs', fontsize=axis_font, color='red')
-ax.text(0.084, 3, f'{base_repl_cases} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 0, f'{repl_cases_10} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 1, f'{repl_cases_5} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 2, f'{repl_cases_2} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 3, f'{base_repl_cases} runs', fontsize=axis_font, color='red')
 
 ax.text(0.075, 3.4, r'10% threshold', fontsize=axis_font, color='black')
-ax.set_xlim(0, 0.1)
+# ax.set_xlim(0, 0.1)
 
-# ax.set_xscale("log")
+ax.set_xscale("log")
 plt.show()
 
 #%% validation drift distribution at mce
