@@ -305,6 +305,15 @@ database_path = '../data/doe/'
 
 import matplotlib.pyplot as plt
 import pandas as pd
+plt.close('all')
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
 
 rmse_df = pd.read_csv(database_path+'rmse.csv', header=None)
 mae_df = pd.read_csv(database_path+'mae.csv', header=None)
@@ -322,43 +331,29 @@ rmse_df_naive.columns = ['rmse']
 
 plt.close('all')
 
-fig = plt.figure(figsize=(13, 10))
-ax1=fig.add_subplot(2, 2, 1)
+fig = plt.figure(figsize=(13, 6))
 
-ax1.plot(rmse_df.index*10, rmse_df['rmse'])
-ax1.set_title(r'Root mean squared error (adaptive DoE)', fontsize=axis_font)
-# ax1.set_xlabel(r'Points added', fontsize=axis_font)
+ax1=fig.add_subplot(1, 2, 1)
+ax1.plot(rmse_df.index*10, rmse_df['rmse'], label='Adaptive')
+ax1.plot(rmse_df_naive.index*10, rmse_df_naive['rmse'], label='Naive')
+ax1.set_title(r'Root mean squared error', fontsize=axis_font)
+ax1.set_xlabel(r'Points added', fontsize=axis_font)
 ax1.set_ylabel(r'Metric', fontsize=axis_font)
 ax1.set_xlim([0, 140])
 ax1.set_ylim([0.19, 0.28])
 plt.grid(True)
 
 
-ax2=fig.add_subplot(2, 2, 3)
-ax2.plot(rmse_df.index*10, mae_df['mae'])
-ax2.set_title('Mean absolute error (adaptive DoE)', fontsize=axis_font)
+ax2=fig.add_subplot(1, 2, 2)
+ax2.plot(rmse_df.index*10, mae_df['mae'], label='Adaptive')
+ax2.plot(rmse_df_naive.index*10, mae_df_naive['mae'], label='Naive')
+ax2.set_title('Mean absolute error', fontsize=axis_font)
 ax2.set_xlabel('Points added', fontsize=axis_font)
-ax2.set_ylabel('Metric', fontsize=axis_font)
+# ax2.set_ylabel('Metric', fontsize=axis_font)
 ax2.set_xlim([0, 140])
 ax2.set_ylim([0.05, 0.14])
 plt.grid(True)
-
-ax3=fig.add_subplot(2, 2, 2)
-ax3.plot(rmse_df_naive.index*10, rmse_df_naive['rmse'])
-ax3.set_title('Root mean squared error (naive DoE)', fontsize=axis_font)
-# ax3.set_xlabel('Points added', fontsize=axis_font)
-# ax3.set_ylabel(r'Metric', fontsize=axis_font)
-ax3.set_xlim([0, 140])
-ax3.set_ylim([0.19, 0.28])
-plt.grid(True)
-
-ax4=fig.add_subplot(2, 2, 4)
-ax4.plot(rmse_df_naive.index*10, mae_df_naive['mae'])
-ax4.set_title('Mean absolute error (naive DoE)', fontsize=axis_font)
-ax4.set_xlabel('Points added', fontsize=axis_font)
-ax4.set_xlim([0, 140])
-ax4.set_ylim([0.05, 0.14])
-plt.grid(True)
+plt.legend(fontsize=axis_font)
 
 fig.tight_layout()
 plt.show()
