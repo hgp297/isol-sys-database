@@ -1094,7 +1094,7 @@ ax2.clabel(cs, fontsize=clabel_size)
 
 ax2.scatter(new_pts['gapRatio'], new_pts['RI'], 
             c=new_pts.index,
-            edgecolors='k', s=40.0)
+            edgecolors='k', s=40.0, cmap='Blues')
 ax2.set_xlim([0.3, 2.0])
 ax2.set_ylim([0.5, 2.0])
 ax2.set_title('b) Collapse risk, naive DoE', fontsize=axis_font)
@@ -1125,9 +1125,10 @@ cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
                  levels=lvls)
 ax3.clabel(cs, fontsize=clabel_size)
 
+new_pts = df_doe.tail(n_new)
 ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
             c=new_pts.index,
-            edgecolors='k', s=40.0)
+            edgecolors='k', s=40.0, cmap='Blues')
 ax3.set_xlim([0.3, 2.0])
 ax3.set_ylim([0.5, 2.0])
 ax3.set_title('d) Weighted variance for adaptive DoE', fontsize=axis_font)
@@ -1163,134 +1164,134 @@ plt.show()
 
 
 #%% doe effect plots
-X_subset = X_space[X_space['Tm']==3.25]
-fs2_subset = fs2[X_space['Tm']==3.25]
-fmu_subset = fmu[X_space['Tm']==3.25]
+# X_subset = X_space[X_space['Tm']==3.25]
+# fs2_subset = fs2[X_space['Tm']==3.25]
+# fmu_subset = fmu[X_space['Tm']==3.25]
 
-n_new = df_doe.shape[0] - df_train.shape[0]
+# n_new = df_doe.shape[0] - df_train.shape[0]
 
-fig = plt.figure(figsize=(13, 10))
+# fig = plt.figure(figsize=(13, 10))
 
-# first we show training model
+# # first we show training model
 
-ax1=fig.add_subplot(2, 2, 1)
-# collapse predictions
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_space[X_space['Tm']==3.25]
-fs2_subset = fs2_train[X_space['Tm']==3.25]
-fmu_subset = fmu_train[X_space['Tm']==3.25]
-Z = fmu_subset.reshape(xx_pl.shape)
+# ax1=fig.add_subplot(2, 2, 1)
+# # collapse predictions
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# X_subset = X_space[X_space['Tm']==3.25]
+# fs2_subset = fs2_train[X_space['Tm']==3.25]
+# fmu_subset = fmu_train[X_space['Tm']==3.25]
+# Z = fmu_subset.reshape(xx_pl.shape)
 
 
-lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax1.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=lvls)
-ax1.clabel(cs, fontsize=clabel_size)
-ax1.scatter(df_train['gapRatio'], df_train['RI'], 
-            c=df_train['collapse_prob'],
-            edgecolors='k', s=40.0, cmap=plt.cm.Blues)
-ax1.set_xlim([0.3, 2.0])
-ax1.set_ylim([0.5, 2.0])
-ax1.set_title('Collapse risk, pre-DoE', fontsize=axis_font)
-# ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
-ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax1.grid()
+# lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+# cs = ax1.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+# ax1.clabel(cs, fontsize=clabel_size)
+# ax1.scatter(df_train['gapRatio'], df_train['RI'], 
+#             c=df_train['collapse_prob'],
+#             edgecolors='k', s=40.0, cmap=plt.cm.Blues)
+# ax1.set_xlim([0.3, 2.0])
+# ax1.set_ylim([0.5, 2.0])
+# ax1.set_title('Collapse risk, pre-DoE', fontsize=axis_font)
+# # ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+# ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax1.grid()
 
-# then we show first iteration of weighted variance
+# # then we show first iteration of weighted variance
 
-# tMSE criterion
-from numpy import exp
-pi = 3.14159
-T = 0.5
-fs2_subset = fs2_train[X_space['Tm']==3.25]
-fmu_subset = fmu_train[X_space['Tm']==3.25]
-Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
-criterion = np.multiply(Wx, fs2_subset)
+# # tMSE criterion
+# from numpy import exp
+# pi = 3.14159
+# T = 0.5
+# fs2_subset = fs2_train[X_space['Tm']==3.25]
+# fmu_subset = fmu_train[X_space['Tm']==3.25]
+# Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
+# criterion = np.multiply(Wx, fs2_subset)
 
-ax2=fig.add_subplot(2, 2, 2)
-# collapse predictions
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_space[X_space['Tm']==3.25]
-fs2_subset = fs2_train[X_space['Tm']==3.25]
-fmu_subset = fmu_train[X_space['Tm']==3.25]
-Z = criterion.reshape(xx_pl.shape)
+# ax2=fig.add_subplot(2, 2, 2)
+# # collapse predictions
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# X_subset = X_space[X_space['Tm']==3.25]
+# fs2_subset = fs2_train[X_space['Tm']==3.25]
+# fmu_subset = fmu_train[X_space['Tm']==3.25]
+# Z = criterion.reshape(xx_pl.shape)
 
-new_pts = df_doe.tail(n_new)
-new_pts_first = new_pts.head(20)
+# new_pts = df_doe.tail(n_new)
+# new_pts_first = new_pts.head(20)
 
-lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
-cs = ax2.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=lvls)
-ax2.clabel(cs, fontsize=clabel_size)
+# lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
+# cs = ax2.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+# ax2.clabel(cs, fontsize=clabel_size)
 
-ax2.scatter(new_pts_first['gapRatio'], new_pts_first['RI'], 
-            c=new_pts_first.index,
-            edgecolors='k', s=40.0)
-ax2.set_xlim([0.3, 2.0])
-ax2.set_ylim([0.5, 2.0])
-ax2.set_title('Weighted variance, first iteration', fontsize=axis_font)
-# ax2.set_xlabel(r'Gap ratio', fontsize=axis_font)
-# ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax2.grid()
+# ax2.scatter(new_pts_first['gapRatio'], new_pts_first['RI'], 
+#             c=new_pts_first.index,
+#             edgecolors='k', s=40.0)
+# ax2.set_xlim([0.3, 2.0])
+# ax2.set_ylim([0.5, 2.0])
+# ax2.set_title('Weighted variance, first iteration', fontsize=axis_font)
+# # ax2.set_xlabel(r'Gap ratio', fontsize=axis_font)
+# # ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax2.grid()
 
-# then we show all added points
+# # then we show all added points
 
-fs2_subset = fs2[X_space['Tm']==3.25]
-fmu_subset = fmu[X_space['Tm']==3.25]
+# fs2_subset = fs2[X_space['Tm']==3.25]
+# fmu_subset = fmu[X_space['Tm']==3.25]
 
-# tMSE criterion
-from numpy import exp
-pi = 3.14159
-T = 0.5
-Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
-criterion = np.multiply(Wx, fs2_subset)
+# # tMSE criterion
+# from numpy import exp
+# pi = 3.14159
+# T = 0.5
+# Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
+# criterion = np.multiply(Wx, fs2_subset)
 
-ax3=fig.add_subplot(2, 2, 4)
-# collapse predictions
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_space[X_space['Tm']==3.25]
-Z = criterion.reshape(xx_pl.shape)
+# ax3=fig.add_subplot(2, 2, 4)
+# # collapse predictions
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# X_subset = X_space[X_space['Tm']==3.25]
+# Z = criterion.reshape(xx_pl.shape)
 
-lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
-cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=lvls)
-ax3.clabel(cs, fontsize=clabel_size)
+# lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
+# cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+# ax3.clabel(cs, fontsize=clabel_size)
 
-ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
-            c=new_pts.index,
-            edgecolors='k', s=40.0)
-ax3.set_xlim([0.3, 2.0])
-ax3.set_ylim([0.5, 2.0])
-ax3.set_title('Weighted variance, last iteration', fontsize=axis_font)
-ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
-# ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax3.grid()
+# ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
+#             c=new_pts.index,
+#             edgecolors='k', s=40.0)
+# ax3.set_xlim([0.3, 2.0])
+# ax3.set_ylim([0.5, 2.0])
+# ax3.set_title('Weighted variance, last iteration', fontsize=axis_font)
+# ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
+# # ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax3.grid()
 
-# then show final results
+# # then show final results
 
-ax4=fig.add_subplot(2, 2, 3)
-# collapse predictions
-Z = fmu_subset.reshape(xx_pl.shape)
-new_pts = df_doe.tail(n_new)
-new_pts_first = new_pts.head(10)
+# ax4=fig.add_subplot(2, 2, 3)
+# # collapse predictions
+# Z = fmu_subset.reshape(xx_pl.shape)
+# new_pts = df_doe.tail(n_new)
+# new_pts_first = new_pts.head(10)
 
-lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax4.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=lvls)
-ax4.clabel(cs, fontsize=clabel_size)
+# lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+# cs = ax4.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+# ax4.clabel(cs, fontsize=clabel_size)
 
-ax4.scatter(df_doe['gapRatio'], df_doe['RI'], 
-            c=df_doe['collapse_prob'], cmap='Blues',
-            edgecolors='k', s=40.0)
-ax4.set_xlim([0.3, 2.0])
-ax4.set_ylim([0.5, 2.0])
-ax4.set_title('Collapse risk, post-DoE', fontsize=axis_font)
-ax4.set_xlabel(r'Gap ratio', fontsize=axis_font)
-ax4.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax4.grid()
+# ax4.scatter(df_doe['gapRatio'], df_doe['RI'], 
+#             c=df_doe['collapse_prob'], cmap='Blues',
+#             edgecolors='k', s=40.0)
+# ax4.set_xlim([0.3, 2.0])
+# ax4.set_ylim([0.5, 2.0])
+# ax4.set_title('Collapse risk, post-DoE', fontsize=axis_font)
+# ax4.set_xlabel(r'Gap ratio', fontsize=axis_font)
+# ax4.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax4.grid()
 
-fig.tight_layout()
-plt.show()
+# fig.tight_layout()
+# plt.show()
 
 #%% contour plots, gap vs Ry, highlight Ry
 
