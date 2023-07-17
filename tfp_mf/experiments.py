@@ -402,7 +402,7 @@ def run_naive(training_set_path, testing_set_path,
         bearingValue = pd.DataFrame(row, columns=['value'])
 
         bearingIndex   = bearingIndex.join(bearingValue)
-        bearingIndex.to_csv(inputFile, index=False)
+        bearingIndex.to_csv(inputPath+inputFile, index=False)
         
         # run opsPy
         try:

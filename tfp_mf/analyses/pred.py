@@ -660,4 +660,6 @@ def calc_upfront_cost(X_query, steel_coefs,
     land_area = (90.0*12.0 + moat_gap)**2
     land_cost = land_cost_per_sqft/144.0 * land_area
     
-    return(steel_cost + land_cost)
+    return({'total': steel_cost + land_cost,
+            'steel': steel_cost,
+            'land': land_cost})
