@@ -292,7 +292,7 @@ def run_pushover(inputStr, pushoverStr, max_drift_ratio=0.1):
     pushover_df = pd.DataFrame({'roof_disp': story3Disp['isol1'],
                                 'base_shear_normalized': baseShearNormalize,
                                 'base_shear': baseShear})
-    pushover_df.to_csv('./outputs/pushover/'+pushoverStr, index=False)
+    pushover_df.to_csv(pushoverStr, index=False)
     
     return()
 
@@ -421,7 +421,7 @@ def plot_pushover(data_dir):
 #%% main runs
 
 inputString = './inputs/bearingInputVal_baseline.csv'
-outputString = 'pushover_addl_baseline.csv'
+outputString = './data/pushover/pushover_addl_baseline.csv'
 run_pushover(inputString, outputString)
 #%%
 

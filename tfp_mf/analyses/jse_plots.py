@@ -192,117 +192,117 @@ plt.xlim([0.3, 2.0])
 plt.title('Collapse risk, pre-DoE', fontsize=axis_font)
 plt.show()
 
-#%% inverse design: mean
+#%% inverse design: mean (training set)
 
-from pred import get_steel_coefs, calc_upfront_cost
-plt.close('all')
-steel_price = 2.00
-coef_dict = get_steel_coefs(df_train, steel_per_unit=steel_price)
+# from pred import get_steel_coefs, calc_upfront_cost
+# plt.close('all')
+# steel_price = 2.00
+# coef_dict = get_steel_coefs(df_train, steel_per_unit=steel_price)
 
-risk_thresh = 0.1
-space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
-ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
-                      risk_thresh]
+# risk_thresh = 0.1
+# space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
+# ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+#                       risk_thresh]
 
-X_design = X_space[X_space.index.isin(ok_risk.index)]
+# X_design = X_space[X_space.index.isin(ok_risk.index)]
     
-# in the filter-design process, only one of cost/dt is likely to control
+# # in the filter-design process, only one of cost/dt is likely to control
 
-X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
-                          columns=['gapRatio', 'RI', 'Tm', 'zetaM'])
-baseline_risk = mdl_init.gpr.predict(X_baseline)
-baseline_risk = baseline_risk.item()
-baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
-baseline_total = baseline_costs['total'].item()
-baseline_steel = baseline_costs['steel'].item()
-baseline_land = baseline_costs['land'].item()
+# X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+#                           columns=['gapRatio', 'RI', 'Tm', 'zetaM'])
+# baseline_risk = mdl_init.gpr.predict(X_baseline)
+# baseline_risk = baseline_risk.item()
+# baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
+# baseline_total = baseline_costs['total'].item()
+# baseline_steel = baseline_costs['steel'].item()
+# baseline_land = baseline_costs['land'].item()
 
-# least upfront cost of the viable designs
-
-
-
-print('========== Baseline design ============')
-print('Design target', f'{risk_thresh:.2%}')
-print('Upfront cost of selected design: ',
-      f'${baseline_total:,.2f}')
-print('Predicted collapse risk: ',
-      f'{baseline_risk:.2%}')
-print(X_baseline)
-
-
-# select best viable design
-upfront_costs = calc_upfront_cost(X_design, coef_dict)
-cheapest_design_idx = upfront_costs['total'].idxmin()
-design_upfront_cost = upfront_costs['total'].min()
-
-# least upfront cost of the viable designs
-best_design = X_design.loc[cheapest_design_idx]
-design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+# # least upfront cost of the viable designs
 
 
 
-print('========== Inverse design ============')
-print('Design target', f'{risk_thresh:.2%}')
-print('Upfront cost of selected design: ',
-      f'${design_upfront_cost:,.2f}')
-print('Predicted collapse risk: ',
-      f'{design_collapse_risk:.2%}')
-print(best_design)
+# print('========== Baseline design ============')
+# print('Design target', f'{risk_thresh:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${baseline_total:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{baseline_risk:.2%}')
+# print(X_baseline)
 
-risk_thresh = 0.05
-space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
-ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
-                      risk_thresh]
 
-X_design = X_space[X_space.index.isin(ok_risk.index)]
+# # select best viable design
+# upfront_costs = calc_upfront_cost(X_design, coef_dict)
+# cheapest_design_idx = upfront_costs['total'].idxmin()
+# design_upfront_cost = upfront_costs['total'].min()
+
+# # least upfront cost of the viable designs
+# best_design = X_design.loc[cheapest_design_idx]
+# design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+
+
+
+# print('========== Inverse design ============')
+# print('Design target', f'{risk_thresh:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${design_upfront_cost:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{design_collapse_risk:.2%}')
+# print(best_design)
+
+# risk_thresh = 0.05
+# space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
+# ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+#                       risk_thresh]
+
+# X_design = X_space[X_space.index.isin(ok_risk.index)]
     
-# in the filter-design process, only one of cost/dt is likely to control
+# # in the filter-design process, only one of cost/dt is likely to control
 
-# select best viable design
-upfront_costs = calc_upfront_cost(X_design, coef_dict)
-cheapest_design_idx = upfront_costs['total'].idxmin()
-design_upfront_cost = upfront_costs['total'].min()
+# # select best viable design
+# upfront_costs = calc_upfront_cost(X_design, coef_dict)
+# cheapest_design_idx = upfront_costs['total'].idxmin()
+# design_upfront_cost = upfront_costs['total'].min()
 
-# least upfront cost of the viable designs
-best_design = X_design.loc[cheapest_design_idx]
-design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+# # least upfront cost of the viable designs
+# best_design = X_design.loc[cheapest_design_idx]
+# design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
 
-print('========== Inverse design ============')
-print('Design target', f'{risk_thresh:.2%}')
-print('Upfront cost of selected design: ',
-      f'${design_upfront_cost:,.2f}')
-print('Predicted collapse risk: ',
-      f'{design_collapse_risk:.2%}')
-print(best_design)
+# print('========== Inverse design ============')
+# print('Design target', f'{risk_thresh:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${design_upfront_cost:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{design_collapse_risk:.2%}')
+# print(best_design)
 
-risk_thresh = 0.025
-space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
-ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
-                      risk_thresh]
+# risk_thresh = 0.025
+# space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
+# ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+#                       risk_thresh]
 
-X_design = X_space[X_space.index.isin(ok_risk.index)]
+# X_design = X_space[X_space.index.isin(ok_risk.index)]
     
-# in the filter-design process, only one of cost/dt is likely to control
+# # in the filter-design process, only one of cost/dt is likely to control
 
-# select best viable design
-upfront_costs = calc_upfront_cost(X_design, coef_dict)
-cheapest_design_idx = upfront_costs['total'].idxmin()
-design_upfront_cost = upfront_costs['total'].min()
+# # select best viable design
+# upfront_costs = calc_upfront_cost(X_design, coef_dict)
+# cheapest_design_idx = upfront_costs['total'].idxmin()
+# design_upfront_cost = upfront_costs['total'].min()
 
-# least upfront cost of the viable designs
-best_design = X_design.loc[cheapest_design_idx]
-design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+# # least upfront cost of the viable designs
+# best_design = X_design.loc[cheapest_design_idx]
+# design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
 
 
-print('========== Inverse design ============')
-print('Design target', f'{risk_thresh:.2%}')
-print('Upfront cost of selected design: ',
-      f'${design_upfront_cost:,.2f}')
-print('Predicted collapse risk: ',
-      f'{design_collapse_risk:.2%}')
-print(best_design)
+# print('========== Inverse design ============')
+# print('Design target', f'{risk_thresh:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${design_upfront_cost:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{design_collapse_risk:.2%}')
+# print(best_design)
 #%% doe convergence plots
 database_path = '../data/doe/'
 
@@ -354,7 +354,7 @@ ax2.set_title('Mean absolute error', fontsize=axis_font)
 ax2.set_xlabel('Points added', fontsize=axis_font)
 # ax2.set_ylabel('Metric', fontsize=axis_font)
 ax2.set_xlim([0, 140])
-ax2.set_ylim([0.05, 0.14])
+ax2.set_ylim([0.08, 0.14])
 plt.grid(True)
 plt.legend(fontsize=axis_font)
 
@@ -817,8 +817,6 @@ ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
                       risk_thresh]
 
 X_design = X_space[X_space.index.isin(ok_risk.index)]
-    
-# in the filter-design process, only one of cost/dt is likely to control
 
 baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
 baseline_total = baseline_costs['total'].item()
@@ -826,8 +824,6 @@ baseline_steel = baseline_costs['steel'].item()
 baseline_land = baseline_costs['land'].item()
 
 # least upfront cost of the viable designs
-
-
 
 print('========== Baseline design ============')
 print('Design target', f'{risk_thresh:.2%}')
@@ -842,17 +838,21 @@ print(X_baseline)
 upfront_costs = calc_upfront_cost(X_design, coef_dict)
 cheapest_design_idx = upfront_costs['total'].idxmin()
 design_upfront_cost = upfront_costs['total'].min()
-
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
 # least upfront cost of the viable designs
 best_design = X_design.loc[cheapest_design_idx]
 design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
-
 
 
 print('========== Inverse design ============')
 print('Design target', f'{risk_thresh:.2%}')
 print('Upfront cost of selected design: ',
       f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
 print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
 print(best_design)
@@ -863,14 +863,44 @@ ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
                       risk_thresh]
 
 X_design = X_space[X_space.index.isin(ok_risk.index)]
-    
-# in the filter-design process, only one of cost/dt is likely to control
 
 # select best viable design
 upfront_costs = calc_upfront_cost(X_design, coef_dict)
 cheapest_design_idx = upfront_costs['total'].idxmin()
 design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
+
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
+risk_thresh = 0.025
+space_collapse_pred = pd.DataFrame(fmu, columns=['collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_space[X_space.index.isin(ok_risk.index)]
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
 # least upfront cost of the viable designs
 best_design = X_design.loc[cheapest_design_idx]
 design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
@@ -880,12 +910,73 @@ print('========== Inverse design ============')
 print('Design target', f'{risk_thresh:.2%}')
 print('Upfront cost of selected design: ',
       f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
 print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
 print(best_design)
 
-risk_thresh = 0.025
-space_collapse_pred = pd.DataFrame(fmu, columns=['collapse probability'])
+#%% inverse design: naive
+
+from pred import get_steel_coefs, calc_upfront_cost
+plt.close('all')
+steel_price = 2.00
+coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
+
+risk_thresh = 0.1
+space_collapse_pred = pd.DataFrame(fmu_naive, columns=['collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_space[X_space.index.isin(ok_risk.index)]
+    
+# in the filter-design process, only one of cost/dt is likely to control
+
+baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
+baseline_total = baseline_costs['total'].item()
+baseline_steel = baseline_costs['steel'].item()
+baseline_land = baseline_costs['land'].item()
+
+baseline_risk_naive = mdl_naive.gpr.predict(X_baseline)
+baseline_risk_naive = baseline_risk_naive.item()
+
+print('========== Baseline design (naive) ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${baseline_total:,.2f}')
+print('Predicted collapse risk: ',
+      f'{baseline_risk_naive:.2%}')
+print(X_baseline)
+
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+
+
+
+print('========== Inverse design (naive) ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
+risk_thresh = 0.05
+space_collapse_pred = pd.DataFrame(fmu_naive, columns=['collapse probability'])
 ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
                       risk_thresh]
 
@@ -897,65 +988,102 @@ X_design = X_space[X_space.index.isin(ok_risk.index)]
 upfront_costs = calc_upfront_cost(X_design, coef_dict)
 cheapest_design_idx = upfront_costs['total'].idxmin()
 design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
+
+print('========== Inverse design (naive) ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
+risk_thresh = 0.025
+space_collapse_pred = pd.DataFrame(fmu_naive, columns=['collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_space[X_space.index.isin(ok_risk.index)]
+    
+# in the filter-design process, only one of cost/dt is likely to control
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
 # least upfront cost of the viable designs
 best_design = X_design.loc[cheapest_design_idx]
 design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 
 
 
-print('========== Inverse design ============')
+print('========== Inverse design (naive) ============')
 print('Design target', f'{risk_thresh:.2%}')
 print('Upfront cost of selected design: ',
       f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
 print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
 print(best_design)
 
 #%% inverse design (+1std prediction interval)
 
-import time
-res = 75
-xx, yy, uu = np.meshgrid(np.linspace(1.0, 4.0,
-                                      res),
-                          np.linspace(0.25, 1.0,
-                                      res),
-                          np.linspace(2.5, 4.0,
-                                      res))
+# import time
+# res = 75
+# xx, yy, uu = np.meshgrid(np.linspace(1.0, 4.0,
+#                                       res),
+#                           np.linspace(0.25, 1.0,
+#                                       res),
+#                           np.linspace(2.5, 4.0,
+#                                       res))
                              
-X_space_pred_int = pd.DataFrame({'gapRatio':xx.ravel(),
-                      'RI':yy.ravel(),
-                      'Tm':uu.ravel(),
-                      'zetaM':np.repeat(0.2,res**3)})
+# X_space_pred_int = pd.DataFrame({'gapRatio':xx.ravel(),
+#                       'RI':yy.ravel(),
+#                       'Tm':uu.ravel(),
+#                       'zetaM':np.repeat(0.2,res**3)})
 
-t0 = time.time()
+# t0 = time.time()
 
-fmu_pred_int, fs1_pred_int = mdl_init.gpr.predict(X_space_pred_int, return_std=True)
-fs2_pred_int = fs1_pred_int**2
+# fmu_pred_int, fs1_pred_int = mdl_init.gpr.predict(X_space_pred_int, return_std=True)
+# fs2_pred_int = fs1_pred_int**2
 
-tp = time.time() - t0
-print("GPR collapse prediction for %d inputs in %.3f s" % (X_space_pred_int.shape[0],
-                                                                tp))
+# tp = time.time() - t0
+# print("GPR collapse prediction for %d inputs in %.3f s" % (X_space_pred_int.shape[0],
+#                                                                 tp))
 
     
-# in the filter-design process, only one of cost/dt is likely to control
+# # in the filter-design process, only one of cost/dt is likely to control
 
-baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
-baseline_total = baseline_costs['total'].item()
-baseline_steel = baseline_costs['steel'].item()
-baseline_land = baseline_costs['land'].item()
+# baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
+# baseline_total = baseline_costs['total'].item()
+# baseline_steel = baseline_costs['steel'].item()
+# baseline_land = baseline_costs['land'].item()
 
-# least upfront cost of the viable designs
+# # least upfront cost of the viable designs
 
-baseline_risk_95 = baseline_risk + baseline_fs1
+# baseline_risk_95 = baseline_risk + baseline_fs1
 
-print('========== Baseline design (+1std pred int) ============')
-print('Design target', f'{risk_thresh:.2%}')
-print('Upfront cost of selected design: ',
-      f'${baseline_total:,.2f}')
-print('Predicted collapse risk: ',
-      f'{baseline_risk_95:.2%}')
-print(X_baseline)
+# print('========== Baseline design (+1std pred int) ============')
+# print('Design target', f'{risk_thresh:.2%}')
+# print('Upfront cost of selected design: ',
+#       f'${baseline_total:,.2f}')
+# print('Predicted collapse risk: ',
+#       f'{baseline_risk_95:.2%}')
+# print(X_baseline)
 
 
 # # select best viable design
@@ -1060,7 +1188,7 @@ Z = fmu_subset.reshape(xx_pl.shape)
 
 
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax1.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+cs = ax1.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.3,
                  levels=lvls)
 ax1.clabel(cs, fontsize=clabel_size)
 ax1.scatter(df_train['gapRatio'], df_train['RI'], 
@@ -1088,12 +1216,12 @@ new_pts = df_naive.tail(n_naive)
 # new_pts_first = new_pts.head(20)
 
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax2.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+cs = ax2.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.2,
                  levels=lvls)
 ax2.clabel(cs, fontsize=clabel_size)
 
 ax2.scatter(new_pts['gapRatio'], new_pts['RI'], 
-            c=new_pts.index,
+            c=new_pts['collapse_prob'],
             edgecolors='k', s=40.0, cmap='Blues')
 ax2.set_xlim([0.3, 2.0])
 ax2.set_ylim([0.5, 2.0])
@@ -1107,35 +1235,6 @@ ax2.grid()
 fs2_subset = fs2[X_space['Tm']==3.25]
 fmu_subset = fmu[X_space['Tm']==3.25]
 
-# tMSE criterion
-from numpy import exp
-pi = 3.14159
-T = 0.5
-Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
-criterion = np.multiply(Wx, fs2_subset)
-
-ax3=fig.add_subplot(2, 2, 4)
-# collapse predictions
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_space[X_space['Tm']==3.25]
-Z = criterion.reshape(xx_pl.shape)
-
-lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
-cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=lvls)
-ax3.clabel(cs, fontsize=clabel_size)
-
-new_pts = df_doe.tail(n_new)
-ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
-            c=new_pts.index,
-            edgecolors='k', s=40.0, cmap='Blues')
-ax3.set_xlim([0.3, 2.0])
-ax3.set_ylim([0.5, 2.0])
-ax3.set_title('d) Weighted variance for adaptive DoE', fontsize=axis_font)
-ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
-# ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax3.grid()
-
 # then show final results
 
 ax4=fig.add_subplot(2, 2, 3)
@@ -1145,12 +1244,12 @@ new_pts = df_doe.tail(n_new)
 new_pts_first = new_pts.head(10)
 
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax4.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+cs = ax4.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.2,
                  levels=lvls)
 ax4.clabel(cs, fontsize=clabel_size)
 
-ax4.scatter(df_doe['gapRatio'], df_doe['RI'], 
-            c=df_doe['collapse_prob'], cmap='Blues',
+ax4.scatter(new_pts['gapRatio'], new_pts['RI'], 
+            c=new_pts['collapse_prob'], cmap='Blues',
             edgecolors='k', s=40.0)
 ax4.set_xlim([0.3, 2.0])
 ax4.set_ylim([0.5, 2.0])
@@ -1158,6 +1257,38 @@ ax4.set_title('c) Collapse risk, adaptive DoE', fontsize=axis_font)
 ax4.set_xlabel(r'Gap ratio', fontsize=axis_font)
 ax4.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax4.grid()
+
+# tMSE criterion
+from numpy import exp
+pi = 3.14159
+T = 0.5
+Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
+criterion = np.multiply(Wx, fs2_subset)
+
+
+ax3=fig.add_subplot(2, 2, 4)
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+X_subset = X_space[X_space['Tm']==3.25]
+Z = criterion.reshape(xx_pl.shape)
+
+lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
+cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.03,
+                 levels=lvls)
+ax3.clabel(cs, fontsize=clabel_size)
+
+new_pts = df_doe.tail(n_new)
+ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
+            c=new_pts['collapse_prob'],
+            edgecolors='k', s=40.0, cmap='Blues')
+ax3.set_xlim([0.3, 2.0])
+ax3.set_ylim([0.5, 2.0])
+ax3.set_title('d) Weighted variance for adaptive DoE', fontsize=axis_font)
+ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
+# ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax3.grid()
+
+
 
 fig.tight_layout()
 plt.show()
@@ -1846,6 +1977,101 @@ plt.show()
 # ax1.set_xlabel(r'$T_M$', fontsize=axis_font)
 # ax1.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 
+#%% Tm zeta plot (bad)
+
+# plt.close('all')
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 20
+# subt_font = 18
+# import matplotlib as mpl
+# label_size = 16
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
+# import seaborn as sns
+
+# res = 50
+
+# xx, yy, uu = np.meshgrid(np.linspace(0.5, 2.0,
+#                                          res),
+#                              np.linspace(2.5, 4.0,
+#                                          res),
+#                              np.linspace(0.1, 0.2,
+#                                          res))
+                             
+# X_space = pd.DataFrame({'gapRatio':xx.ravel(),
+#                       'RI':np.repeat(2.0, res**3),
+#                       'Tm':yy.ravel(),
+#                       'zetaM':uu.ravel()})
+
+# t0 = time.time()
+
+# fmu_Tmz = mdl_doe.gpr.predict(X_space)
+
+# tp = time.time() - t0
+# print("GPR collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
+#                                                                tp))
+
+# Tms = np.unique(yy)
+# zetas = np.unique(uu)
+# Tm_fix = [Tms[0], Tms[15], Tms[33], Tms[-1]]
+# zeta_fix = [zetas[0], zetas[25], zetas[-1]]
+# Tm_zeta_grid = np.zeros([4,3])
+
+# risk_thresh = 0.1
+# for i, Tm_cur in enumerate(Tm_fix):
+#     for j, zeta_cur in enumerate(zeta_fix):
+#         # subset RI=2.0 in order to fit on 2d plot
+#         subset_space = X_space[(X_space['Tm']==Tm_cur) &
+#                                (X_space['zetaM']==zeta_cur)]
+        
+#         space_collapse_pred = pd.DataFrame(fmu_Tmz, columns=['collapse probability'])
+#         ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+#                               risk_thresh]
+        
+#         X_design = X_space[np.logical_and.reduce((
+#                 X_space.index.isin(ok_risk.index),
+#                 X_space.index.isin(subset_space.index)))]
+        
+#         upfront_costs = calc_upfront_cost(X_design, coef_dict)
+#         cheapest_design_idx = upfront_costs.idxmin()
+#         design_upfront_cost = upfront_costs.min()
+#         # least upfront cost of the viable designs
+#         best_design = X_design.loc[cheapest_design_idx]
+#         Tm_zeta_grid[i][j] = best_design['gapRatio']
+        
+# Tm_cols = [2.5, 3.0, 3.5, 4.0]
+# zeta_cols = [0.10, 0.15, 0.20]
+# Tm_zeta_df = pd.DataFrame(data=Tm_zeta_grid,
+#                           index=Tm_cols,
+#                           columns=zeta_cols).unstack(level=0).reset_index()
+# Tm_zeta_df.columns = ['zetaM', 'Tm', 'min_gap']
+
+# fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
+
+# sns.barplot(data=Tm_zeta_df, x="min_gap", y="Tm", hue="zetaM",
+#             orient='h', palette='Blues',
+#             ax=ax1)
+
+# legend_handles, _= ax1.get_legend_handles_labels()
+# ax1.legend(title=r'$\zeta_M$', fontsize=subt_font, loc='center right',
+#            title_fontsize=subt_font)
+
+# ax1.axvline(x=1.0, color='black', linestyle='--',
+#             linewidth=2.0)
+# ax1.text(0.95, 2.5, 'ASCE 7-22 minimum', 
+#          rotation=90, fontsize=subt_font, color='black')
+
+# ax1.set_xlim([0.6, 1.8])
+# ax1.grid(visible=True)
+# ax1.set_title(r'Targeting 10% replacement, $R_y=2.0$', fontsize=title_font)
+# ax1.set_xlabel(r'Recommended gap', fontsize=axis_font)
+# ax1.set_ylabel(r'$T_M$', fontsize=axis_font)
+# for container in ax1.containers:
+#     ax1.bar_label(container, fmt='%.2f', fontsize=14)
+ 
+# plt.show()
+
 #%% cost sens
 # land_costs = [2151., 3227., 4303., 5379.]
 land_costs = [200., 300., 400., 500.]
@@ -2080,124 +2306,6 @@ val_5_mce = df_val_5[df_val_5['IDALevel']==1.0]
 val_2_mce = df_val_2[df_val_2['IDALevel']==1.0]
 base_mce = df_base[df_base['IDALevel']==1.0]
 
-#%% validation collapse distribution at mce
-
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 18
-import matplotlib as mpl
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-
-
-fig, axes = plt.subplots(1, 1, 
-                         figsize=(10, 6))
-
-mce_dict = {'10%': val_10_mce['collapse_probs'],
-            '5%': val_5_mce['collapse_probs'],
-            '2.5%': val_2_mce['collapse_probs'],
-            'Baseline': base_mce['collapse_probs']}
-df_mce = pd.DataFrame.from_dict(
-    data=mce_dict,
-    orient='index',
-).T
-
-base_repl_cases = base_mce[base_mce['collapse_probs'] >= 0.1].count()['collapse_probs']
-repl_cases_10 = val_10_mce[val_10_mce['collapse_probs'] >= 0.1].count()['collapse_probs']
-repl_cases_5 = val_5_mce[val_5_mce['collapse_probs'] >= 0.1].count()['collapse_probs']
-repl_cases_2 = val_2_mce[val_2_mce['collapse_probs'] >= 0.1].count()['collapse_probs']
-
-# print('Inverse runs requiring replacement:', repl_cases_10)
-# print('Baseline runs requiring replacement:', base_repl_cases)
-
-import seaborn as sns
-ax = sns.stripplot(data=df_mce, orient='h', palette='coolwarm', 
-                   edgecolor='black', linewidth=1.0)
-
-sns.boxplot(data=df_mce, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
-            width=0.4)
-ax.set_ylabel('Design case', fontsize=axis_font)
-ax.set_xlabel('Collapse probability', fontsize=axis_font)
-ax.axvline(0.10, linestyle='--', color='black')
-ax.grid(visible=True)
-
-# ax.text(0.095, 0, u'\u2192', fontsize=axis_font, color='red')
-# ax.text(0.095, 1, u'\u2192', fontsize=axis_font, color='red')
-# ax.text(0.095, 2, u'\u2192', fontsize=axis_font, color='red')
-# ax.text(0.095, 3, u'\u2192', fontsize=axis_font, color='red')
-
-# ax.text(0.084, 0, f'{repl_cases_10} runs', fontsize=axis_font, color='red')
-# ax.text(0.084, 1, f'{repl_cases_5} runs', fontsize=axis_font, color='red')
-# ax.text(0.084, 2, f'{repl_cases_2} runs', fontsize=axis_font, color='red')
-# ax.text(0.084, 3, f'{base_repl_cases} runs', fontsize=axis_font, color='red')
-
-ax.text(0.075, 3.4, r'10% threshold', fontsize=axis_font, color='black')
-# ax.set_xlim(0, 0.1)
-
-ax.set_xscale("log")
-plt.show()
-
-#%% validation drift distribution at mce
-
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 18
-import matplotlib as mpl
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-
-mce_dr_dict = {'10%': val_10_mce['max_drift'],
-            '5%': val_5_mce['max_drift'],
-            '2.5%': val_2_mce['max_drift'],
-            'Baseline': base_mce['max_drift']}
-
-fig, axes = plt.subplots(1, 1, 
-                         figsize=(10, 6))
-df_mce = pd.DataFrame.from_dict(
-    data=mce_dr_dict,
-    orient='index',
-).T
-
-
-import seaborn as sns
-ax = sns.stripplot(data=df_mce, orient='h', palette='coolwarm', 
-                   edgecolor='black', linewidth=1.0)
-ax.set_xlim(0, 0.2)
-sns.boxplot(data=df_mce, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
-            width=0.4)
-ax.set_ylabel('Design case', fontsize=axis_font)
-ax.set_xlabel('Max drift', fontsize=axis_font)
-ax.axvline(0.078, linestyle='--', color='black')
-ax.grid(visible=True)
-
-ax.text(0.08, 3.45, r'50% collapse threshold, PID=0.078', fontsize=axis_font, color='black')
-# ax.set_xscale("log")
-plt.show()
-
-
-#%% validation collapse histogram at mce
-
-# # plot histogram in log space
-# ax = plt.subplot(111)
-# ax.hist(base_mce['collapse_probs'], bins=np.logspace(-21, 0, 200), density=True)
-# ax.set_xscale("log")
-
-# shape,loc,scale = lognorm.fit(base_mce['collapse_probs'], loc=0)
-
-# x = np.logspace(1e-21, 0.1, 200)
-# pdf = lognorm.pdf(x, shape, loc, scale)
-# ax.plot(x, pdf, 'r')
-# test = lognorm.expect(lambda x:1, args=(shape,), loc=loc, scale=scale)
-
-# y = base_mce['collapse_probs']
-# # ax.set_xlim([1e-3, 1e-1])
-# plt.show()
-
-
 #%% fit validation curve (curve fit, not MLE)
 
 # TODO: percentage format, legend, uncertainty
@@ -2338,6 +2446,126 @@ print('2.5% fit beta:', beta_2)
 print('Baseline fit mean:', exp(theta_base))
 print('Baseline fit beta:', beta_base)
 
+#%% validation collapse distribution at mce
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+
+mce_dict = {'10%': val_10_mce['collapse_probs'],
+            '5%': val_5_mce['collapse_probs'],
+            '2.5%': val_2_mce['collapse_probs'],
+            'Baseline': base_mce['collapse_probs']}
+df_mce = pd.DataFrame.from_dict(
+    data=mce_dict,
+    orient='index',
+).T
+
+base_repl_cases = base_mce[base_mce['collapse_probs'] >= 0.1].count()['collapse_probs']
+repl_cases_10 = val_10_mce[val_10_mce['collapse_probs'] >= 0.1].count()['collapse_probs']
+repl_cases_5 = val_5_mce[val_5_mce['collapse_probs'] >= 0.1].count()['collapse_probs']
+repl_cases_2 = val_2_mce[val_2_mce['collapse_probs'] >= 0.1].count()['collapse_probs']
+
+# print('Inverse runs requiring replacement:', repl_cases_10)
+# print('Baseline runs requiring replacement:', base_repl_cases)
+
+import seaborn as sns
+ax = sns.stripplot(data=df_mce, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+
+sns.boxplot(data=df_mce, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4)
+ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel('Collapse probability', fontsize=axis_font)
+ax.axvline(0.10, linestyle='--', color='black')
+ax.grid(visible=True)
+
+# ax.text(0.095, 0, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 1, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 2, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 3, u'\u2192', fontsize=axis_font, color='red')
+
+# ax.text(0.084, 0, f'{repl_cases_10} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 1, f'{repl_cases_5} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 2, f'{repl_cases_2} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 3, f'{base_repl_cases} runs', fontsize=axis_font, color='red')
+
+ax.text(0.075, 3.4, r'10% threshold', fontsize=axis_font, color='black')
+# ax.set_xlim(0, 0.1)
+
+ax.set_xscale("log")
+plt.show()
+
+#%% validation drift distribution at mce
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+mce_dr_dict = {'10%': val_10_mce['max_drift'],
+            '5%': val_5_mce['max_drift'],
+            '2.5%': val_2_mce['max_drift'],
+            'Baseline': base_mce['max_drift']}
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+df_mce = pd.DataFrame.from_dict(
+    data=mce_dr_dict,
+    orient='index',
+).T
+
+
+import seaborn as sns
+ax = sns.stripplot(data=df_mce, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+ax.set_xlim(0, 0.2)
+sns.boxplot(data=df_mce, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4)
+ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel('Max drift', fontsize=axis_font)
+ax.axvline(0.078, linestyle='--', color='black')
+ax.grid(visible=True)
+
+ax.text(0.08, 3.45, r'50% collapse threshold, PID=0.078', fontsize=axis_font, color='black')
+# ax.set_xscale("log")
+plt.show()
+
+
+#%% validation collapse histogram at mce
+
+# # plot histogram in log space
+# ax = plt.subplot(111)
+# ax.hist(base_mce['collapse_probs'], bins=np.logspace(-21, 0, 200), density=True)
+# ax.set_xscale("log")
+
+# shape,loc,scale = lognorm.fit(base_mce['collapse_probs'], loc=0)
+
+# x = np.logspace(1e-21, 0.1, 200)
+# pdf = lognorm.pdf(x, shape, loc, scale)
+# ax.plot(x, pdf, 'r')
+# test = lognorm.expect(lambda x:1, args=(shape,), loc=loc, scale=scale)
+
+# y = base_mce['collapse_probs']
+# # ax.set_xlim([1e-3, 1e-1])
+# plt.show()
+
+
+
+
 #%% dumb scatters
 
 import matplotlib.pyplot as plt
@@ -2389,3 +2617,231 @@ ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
+
+#%% full validation (IDA data) (naive/test set)
+
+val_dir = '../data/val/'
+val_10_file = 'ida_jse_naive_10.csv'
+val_5_file = 'ida_jse_naive_5.csv'
+val_2_file = 'ida_jse_naive_2_5.csv'
+
+baseline_dir = '../data/val/'
+baseline_file = 'ida_jse_baseline_test.csv'
+
+df_val_10 = pd.read_csv(val_dir+val_10_file, index_col=None)
+df_val_5 = pd.read_csv(val_dir+val_5_file, index_col=None)
+df_val_2 = pd.read_csv(val_dir+val_2_file, index_col=None)
+df_base = pd.read_csv(baseline_dir+baseline_file, index_col=None)
+cost_var = 'cost_50%'
+time_var = 'time_u_50%'
+
+from scipy.stats import lognorm
+from math import log, exp
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+
+df_val_10['max_drift'] = df_val_10[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+df_val_10['collapse_probs'] = ln_dist.cdf(np.array(df_val_10['max_drift']))
+
+df_val_5['max_drift'] = df_val_5[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+df_val_5['collapse_probs'] = ln_dist.cdf(np.array(df_val_5['max_drift']))
+
+df_val_2['max_drift'] = df_val_2[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+df_val_2['collapse_probs'] = ln_dist.cdf(np.array(df_val_2['max_drift']))
+
+df_base['max_drift'] = df_base[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+df_base['collapse_probs'] = ln_dist.cdf(np.array(df_base['max_drift']))
+
+ida_levels = [1.0, 1.5, 2.0]
+val_10_collapse = np.zeros((3,))
+val_5_collapse = np.zeros((3,))
+val_2_collapse = np.zeros((3,))
+baseline_collapse = np.zeros((3,))
+
+for i, lvl in enumerate(ida_levels):
+    val_10_ida = df_val_10[df_val_10['IDALevel']==lvl]
+    val_5_ida = df_val_5[df_val_5['IDALevel']==lvl]
+    val_2_ida = df_val_2[df_val_2['IDALevel']==lvl]
+    base_ida = df_base[df_base['IDALevel']==lvl]
+    
+    val_10_collapse[i] = val_10_ida['collapse_probs'].mean()
+    val_5_collapse[i] = val_5_ida['collapse_probs'].mean()
+    val_2_collapse[i] = val_2_ida['collapse_probs'].mean()
+    
+    baseline_collapse[i] = base_ida['collapse_probs'].mean()
+    
+print('==================================')
+print('   Validation results  (1.0 MCE)  ')
+print('==================================')
+
+inverse_collapse = val_10_collapse[0]
+
+print('====== INVERSE DESIGN (10%) (Naive) ======')
+print('MCE collapse frequency: ',
+      f'{inverse_collapse:.2%}')
+
+inverse_collapse = val_5_collapse[0]
+
+print('====== INVERSE DESIGN (5%) (Naive) ======')
+print('MCE collapse frequency: ',
+      f'{inverse_collapse:.2%}')
+
+inverse_collapse = val_2_collapse[0]
+
+print('====== INVERSE DESIGN (2.5%) (Naive) ======')
+print('MCE collapse frequency: ',
+      f'{inverse_collapse:.2%}')
+
+baseline_collapse_mce = baseline_collapse[0]
+
+print('====== BASELINE DESIGN (test) ======')
+print('MCE collapse frequency: ',
+      f'{baseline_collapse_mce:.2%}')
+
+val_10_mce = df_val_10[df_val_10['IDALevel']==1.0]
+val_5_mce = df_val_5[df_val_5['IDALevel']==1.0]
+val_2_mce = df_val_2[df_val_2['IDALevel']==1.0]
+base_mce = df_base[df_base['IDALevel']==1.0]
+
+#%% fit validation curve (curve fit, not MLE)
+
+# TODO: percentage format, legend, uncertainty
+
+from scipy.stats import lognorm
+from scipy.optimize import curve_fit
+f = lambda x,mu,sigma: lognorm(mu,sigma).cdf(x)
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(13, 10))
+
+
+theta_10, beta_10 = curve_fit(f,ida_levels,val_10_collapse)[0]
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_10, beta_10)
+
+MCE_level = float(p[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p)
+ax1.axhline(0.1, linestyle='--', color='black')
+ax1.axvline(1.0, linestyle='--', color='black')
+ax1.text(2.0, 0.12, r'10% collapse risk',
+          fontsize=subt_font, color='black')
+ax1.text(0.25, 0.12, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+ax1.set_ylabel('Collapse probability', fontsize=axis_font)
+# ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax1.set_title('10% design (naive)', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [val_10_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax1.grid()
+ax1.set_xlim([0, 4.0])
+ax1.set_ylim([0, 1.0])
+
+####
+theta_5, beta_5 = curve_fit(f,ida_levels,val_5_collapse)[0]
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_5, beta_5)
+
+MCE_level = float(p[xx_pr==1.0])
+ax2=fig.add_subplot(2, 2, 2)
+ax2.plot(xx_pr, p)
+ax2.axhline(0.05, linestyle='--', color='black')
+ax2.axvline(1.0, linestyle='--', color='black')
+ax2.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax2.text(2.0, 0.07, r'5% collapse risk',
+          fontsize=subt_font, color='black')
+ax2.text(0.25, 0.1, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+
+# ax2.set_ylabel('Collapse probability', fontsize=axis_font)
+# ax2.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax2.set_title('5% design (naive)', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax2.plot([lvl], [val_5_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax2.grid()
+ax2.set_xlim([0, 4.0])
+ax2.set_ylim([0, 1.0])
+
+####
+theta_2, beta_2 = curve_fit(f,ida_levels,val_2_collapse)[0]
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_2, beta_2)
+
+MCE_level = float(p[xx_pr==1.0])
+ax3=fig.add_subplot(2, 2, 3)
+ax3.plot(xx_pr, p)
+ax3.axhline(0.025, linestyle='--', color='black')
+ax3.axvline(1.0, linestyle='--', color='black')
+ax3.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax3.text(2.0, 0.04, r'2.5% collapse risk',
+          fontsize=subt_font, color='black')
+ax3.text(0.25, 0.04, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+
+ax3.set_ylabel('Collapse probability', fontsize=axis_font)
+ax3.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax3.set_title('2.5% design (naive)', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax3.plot([lvl], [val_2_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax3.grid()
+ax3.set_xlim([0, 4.0])
+ax3.set_ylim([0, 1.0])
+
+####
+theta_base, beta_base = curve_fit(f,ida_levels,baseline_collapse)[0]
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_base, beta_base)
+
+MCE_level = float(p[xx_pr==1.0])
+ax4=fig.add_subplot(2, 2, 4)
+ax4.plot(xx_pr, p)
+ax4.axhline(0.1, linestyle='--', color='black')
+ax4.axvline(1.0, linestyle='--', color='black')
+ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax4.text(2.0, 0.12, r'10% collapse risk',
+          fontsize=subt_font, color='black')
+ax4.text(0.25, 0.12, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+
+# ax4.set_ylabel('Collapse probability', fontsize=axis_font)
+ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax4.set_title('Baseline design (test)', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax4.plot([lvl], [baseline_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax4.grid()
+ax4.set_xlim([0, 4.0])
+ax4.set_ylim([0, 1.0])
+
+fig.tight_layout()
+plt.show()
+
+print('10% fit mean (naive):', exp(theta_10))
+print('10% fit beta (naive):', beta_10)
+print('5% fit mean (naive):', exp(theta_5))
+print('5% fit beta (naive):', beta_5)
+print('2.5% fit mean (naive):', exp(theta_2))
+print('2.5% fit beta (naive):', beta_2)
+print('Baseline fit mean (test):', exp(theta_base))
+print('Baseline fit beta (test):', beta_base)

@@ -574,19 +574,29 @@ def validate(inputStr, IDALevel=[1.0, 1.5, 2.0],
 # valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
 # valDf_base.to_csv('./data/val/ida_jse_baseline.csv', index=False)     
 
+#%% validate a building (specify design input file)
+
+inputString = './inputs/bearingInputVal_naive_5.csv'
+valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
+valDf_base.to_csv('./data/val/ida_jse_naive_5.csv', index=False)
+
+inputString = './inputs/bearingInputVal_naive_2_5.csv'
+valDf_base = validate(inputString, IDALevel=[1.0, 1.5, 2.0])
+valDf_base.to_csv('./data/val/ida_jse_naive_2_5.csv', index=False)    
+
 #%% run naive doe
 
-# path = './data/mik_smrf.csv'
+# # path = './data/mik_smrf.csv'
 
-training_path = './data/training_set.csv'
-testing_path = './data/testing_set.csv'
+# training_path = './data/training_set.csv'
+# testing_path = './data/testing_set.csv'
 
-# DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
-# Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 600 support points
-# or no improvements to the RMSE (<0.1% in RMSE change)
-# whichever comes first
+# # DOE mechanism: sample from tMSE distribution in batches of 10, target 50% collapse
+# # Stopping mechanism: if RMSE of collapse prediction < 10% or end of the 600 support points
+# # or no improvements to the RMSE (<0.1% in RMSE change)
+# # whichever comes first
 
-naive_df = run_naive(training_path, testing_path, 
-                  error_tol=0.15, conv_tol=0.001, batch_size=10, maxIter=400)
+# naive_df = run_naive(training_path, testing_path, 
+#                   error_tol=0.15, conv_tol=0.001, batch_size=10, maxIter=400)
 
-naive_df.to_csv('./data/doe/rmse_naive_set.csv', index=False)
+# naive_df.to_csv('./data/doe/rmse_naive_set.csv', index=False)

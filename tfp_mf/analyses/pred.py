@@ -652,10 +652,9 @@ def calc_upfront_cost(X_query, steel_coefs,
     Dm = g*S1*X_query['Tm']/(4*pi**2*Bm)
     Vb = Dm * kM * Ws / 2
     Vst = Vb*(Ws/W)**(1 - 2.5*X_query['zetaM'])
-    Vs = np.array(Vst/X_query['RI']).reshape(-1,1)
+    Vs = Vst/X_query['RI']
     
-    steel_cost = np.array(steel_coefs['intercept'] +
-                          steel_coefs['coef']*Vs).ravel()
+    steel_cost = steel_coefs['intercept'] + steel_coefs['coef']*Vs
     # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
     land_area = (90.0*12.0 + moat_gap)**2
     land_cost = land_cost_per_sqft/144.0 * land_area
