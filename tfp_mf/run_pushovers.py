@@ -421,8 +421,21 @@ def plot_pushover(data_dir):
 #%% main runs
 
 inputString = './inputs/bearingInputVal_baseline.csv'
-outputString = './data/pushover/pushover_addl_baseline.csv'
+outputString = './data/pushover/pushover_baseline.csv'
 run_pushover(inputString, outputString)
+
+inputString = './inputs/bearingInputVal10.csv'
+outputString = './data/pushover/pushover_10.csv'
+run_pushover(inputString, outputString)
+
+inputString = './inputs/bearingInputVal5.csv'
+outputString = './data/pushover/pushover_5.csv'
+run_pushover(inputString, outputString)
+
+inputString = './inputs/bearingInputVal2_5.csv'
+outputString = './data/pushover/pushover_2_5.csv'
+run_pushover(inputString, outputString)
+
 #%%
 
 # inputString = './inputs/bearingInputVal2_5.csv'
@@ -430,7 +443,8 @@ run_pushover(inputString, outputString)
 # run_pushover(inputString, outputString, max_drift_ratio=0.15)
 
 #%%
-plot_pushover('./outputs/pushover/')
+
+# plot_pushover('./outputs/pushover/')
 
 # inputString = './inputs/bearingInputVal5.csv'
 # outputString = 'pushover_addl_5.csv'

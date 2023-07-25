@@ -2655,47 +2655,47 @@ df_val_2['collapse_probs'] = ln_dist.cdf(np.array(df_val_2['max_drift']))
 df_base['max_drift'] = df_base[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
 df_base['collapse_probs'] = ln_dist.cdf(np.array(df_base['max_drift']))
 
-ida_levels = [1.0, 1.5, 2.0]
-val_10_collapse = np.zeros((3,))
-val_5_collapse = np.zeros((3,))
-val_2_collapse = np.zeros((3,))
-baseline_collapse = np.zeros((3,))
+ida_levels_naive = [1.0, 1.5, 2.0]
+val_10_collapse_naive = np.zeros((3,))
+val_5_collapse_naive = np.zeros((3,))
+val_2_collapse_naive = np.zeros((3,))
+baseline_collapse_test = np.zeros((3,))
 
-for i, lvl in enumerate(ida_levels):
+for i, lvl in enumerate(ida_levels_naive):
     val_10_ida = df_val_10[df_val_10['IDALevel']==lvl]
     val_5_ida = df_val_5[df_val_5['IDALevel']==lvl]
     val_2_ida = df_val_2[df_val_2['IDALevel']==lvl]
     base_ida = df_base[df_base['IDALevel']==lvl]
     
-    val_10_collapse[i] = val_10_ida['collapse_probs'].mean()
-    val_5_collapse[i] = val_5_ida['collapse_probs'].mean()
-    val_2_collapse[i] = val_2_ida['collapse_probs'].mean()
+    val_10_collapse_naive[i] = val_10_ida['collapse_probs'].mean()
+    val_5_collapse_naive[i] = val_5_ida['collapse_probs'].mean()
+    val_2_collapse_naive[i] = val_2_ida['collapse_probs'].mean()
     
-    baseline_collapse[i] = base_ida['collapse_probs'].mean()
+    baseline_collapse_test[i] = base_ida['collapse_probs'].mean()
     
 print('==================================')
 print('   Validation results  (1.0 MCE)  ')
 print('==================================')
 
-inverse_collapse = val_10_collapse[0]
+inverse_collapse = val_10_collapse_naive[0]
 
 print('====== INVERSE DESIGN (10%) (Naive) ======')
 print('MCE collapse frequency: ',
       f'{inverse_collapse:.2%}')
 
-inverse_collapse = val_5_collapse[0]
+inverse_collapse = val_5_collapse_naive[0]
 
 print('====== INVERSE DESIGN (5%) (Naive) ======')
 print('MCE collapse frequency: ',
       f'{inverse_collapse:.2%}')
 
-inverse_collapse = val_2_collapse[0]
+inverse_collapse = val_2_collapse_naive[0]
 
 print('====== INVERSE DESIGN (2.5%) (Naive) ======')
 print('MCE collapse frequency: ',
       f'{inverse_collapse:.2%}')
 
-baseline_collapse_mce = baseline_collapse[0]
+baseline_collapse_mce = baseline_collapse_test[0]
 
 print('====== BASELINE DESIGN (test) ======')
 print('MCE collapse frequency: ',
@@ -2727,13 +2727,17 @@ plt.close('all')
 fig = plt.figure(figsize=(13, 10))
 
 
-theta_10, beta_10 = curve_fit(f,ida_levels,val_10_collapse)[0]
+theta_10_naive, beta_10_naive = curve_fit(f,ida_levels_naive,val_10_collapse_naive)[0]
 xx_pr = np.arange(0.01, 4.0, 0.01)
-p = f(xx_pr, theta_10, beta_10)
+p = f(xx_pr, theta_10_naive, beta_10_naive)
 
 MCE_level = float(p[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 1)
-ax1.plot(xx_pr, p)
+ax1.plot(xx_pr, p, label='naive')
+
+p = f(xx_pr, theta_10, beta_10)
+ax1.plot(xx_pr, p, label='adaptive')
+
 ax1.axhline(0.1, linestyle='--', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
 ax1.text(2.0, 0.12, r'10% collapse risk',
@@ -2746,6 +2750,9 @@ ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
 ax1.set_ylabel('Collapse probability', fontsize=axis_font)
 # ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
 ax1.set_title('10% design (naive)', fontsize=title_font)
+for i, lvl in enumerate(ida_levels_naive):
+    ax1.plot([lvl], [val_10_collapse_naive[i]], 
+              marker='x', markersize=15, color="blue")
 for i, lvl in enumerate(ida_levels):
     ax1.plot([lvl], [val_10_collapse[i]], 
               marker='x', markersize=15, color="red")
@@ -2754,13 +2761,16 @@ ax1.set_xlim([0, 4.0])
 ax1.set_ylim([0, 1.0])
 
 ####
-theta_5, beta_5 = curve_fit(f,ida_levels,val_5_collapse)[0]
+theta_5_naive, beta_5_naive = curve_fit(f,ida_levels_naive,val_5_collapse_naive)[0]
 xx_pr = np.arange(0.01, 4.0, 0.01)
-p = f(xx_pr, theta_5, beta_5)
-
+p = f(xx_pr, theta_5_naive, beta_5_naive)
 MCE_level = float(p[xx_pr==1.0])
 ax2=fig.add_subplot(2, 2, 2)
-ax2.plot(xx_pr, p)
+ax2.plot(xx_pr, p, label='naive')
+
+p = f(xx_pr, theta_5, beta_5)
+ax2.plot(xx_pr, p, label='adaptive')
+
 ax2.axhline(0.05, linestyle='--', color='black')
 ax2.axvline(1.0, linestyle='--', color='black')
 ax2.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
@@ -2773,21 +2783,29 @@ ax2.text(0.25, 0.1, f'{MCE_level:,.4f}',
 # ax2.set_ylabel('Collapse probability', fontsize=axis_font)
 # ax2.set_xlabel(r'Scale factor', fontsize=axis_font)
 ax2.set_title('5% design (naive)', fontsize=title_font)
+for i, lvl in enumerate(ida_levels_naive):
+    ax2.plot([lvl], [val_5_collapse_naive[i]], 
+              marker='x', markersize=15, color="blue")
 for i, lvl in enumerate(ida_levels):
     ax2.plot([lvl], [val_5_collapse[i]], 
               marker='x', markersize=15, color="red")
 ax2.grid()
 ax2.set_xlim([0, 4.0])
 ax2.set_ylim([0, 1.0])
+ax2.legend(fontsize=18)
 
 ####
-theta_2, beta_2 = curve_fit(f,ida_levels,val_2_collapse)[0]
+theta_2_naive, beta_2_naive = curve_fit(f,ida_levels_naive,val_2_collapse_naive)[0]
 xx_pr = np.arange(0.01, 4.0, 0.01)
-p = f(xx_pr, theta_2, beta_2)
+p = f(xx_pr, theta_2_naive, beta_2_naive)
 
 MCE_level = float(p[xx_pr==1.0])
 ax3=fig.add_subplot(2, 2, 3)
-ax3.plot(xx_pr, p)
+ax3.plot(xx_pr, p, label='naive')
+
+p = f(xx_pr, theta_2, beta_2)
+ax3.plot(xx_pr, p, label='adaptive')
+
 ax3.axhline(0.025, linestyle='--', color='black')
 ax3.axvline(1.0, linestyle='--', color='black')
 ax3.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
@@ -2800,21 +2818,25 @@ ax3.text(0.25, 0.04, f'{MCE_level:,.4f}',
 ax3.set_ylabel('Collapse probability', fontsize=axis_font)
 ax3.set_xlabel(r'Scale factor', fontsize=axis_font)
 ax3.set_title('2.5% design (naive)', fontsize=title_font)
+for i, lvl in enumerate(ida_levels_naive):
+    ax3.plot([lvl], [val_2_collapse_naive[i]], 
+              marker='x', markersize=15, color="blue")
 for i, lvl in enumerate(ida_levels):
     ax3.plot([lvl], [val_2_collapse[i]], 
               marker='x', markersize=15, color="red")
+
 ax3.grid()
 ax3.set_xlim([0, 4.0])
 ax3.set_ylim([0, 1.0])
 
 ####
-theta_base, beta_base = curve_fit(f,ida_levels,baseline_collapse)[0]
+theta_base, beta_base = curve_fit(f,ida_levels_naive,baseline_collapse_test)[0]
 xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_base, beta_base)
 
 MCE_level = float(p[xx_pr==1.0])
 ax4=fig.add_subplot(2, 2, 4)
-ax4.plot(xx_pr, p)
+ax4.plot(xx_pr, p, label='test')
 ax4.axhline(0.1, linestyle='--', color='black')
 ax4.axvline(1.0, linestyle='--', color='black')
 ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
@@ -2827,9 +2849,9 @@ ax4.text(0.25, 0.12, f'{MCE_level:,.4f}',
 # ax4.set_ylabel('Collapse probability', fontsize=axis_font)
 ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
 ax4.set_title('Baseline design (test)', fontsize=title_font)
-for i, lvl in enumerate(ida_levels):
-    ax4.plot([lvl], [baseline_collapse[i]], 
-              marker='x', markersize=15, color="red")
+for i, lvl in enumerate(ida_levels_naive):
+    ax4.plot([lvl], [baseline_collapse_test[i]], 
+              marker='x', markersize=15, color="blue")
 ax4.grid()
 ax4.set_xlim([0, 4.0])
 ax4.set_ylim([0, 1.0])
