@@ -44,7 +44,7 @@ from scipy.stats import norm
 inv_norm = norm.ppf(0.84)
 x = np.linspace(0, 0.15, 200)
 mu = log(0.1)- 0.25*inv_norm
-sigma = 0.25;
+sigma = 0.25
 
 ln_dist = lognorm(s=sigma, scale=exp(mu))
 p = ln_dist.cdf(np.array(x))
@@ -58,52 +58,53 @@ mu_irr = log(0.01)
 ln_dist_irr = lognorm(s=0.3, scale=exp(mu_irr))
 p_irr = ln_dist_irr.cdf(np.array(x))
 
-ax.plot(x, p_irr, color='red', label='Irreparable (residual)')
+# ax.plot(x, p_irr, color='red', label='Irreparable (residual)')
 
 axis_font = 20
 subt_font = 18
+xright = 0.0
 xleft = 0.15
 ax.set_ylim([0,1])
 ax.set_xlim([0, xleft])
-ax.set_ylabel('Limit state probability', fontsize=axis_font)
-ax.set_xlabel('Drift ratio', fontsize=axis_font)
+ax.set_ylabel('Collapse probability', fontsize=axis_font)
+ax.set_xlabel('Peak drift ratio', fontsize=axis_font)
 
 ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='blue', linestyle=":")
-ax.hlines(y=0.5, xmin=exp(mu), xmax=0.15, color='blue', linestyle=":")
-ax.text(0.115, 0.52, r'$\theta = 0.078$', fontsize=axis_font, color='blue')
+ax.hlines(y=0.5, xmin=xright, xmax=exp(mu), color='blue', linestyle=":")
+ax.text(0.01, 0.52, r'$\theta = 0.078$', fontsize=axis_font, color='blue')
 ax.plot([exp(mu)], [0.5], marker='*', markersize=15, color="blue", linestyle=":")
 
 ax.vlines(x=0.1, ymin=0, ymax=0.84, color='blue', linestyle=":")
-ax.hlines(y=0.84, xmin=0.1, xmax=xleft, color='blue', linestyle=":")
-ax.text(0.115, 0.87, r'$\theta = 0.10$', fontsize=axis_font, color='blue')
+ax.hlines(y=0.84, xmin=xright, xmax=0.1, color='blue', linestyle=":")
+ax.text(0.01, 0.87, r'$\theta = 0.10$', fontsize=axis_font, color='blue')
 ax.plot([0.10], [0.84], marker='*', markersize=15, color="blue", linestyle=":")
 
 lower= ln_dist.ppf(0.16)
 ax.vlines(x=lower, ymin=0, ymax=0.16, color='blue', linestyle=":")
-ax.hlines(y=0.16, xmin=lower, xmax=xleft, color='blue', linestyle=":")
-ax.text(0.115, 0.19, r'$\theta = 0.061$', fontsize=axis_font, color='blue')
+ax.hlines(y=0.16, xmin=xright, xmax=lower, color='blue', linestyle=":")
+ax.text(0.01, 0.19, r'$\theta = 0.061$', fontsize=axis_font, color='blue')
 ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
 
 
-ax.hlines(y=0.5, xmin=0.0, xmax=exp(mu_irr), color='red', linestyle=":")
-lower = ln_dist_irr.ppf(0.16)
-ax.hlines(y=0.16, xmin=0.0, xmax=lower, color='red', linestyle=":")
-upper = ln_dist_irr.ppf(0.84)
-ax.hlines(y=0.84, xmin=0.0, xmax=upper, color='red', linestyle=":")
-ax.plot([lower], [0.16], marker='*', markersize=15, color="red", linestyle=":")
-ax.plot([0.01], [0.5], marker='*', markersize=15, color="red", linestyle=":")
-ax.plot([upper], [0.84], marker='*', markersize=15, color="red", linestyle=":")
-ax.vlines(x=upper, ymin=0, ymax=0.84, color='red', linestyle=":")
-ax.vlines(x=0.01, ymin=0, ymax=0.5, color='red', linestyle=":")
-ax.vlines(x=lower, ymin=0, ymax=0.16, color='red', linestyle=":")
+# ax.hlines(y=0.5, xmin=0.0, xmax=exp(mu_irr), color='red', linestyle=":")
+# lower = ln_dist_irr.ppf(0.16)
+# ax.hlines(y=0.16, xmin=0.0, xmax=lower, color='red', linestyle=":")
+# upper = ln_dist_irr.ppf(0.84)
+# ax.hlines(y=0.84, xmin=0.0, xmax=upper, color='red', linestyle=":")
+# ax.plot([lower], [0.16], marker='*', markersize=15, color="red", linestyle=":")
+# ax.plot([0.01], [0.5], marker='*', markersize=15, color="red", linestyle=":")
+# ax.plot([upper], [0.84], marker='*', markersize=15, color="red", linestyle=":")
+# ax.vlines(x=upper, ymin=0, ymax=0.84, color='red', linestyle=":")
+# ax.vlines(x=0.01, ymin=0, ymax=0.5, color='red', linestyle=":")
+# ax.vlines(x=lower, ymin=0, ymax=0.16, color='red', linestyle=":")
 
-ax.text(0.002, 0.19, r'$\theta = 0.007$', fontsize=axis_font, color='red')
-ax.text(0.002, 0.87, r'$\theta = 0.013$', fontsize=axis_font, color='red')
-ax.text(0.002, 0.53, r'$\theta = 0.010$', fontsize=axis_font, color='red')
+# ax.text(0.002, 0.19, r'$\theta = 0.007$', fontsize=axis_font, color='red')
+# ax.text(0.002, 0.87, r'$\theta = 0.013$', fontsize=axis_font, color='red')
+# ax.text(0.002, 0.53, r'$\theta = 0.010$', fontsize=axis_font, color='red')
 
-ax.set_title('Replacement fragility definition', fontsize=axis_font)
+# ax.set_title('Replacement fragility definition', fontsize=axis_font)
 ax.grid()
-ax.legend(fontsize=label_size, loc='upper center')
+# ax.legend(fontsize=label_size, loc='upper center')
 plt.show()
 
 #%% pre-doe data
@@ -1167,6 +1168,9 @@ print(best_design)
 # print(best_design)
 
 #%% doe effect plots
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import seaborn as sns
+
 X_subset = X_space[X_space['Tm']==3.25]
 fs2_subset = fs2[X_space['Tm']==3.25]
 fmu_subset = fmu[X_space['Tm']==3.25]
@@ -1220,9 +1224,19 @@ cs = ax2.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.2,
                  levels=lvls)
 ax2.clabel(cs, fontsize=clabel_size)
 
+# sns.scatterplot(data=new_pts, x="gapRatio", y="RI",
+#               hue='collapse_prob', edgecolors='k',
+#               legend='brief', palette='Blues',
+#               ax=ax2)
+
+# legend_handle = ax2.legend(fontsize=subt_font, loc='center right',
+#                           title_fontsize=subt_font)
+# legend_handle.get_texts()[0].set_text(r'Collapse frequency')
+
 ax2.scatter(new_pts['gapRatio'], new_pts['RI'], 
             c=new_pts['collapse_prob'],
-            edgecolors='k', s=40.0, cmap='Blues')
+            edgecolors='k', s=40.0, cmap='Blues',
+            label='observed collapse')
 ax2.set_xlim([0.3, 2.0])
 ax2.set_ylim([0.5, 2.0])
 ax2.set_title('b) Collapse risk, naive DoE', fontsize=axis_font)
@@ -1230,6 +1244,9 @@ ax2.set_title('b) Collapse risk, naive DoE', fontsize=axis_font)
 # ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax2.grid()
 
+
+
+# ax2.legend(fontsize=18)
 # then we show all added points
 
 fs2_subset = fs2[X_space['Tm']==3.25]
@@ -1278,7 +1295,7 @@ cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.03,
 ax3.clabel(cs, fontsize=clabel_size)
 
 new_pts = df_doe.tail(n_new)
-ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
+sc= ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
             c=new_pts['collapse_prob'],
             edgecolors='k', s=40.0, cmap='Blues')
 ax3.set_xlim([0.3, 2.0])
@@ -1288,18 +1305,29 @@ ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
 # ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax3.grid()
 
+handles, labels = sc.legend_elements(prop="colors")
+legend2 = ax2.legend(handles, labels, loc="lower right", title="% collapse",
+                      fontsize=16, title_fontsize=16, edgecolor='black')
 
+# cbaxes = inset_axes(ax2, width="3%", height="30%", loc=1) 
+# plt.colorbar(sc, cax=cbaxes, ticks=[0.2, 0.4, 0.6, 0.8])
+
+# fig.colorbar(sc)
 
 fig.tight_layout()
 plt.show()
 
 
 #%% doe effect plots
+# from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+# import seaborn as sns
+
 # X_subset = X_space[X_space['Tm']==3.25]
 # fs2_subset = fs2[X_space['Tm']==3.25]
 # fmu_subset = fmu[X_space['Tm']==3.25]
 
 # n_new = df_doe.shape[0] - df_train.shape[0]
+# n_naive = df_naive.shape[0] - df_train.shape[0]
 
 # fig = plt.figure(figsize=(13, 10))
 
@@ -1315,7 +1343,7 @@ plt.show()
 
 
 # lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-# cs = ax1.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+# cs = ax1.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.3,
 #                  levels=lvls)
 # ax1.clabel(cs, fontsize=clabel_size)
 # ax1.scatter(df_train['gapRatio'], df_train['RI'], 
@@ -1323,80 +1351,57 @@ plt.show()
 #             edgecolors='k', s=40.0, cmap=plt.cm.Blues)
 # ax1.set_xlim([0.3, 2.0])
 # ax1.set_ylim([0.5, 2.0])
-# ax1.set_title('Collapse risk, pre-DoE', fontsize=axis_font)
+# ax1.set_title('a) Collapse risk, pre-DoE', fontsize=axis_font)
 # # ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
 # ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 # ax1.grid()
 
-# # then we show first iteration of weighted variance
+# # then we show results if naive predictions are used
 
-# # tMSE criterion
-# from numpy import exp
-# pi = 3.14159
-# T = 0.5
-# fs2_subset = fs2_train[X_space['Tm']==3.25]
-# fmu_subset = fmu_train[X_space['Tm']==3.25]
-# Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
-# criterion = np.multiply(Wx, fs2_subset)
 
 # ax2=fig.add_subplot(2, 2, 2)
 # # collapse predictions
 # xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 # X_subset = X_space[X_space['Tm']==3.25]
-# fs2_subset = fs2_train[X_space['Tm']==3.25]
-# fmu_subset = fmu_train[X_space['Tm']==3.25]
-# Z = criterion.reshape(xx_pl.shape)
+# fs2_subset = fs2_naive[X_space['Tm']==3.25]
+# fmu_subset = fmu_naive[X_space['Tm']==3.25]
+# Z = fmu_subset.reshape(xx_pl.shape)
 
-# new_pts = df_doe.tail(n_new)
-# new_pts_first = new_pts.head(20)
+# new_pts = df_naive.tail(n_naive)
+# # new_pts_first = new_pts.head(20)
 
-# lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
-# cs = ax2.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+# lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+# cs = ax2.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.2,
 #                  levels=lvls)
 # ax2.clabel(cs, fontsize=clabel_size)
 
-# ax2.scatter(new_pts_first['gapRatio'], new_pts_first['RI'], 
-#             c=new_pts_first.index,
-#             edgecolors='k', s=40.0)
+# # sns.scatterplot(data=new_pts, x="gapRatio", y="RI",
+# #               hue='collapse_prob', edgecolors='k',
+# #               legend='brief', palette='Blues',
+# #               ax=ax2)
+
+# # legend_handle = ax2.legend(fontsize=subt_font, loc='center right',
+# #                           title_fontsize=subt_font)
+# # legend_handle.get_texts()[0].set_text(r'Collapse frequency')
+
+# ax2.scatter(new_pts['gapRatio'], new_pts['RI'], 
+#             c=new_pts['collapse_prob'],
+#             edgecolors='k', s=40.0, cmap='Blues',
+#             label='observed collapse')
 # ax2.set_xlim([0.3, 2.0])
 # ax2.set_ylim([0.5, 2.0])
-# ax2.set_title('Weighted variance, first iteration', fontsize=axis_font)
+# ax2.set_title('b) Collapse risk, naive DoE', fontsize=axis_font)
 # # ax2.set_xlabel(r'Gap ratio', fontsize=axis_font)
 # # ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
 # ax2.grid()
 
+
+
+# ax2.legend(fontsize=18)
 # # then we show all added points
 
 # fs2_subset = fs2[X_space['Tm']==3.25]
 # fmu_subset = fmu[X_space['Tm']==3.25]
-
-# # tMSE criterion
-# from numpy import exp
-# pi = 3.14159
-# T = 0.5
-# Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
-# criterion = np.multiply(Wx, fs2_subset)
-
-# ax3=fig.add_subplot(2, 2, 4)
-# # collapse predictions
-# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-# X_subset = X_space[X_space['Tm']==3.25]
-# Z = criterion.reshape(xx_pl.shape)
-
-# lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
-# cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
-#                  levels=lvls)
-# ax3.clabel(cs, fontsize=clabel_size)
-
-# ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
-#             c=new_pts.index,
-#             edgecolors='k', s=40.0)
-# ax3.set_xlim([0.3, 2.0])
-# ax3.set_ylim([0.5, 2.0])
-# ax3.set_title('Weighted variance, last iteration', fontsize=axis_font)
-# ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
-# # ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
-# ax3.grid()
 
 # # then show final results
 
@@ -1407,19 +1412,54 @@ plt.show()
 # new_pts_first = new_pts.head(10)
 
 # lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-# cs = ax4.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+# cs = ax4.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.2,
 #                  levels=lvls)
 # ax4.clabel(cs, fontsize=clabel_size)
 
-# ax4.scatter(df_doe['gapRatio'], df_doe['RI'], 
-#             c=df_doe['collapse_prob'], cmap='Blues',
+# ax4.scatter(new_pts['gapRatio'], new_pts['RI'], 
+#             c=new_pts['collapse_prob'], cmap='Blues',
 #             edgecolors='k', s=40.0)
 # ax4.set_xlim([0.3, 2.0])
 # ax4.set_ylim([0.5, 2.0])
-# ax4.set_title('Collapse risk, post-DoE', fontsize=axis_font)
+# ax4.set_title('c) Collapse risk, adaptive DoE', fontsize=axis_font)
 # ax4.set_xlabel(r'Gap ratio', fontsize=axis_font)
 # ax4.set_ylabel(r'$R_y$', fontsize=axis_font)
 # ax4.grid()
+
+# # tMSE criterion
+# from numpy import exp
+# pi = 3.14159
+# T = 0.5
+# Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
+# criterion = np.multiply(Wx, fs2_subset)
+
+
+# ax3=fig.add_subplot(2, 2, 4)
+# # collapse predictions
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# X_subset = X_space[X_space['Tm']==3.25]
+# Z = criterion.reshape(xx_pl.shape)
+
+# lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
+# cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.03,
+#                  levels=lvls)
+# ax3.clabel(cs, fontsize=clabel_size)
+
+# new_pts = df_doe.tail(n_new)
+# sc= ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
+#             c=new_pts['collapse_prob'],
+#             edgecolors='k', s=40.0, cmap='Blues')
+# ax3.set_xlim([0.3, 2.0])
+# ax3.set_ylim([0.5, 2.0])
+# ax3.set_title('d) Weighted variance for adaptive DoE', fontsize=axis_font)
+# ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
+# # ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax3.grid()
+
+# cbaxes = inset_axes(ax2, width="3%", height="30%", loc=1) 
+# plt.colorbar(sc, cax=cbaxes, ticks=[0.2, 0.4, 0.6, 0.8])
+
+# # fig.colorbar(sc)
 
 # fig.tight_layout()
 # plt.show()
@@ -2216,8 +2256,289 @@ plt.show()
 # plt.grid(True)
 # plt.show()
 
+#%% bump detector
+
+def find_bump(x, y, tol=0.1):
+    import numpy as np
+    # Find first derivative:
+    m = np.diff(y)/np.diff(x)
+    
+    #Find second derivative
+    # m2 = np.diff(m)/np.diff(x[:-1])
+    
+    # Get x-values where slope sign changes
+    
+    c = len(m)
+    
+    changes_index = []
+    for i in range(1, c):
+        prev_val = m[i-1]
+        val = m[i]
+        err = abs((val - prev_val)/prev_val)
+        if err > tol:
+            changes_index.append(i)
+            
+    changes_index = changes_index[:100]
+            
+    return changes_index
+
+#%% pushover
+
+push_dir = '../data/pushover/'
+push_10_file = 'pushover_10.csv'
+push_5_file = 'pushover_5.csv'
+push_2_file = 'pushover_2_5.csv'
+push_base_file = 'pushover_baseline.csv'
+
+df_push_10 = pd.read_csv(push_dir+push_10_file, index_col=None)
+df_push_5 = pd.read_csv(push_dir+push_5_file, index_col=None)
+df_push_2 = pd.read_csv(push_dir+push_2_file, index_col=None)
+df_push_base = pd.read_csv(push_dir+push_base_file, index_col=None)
 
 
+d_10 = df_push_10['roof_disp'] - df_push_10['isol_disp']
+d_10 = d_10[:-2]
+V_10 = df_push_10['base_shear_normalized']
+V_10 = V_10[:-2]
+d_5 = df_push_5['roof_disp'] - df_push_5['isol_disp']
+V_5 = df_push_5['base_shear_normalized']
+d_2 = df_push_2['roof_disp'] - df_push_2['isol_disp']
+V_2 = df_push_2['base_shear_normalized']
+d_base = df_push_base['roof_disp'] - df_push_base['isol_disp']
+V_base = df_push_base['base_shear_normalized']
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(13, 10))
+
+
+ax1=fig.add_subplot(2, 2, 1)
+
+ax1.plot(d_10, V_10)
+
+Vmax = np.max(V_10)
+idxmax = np.argmax(V_10)
+
+# reasoning: FEMA P-695, pg B-12
+dYielded = d_10[idxmax:]
+VYielded = V_10[idxmax:]
+VInit = V_10[:idxmax]
+dispInit = d_10[:idxmax]
+idxloss = np.argmin(abs(VYielded - 0.8*Vmax))
+du = d_10[idxloss+idxmax]
+
+ch_10_idx = find_bump(d_10, V_10, tol=0.1)
+crit_idx = 0
+bump_d = d_10[ch_10_idx]
+bump_V = V_10[ch_10_idx]
+
+# get superstructure base shear only
+VBump = V_10[crit_idx]
+dBump = d_10[crit_idx]
+VNext = V_10[crit_idx+1]
+dNext = d_10[crit_idx+1]
+kInit = (VNext - VBump)/(dNext - dBump)
+dy_eff = (Vmax - VBump)/kInit + dBump
+
+muT_10 = (du - dBump)/(dy_eff - dBump)
+    
+ax1.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
+ax1.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
+ax1.axvline(du, linestyle='--', color='black', linewidth=0.8)
+ax1.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
+
+ax1.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
+ax1.text(78, Vmax+0.01, r'$V_{max}$',
+          fontsize=subt_font, color='black')
+ax1.text(70, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+          fontsize=subt_font, color='black')
+ax1.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
+          fontsize=subt_font, color='black')
+ax1.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
+          fontsize=subt_font, color='black')
+ax1.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_10,
+          fontsize=subt_font, color='black')
+
+ax1.set_ylabel('Normalized base shear', fontsize=axis_font)
+# ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax1.set_title('10% collapse target', fontsize=title_font)
+
+ax1.grid()
+ax1.set_xlim([0, 90.0])
+ax1.set_ylim([0, 0.4])
+
+
+###
+ax2=fig.add_subplot(2, 2, 2)
+ax2.plot(d_5, V_5)
+
+Vmax = np.max(V_5)
+idxmax = np.argmax(V_5)
+
+dYielded = d_5[idxmax:]
+VYielded = V_5[idxmax:]
+VInit = V_5[:idxmax]
+dispInit = d_5[:idxmax]
+idxloss = np.argmin(abs(VYielded - 0.8*Vmax))
+du = d_5[idxloss+idxmax]
+
+ch_5_idx = find_bump(d_5, V_5, tol=0.05)
+crit_idx = 0
+bump_d = d_5[ch_5_idx]
+bump_V = V_5[ch_5_idx]
+
+# get superstructure base shear only
+VBump = V_5[crit_idx]
+dBump = d_5[crit_idx]
+VNext = V_5[crit_idx+1]
+dNext = d_5[crit_idx+1]
+kInit = (VNext - VBump)/(dNext - dBump)
+dy_eff = (Vmax - VBump)/kInit + dBump
+
+muT_5 = (du - dBump)/(dy_eff - dBump)
+
+
+ax2.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
+ax2.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
+ax2.axvline(du, linestyle='--', color='black', linewidth=0.8)
+ax2.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
+
+ax2.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
+ax2.text(78, Vmax+0.01, r'$V_{max}$',
+          fontsize=subt_font, color='black')
+ax2.text(70, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+          fontsize=subt_font, color='black')
+ax2.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
+          fontsize=subt_font, color='black')
+ax2.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
+          fontsize=subt_font, color='black')
+ax2.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_5,
+          fontsize=subt_font, color='black')
+
+# ax2.set_ylabel('Normalized base shear', fontsize=axis_font)
+ax2.set_title('5% collapse target', fontsize=title_font)
+
+ax2.grid()
+ax2.set_xlim([0, 90.0])
+ax2.set_ylim([0, 0.4])
+
+###
+
+
+ax3=fig.add_subplot(2, 2, 3)
+ax3.plot(d_2, V_2)
+
+Vmax = np.max(V_2)
+idxmax = np.argmax(V_2)
+
+dYielded = d_2[idxmax:]
+VYielded = V_2[idxmax:]
+VInit = V_2[:idxmax]
+dispInit = d_2[:idxmax]
+idxloss = np.argmin(abs(VYielded - 0.8*Vmax))
+du = d_2[idxloss+idxmax]
+
+ch_2_idx = find_bump(d_2, V_2, tol=0.05)
+crit_idx = 0
+bump_d = d_2[ch_2_idx]
+bump_V = V_2[ch_2_idx]
+
+# get superstructure base shear only
+VBump = V_2[crit_idx]
+dBump = d_2[crit_idx]
+VNext = V_2[crit_idx+1]
+dNext = d_2[crit_idx+1]
+kInit = (VNext - VBump)/(dNext - dBump)
+dy_eff = (Vmax - VBump)/kInit + dBump
+
+muT_2 = (du - dBump)/(dy_eff - dBump)
+
+ax3.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
+ax3.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
+ax3.axvline(du, linestyle='--', color='black', linewidth=0.8)
+ax3.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
+
+ax3.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
+ax3.text(78, Vmax+0.01, r'$V_{max}$',
+          fontsize=subt_font, color='black')
+ax3.text(70, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+          fontsize=subt_font, color='black')
+ax3.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
+          fontsize=subt_font, color='black')
+ax3.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
+          fontsize=subt_font, color='black')
+ax3.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_2,
+          fontsize=subt_font, color='black')
+
+ax3.set_xlabel('Roof-base drift (in)', fontsize=axis_font)
+ax3.set_ylabel('Normalized base shear', fontsize=axis_font)
+ax3.set_title('2.5% collapse target', fontsize=title_font)
+
+ax3.grid()
+ax3.set_xlim([0, 90.0])
+ax3.set_ylim([0, 0.4])
+###
+
+
+ax4=fig.add_subplot(2, 2, 4)
+ax4.plot(d_base, V_base)
+
+Vmax = np.max(V_base)
+idxmax = np.argmax(V_base)
+
+dYielded = d_base[idxmax:]
+VYielded = V_base[idxmax:]
+VInit = V_base[:idxmax]
+dispInit = d_base[:idxmax]
+idxloss = np.argmin(abs(VYielded - 0.8*Vmax))
+du = d_base[idxloss+idxmax]
+
+ch_base_idx = find_bump(d_base, V_base, tol=0.05)
+crit_idx = 0
+bump_d = d_base[ch_base_idx]
+bump_V = V_base[ch_base_idx]
+
+# get superstructure base shear only
+VBump = V_base[crit_idx]
+dBump = d_base[crit_idx]
+VNext = V_base[crit_idx+1]
+dNext = d_base[crit_idx+1]
+kInit = (VNext - VBump)/(dNext - dBump)
+dy_eff = (Vmax - VBump)/kInit + dBump
+
+muT_base = (du - dBump)/(dy_eff - dBump)
+
+ax4.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
+ax4.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
+ax4.axvline(du, linestyle='--', color='black', linewidth=0.8)
+ax4.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
+
+ax4.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
+ax4.text(78, Vmax+0.01, r'$V_{max}$',
+          fontsize=subt_font, color='black')
+ax4.text(70, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+          fontsize=subt_font, color='black')
+ax4.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
+          fontsize=subt_font, color='black')
+ax4.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
+          fontsize=subt_font, color='black')
+ax4.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_base,
+          fontsize=subt_font, color='black')
+
+ax4.set_xlabel('Roof-base drift (in)', fontsize=axis_font)
+# ax4.set_ylabel('Normalized base shear', fontsize=axis_font)
+ax4.set_title('Baseline design', fontsize=title_font)
+ax4.set_xlim([0, 90.0])
+ax4.set_ylim([0, 0.4])
+ax4.grid()
 #%% full validation (IDA data)
 
 val_dir = '../data/val/'
@@ -2312,7 +2633,7 @@ base_mce = df_base[df_base['IDALevel']==1.0]
 
 from scipy.stats import lognorm
 from scipy.optimize import curve_fit
-f = lambda x,mu,sigma: lognorm(mu,sigma).cdf(x)
+f = lambda x,mu,sigma: lognorm(sigma,mu).cdf(x)
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -2326,20 +2647,26 @@ plt.close('all')
 
 fig = plt.figure(figsize=(13, 10))
 
+b_TOT = np.linalg.norm([0.2, 0.2, 0.2, 0.4])
 
 theta_10, beta_10 = curve_fit(f,ida_levels,val_10_collapse)[0]
 xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_10, beta_10)
+p2 = f(xx_pr, theta_10, b_TOT)
 
 MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 1)
 ax1.plot(xx_pr, p)
+ax1.plot(xx_pr, p2)
 ax1.axhline(0.1, linestyle='--', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
-ax1.text(2.0, 0.12, r'10% collapse risk',
+ax1.text(2.2, 0.12, r'10% collapse risk',
           fontsize=subt_font, color='black')
-ax1.text(0.25, 0.12, f'{MCE_level:,.4f}',
+ax1.text(1.1, 0.02, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
+ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
+          fontsize=subt_font, color='orange')
 ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -2357,18 +2684,23 @@ ax1.set_ylim([0, 1.0])
 theta_5, beta_5 = curve_fit(f,ida_levels,val_5_collapse)[0]
 xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_5, beta_5)
+p2 = f(xx_pr, theta_5, b_TOT)
 
 MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
 ax2=fig.add_subplot(2, 2, 2)
 ax2.plot(xx_pr, p)
+ax2.plot(xx_pr, p2)
 ax2.axhline(0.05, linestyle='--', color='black')
 ax2.axvline(1.0, linestyle='--', color='black')
 ax2.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax2.text(2.0, 0.07, r'5% collapse risk',
+ax2.text(2.2, 0.07, r'5% collapse risk',
           fontsize=subt_font, color='black')
-ax2.text(0.25, 0.1, f'{MCE_level:,.4f}',
+ax2.text(1.15, 0.08, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
+ax2.text(0.3, 0.17, f'{MCE_level_unc:,.4f}',
+          fontsize=subt_font, color='orange')
 
 # ax2.set_ylabel('Collapse probability', fontsize=axis_font)
 # ax2.set_xlabel(r'Scale factor', fontsize=axis_font)
@@ -2384,18 +2716,23 @@ ax2.set_ylim([0, 1.0])
 theta_2, beta_2 = curve_fit(f,ida_levels,val_2_collapse)[0]
 xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_2, beta_2)
+p2 = f(xx_pr, theta_2, b_TOT)
 
 MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
 ax3=fig.add_subplot(2, 2, 3)
 ax3.plot(xx_pr, p)
+ax3.plot(xx_pr, p2)
 ax3.axhline(0.025, linestyle='--', color='black')
 ax3.axvline(1.0, linestyle='--', color='black')
 ax3.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax3.text(2.0, 0.04, r'2.5% collapse risk',
+ax3.text(2.2, 0.04, r'2.5% collapse risk',
           fontsize=subt_font, color='black')
-ax3.text(0.25, 0.04, f'{MCE_level:,.4f}',
+ax3.text(1.25, 0.04, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
+ax3.text(0.25, 0.04, f'{MCE_level_unc:,.4f}',
+          fontsize=subt_font, color='orange')
 
 ax3.set_ylabel('Collapse probability', fontsize=axis_font)
 ax3.set_xlabel(r'Scale factor', fontsize=axis_font)
@@ -2411,18 +2748,23 @@ ax3.set_ylim([0, 1.0])
 theta_base, beta_base = curve_fit(f,ida_levels,baseline_collapse)[0]
 xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_base, beta_base)
+p2 = f(xx_pr, theta_base, b_TOT)
 
 MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
 ax4=fig.add_subplot(2, 2, 4)
-ax4.plot(xx_pr, p)
+ax4.plot(xx_pr, p, label='Best lognormal fit')
+ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
 ax4.axhline(0.1, linestyle='--', color='black')
 ax4.axvline(1.0, linestyle='--', color='black')
 ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax4.text(2.0, 0.12, r'10% collapse risk',
+ax4.text(2.2, 0.12, r'10% collapse risk',
           fontsize=subt_font, color='black')
-ax4.text(0.25, 0.12, f'{MCE_level:,.4f}',
+ax4.text(1.2, 0.12, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
+ax4.text(0.2, 0.2, f'{MCE_level_unc:,.4f}',
+          fontsize=subt_font, color='orange')
 
 # ax4.set_ylabel('Collapse probability', fontsize=axis_font)
 ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
@@ -2433,6 +2775,7 @@ for i, lvl in enumerate(ida_levels):
 ax4.grid()
 ax4.set_xlim([0, 4.0])
 ax4.set_ylim([0, 1.0])
+ax4.legend(fontsize=subt_font-2, loc='center right')
 
 fig.tight_layout()
 plt.show()
@@ -2708,11 +3051,9 @@ base_mce = df_base[df_base['IDALevel']==1.0]
 
 #%% fit validation curve (curve fit, not MLE)
 
-# TODO: percentage format, legend, uncertainty
-
 from scipy.stats import lognorm
 from scipy.optimize import curve_fit
-f = lambda x,mu,sigma: lognorm(mu,sigma).cdf(x)
+f = lambda x,mu,sigma: lognorm(sigma,mu).cdf(x)
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -2740,7 +3081,7 @@ ax1.plot(xx_pr, p, label='adaptive')
 
 ax1.axhline(0.1, linestyle='--', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
-ax1.text(2.0, 0.12, r'10% collapse risk',
+ax1.text(2.2, 0.12, r'10% collapse risk',
           fontsize=subt_font, color='black')
 ax1.text(0.25, 0.12, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
@@ -2775,7 +3116,7 @@ ax2.axhline(0.05, linestyle='--', color='black')
 ax2.axvline(1.0, linestyle='--', color='black')
 ax2.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax2.text(2.0, 0.07, r'5% collapse risk',
+ax2.text(2.2, 0.07, r'5% collapse risk',
           fontsize=subt_font, color='black')
 ax2.text(0.25, 0.1, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
@@ -2810,7 +3151,7 @@ ax3.axhline(0.025, linestyle='--', color='black')
 ax3.axvline(1.0, linestyle='--', color='black')
 ax3.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax3.text(2.0, 0.04, r'2.5% collapse risk',
+ax3.text(2.2, 0.04, r'2.5% collapse risk',
           fontsize=subt_font, color='black')
 ax3.text(0.25, 0.04, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
@@ -2841,7 +3182,7 @@ ax4.axhline(0.1, linestyle='--', color='black')
 ax4.axvline(1.0, linestyle='--', color='black')
 ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax4.text(2.0, 0.12, r'10% collapse risk',
+ax4.text(2.2, 0.12, r'10% collapse risk',
           fontsize=subt_font, color='black')
 ax4.text(0.25, 0.12, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
