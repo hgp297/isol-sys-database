@@ -335,27 +335,27 @@ rmse_df_naive.columns = ['rmse']
 
 plt.close('all')
 
-fig = plt.figure(figsize=(13, 6))
+fig = plt.figure(figsize=(9, 6))
 
-ax1=fig.add_subplot(1, 2, 1)
+ax1=fig.add_subplot(1, 1, 1)
 ax1.plot(rmse_df.index*10, rmse_df['rmse'], label='Adaptive')
 ax1.plot(rmse_df_naive.index*10, rmse_df_naive['rmse'], label='Naive')
-ax1.set_title(r'Root mean squared error', fontsize=axis_font)
+# ax1.set_title(r'Root mean squared error', fontsize=axis_font)
 ax1.set_xlabel(r'Points added', fontsize=axis_font)
-ax1.set_ylabel(r'Metric', fontsize=axis_font)
+ax1.set_ylabel(r'Root mean squared error (RMSE)', fontsize=axis_font)
 ax1.set_xlim([0, 140])
 ax1.set_ylim([0.19, 0.28])
 plt.grid(True)
 
 
-ax2=fig.add_subplot(1, 2, 2)
-ax2.plot(rmse_df.index*10, mae_df['mae'], label='Adaptive')
-ax2.plot(rmse_df_naive.index*10, mae_df_naive['mae'], label='Naive')
-ax2.set_title('Mean absolute error', fontsize=axis_font)
-ax2.set_xlabel('Points added', fontsize=axis_font)
-# ax2.set_ylabel('Metric', fontsize=axis_font)
-ax2.set_xlim([0, 140])
-ax2.set_ylim([0.08, 0.14])
+# ax2=fig.add_subplot(1, 2, 2)
+# ax2.plot(rmse_df.index*10, mae_df['mae'], label='Adaptive')
+# ax2.plot(rmse_df_naive.index*10, mae_df_naive['mae'], label='Naive')
+# ax2.set_title('Mean absolute error', fontsize=axis_font)
+# ax2.set_xlabel('Points added', fontsize=axis_font)
+# # ax2.set_ylabel('Metric', fontsize=axis_font)
+# ax2.set_xlim([0, 140])
+# ax2.set_ylim([0.08, 0.14])
 plt.grid(True)
 plt.legend(fontsize=axis_font)
 
@@ -1168,8 +1168,10 @@ print(best_design)
 # print(best_design)
 
 #%% doe effect plots
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+# from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import seaborn as sns
+clabel_size = 16
+axis_font = 20
 
 X_subset = X_space[X_space['Tm']==3.25]
 fs2_subset = fs2[X_space['Tm']==3.25]
@@ -1192,9 +1194,10 @@ Z = fmu_subset.reshape(xx_pl.shape)
 
 
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax1.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.3,
+cs = ax1.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.5,
                  levels=lvls)
-ax1.clabel(cs, fontsize=clabel_size)
+cl = ax1.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in cl]
 ax1.scatter(df_train['gapRatio'], df_train['RI'], 
             c=df_train['collapse_prob'],
             edgecolors='k', s=40.0, cmap=plt.cm.Blues)
@@ -1220,10 +1223,10 @@ new_pts = df_naive.tail(n_naive)
 # new_pts_first = new_pts.head(20)
 
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax2.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.2,
+cs = ax2.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.4,
                  levels=lvls)
-ax2.clabel(cs, fontsize=clabel_size)
-
+cl = ax2.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in cl]
 # sns.scatterplot(data=new_pts, x="gapRatio", y="RI",
 #               hue='collapse_prob', edgecolors='k',
 #               legend='brief', palette='Blues',
@@ -1261,9 +1264,10 @@ new_pts = df_doe.tail(n_new)
 new_pts_first = new_pts.head(10)
 
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax4.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.2,
+cs = ax4.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.5,
                  levels=lvls)
-ax4.clabel(cs, fontsize=clabel_size)
+cl = ax4.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in cl]
 
 ax4.scatter(new_pts['gapRatio'], new_pts['RI'], 
             c=new_pts['collapse_prob'], cmap='Blues',
@@ -1290,9 +1294,10 @@ X_subset = X_space[X_space['Tm']==3.25]
 Z = criterion.reshape(xx_pl.shape)
 
 lvls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
-cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.03,
+cs = ax3.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-0.05,
                  levels=lvls)
-ax3.clabel(cs, fontsize=clabel_size)
+cl = ax3.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in cl]
 
 new_pts = df_doe.tail(n_new)
 sc= ax3.scatter(new_pts['gapRatio'], new_pts['RI'], 
@@ -1306,7 +1311,7 @@ ax3.set_xlabel(r'Gap ratio', fontsize=axis_font)
 ax3.grid()
 
 handles, labels = sc.legend_elements(prop="colors")
-legend2 = ax2.legend(handles, labels, loc="lower right", title="% collapse",
+legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Pr(collapse)",
                       fontsize=16, title_fontsize=16, edgecolor='black')
 
 # cbaxes = inset_axes(ax2, width="3%", height="30%", loc=1) 
@@ -2295,6 +2300,18 @@ df_push_5 = pd.read_csv(push_dir+push_5_file, index_col=None)
 df_push_2 = pd.read_csv(push_dir+push_2_file, index_col=None)
 df_push_base = pd.read_csv(push_dir+push_base_file, index_col=None)
 
+val_dir = '../data/val/'
+val_10_file = 'ida_jse_10.csv'
+val_5_file = 'ida_jse_5.csv'
+val_2_file = 'ida_jse_2_5.csv'
+
+baseline_dir = '../data/val/'
+baseline_file = 'ida_jse_baseline.csv'
+
+df_val_10 = pd.read_csv(val_dir+val_10_file, index_col=None)
+df_val_5 = pd.read_csv(val_dir+val_5_file, index_col=None)
+df_val_2 = pd.read_csv(val_dir+val_2_file, index_col=None)
+df_base = pd.read_csv(baseline_dir+baseline_file, index_col=None)
 
 d_10 = df_push_10['roof_disp'] - df_push_10['isol_disp']
 d_10 = d_10[:-2]
@@ -2326,6 +2343,14 @@ ax1.plot(d_10, V_10)
 
 Vmax = np.max(V_10)
 idxmax = np.argmax(V_10)
+
+# calculate overstrength
+df_info = df_val_10
+Te = df_info['Tm'].max()
+ke = (2*pi/Te)**2/g
+Dm = df_info['moatGap'].max()
+Vb_des_normalized = Dm*ke/2 # 2 frames, Ws = 2227.5
+overstrength = Vmax/Vb_des_normalized
 
 # reasoning: FEMA P-695, pg B-12
 dYielded = d_10[idxmax:]
@@ -2366,6 +2391,8 @@ ax1.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
           fontsize=subt_font, color='black')
 ax1.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_10,
           fontsize=subt_font, color='black')
+ax1.text(55, 0.03, '$\Omega = $ %1.3f' % overstrength,
+          fontsize=subt_font, color='black')
 
 ax1.set_ylabel('Normalized base shear', fontsize=axis_font)
 # ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
@@ -2382,6 +2409,14 @@ ax2.plot(d_5, V_5)
 
 Vmax = np.max(V_5)
 idxmax = np.argmax(V_5)
+
+# calculate overstrength
+df_info = df_val_10
+Te = df_info['Tm'].max()
+ke = (2*pi/Te)**2/g
+Dm = df_info['moatGap'].max()
+Vb_des_normalized = Dm*ke/2 # 2 frames, Ws = 2227.5
+overstrength = Vmax/Vb_des_normalized
 
 dYielded = d_5[idxmax:]
 VYielded = V_5[idxmax:]
@@ -2422,7 +2457,8 @@ ax2.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
           fontsize=subt_font, color='black')
 ax2.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_5,
           fontsize=subt_font, color='black')
-
+ax2.text(55, 0.03, '$\Omega = $ %1.3f' % overstrength,
+          fontsize=subt_font, color='black')
 # ax2.set_ylabel('Normalized base shear', fontsize=axis_font)
 ax2.set_title('5% collapse target', fontsize=title_font)
 
@@ -2438,6 +2474,14 @@ ax3.plot(d_2, V_2)
 
 Vmax = np.max(V_2)
 idxmax = np.argmax(V_2)
+
+# calculate overstrength
+df_info = df_val_10
+Te = df_info['Tm'].max()
+ke = (2*pi/Te)**2/g
+Dm = df_info['moatGap'].max()
+Vb_des_normalized = Dm*ke/2 # 2 frames, Ws = 2227.5
+overstrength = Vmax/Vb_des_normalized
 
 dYielded = d_2[idxmax:]
 VYielded = V_2[idxmax:]
@@ -2477,7 +2521,8 @@ ax3.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
           fontsize=subt_font, color='black')
 ax3.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_2,
           fontsize=subt_font, color='black')
-
+ax3.text(55, 0.03, '$\Omega = $ %1.3f' % overstrength,
+          fontsize=subt_font, color='black')
 ax3.set_xlabel('Roof-base drift (in)', fontsize=axis_font)
 ax3.set_ylabel('Normalized base shear', fontsize=axis_font)
 ax3.set_title('2.5% collapse target', fontsize=title_font)
@@ -2493,6 +2538,14 @@ ax4.plot(d_base, V_base)
 
 Vmax = np.max(V_base)
 idxmax = np.argmax(V_base)
+
+# calculate overstrength
+df_info = df_val_10
+Te = df_info['Tm'].max()
+ke = (2*pi/Te)**2/g
+Dm = df_info['moatGap'].max()
+Vb_des_normalized = Dm*ke/2 # 2 frames, Ws = 2227.5
+overstrength = Vmax/Vb_des_normalized
 
 dYielded = d_base[idxmax:]
 VYielded = V_base[idxmax:]
@@ -2531,6 +2584,8 @@ ax4.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
 ax4.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
           fontsize=subt_font, color='black')
 ax4.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_base,
+          fontsize=subt_font, color='black')
+ax4.text(55, 0.03, '$\Omega = $ %1.3f' % overstrength,
           fontsize=subt_font, color='black')
 
 ax4.set_xlabel('Roof-base drift (in)', fontsize=axis_font)
@@ -2658,15 +2713,15 @@ MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 1)
 ax1.plot(xx_pr, p)
-ax1.plot(xx_pr, p2)
+# ax1.plot(xx_pr, p2)
 ax1.axhline(0.1, linestyle='--', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
 ax1.text(2.2, 0.12, r'10% collapse risk',
           fontsize=subt_font, color='black')
-ax1.text(1.1, 0.02, f'{MCE_level:,.4f}',
+ax1.text(0.25, 0.13, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
-ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
-          fontsize=subt_font, color='orange')
+# ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
 ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -2690,17 +2745,17 @@ MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
 ax2=fig.add_subplot(2, 2, 2)
 ax2.plot(xx_pr, p)
-ax2.plot(xx_pr, p2)
+# ax2.plot(xx_pr, p2)
 ax2.axhline(0.05, linestyle='--', color='black')
 ax2.axvline(1.0, linestyle='--', color='black')
 ax2.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 ax2.text(2.2, 0.07, r'5% collapse risk',
           fontsize=subt_font, color='black')
-ax2.text(1.15, 0.08, f'{MCE_level:,.4f}',
+ax2.text(0.25, 0.08, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
-ax2.text(0.3, 0.17, f'{MCE_level_unc:,.4f}',
-          fontsize=subt_font, color='orange')
+# ax2.text(0.3, 0.17, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
 
 # ax2.set_ylabel('Collapse probability', fontsize=axis_font)
 # ax2.set_xlabel(r'Scale factor', fontsize=axis_font)
@@ -2722,17 +2777,17 @@ MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
 ax3=fig.add_subplot(2, 2, 3)
 ax3.plot(xx_pr, p)
-ax3.plot(xx_pr, p2)
+# ax3.plot(xx_pr, p2)
 ax3.axhline(0.025, linestyle='--', color='black')
 ax3.axvline(1.0, linestyle='--', color='black')
 ax3.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 ax3.text(2.2, 0.04, r'2.5% collapse risk',
           fontsize=subt_font, color='black')
-ax3.text(1.25, 0.04, f'{MCE_level:,.4f}',
+ax3.text(0.3, 0.045, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
-ax3.text(0.25, 0.04, f'{MCE_level_unc:,.4f}',
-          fontsize=subt_font, color='orange')
+# ax3.text(0.25, 0.04, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
 
 ax3.set_ylabel('Collapse probability', fontsize=axis_font)
 ax3.set_xlabel(r'Scale factor', fontsize=axis_font)
@@ -2754,17 +2809,17 @@ MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
 ax4=fig.add_subplot(2, 2, 4)
 ax4.plot(xx_pr, p, label='Best lognormal fit')
-ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
+# ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
 ax4.axhline(0.1, linestyle='--', color='black')
 ax4.axvline(1.0, linestyle='--', color='black')
 ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 ax4.text(2.2, 0.12, r'10% collapse risk',
           fontsize=subt_font, color='black')
-ax4.text(1.2, 0.12, f'{MCE_level:,.4f}',
+ax4.text(0.25, 0.13, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='blue')
-ax4.text(0.2, 0.2, f'{MCE_level_unc:,.4f}',
-          fontsize=subt_font, color='orange')
+# ax4.text(0.2, 0.2, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
 
 # ax4.set_ylabel('Collapse probability', fontsize=axis_font)
 ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
@@ -2775,7 +2830,7 @@ for i, lvl in enumerate(ida_levels):
 ax4.grid()
 ax4.set_xlim([0, 4.0])
 ax4.set_ylim([0, 1.0])
-ax4.legend(fontsize=subt_font-2, loc='center right')
+# ax4.legend(fontsize=subt_font-2, loc='center right')
 
 fig.tight_layout()
 plt.show()
@@ -2883,7 +2938,7 @@ ax.set_xlabel('Max drift', fontsize=axis_font)
 ax.axvline(0.078, linestyle='--', color='black')
 ax.grid(visible=True)
 
-ax.text(0.08, 3.45, r'50% collapse threshold, PID=0.078', fontsize=axis_font, color='black')
+ax.text(0.08, 3.45, r'50% collapse threshold, $\theta=0.078$', fontsize=axis_font, color='black')
 # ax.set_xscale("log")
 plt.show()
 
