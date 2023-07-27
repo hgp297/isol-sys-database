@@ -7,8 +7,8 @@
 *.pptx
 *.xlsx
 */figures*
-/tfp_mf/data/val/
-/tfp_mf/data/pushover/
+./tfp_mf/data/val/
+./tfp_mf/data/pushover/
 old/
 *temp_save.csv
 *.zip
