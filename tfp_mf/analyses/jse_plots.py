@@ -105,6 +105,8 @@ ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
 # ax.set_title('Replacement fragility definition', fontsize=axis_font)
 ax.grid()
 # ax.legend(fontsize=label_size, loc='upper center')
+plt.savefig('./figures_jse/collapse_def.eps', dpi=1200, format='eps')
+plt.savefig('./figures_jse/collapse_def.svg', dpi=600, format='svg')
 plt.show()
 
 #%% pre-doe data
@@ -360,6 +362,8 @@ plt.grid(True)
 plt.legend(fontsize=axis_font)
 
 fig.tight_layout()
+plt.savefig('./figures_jse/doe_convergence.eps', dpi=1200, format='eps')
+plt.savefig('./figures_jse/doe_convergence.svg', dpi=600, format='svg')
 plt.show()
 
 #%% naive-doe data
@@ -1320,6 +1324,8 @@ legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Pr(collapse)",
 # fig.colorbar(sc)
 
 fig.tight_layout()
+plt.savefig('./figures_jse/doe_compare.eps', dpi=1200, format='eps')
+plt.savefig('./figures_jse/doe_compare.svg', dpi=600, format='svg')
 plt.show()
 
 
@@ -1938,6 +1944,8 @@ ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 # ax1.contour(xx, yy, Z, levels = prob_list, colors=('red', 'brown', 'black'),
 #             linestyles=('-'),linewidths=(2,))
+plt.savefig('./figures_jse/gap_Ry_contour.eps', dpi=1200, format='eps')
+plt.savefig('./figures_jse/gap_Ry_contour.svg', dpi=600, format='svg')
 plt.show()
 
 #%% contour plots, Tm vs zeta
@@ -2130,6 +2138,22 @@ Tm_price_grid = np.zeros([4,4])
 zetaM_price_grid = np.zeros([4,4])
 moat_price_grid = np.zeros([4,4])
 
+
+res = 75
+xx, yy, uu = np.meshgrid(np.linspace(0.3, 2.0,
+                                      res),
+                          np.linspace(0.5, 2.0,
+                                      res),
+                          np.linspace(2.5, 4.0,
+                                      res))
+                             
+X_space = pd.DataFrame({'gapRatio':xx.ravel(),
+                      'RI':yy.ravel(),
+                      'Tm':uu.ravel(),
+                      'zetaM':np.repeat(0.2,res**3)})
+fmu = mdl_doe.gpr.predict(X_space)
+space_collapse_pred = pd.DataFrame(fmu, columns=['collapse probability'])
+
 risk_thresh = 0.1
 ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
                       risk_thresh]
@@ -2207,7 +2231,6 @@ moat_df = pd.DataFrame(data=moat_price_grid,
 
 # Draw a heatmap with the numeric values in each cell
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 plt.close('all')
 fig, axs = plt.subplots(2, 2, figsize=(13, 9))
@@ -2232,10 +2255,10 @@ ax3.set_title(r'$T_M$ (s)', fontsize=subt_font)
 ax3.set_ylabel('Land cost per sq ft.', fontsize=axis_font)
 fig.tight_layout()
 
-sns.heatmap(moat_df, annot=True, fmt='.3g', cmap='Blues', cbar=False,
+sns.heatmap(moat_df*2.54, annot=True, fmt='.3g', cmap='Blues', cbar=False,
             linewidths=.5, ax=ax4, yticklabels=False,  annot_kws={'size': 18})
 ax4.set_xlabel('Steel cost per lb.', fontsize=axis_font)
-ax4.set_title(r'Moat gap (in)', fontsize=subt_font)
+ax4.set_title(r'Moat gap (cm)', fontsize=subt_font)
 fig.tight_layout()
 plt.show()
 
@@ -2313,15 +2336,15 @@ df_val_5 = pd.read_csv(val_dir+val_5_file, index_col=None)
 df_val_2 = pd.read_csv(val_dir+val_2_file, index_col=None)
 df_base = pd.read_csv(baseline_dir+baseline_file, index_col=None)
 
-d_10 = df_push_10['roof_disp'] - df_push_10['isol_disp']
+d_10 = (df_push_10['roof_disp'] - df_push_10['isol_disp'])*2.54
 d_10 = d_10[:-2]
 V_10 = df_push_10['base_shear_normalized']
 V_10 = V_10[:-2]
-d_5 = df_push_5['roof_disp'] - df_push_5['isol_disp']
+d_5 = (df_push_5['roof_disp'] - df_push_5['isol_disp'])*2.54
 V_5 = df_push_5['base_shear_normalized']
-d_2 = df_push_2['roof_disp'] - df_push_2['isol_disp']
+d_2 = (df_push_2['roof_disp'] - df_push_2['isol_disp'])*2.54
 V_2 = df_push_2['base_shear_normalized']
-d_base = df_push_base['roof_disp'] - df_push_base['isol_disp']
+d_base = (df_push_base['roof_disp'] - df_push_base['isol_disp'])*2.54
 V_base = df_push_base['base_shear_normalized']
 
 plt.rcParams["font.family"] = "serif"
@@ -2381,17 +2404,17 @@ ax1.axvline(du, linestyle='--', color='black', linewidth=0.8)
 ax1.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
 
 ax1.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
-ax1.text(78, Vmax+0.01, r'$V_{max}$',
+ax1.text(78*2.54, Vmax+0.01, r'$V_{max}$',
           fontsize=subt_font, color='black')
-ax1.text(70, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+ax1.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
           fontsize=subt_font, color='black')
 ax1.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
           fontsize=subt_font, color='black')
 ax1.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
           fontsize=subt_font, color='black')
-ax1.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_10,
+ax1.text(55*2.54, 0.08, '$\mu_T = $ %1.3f' % muT_10,
           fontsize=subt_font, color='black')
-ax1.text(55, 0.03, '$\Omega = $ %1.3f' % overstrength,
+ax1.text(55*2.54, 0.03, '$\Omega = $ %1.3f' % overstrength,
           fontsize=subt_font, color='black')
 
 ax1.set_ylabel('Normalized base shear', fontsize=axis_font)
@@ -2399,7 +2422,7 @@ ax1.set_ylabel('Normalized base shear', fontsize=axis_font)
 ax1.set_title('10% collapse target', fontsize=title_font)
 
 ax1.grid()
-ax1.set_xlim([0, 90.0])
+ax1.set_xlim([0, 90.0*2.54])
 ax1.set_ylim([0, 0.4])
 
 
@@ -2447,23 +2470,23 @@ ax2.axvline(du, linestyle='--', color='black', linewidth=0.8)
 ax2.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
 
 ax2.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
-ax2.text(78, Vmax+0.01, r'$V_{max}$',
+ax2.text(78*2.54, Vmax+0.01, r'$V_{max}$',
           fontsize=subt_font, color='black')
-ax2.text(70, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+ax2.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
           fontsize=subt_font, color='black')
 ax2.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
           fontsize=subt_font, color='black')
 ax2.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
           fontsize=subt_font, color='black')
-ax2.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_5,
+ax2.text(55*2.54, 0.08, '$\mu_T = $ %1.3f' % muT_5,
           fontsize=subt_font, color='black')
-ax2.text(55, 0.03, '$\Omega = $ %1.3f' % overstrength,
+ax2.text(55*2.54, 0.03, '$\Omega = $ %1.3f' % overstrength,
           fontsize=subt_font, color='black')
 # ax2.set_ylabel('Normalized base shear', fontsize=axis_font)
 ax2.set_title('5% collapse target', fontsize=title_font)
 
 ax2.grid()
-ax2.set_xlim([0, 90.0])
+ax2.set_xlim([0, 90.0*2.54])
 ax2.set_ylim([0, 0.4])
 
 ###
@@ -2511,24 +2534,24 @@ ax3.axvline(du, linestyle='--', color='black', linewidth=0.8)
 ax3.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
 
 ax3.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
-ax3.text(78, Vmax+0.01, r'$V_{max}$',
+ax3.text(78*2.54, Vmax+0.01, r'$V_{max}$',
           fontsize=subt_font, color='black')
-ax3.text(70, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+ax3.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
           fontsize=subt_font, color='black')
 ax3.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
           fontsize=subt_font, color='black')
 ax3.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
           fontsize=subt_font, color='black')
-ax3.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_2,
+ax3.text(55*2.54, 0.08, '$\mu_T = $ %1.3f' % muT_2,
           fontsize=subt_font, color='black')
-ax3.text(55, 0.03, '$\Omega = $ %1.3f' % overstrength,
+ax3.text(55*2.54, 0.03, '$\Omega = $ %1.3f' % overstrength,
           fontsize=subt_font, color='black')
-ax3.set_xlabel('Roof-base drift (in)', fontsize=axis_font)
+ax3.set_xlabel('Roof-base drift (cm)', fontsize=axis_font)
 ax3.set_ylabel('Normalized base shear', fontsize=axis_font)
 ax3.set_title('2.5% collapse target', fontsize=title_font)
 
 ax3.grid()
-ax3.set_xlim([0, 90.0])
+ax3.set_xlim([0, 90.0*2.54])
 ax3.set_ylim([0, 0.4])
 ###
 
@@ -2575,25 +2598,29 @@ ax4.axvline(du, linestyle='--', color='black', linewidth=0.8)
 ax4.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
 
 ax4.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
-ax4.text(78, Vmax+0.01, r'$V_{max}$',
+ax4.text(78*2.54, Vmax+0.01, r'$V_{max}$',
           fontsize=subt_font, color='black')
-ax4.text(70, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+ax4.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
           fontsize=subt_font, color='black')
 ax4.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
           fontsize=subt_font, color='black')
 ax4.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
           fontsize=subt_font, color='black')
-ax4.text(55, 0.08, '$\mu_T = $ %1.3f' % muT_base,
+ax4.text(55*2.54, 0.08, '$\mu_T = $ %1.3f' % muT_base,
           fontsize=subt_font, color='black')
-ax4.text(55, 0.03, '$\Omega = $ %1.3f' % overstrength,
+ax4.text(55*2.54, 0.03, '$\Omega = $ %1.3f' % overstrength,
           fontsize=subt_font, color='black')
 
-ax4.set_xlabel('Roof-base drift (in)', fontsize=axis_font)
+ax4.set_xlabel('Roof-base drift (cm)', fontsize=axis_font)
 # ax4.set_ylabel('Normalized base shear', fontsize=axis_font)
 ax4.set_title('Baseline design', fontsize=title_font)
-ax4.set_xlim([0, 90.0])
+ax4.set_xlim([0, 90.0*2.54])
 ax4.set_ylim([0, 0.4])
 ax4.grid()
+fig.tight_layout()
+plt.savefig('./figures_jse/pushover.eps', dpi=1200, format='eps')
+plt.savefig('./figures_jse/pushover.svg', dpi=600, format='svg')
+plt.show()
 #%% full validation (IDA data)
 
 val_dir = '../data/val/'
@@ -2833,6 +2860,8 @@ ax4.set_ylim([0, 1.0])
 # ax4.legend(fontsize=subt_font-2, loc='center right')
 
 fig.tight_layout()
+plt.savefig('./figures_jse/fragility_curve.eps', dpi=1200, format='eps')
+plt.savefig('./figures_jse/fragility_curve.svg', dpi=600, format='svg')
 plt.show()
 
 print('10% fit mean:', exp(theta_10))
@@ -2940,6 +2969,8 @@ ax.grid(visible=True)
 
 ax.text(0.08, 3.45, r'50% collapse threshold, $\theta=0.078$', fontsize=axis_font, color='black')
 # ax.set_xscale("log")
+plt.savefig('./figures_jse/drift_box.eps', dpi=1200, format='eps')
+plt.savefig('./figures_jse/drift_box.svg', dpi=600, format='svg')
 plt.show()
 
 
@@ -3014,6 +3045,8 @@ ax4.set_title('Bearing damping', fontsize=title_font)
 ax4.grid(True)
 
 fig.tight_layout()
+plt.savefig('./figures_jse/data_scatter.eps', dpi=1200, format='eps')
+plt.savefig('./figures_jse/data_scatter.svg', dpi=600, format='svg')
 plt.show()
 
 #%% full validation (IDA data) (naive/test set)
