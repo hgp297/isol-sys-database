@@ -2120,13 +2120,14 @@ def get_properties(shape):
 #              Bilinear deteriorating model parameters
 ###############################################################################
 
-# TODO: update parameters to match SMRF definitions
+# TODO: verify against experimental data?
 def modified_IK_params(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi
     Es = 29000 # ksi
 
     Zx = float(shape['Zx'])
+    # Sx = float(shape['Sx'])
     Iz = float(shape['Ix'])
     d = float(shape['d'])
     htw = float(shape['h/tw'])
@@ -2135,13 +2136,13 @@ def modified_IK_params(shape, L):
     c1 = 25.4
     c2 = 6.895
 
+    # approximate adjustment for isotropic hardening
     My = Fy * Zx * 1.17
     thy = My/(6*Es*Iz/L)
     Ke = My/thy
     # consider using Lb = 0 for beams bc of slab?
     Lb = L
     kappa = 0.4
-    thu = 0.055
 
     if d > 21.0:
         Lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
@@ -2159,13 +2160,10 @@ def modified_IK_params(shape, L):
             (c2*Fy/355)**(-0.230))
         thpc = (5.63*(htw)**(-0.565)*(bftf)**(-0.800)
             *(c1*d/533)**(-0.280)*(c2*Fy/355)**(-0.430))
+        
+    thu = 0.2
 
-    # Lam = 1000
-    # thp = 0.025
-    # thpc = 0.3
-    thu = 0.4
-
-    return(Ke, My, Lam, thp, thpc, kappa, thu)  
+    return(Ke, My, Lam, thp, thpc, kappa, thu)
 
 ###############################################################################
 #              Brace geometry
