@@ -511,32 +511,35 @@ class Building:
         Ke_beam = n*6.0*Es*Iz_beam/(0.8*L_beam)
         Ke_roof = n*6.0*Es*Iz_roof/(0.8*L_beam)
     
-        McMy = 1.05 # ratio of capping moment to yield moment, Mc / My
-        a_mem_col = (n+1.0)*(My_col*(McMy-1.0))/(Ke_col*thp_col)
-        b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
+        McMy = 1.11 # ratio of capping moment to yield moment, Mc / My
+        # a_mem_col = (n+1.0)*(My_col*(McMy-1.0))/(Ke_col*thp_col)
+        # b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
     
-        a_mem_beam = (n+1.0)*(My_col*(McMy-1.0))/(Ke_beam*thp_beam)
-        b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
+        # a_mem_beam = (n+1.0)*(My_col*(McMy-1.0))/(Ke_beam*thp_beam)
+        # b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
     
-        # TODO: change this to the new IMKBilin element
-        ops.uniaxialMaterial('Bilin', steel_col_tag, Ke_col, b_col, b_col,
-                              My_col, -My_col, lam_col, 
-                              0, 0, 0, cIK, cIK, cIK, cIK, 
-                              thp_col, thp_col, thpc_col, thpc_col, 
-                              kappa_col, kappa_col, thu_col, thu_col, DIK, DIK)
-    
-        ops.uniaxialMaterial('Bilin', steel_beam_tag, Ke_beam, b_beam, b_beam,
-                              My_beam, -My_beam, lam_beam, 
-                              0, 0, 0, cIK, cIK, cIK, cIK, 
-                              thp_beam, thp_beam, thpc_beam, thpc_beam, 
-                              kappa_beam, kappa_beam, thu_beam, thu_beam, DIK, DIK)
-    
-        ops.uniaxialMaterial('Bilin', steel_roof_tag, Ke_roof, b_beam, b_beam,
-                              My_roof, -My_roof, lam_roof, 
-                              0, 0, 0, cIK, cIK, cIK, cIK, 
-                              thp_roof, thp_roof, thpc_roof, thpc_roof, 
-                              kappa_roof, kappa_roof, thu_roof, thu_roof, DIK, DIK)
+         
+        ops.uniaxialMaterial('IMKBilin', steel_col_tag, Ke_col,
+                              thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
+                              thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
+                              Lam_col, Lam_col, Lam_col,
+                              cIK, cIK, cIK,
+                              DIK, DIK, DIK)
         
+        ops.uniaxialMaterial('IMKBilin', steel_beam_tag, Ke_beam,
+                              thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
+                              thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
+                              Lam_beam, Lam_beam, Lam_beam,
+                              cIK, cIK, cIK,
+                              DIK, DIK, DIK)
+
+        ops.uniaxialMaterial('IMKBilin', steel_roof_tag, Ke_roof,
+                              thp_roof, thpc_roof, thu_roof, My_roof, McMy, kappa_roof,
+                              thp_roof, thpc_roof, thu_roof, My_roof, McMy, kappa_roof,
+                              Lam_roof, Lam_roof, Lam_roof,
+                              cIK, cIK, cIK,
+                              DIK, DIK, DIK)
+
 ################################################################################
 # define springs
 ################################################################################
