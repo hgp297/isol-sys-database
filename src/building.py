@@ -522,21 +522,21 @@ class Building:
         ops.uniaxialMaterial('IMKBilin', steel_col_tag, Ke_col,
                               thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
                               thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
-                              Lam_col, Lam_col, Lam_col,
+                              lam_col, lam_col, lam_col,
                               cIK, cIK, cIK,
                               DIK, DIK, DIK)
         
         ops.uniaxialMaterial('IMKBilin', steel_beam_tag, Ke_beam,
                               thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
                               thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
-                              Lam_beam, Lam_beam, Lam_beam,
+                              lam_beam, lam_beam, lam_beam,
                               cIK, cIK, cIK,
                               DIK, DIK, DIK)
 
         ops.uniaxialMaterial('IMKBilin', steel_roof_tag, Ke_roof,
                               thp_roof, thpc_roof, thu_roof, My_roof, McMy, kappa_roof,
                               thp_roof, thpc_roof, thu_roof, My_roof, McMy, kappa_roof,
-                              Lam_roof, Lam_roof, Lam_roof,
+                              lam_roof, lam_roof, lam_roof,
                               cIK, cIK, cIK,
                               DIK, DIK, DIK)
 
@@ -2206,7 +2206,7 @@ def modified_IK_params(shape, L):
     kappa = 0.4
 
     if d > 21.0:
-        Lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
+        lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
             *(Lb/ry)**(-0.130)*(c2*Fy/355)**(-0.291))
         thp = (0.318*(htw)**(-0.550)*(bftf)**(-0.345)
             *(Lb/ry)**(-0.0230)*(L/d)**(0.090)*(c1*d/533)**(-0.330)*
@@ -2215,7 +2215,7 @@ def modified_IK_params(shape, L):
             *(Lb/ry)**(-0.110)*(c1*d/533)**(-0.161)*
             (c2*Fy/355)**(-0.320))
     else:
-        Lam = 495*(htw)**(-1.34)*(bftf)**(-0.595)*(c2*Fy/355)**(-0.360)
+        lam = 495*(htw)**(-1.34)*(bftf)**(-0.595)*(c2*Fy/355)**(-0.360)
         thp = (0.0865*(htw)**(-0.365)*(bftf)**(-0.140)
             *(L/d)**(0.340)*(c1*d/533)**(-0.721)*
             (c2*Fy/355)**(-0.230))
@@ -2224,7 +2224,7 @@ def modified_IK_params(shape, L):
         
     thu = 0.2
 
-    return(Ke, My, Lam, thp, thpc, kappa, thu)
+    return(Ke, My, lam, thp, thpc, kappa, thu)
 
 ###############################################################################
 #              Brace geometry
