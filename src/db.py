@@ -120,8 +120,10 @@ class Database:
                                                           axis=1)
         self.raw_input['num_stories'] = self.raw_input.apply(lambda row: round(row['h_bldg']/target_hstory),
                                                           axis=1)
-        self.raw_input['L_bay'] = self.raw_input['L_bldg'] / self.raw_input['num_bays']
-        self.raw_input['h_story'] = self.raw_input['h_bldg'] / self.raw_input['num_stories']
+        self.raw_input['L_bay'] = (self.raw_input['L_bldg'] / 
+                                   self.raw_input['num_bays'])
+        self.raw_input['h_story'] = (self.raw_input['h_bldg'] / 
+                                     self.raw_input['num_stories'])
         self.raw_input['S_s'] = 2.2815
         
 ###############################################################################

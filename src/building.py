@@ -58,6 +58,9 @@ class Building:
         
         # flatten list to get all nodes
         floor_nodes = [nd for fl in nds for nd in fl]
+        
+        diaph_nodes = [nd for nd in floor_nodes
+                       if nd//10 == 1]
             
         # for braced frames, additional nodes are needed
         if frame_type == 'CBF':
@@ -233,7 +236,8 @@ class Building:
             'floor': floor_nodes,
             'leaning': leaning_nodes,
             'spring': spring_nodes,
-            'lc_spring': lc_spr_nodes
+            'lc_spring': lc_spr_nodes,
+            'diaphragm': diaph_nodes
             }
         
         if frame_type == 'CBF':
@@ -1895,9 +1899,12 @@ class Building:
                     '-mat', impact_mat_tag, elastic_mat_tag,
                     '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
         
+    #TODO: check loads
     def apply_grav_load(self):
         import openseespy.opensees as ops
         import numpy as np
+        
+        superstructure_system = self.superstructure_system
         
         grav_series   = 1
         grav_pattern  = 1
@@ -1920,46 +1927,75 @@ class Building:
         # create plain load pattern
         ops.pattern('Plain', grav_pattern, grav_series)
         
-        # get elements
-        brace_beams = self.elem_tags['brace_beams']
-        beams = self.elem_tags['beam']
-        lc_nodes = self.node_tags['leaning']
-        
-        ghost_beams = [beam_tag//10 for beam_tag in brace_beams
-                       if beam_tag%10 == 1]
-        grav_beams = [beam_tag for beam_tag in beams
-                      if beam_tag not in ghost_beams]
-        
-        brace_beam_id = self.elem_ids['brace_beam']
-        beam_id = self.elem_ids['beam']
-        
-        # line loads on elements
-        # this loading scheme assumes that local-y is vertical direction (global-z)
-        # this is currently true for both MRF and CBF beams
-        for elem in brace_beams:
-            attached_node = elem - brace_beam_id
-            floor_idx = int(str(attached_node)[0]) - 1
-            w_applied = w_floor[floor_idx]
-            ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
-                        -w_applied, 0.0)
+        if superstructure_system == 'CBF':
+            # get elements
+            brace_beams = self.elem_tags['brace_beams']
+            beams = self.elem_tags['beam']
             
-        for elem in grav_beams:
-            attached_node = elem - beam_id
-            floor_idx = attached_node//10 - 1 
-            w_applied = w_floor[floor_idx]
-            ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
-                        -w_applied, 0.0)
+            ghost_beams = [beam_tag//10 for beam_tag in brace_beams
+                           if beam_tag%10 == 1]
+            grav_beams = [beam_tag for beam_tag in beams
+                          if beam_tag not in ghost_beams]
             
+            brace_beam_id = self.elem_ids['brace_beam']
+            beam_id = self.elem_ids['beam']
+            
+            # line loads on elements
+            # this loading scheme assumes that local-y is vertical direction (global-z)
+            # this is currently true for both MRF and CBF beams
+            for elem in brace_beams:
+                attached_node = elem - brace_beam_id
+                floor_idx = int(str(attached_node)[0]) - 1
+                w_applied = w_floor[floor_idx]
+                ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                            -w_applied, 0.0)
+                
+            for elem in grav_beams:
+                attached_node = elem - beam_id
+                floor_idx = attached_node//10 - 1 
+                w_applied = w_floor[floor_idx]
+                ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                            -w_applied, 0.0)
+                
+        elif superstructure_system == 'MF':
+            beams = self.elem_tags['beam']
+            beam_id = self.elem_ids['beam']
+                
+            for elem in beams:
+                attached_node = elem - beam_id
+                floor_idx = attached_node//10 - 1 
+                w_applied = w_floor[floor_idx]
+                ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                            -w_applied, 0.0)
+                
         # point loads on LC
+        lc_nodes = self.node_tags['leaning']
         for nd in lc_nodes:
             floor_idx = nd//10 - 1
             p_applied = p_lc[floor_idx]
             ops.load(nd, 0, 0, -p_applied, 0, 0, 0)
             
-        # TODO: adjustment of vertical load for TFP
+        # The following assumes two lateral frames. If more, then fix
         isol_sys = self.isolator_system
         if isol_sys == 'TFP':
-            print('do load')
+            # load right above isolation layer to increase stiffness to half-building for TFP
+            # line load accounts for Lbay/2 of tributary, we linearly scale
+            # to include the remaining portion of Lbldg/2
+            ft = 12.0
+            L_bay = self.L_bay
+            L_bldg = self.L_bldg
+            n_bays = self.num_bays
+            w_total = w_floor.sum()
+            pOuter = w_total*(L_bay/2)*ft* ((L_bldg - L_bay)/L_bay)
+            pInner = w_total*(L_bay/2)*ft* ((L_bldg - L_bay)/L_bay)
+
+            diaph_nds = self.node_tags['diaphragm']
+            
+            for nd in diaph_nds:
+                if (nd%10 == 0) or (nd%10 == n_bays):
+                    ops.load(nd, 0, 0, -pOuter, 0, 0, 0)
+                else:
+                    ops.load(nd, 0, 0, -pInner, 0, 0, 0)
         
         # ------------------------------
         # Start of analysis generation: gravity
@@ -1982,67 +2018,79 @@ class Building:
 
         ops.loadConst('-time', 0.0)
         
-    # TODO: DAMPING
+    def refix(self, nodeTag, action):
+        import openseespy.opensees as ops
+        for j in range(1,7):
+            ops.remove('sp', nodeTag, j)
+        if(action == "fix"):
+            ops.fix(nodeTag,  1, 1, 1, 1, 1, 1)
+        if(action == "unfix"):
+            ops.fix(nodeTag,  0, 1, 0, 1, 0, 1)
 
-    def provideSuperDamping(self, regTag, w2, 
-                            zetai=0.05, zetaj=0.05, modes=[1,3]):
-        # Pick your modes and damping ratios
-        wi = w2[modes[0]-1]**0.5;
-        wj = w2[modes[1]-1]**0.5;
+    def provide_damping(self, regTag, method='SP',
+                        zeta=[0.05], modes=[1]):
+        import openseespy.opensees as ops
         
+        base_nodes = self.node_tags['base']
+        # fix base for Tfb
+        
+        for base_nd in base_nodes:
+            self.refix(base_nd, "fix")
+
+        nEigenJ     = 3;                    # mode j = 3
+        lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
+        lambda1 = lambdaN[modes[0]-1];           # eigenvalue mode i = 1
+        wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
+        Tfb = 2*3.1415/wi      # 1st mode period of the structure
+        
+        if method=='Rayleigh':
+            lambdaJ = lambdaN[modes[-1]-1]
+            wj = lambdaJ**(0.5)
+            
+        print("Tfb = %.3f s" % Tfb)          
+
+        # unfix base
+        for base_nd in base_nodes:
+            self.refix(base_nd, "unfix")
+        
+        # provide damping to superstructure only
         import numpy as np
         
-        A = np.array([[1/wi, wi],[1/wj, wj]])
-        b = np.array([zetai,zetaj])
-        
-        x = np.linalg.solve(A,2*b)
-        
-        # alphaM      = 0.0
-        betaK       = 0.0
-        betaKInit   = 0.0
-        # a1          = 2*zetaTarget/omega1
-        a1 = 2*zetai/wi
+        if method == 'Rayleigh':
+            A = np.array([[1/wi, wi],[1/wj, wj]])
+            b = np.array([zeta[0],zeta[-1]])
+            
+            x = np.linalg.solve(A,2*b)
+        else:
+            betaK       = 0.0
+            betaKInit   = 0.0
+            a1 = 2*zeta[0]/wi
         
         all_elems = ops.getEleTags()
 
-        # elems that don't need damping: bearings, walls
+        # elems that don't need damping
         wall_elems = self.elem_tags['wall']
         isol_elems = self.elem_tags['isolator']
-        non_damped_elems = [51, 52, 53, 54,
-                            881, 884,
-                            314, 324, 334, 344,
-                            611, 612, 613,
-                            115, 125, 135]
+        truss_elems = self.elem_tags['truss']
+        lc_elems = self.elem_tags['leaning'] + self.elem_tags['lc_spring']
+        diaph_elems = self.elem_tags['diaphragm']
+        non_damped_elems = (wall_elems + isol_elems + truss_elems + 
+                            lc_elems + diaph_elems)
         
-        damped_elems = [elem for elem in all_elems if elem not in non_damped_elems]
+        damped_elems = [elem for elem in all_elems 
+                        if elem not in non_damped_elems]
         
         # stiffness proportional
-        ops.region(regTag, '-ele',
-            *damped_elems,
-            '-rayleigh', 0.0, betaK, betaKInit, a1)
-        
-        # ops.region(regTag, '-ele',
-        #     111, 112, 113, 114,
-        #     121, 122, 123, 124,
-        #     131, 132, 133, 134,
-        #     221, 222, 223,
-        #     231, 232, 233,
-        #     241, 242, 243,
-        #     5118, 5128, 5138, 5148,
-        #     5216, 5226, 5236, 5246,
-        #     5218, 5228, 5238, 5248,
-        #     5316, 5326, 5336, 5346,
-        #     5318, 5328, 5338, 5348,
-        #     5416, 5426, 5436, 5446,
-        #     5219, 5229, 5239,
-        #     5227, 5237, 5247,
-        #     5319, 5329, 5339,
-        #     5327, 5337, 5347,
-        #     5419, 5429, 5439,
-        #     5427, 5437, 5447,
-        #     '-rayleigh', x[0], betaK, betaKInit, x[1])
-    
-    # TODO: eigenvalue analysis
+        if method == 'SP':
+            ops.region(regTag, '-ele',
+                *damped_elems,
+                '-rayleigh', 0.0, betaK, betaKInit, a1)
+            print('Structure damped with %0.2f%% at frequency %0.2f Hz' % 
+                  (zeta[0]*100, wi))
+        elif method == 'Rayleigh':
+            ops.region(regTag, '-ele',
+                *damped_elems,
+                '-rayleigh', x[0], betaK, betaKInit, x[1])
     
     def run_ground_motion(self, GM_name):
         

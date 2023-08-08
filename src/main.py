@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(1000)
+main_obj = Database(500)
 
 main_obj.design_bearings(filter_designs=True)
 
@@ -42,12 +42,16 @@ tfp_example = Bearing(test_mf_tfp)
 # test build one building (MF, LRB)
 mf_lrb_bldg = Building(test_mf_lrb)
 mf_lrb_bldg.model_frame()
+mf_lrb_bldg.apply_grav_load()
+mf_lrb_bldg.provide_damping(80, method='SP',
+                       zeta=[0.05], modes=[1])
 
-# test build CBF
+# # test build CBF
 cbf_bldg = Building(test_cbf)
 cbf_bldg.model_frame()
 cbf_bldg.apply_grav_load()
-
+cbf_bldg.provide_damping(80, method='SP',
+                         zeta=[0.05], modes=[1])
 # sample_lrb = main_obj.lrb_designs.iloc[0]
 # from design import design_LRB
 # test = design_LRB(sample_lrb)

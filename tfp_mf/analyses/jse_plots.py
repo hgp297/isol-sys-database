@@ -2398,20 +2398,20 @@ dy_eff = (Vmax - VBump)/kInit + dBump
 
 muT_10 = (du - dBump)/(dy_eff - dBump)
     
-ax1.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
-ax1.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
-ax1.axvline(du, linestyle='--', color='black', linewidth=0.8)
-ax1.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
+# ax1.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
+# ax1.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
+# ax1.axvline(du, linestyle='--', color='black', linewidth=0.8)
+# ax1.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
 
-ax1.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
-ax1.text(78*2.54, Vmax+0.01, r'$V_{max}$',
-          fontsize=subt_font, color='black')
-ax1.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
-          fontsize=subt_font, color='black')
-ax1.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
-          fontsize=subt_font, color='black')
-ax1.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
-          fontsize=subt_font, color='black')
+# ax1.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
+# ax1.text(78*2.54, Vmax+0.01, r'$V_{max}$',
+#           fontsize=subt_font, color='black')
+# ax1.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+#           fontsize=subt_font, color='black')
+# ax1.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
+#           fontsize=subt_font, color='black')
+# ax1.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
+#           fontsize=subt_font, color='black')
 ax1.text(55*2.54, 0.08, '$\mu_T = $ %1.3f' % muT_10,
           fontsize=subt_font, color='black')
 ax1.text(55*2.54, 0.03, '$\Omega = $ %1.3f' % overstrength,
@@ -2464,20 +2464,20 @@ dy_eff = (Vmax - VBump)/kInit + dBump
 muT_5 = (du - dBump)/(dy_eff - dBump)
 
 
-ax2.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
-ax2.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
-ax2.axvline(du, linestyle='--', color='black', linewidth=0.8)
-ax2.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
+# ax2.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
+# ax2.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
+# ax2.axvline(du, linestyle='--', color='black', linewidth=0.8)
+# ax2.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
 
-ax2.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
-ax2.text(78*2.54, Vmax+0.01, r'$V_{max}$',
-          fontsize=subt_font, color='black')
-ax2.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
-          fontsize=subt_font, color='black')
-ax2.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
-          fontsize=subt_font, color='black')
-ax2.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
-          fontsize=subt_font, color='black')
+# ax2.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
+# ax2.text(78*2.54, Vmax+0.01, r'$V_{max}$',
+#           fontsize=subt_font, color='black')
+# ax2.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+#           fontsize=subt_font, color='black')
+# ax2.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
+#           fontsize=subt_font, color='black')
+# ax2.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
+#           fontsize=subt_font, color='black')
 ax2.text(55*2.54, 0.08, '$\mu_T = $ %1.3f' % muT_5,
           fontsize=subt_font, color='black')
 ax2.text(55*2.54, 0.03, '$\Omega = $ %1.3f' % overstrength,
@@ -2528,20 +2528,20 @@ dy_eff = (Vmax - VBump)/kInit + dBump
 
 muT_2 = (du - dBump)/(dy_eff - dBump)
 
-ax3.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
-ax3.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
-ax3.axvline(du, linestyle='--', color='black', linewidth=0.8)
-ax3.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
+# ax3.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
+# ax3.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
+# ax3.axvline(du, linestyle='--', color='black', linewidth=0.8)
+# ax3.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
 
-ax3.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
-ax3.text(78*2.54, Vmax+0.01, r'$V_{max}$',
-          fontsize=subt_font, color='black')
-ax3.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
-          fontsize=subt_font, color='black')
-ax3.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
-          fontsize=subt_font, color='black')
-ax3.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
-          fontsize=subt_font, color='black')
+# ax3.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
+# ax3.text(78*2.54, Vmax+0.01, r'$V_{max}$',
+#           fontsize=subt_font, color='black')
+# ax3.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+#           fontsize=subt_font, color='black')
+# ax3.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
+#           fontsize=subt_font, color='black')
+# ax3.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
+#           fontsize=subt_font, color='black')
 ax3.text(55*2.54, 0.08, '$\mu_T = $ %1.3f' % muT_2,
           fontsize=subt_font, color='black')
 ax3.text(55*2.54, 0.03, '$\Omega = $ %1.3f' % overstrength,
@@ -2592,20 +2592,20 @@ dy_eff = (Vmax - VBump)/kInit + dBump
 
 muT_base = (du - dBump)/(dy_eff - dBump)
 
-ax4.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
-ax4.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
-ax4.axvline(du, linestyle='--', color='black', linewidth=0.8)
-ax4.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
+# ax4.axhline(Vmax, linestyle='--', color='black', linewidth=0.8)
+# ax4.axhline(0.8*Vmax, linestyle='--', color='black', linewidth=0.8)
+# ax4.axvline(du, linestyle='--', color='black', linewidth=0.8)
+# ax4.axvline(dy_eff, linestyle='--', color='black', linewidth=0.8)
 
-ax4.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
-ax4.text(78*2.54, Vmax+0.01, r'$V_{max}$',
-          fontsize=subt_font, color='black')
-ax4.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
-          fontsize=subt_font, color='black')
-ax4.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
-          fontsize=subt_font, color='black')
-ax4.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
-          fontsize=subt_font, color='black')
+# ax4.plot([0.0, dy_eff], [0.0, Vmax], color='black', linewidth=0.6)
+# ax4.text(78*2.54, Vmax+0.01, r'$V_{max}$',
+#           fontsize=subt_font, color='black')
+# ax4.text(70*2.54, 0.8*Vmax-0.03, r'$0.8V_{max}$',
+#           fontsize=subt_font, color='black')
+# ax4.text(dy_eff+1, 0.02, r'$\delta_{y,eff}$', rotation=90,
+#           fontsize=subt_font, color='black')
+# ax4.text(du+1, 0.02, r'$\delta_{u}$', rotation=90,
+#           fontsize=subt_font, color='black')
 ax4.text(55*2.54, 0.08, '$\mu_T = $ %1.3f' % muT_base,
           fontsize=subt_font, color='black')
 ax4.text(55*2.54, 0.03, '$\Omega = $ %1.3f' % overstrength,
