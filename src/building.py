@@ -292,6 +292,7 @@ class Building:
             
 
     def model_frame(self):
+        # TODO: print building run info
         if self.superstructure_system == 'MF':
             self.model_moment_frame()
         else:
@@ -2031,11 +2032,11 @@ class Building:
                         zeta=[0.05], modes=[1]):
         import openseespy.opensees as ops
         
-        base_nodes = self.node_tags['base']
+        diaph_nodes = self.node_tags['diaphragm']
         # fix base for Tfb
         
-        for base_nd in base_nodes:
-            self.refix(base_nd, "fix")
+        for diaph_nd in diaph_nodes:
+            self.refix(diaph_nd, "fix")
 
         nEigenJ     = 3;                    # mode j = 3
         lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
@@ -2047,11 +2048,12 @@ class Building:
             lambdaJ = lambdaN[modes[-1]-1]
             wj = lambdaJ**(0.5)
             
+        # TODO: return Tfb
         print("Tfb = %.3f s" % Tfb)          
 
         # unfix base
-        for base_nd in base_nodes:
-            self.refix(base_nd, "unfix")
+        for diaph_nd in diaph_nodes:
+            self.refix(diaph_nd, "unfix")
         
         # provide damping to superstructure only
         import numpy as np
@@ -2092,11 +2094,12 @@ class Building:
                 *damped_elems,
                 '-rayleigh', x[0], betaK, betaKInit, x[1])
     
-    def run_ground_motion(self, GM_name):
+    def run_ground_motion(self, gm_name, scale_factor, dt_transient,
+                          gm_dir='../tfp_mf/ground_motions/PEERNGARecords_Unscaled/',
+                          data_dir='./outputs/'):
         
         # Recorders
         import openseespy.opensees as ops
-        data_dir         = './outputs/'          # output folder
 
         # get list of relevant nodes
         superstructure_system = self.superstructure_system
@@ -2140,18 +2143,12 @@ class Building:
         ops.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
             '-node', *inner_col_nds, '-dof', 1, 'disp')
         
-        ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv','-time',
+        # lateral frame story velocity
+        ops.recorder('Node', '-file', data_dir+'outer_col_vel.csv','-time',
             '-node', *outer_col_nds, '-dof', 1, 'vel')
-        ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv','-time',
+        ops.recorder('Node', '-file', data_dir+'inner_col_vel.csv','-time',
             '-node', *inner_col_nds, '-dof', 1, 'vel')
         
-        
-        # TODO: need absolute acceleration by using GM file
-        
-        ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv','-time',
-            '-node', *outer_col_nds, '-dof', 1, 'accel')
-        ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv','-time',
-            '-node', *inner_col_nds, '-dof', 1, 'accel')
         
         # isolator node displacement of outer column
         ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', '-time',
@@ -2178,20 +2175,109 @@ class Building:
         #     '-time', '-ele', 113, 'localForce')
         # ops.recorder('Element', '-file', data_dir+'colForce4.csv',
         #     '-time', '-ele', 114, 'localForce')
+
+        ops.wipeAnalysis()
+
+        # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
+        GMDirection = 1  # ground-motion direction
         
+        print('Current ground motion: ', gm_name)
+
+        ops.constraints('Plain')
+        ops.numberer('RCM')
+        ops.system('BandGeneral')
         
-        # ground motion file read in
+        # Convergence Test: tolerance
+        tolDynamic          = 1e-3 
         
-        # ground motion file scaling
+        # Convergence Test: maximum number of iterations that will be performed
+        maxIterDynamic      = 500
         
-        # ground motion series
+        # Convergence Test: flag used to print information on convergence
+        printFlagDynamic    = 0         
         
-        # analysis settings
+        testTypeDynamic     = 'NormDispIncr'
+        ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
         
-        # recursive convergence strategies
+        # algorithmTypeDynamic    = 'Broyden'
+        # ops.algorithm(algorithmTypeDynamic, 8)
+        algorithmTypeDynamic    = 'Newton'
+        ops.algorithm(algorithmTypeDynamic)
         
+        # Newmark-integrator gamma parameter (also HHT)
+        newmarkGamma = 0.5
+        newmarkBeta = 0.25
+        ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+        ops.analysis('Transient')
+
+        #  ---------------------------------    perform Dynamic Ground-Motion Analysis
+        # the following commands are unique to the Uniform Earthquake excitation
+
+        # Uniform EXCITATION: acceleration input
+        inFile = gm_dir + gm_name + '.AT2'
+        outFile = gm_dir + gm_name + '.g3'
+
+         # call procedure to convert the ground-motion file
+        from ReadRecord import ReadRecord
+        dt, nPts = ReadRecord(inFile, outFile)
+        g = 386.4
+        GMfatt = g*scale_factor
+
+        eq_series_tag = 100
+        eq_pattern_tag = 400
+        # time series information
+        ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
+                       '-filePath', outFile, '-factor', GMfatt)     
+        # create uniform excitation
+        ops.pattern('UniformExcitation', eq_pattern_tag, 
+                    GMDirection, '-accel', eq_series_tag)          
+
+        # set recorder for absolute acceleration (requires time series defined)
+        ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv',
+                     '-timeSeries', eq_series_tag, '-time', '-closeOnWrite',
+                     '-node', *outer_col_nds, '-dof', 1, 'accel')
+        ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv',
+                     '-timeSeries', eq_series_tag, '-time', '-closeOnWrite',
+                     '-node', *inner_col_nds, '-dof', 1, 'accel')
+
+        # set up ground-motion-analysis parameters
+        sec = 1.0                      
+        T_end = 60.0*sec
         
-        print('Running.')
+        import numpy as np
+        n_steps = np.floor(T_end/dt_transient)
+        
+        # actually perform analysis; returns ok=0 if analysis was successful
+        ok = ops.analyze(n_steps, dt_transient)   
+
+        if ok != 0:
+            ok = 0
+            curr_time = ops.getTime()
+            print("Convergence issues at time: ", curr_time)
+            while (curr_time < T_end) and (ok == 0):
+                curr_time     = ops.getTime()
+                ok          = ops.analyze(1, dt_transient)
+                if ok != 0:
+                    print("Trying Newton with Initial Tangent...")
+                    ops.algorithm('Newton', '-initial')
+                    ok = ops.analyze(1, dt_transient)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
+                    ops.algorithm(algorithmTypeDynamic)
+                if ok != 0:
+                    print("Trying Newton with line search ...")
+                    ops.algorithm('NewtonLineSearch')
+                    ok = ops.analyze(1, dt_transient)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
+                    ops.algorithm(algorithmTypeDynamic)
+
+
+        print('Ground motion done. End time:', ops.getTime())
+
+        ops.wipe()
+        
+        return(ok)
 ###############################################################################
 #              Steel dimensions and parameters
 ###############################################################################

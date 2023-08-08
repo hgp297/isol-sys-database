@@ -495,6 +495,26 @@ def get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad):
 
     return(Ib, Ic, Zb)
 
+def compressive_strength(Ag, ry, Lc_r, Ry=1.0):
+    
+    Ry_hss = Ry
+    
+    E = 29000.0 # ksi
+    pi = 3.14159
+    Fy = 50.0 # ksi for ASTM A500 brace
+    Fy_pr = Fy*Ry_hss
+    
+    Fe = pi**2*E/(Lc_r**2)
+    
+    if (Lc_r <= 4.71*(E/Fy)**0.5):
+        F_cr = 0.658**(Fy_pr/Fe)*Fy_pr
+    else:
+        F_cr = 0.877*Fe
+        
+    phi = 0.9
+    phi_Pn = phi * Ag * F_cr
+    return(phi_Pn)
+
 def select_member(member_list, req_var, req_val):
     # req_var is string 'Ix' or 'Zx'
     # req_val is value
@@ -527,13 +547,59 @@ def zx_check(current_member, member_list, Z_beam_req):
         selected_member = current_member
         qualified_list = member_list
         
-    # TODO: check beam axial
-    # TODO: check beam interaction
+    
 
     return(selected_member, qualified_list)
 
-# PH location check
+def axial_check(current_member, member_list, L_bay, Pu):
+    # axial check
+    rad_gy = current_member['ry'].iloc[0]
+    Ag = current_member['A'].iloc[0]
+    Lc_r = L_bay / rad_gy
+    Pn = compressive_strength(Ag, rad_gy, Lc_r)
+    
+    if Pu > Pn:
+        selected_member, passed_axial_members = select_compression_member(member_list, 
+                                                                          L_bay, 
+                                                                          Pu)
+    else:
+        passed_axial_members = member_list
+        
+    # # TODO: interaction check (y direction?)
+    # Zx = selected_beam.iloc[0]['Zx']
+    # Mnx = 50.0*Zx*0.9
+    # if Pu_beam/Pn_beam > 0.2:
+    #     # H1-1a/b
+    #     combined_forces_coef = Pu_beam/Pn_beam + 8/9*(M_max/Mnx)
+    # else:
+    #     combined_forces_coef = Pu_beam/(2*Pn_beam) + 8/9*(M_max/Mnx)
+        
+    # # if fail the interaction equation, design based on that
+    # if combined_forces_coef > 1.0:
+    #     # calculate coef for all available beams
+    #     Lc_beam = L_bay
+    #     passed_axial_beams['Lc_r'] = Lc_beam/passed_axial_beams['ry']
+    #     passed_axial_beams['phi_Pn'] = passed_axial_beams.apply(lambda row: 
+    #                                                             compressive_strength(
+    #                                                                 row['A'],
+    #                                                                 row['ry'],
+    #                                                                 row['Lc_r']),
+    #                                                             axis='columns')
+        
+    #     passed_axial_beams['interaction'] = passed_axial_beams.apply(lambda row: 
+    #                                                                  interaction_equation(
+    #                                                                      row['Zx'],
+    #                                                                      Pu_beam,
+    #                                                                      row['phi_Pn'],
+    #                                                                      M_max),
+    #                                                                  axis='columns')
+            
+    #     selected_beam, passed_axial_beams = select_member(passed_axial_beams, 
+    #         'interaction', 1.0)
+    
+    return(selected_member, passed_axial_members)
 
+# PH location check
 def ph_shear_check(current_member, member_list, line_load, L_bay):
     
     import numpy as np
@@ -613,9 +679,6 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     Pr[-1]          = V_pr_beam + V_grav[-1]
     for i in range(nFloor-2, -1, -1):
         Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
-        
-    # TODO: check SMRF column axial capacity
-    # TODO: check SMRF column interaction
     
     # initial guess: use columns that has similar Ix to beam
     qualified_Ix = col_list[col_list['Ix'] > I_beam_req]
@@ -636,6 +699,12 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
         'Ix', I_col_req)
     selected_col, passed_Zx_cols = select_member(passed_Ix_cols, 
         'Zx', scwb_Z_req)
+        
+    # TODO: check SMRF column axial capacity
+    # TODO: check SMRF column interaction
+    # selected_col, passed_axial_cols = axial_check(selected_col, 
+    #                                               passed_Zx_cols, 
+    #                                               h_col, Pr)
     
     import pandas as pd
     if isinstance(selected_col, pd.DataFrame):
@@ -727,6 +796,10 @@ def design_MF(input_df, db_string='../resource/'):
 
     selected_beam, passed_Zx_beams = zx_check(selected_beam, 
                                               passed_Ix_beams, Z_beam_req)
+    
+    # selected_beam, passed_axial_beams = axial_check(selected_beam, 
+    #                                                      passed_Zx_beams, 
+    #                                                      L_bay, q)
 
     story_loads = w_load[:-1]
     selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
@@ -824,25 +897,7 @@ def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
 #     loss = (phi_Pn - C)**2 + (x[0]**2 + x[1]**2)**(0.5)
 #     return(loss)
 
-def compressive_strength(Ag, ry, Lc_r, Ry=1.0):
-    
-    Ry_hss = Ry
-    
-    E = 29000.0 # ksi
-    pi = 3.14159
-    Fy = 50.0 # ksi for ASTM A500 brace
-    Fy_pr = Fy*Ry_hss
-    
-    Fe = pi**2*E/(Lc_r**2)
-    
-    if (Lc_r <= 4.71*(E/Fy)**0.5):
-        F_cr = 0.658**(Fy_pr/Fe)*Fy_pr
-    else:
-        F_cr = 0.877*Fe
-        
-    phi = 0.9
-    phi_Pn = phi * Ag * F_cr
-    return(phi_Pn)
+
 
 def select_compression_member(mem_list, Lc, C_design):
     

@@ -46,12 +46,16 @@ mf_lrb_bldg.apply_grav_load()
 mf_lrb_bldg.provide_damping(80, method='SP',
                        zeta=[0.05], modes=[1])
 
-# # test build CBF
+# dt = 0.005
+# mf_lrb_bldg.run_ground_motion('RSN3905_TOTTORI_OKY002EW', 1.0, dt)
+
+# test build CBF
 cbf_bldg = Building(test_cbf)
 cbf_bldg.model_frame()
 cbf_bldg.apply_grav_load()
 cbf_bldg.provide_damping(80, method='SP',
-                         zeta=[0.05], modes=[1])
+                          zeta=[0.05], modes=[1])
+
 # sample_lrb = main_obj.lrb_designs.iloc[0]
 # from design import design_LRB
 # test = design_LRB(sample_lrb)
