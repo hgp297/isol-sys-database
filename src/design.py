@@ -564,6 +564,7 @@ def axial_check(current_member, member_list, L_bay, Pu):
                                                                           Pu)
     else:
         passed_axial_members = member_list
+        selected_member = current_member
         
     # # TODO: interaction check (y direction?)
     # Zx = selected_beam.iloc[0]['Zx']
@@ -655,14 +656,42 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
 
     return(selected_member, shear_list)
 
+def select_beam(fl, Ib, Zb, sorted_beams, w_load, q_load, L_bay):
+    
+    I_beam_req = Ib[fl]
+    Z_beam_req = Zb[fl]
+    
+    q = q_load[fl]
+    
+    selected_beam, passed_Ix_beams = select_member(sorted_beams, 
+                                                   'Ix', I_beam_req)
+
+    selected_beam, passed_Zx_beams = zx_check(selected_beam, 
+                                              passed_Ix_beams, Z_beam_req)
+    
+    selected_beam, passed_axial_beams = axial_check(selected_beam, 
+                                                    passed_Zx_beams, 
+                                                    L_bay, q)
+
+    story_loads = w_load[:-1]
+    selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
+                                                        passed_axial_beams, 
+                                                        story_loads, L_bay)
+    
+    return(selected_beam, passed_checks_beams)
+    
 # SCWB design
-def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list, 
-    I_col_req, I_beam_req):
+def select_column(fl, wLoad, L_bay, h_col, all_beams, col_list, 
+                  Ic, Ib):
 
     import numpy as np
+    from building import get_shape
     
-    if (current_beam is np.nan) or (current_roof is np.nan):
-        return(np.nan, np.nan, False)
+    I_col_req = Ic[fl]
+    I_beam_req = Ib[fl]
+    
+    if any([beam is np.nan for beam in all_beams]):
+        return(np.nan, np.nan)
     
     ksi = 1.0
     Fy = 50.0*ksi
@@ -670,14 +699,17 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     V_grav      = wLoad*L_bay
 
     nFloor = len(wLoad)
-
-    (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
-    (M_n_roof, M_pr_roof, V_pr_roof) = calculate_strength(current_roof, L_bay)
-
+    
     # find axial demands
     Pr              = np.empty(nFloor)
-    Pr[-1]          = V_pr_beam + V_grav[-1]
+    roof_beam_name = all_beams[-1]
+    roof_beam = get_shape(roof_beam_name, 'beam', csv_dir='../resource/')
+    (M_n_roof, M_pr_roof, V_pr_roof) = calculate_strength(roof_beam, L_bay)
+    Pr[-1]          = V_pr_roof + V_grav[-1]
     for i in range(nFloor-2, -1, -1):
+        beam_name = all_beams[i]
+        current_beam = get_shape(beam_name, 'beam', csv_dir='../resource/')
+        (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
         Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
     
     # initial guess: use columns that has similar Ix to beam
@@ -685,18 +717,27 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     from numpy import nan
     if len(qualified_Ix) < 1:
         return (nan, nan, False)
+    # select the first few that qualifies Ix
     selected_col = qualified_Ix.loc[[(qualified_Ix.Ix - 
-                                       I_beam_req).abs().idxmin()]] # select the first few that qualifies Ix
+                                       I_beam_req).abs().idxmin()]] 
     
     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
     M_pr = Z_x*(Fy - Pr/A_g)
 
     # find required Zx for SCWB to be true
-    scwb_Z_req        = np.max(M_pr_beam/(Fy - Pr[:-1]/A_g))
+    beam_name = all_beams[fl]
+    current_beam = get_shape(beam_name, 'beam', csv_dir='../resource/')
+    (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
+    
+    scwb_Z_req = (M_pr_beam/(Fy - Pr[fl]/A_g))
 
     # select column based on SCWB
-    selected_col, passed_Ix_cols = select_member(col_list, 
+    selected_col, passed_axial_beams = axial_check(selected_col, 
+                                                    col_list, 
+                                                    h_col[fl], Pr[fl])
+    selected_col, passed_Ix_cols = select_member(passed_axial_beams, 
         'Ix', I_col_req)
+    
     selected_col, passed_Zx_cols = select_member(passed_Ix_cols, 
         'Zx', scwb_Z_req)
         
@@ -706,25 +747,24 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     #                                               passed_Zx_cols, 
     #                                               h_col, Pr)
     
-    import pandas as pd
-    if isinstance(selected_col, pd.DataFrame):
-        (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
-    M_pr = Z_x*(Fy - Pr/A_g)
+    # import pandas as pd
+    # if isinstance(selected_col, pd.DataFrame):
+    #     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
+    # M_pr = Z_x*(Fy - Pr/A_g)
     
-
-    # check final SCWB
-    ratio           = np.empty(nFloor-1)
+    # # check final SCWB
+    # ratio           = np.empty(nFloor-1)
     
-    scwb_flag = False
-    for i in range(nFloor-2, -1, -1):
-        ratio[i] = (M_pr[i+1] + M_pr[i])/(2*M_pr_beam)
-        if (ratio[i] < 1.0):
-            # print('SCWB check failed at floor ' + str(nFloor+1) + ".")
-            scwb_flag = True
+    # scwb_flag = False
+    # for i in range(nFloor-2, -1, -1):
+    #     ratio[i] = (M_pr[i+1] + M_pr[i])/(2*M_pr_beam)
+    #     if (ratio[i] < 1.0):
+    #         # print('SCWB check failed at floor ' + str(nFloor+1) + ".")
+    #         scwb_flag = True
 
     A_web = A_g - 2*(t_f*b_f)
     V_n  = 0.9*A_web*0.6*Fy
-    V_pr = np.max(M_pr/h_col)
+    V_pr = M_pr[fl]/h_col[fl]
     col_shear_fail   = V_n < V_pr
 
     if col_shear_fail:
@@ -737,8 +777,58 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     else:
         shear_list = passed_Zx_cols
 
-    return(selected_col, shear_list, scwb_flag)
+    return(selected_col, shear_list)
 
+def scwb_check(all_columns, all_beams, w_load, L_bay):
+    import pandas as pd
+    import numpy as np
+    from building import get_shape
+        
+    ksi = 1.0
+    Fy = 50.0*ksi
+    V_grav = w_load*L_bay
+    nFloor = len(all_columns)
+    
+    # find axial demands
+    Pr = np.empty(nFloor)
+    roof_beam_name = all_beams[-1]
+    roof_beam = get_shape(roof_beam_name, 'beam', csv_dir='../resource/')
+    (M_n_roof, M_pr_roof, V_pr_roof) = calculate_strength(roof_beam, L_bay)
+    Pr[-1]          = V_pr_roof + V_grav[-1]
+    Mpr_beams = []
+    Mpr_beams.append(M_pr_roof)
+    for i in range(nFloor-2, -1, -1):
+        beam_name = all_beams[i]
+        current_beam = get_shape(beam_name, 'beam', csv_dir='../resource/')
+        (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
+        Mpr_beams.append(M_pr_beam)
+        Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
+        
+    Mpr_beams.reverse()
+    
+    # check final SCWB
+    ratio = np.empty(nFloor)
+    
+    M_pr = np.empty(len(all_columns))
+    
+    for i in range(len(all_columns)):
+        col_name = all_columns[i]
+        selected_col = get_shape(col_name, 'column', csv_dir='../resource/')
+        if isinstance(selected_col, pd.DataFrame):
+            (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
+            
+        M_pr[i] = Z_x*(Fy - Pr[i]/A_g)
+     
+    scwb_flag = False
+    for i in range(len(all_columns)):
+        if i != len(all_columns)-1:
+            ratio[i] = (M_pr[i+1] + M_pr[i])/(2*Mpr_beams[i])
+        else:
+            ratio[i] = 2.0 # no need to be OK at roof
+        if (ratio[i] < 1.0):
+            # print('SCWB check failed at floor ' + str(nFloor+1) + ".")
+            scwb_flag = True
+    return(scwb_flag)
 ############################################################################
 #              ASCE 7-22: Capacity design for moment frame
 ############################################################################
@@ -787,8 +877,51 @@ def design_MF(input_df, db_string='../resource/'):
     col_shapes       = pd.read_csv(db_string+'colShapes.csv',
         index_col=None, header=0)
     sorted_cols      = col_shapes.sort_values(by=['Ix'])
-
-
+    
+    # select beams
+    all_beams = []
+    for fl in range(len(w_load)):
+        
+        # select beam for each floor
+        selected_beam, qualified_beams = select_beam(fl, Ib, Zb, 
+                                                     sorted_beams, 
+                                                     w_load, q,
+                                                     L_bay)
+        
+        if selected_beam is not np.nan:
+            all_beams.append(selected_beam.iloc[0]['AISC_Manual_Label'])
+        else:
+            all_beams = np.nan
+            break
+      
+    # select columns
+    all_columns = []
+    for fl in range(len(w_load)):
+        
+        # splice once every 4 floors
+        if (fl%4) == 0:
+            selected_column, passed_check_cols = select_column(fl, w_load, 
+                                                                L_bay, 
+                                                                h_col, 
+                                                                all_beams, 
+                                                                sorted_cols, 
+                                                                Ic, Ib)
+            if selected_column is not np.nan:
+                all_columns.append(selected_column.iloc[0]['AISC_Manual_Label'])
+            else:
+                all_columns = np.nan
+                break
+        else:
+            selected_column = all_columns[fl-1]
+            all_columns.append(selected_column)
+        
+    # strong column weak beam check
+    if (all_columns is not np.nan) and (all_beams is not np.nan):
+        scwb_flag = scwb_check(all_columns, all_beams, w_load, L_bay)
+    else:
+        scwb_flag = True
+    
+    ######################### OLD ##################################
     # Floor beams
     # TODO: extend one beam/floor to MF, column splices as well
     selected_beam, passed_Ix_beams = select_member(sorted_beams, 
@@ -818,11 +951,6 @@ def design_MF(input_df, db_string='../resource/'):
     
     selected_roof_beam, passed_checks_roof_beams = ph_shear_check(selected_roof_beam, 
         passed_Zx_roof_beams, roof_load, L_bay)
-    
-    # columns
-    selected_column, passed_check_cols, scwb_flag = select_column(w_load, L_bay, 
-        h_col, selected_beam, selected_roof_beam, sorted_cols, 
-        I_col_req, I_beam_req)
     
     # return only string to keep data management clean
     if isinstance(selected_beam, pd.DataFrame):
@@ -1372,16 +1500,20 @@ def design_CBF(input_df, db_string='../resource/'):
     for fl, brace in enumerate(all_braces):
         current_brace = get_shape(brace, 'brace')
         
-        selected_col, qualified_cols = capacity_CBF_column(current_brace, fl,
-                                                           Q_per_bay, load_cases, 
-                                                           h_story, L_bay, n_bays,
-                                                           sorted_cols)
-        
-        if selected_col is not np.nan:
-            all_columns.append(selected_col.iloc[0]['AISC_Manual_Label'])
+        # splice every 4 floors: if 4th floor, select new column
+        if (fl%4 == 0):
+            selected_col, qualified_cols = capacity_CBF_column(current_brace, fl,
+                                                               Q_per_bay, load_cases, 
+                                                               h_story, L_bay, n_bays,
+                                                               sorted_cols)
+            if selected_col is not np.nan:
+                all_columns.append(selected_col.iloc[0]['AISC_Manual_Label'])
+            else:
+                all_columns = np.nan
+                break
         else:
-            all_columns = np.nan
-            break
-    
+            selected_col = all_columns[fl-1]
+            all_columns.append(selected_col)
+            
     return(all_braces, all_beams, all_columns)
     

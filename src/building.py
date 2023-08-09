@@ -45,7 +45,7 @@ class Building:
         ##############################
         
         # base nodes
-        base_id = 800
+        base_id = 900
         base_nodes = [node for node in range(base_id, base_id+n_bays+1)]
         
         # wall nodes
@@ -2039,6 +2039,7 @@ class Building:
             self.refix(diaph_nd, "fix")
 
         nEigenJ     = 3;                    # mode j = 3
+        # TODO: investigate eigen error in CBF (happens in splicing)
         lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
         lambda1 = lambdaN[modes[0]-1];           # eigenvalue mode i = 1
         wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
