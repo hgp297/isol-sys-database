@@ -302,6 +302,7 @@ class Building:
 #              MOMENT FRAME OPENSEES MODELING
 ###############################################################################
 
+    # TODO: modeling choices (panel zone? plastic hinge length?)
     def model_moment_frame(self):
         
         # import OpenSees and libraries
@@ -2081,8 +2082,7 @@ class Building:
         for diaph_nd in diaph_nodes:
             self.refix(diaph_nd, "fix")
 
-        nEigenJ     = 3;                    # mode j = 3
-        # TODO: investigate eigen error in CBF (happens in splicing)
+        nEigenJ = 2;                    # how many modes to analyze
         lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
         lambda1 = lambdaN[modes[0]-1];           # eigenvalue mode i = 1
         wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
@@ -2359,7 +2359,7 @@ def get_properties(shape):
 #              Bilinear deteriorating model parameters
 ###############################################################################
 
-# TODO: verify against experimental data?
+# TODO: verify against experimental data
 def modified_IK_params(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi

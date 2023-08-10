@@ -493,7 +493,7 @@ def get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad):
     Mu              = MEq + MGrav
     Zb              = Mu/(0.9*Fy)
 
-    return(Ib, Ic, Zb)
+    return(Ib, Ic, Zb, Mu)
 
 def compressive_strength(Ag, ry, Lc_r, Ry=1.0):
     
@@ -529,8 +529,6 @@ def select_member(member_list, req_var, req_val):
     return(selected_member, qualified_list)
 
 # Zx check
-
-
 def zx_check(current_member, member_list, Z_beam_req):
     
     from numpy import nan
@@ -546,12 +544,11 @@ def zx_check(current_member, member_list, Z_beam_req):
     else:
         selected_member = current_member
         qualified_list = member_list
-        
-    
 
     return(selected_member, qualified_list)
 
-def axial_check(current_member, member_list, L_bay, Pu):
+# TODO: finalize interaction check
+def axial_check(current_member, member_list, L_bay, Pu, M_max=0.0):
     # axial check
     rad_gy = current_member['ry'].iloc[0]
     Ag = current_member['A'].iloc[0]
@@ -566,37 +563,36 @@ def axial_check(current_member, member_list, L_bay, Pu):
         passed_axial_members = member_list
         selected_member = current_member
         
-    # # TODO: interaction check (y direction?)
-    # Zx = selected_beam.iloc[0]['Zx']
-    # Mnx = 50.0*Zx*0.9
-    # if Pu_beam/Pn_beam > 0.2:
-    #     # H1-1a/b
-    #     combined_forces_coef = Pu_beam/Pn_beam + 8/9*(M_max/Mnx)
-    # else:
-    #     combined_forces_coef = Pu_beam/(2*Pn_beam) + 8/9*(M_max/Mnx)
+    Zx = current_member.iloc[0]['Zx']
+    Mnx = 50.0*Zx*0.9
+    if Pu/Pn > 0.2:
+        # H1-1a/b
+        combined_forces_coef = Pu/Pn + 8/9*(M_max/Mnx)
+    else:
+        combined_forces_coef = Pu/(2*Pn) + 8/9*(M_max/Mnx)
         
-    # # if fail the interaction equation, design based on that
-    # if combined_forces_coef > 1.0:
-    #     # calculate coef for all available beams
-    #     Lc_beam = L_bay
-    #     passed_axial_beams['Lc_r'] = Lc_beam/passed_axial_beams['ry']
-    #     passed_axial_beams['phi_Pn'] = passed_axial_beams.apply(lambda row: 
-    #                                                             compressive_strength(
-    #                                                                 row['A'],
-    #                                                                 row['ry'],
-    #                                                                 row['Lc_r']),
-    #                                                             axis='columns')
+    # if fail the interaction equation, design based on that
+    if combined_forces_coef > 1.0:
+        # calculate coef for all available beams
+        Lc_beam = L_bay
+        passed_axial_members['Lc_r'] = Lc_beam/passed_axial_members['ry']
+        passed_axial_members['phi_Pn'] = passed_axial_members.apply(lambda row: 
+                                                                compressive_strength(
+                                                                    row['A'],
+                                                                    row['ry'],
+                                                                    row['Lc_r']),
+                                                                axis='columns')
         
-    #     passed_axial_beams['interaction'] = passed_axial_beams.apply(lambda row: 
-    #                                                                  interaction_equation(
-    #                                                                      row['Zx'],
-    #                                                                      Pu_beam,
-    #                                                                      row['phi_Pn'],
-    #                                                                      M_max),
-    #                                                                  axis='columns')
+        passed_axial_members['interaction'] = passed_axial_members.apply(lambda row: 
+                                                                      interaction_equation(
+                                                                          row['Zx'],
+                                                                          Pu,
+                                                                          row['phi_Pn'],
+                                                                          M_max),
+                                                                      axis='columns')
             
-    #     selected_beam, passed_axial_beams = select_member(passed_axial_beams, 
-    #         'interaction', 1.0)
+        selected_member, passed_axial_members = select_member(passed_axial_members, 
+            'interaction', 1.0)
     
     return(selected_member, passed_axial_members)
 
@@ -656,12 +652,13 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
 
     return(selected_member, shear_list)
 
-def select_beam(fl, Ib, Zb, sorted_beams, w_load, q_load, L_bay):
+def select_beam(fl, Ib, Zb, sorted_beams, w_load, q_load, M_load, L_bay):
     
     I_beam_req = Ib[fl]
     Z_beam_req = Zb[fl]
     
     q = q_load[fl]
+    M_max = M_load[fl]
     
     selected_beam, passed_Ix_beams = select_member(sorted_beams, 
                                                    'Ix', I_beam_req)
@@ -671,7 +668,7 @@ def select_beam(fl, Ib, Zb, sorted_beams, w_load, q_load, L_bay):
     
     selected_beam, passed_axial_beams = axial_check(selected_beam, 
                                                     passed_Zx_beams, 
-                                                    L_bay, q)
+                                                    L_bay, q, M_max)
 
     story_loads = w_load[:-1]
     selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
@@ -681,7 +678,7 @@ def select_beam(fl, Ib, Zb, sorted_beams, w_load, q_load, L_bay):
     return(selected_beam, passed_checks_beams)
     
 # SCWB design
-def select_column(fl, wLoad, L_bay, h_col, all_beams, col_list, 
+def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list, 
                   Ic, Ib):
 
     import numpy as np
@@ -734,32 +731,14 @@ def select_column(fl, wLoad, L_bay, h_col, all_beams, col_list,
     # select column based on SCWB
     selected_col, passed_axial_beams = axial_check(selected_col, 
                                                     col_list, 
-                                                    h_col[fl], Pr[fl])
+                                                    h_col[fl], 
+                                                    Pr[fl], 
+                                                    M_load[fl])
     selected_col, passed_Ix_cols = select_member(passed_axial_beams, 
         'Ix', I_col_req)
     
     selected_col, passed_Zx_cols = select_member(passed_Ix_cols, 
         'Zx', scwb_Z_req)
-    
-    # TODO: check SMRF column interaction
-    # selected_col, passed_axial_cols = axial_check(selected_col, 
-    #                                               passed_Zx_cols, 
-    #                                               h_col, Pr)
-    
-    # import pandas as pd
-    # if isinstance(selected_col, pd.DataFrame):
-    #     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
-    # M_pr = Z_x*(Fy - Pr/A_g)
-    
-    # # check final SCWB
-    # ratio           = np.empty(nFloor-1)
-    
-    # scwb_flag = False
-    # for i in range(nFloor-2, -1, -1):
-    #     ratio[i] = (M_pr[i+1] + M_pr[i])/(2*M_pr_beam)
-    #     if (ratio[i] < 1.0):
-    #         # print('SCWB check failed at floor ' + str(nFloor+1) + ".")
-    #         scwb_flag = True
 
     A_web = A_g - 2*(t_f*b_f)
     V_n  = 0.9*A_web*0.6*Fy
@@ -827,6 +806,7 @@ def scwb_check(all_columns, all_beams, w_load, L_bay):
         if (ratio[i] < 1.0):
             # print('SCWB check failed at floor ' + str(nFloor+1) + ".")
             scwb_flag = True
+            
     return(scwb_flag)
 ############################################################################
 #              ASCE 7-22: Capacity design for moment frame
@@ -858,14 +838,7 @@ def design_MF(input_df, db_string='../resource/'):
     delxe, q = get_MRF_element_forces(hsx, Fx, R_y, n_bays)
     
     # get required section specs
-    Ib, Ic, Zb = get_required_modulus(q, h_col, hsx, delxe, L_bay, w_load)
-
-    I_beam_req        = Ib.max()
-    I_col_req         = Ic.max()
-    Z_beam_req        = Zb.max()
-    
-    I_roof_beam_req    = Ib[-1]
-    Z_roof_beam_req    = Zb[-1]
+    Ib, Ic, Zb, Mu = get_required_modulus(q, h_col, hsx, delxe, L_bay, w_load)
     
     # import shapes 
     
@@ -884,7 +857,7 @@ def design_MF(input_df, db_string='../resource/'):
         # select beam for each floor
         selected_beam, qualified_beams = select_beam(fl, Ib, Zb, 
                                                      sorted_beams, 
-                                                     w_load, q,
+                                                     w_load, q, Mu,
                                                      L_bay)
         
         if selected_beam is not np.nan:
@@ -900,11 +873,12 @@ def design_MF(input_df, db_string='../resource/'):
         # splice once every 4 floors
         if (fl%4) == 0:
             selected_column, passed_check_cols = select_column(fl, w_load, 
-                                                                L_bay, 
-                                                                h_col, 
-                                                                all_beams, 
-                                                                sorted_cols, 
-                                                                Ic, Ib)
+                                                               Mu,
+                                                               L_bay, 
+                                                               h_col, 
+                                                               all_beams, 
+                                                               sorted_cols, 
+                                                               Ic, Ib)
             if selected_column is not np.nan:
                 all_columns.append(selected_column.iloc[0]['AISC_Manual_Label'])
             else:
@@ -1140,7 +1114,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
     else:
         passed_axial_beams = passed_Zx_beams
         
-    # TODO: interaction check (y direction?)
+    # TODO: interaction y direction?
     Zx = selected_beam.iloc[0]['Zx']
     Mnx = 50.0*Zx*0.9
     if Pu_beam/Pn_beam > 0.2:
