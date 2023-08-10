@@ -740,8 +740,7 @@ def select_column(fl, wLoad, L_bay, h_col, all_beams, col_list,
     
     selected_col, passed_Zx_cols = select_member(passed_Ix_cols, 
         'Zx', scwb_Z_req)
-        
-    # TODO: check SMRF column axial capacity
+    
     # TODO: check SMRF column interaction
     # selected_col, passed_axial_cols = axial_check(selected_col, 
     #                                               passed_Zx_cols, 
@@ -922,8 +921,8 @@ def design_MF(input_df, db_string='../resource/'):
         scwb_flag = True
     
     ######################### OLD ##################################
+    '''
     # Floor beams
-    # TODO: extend one beam/floor to MF, column splices as well
     selected_beam, passed_Ix_beams = select_member(sorted_beams, 
                                                    'Ix', I_beam_req)
 
@@ -959,8 +958,9 @@ def design_MF(input_df, db_string='../resource/'):
         selected_roof_beam = selected_roof_beam.iloc[0]['AISC_Manual_Label']
     if isinstance(selected_column, pd.DataFrame):
         selected_column = selected_column.iloc[0]['AISC_Manual_Label']
+    '''
     
-    return(selected_beam, selected_roof_beam, selected_column, scwb_flag)
+    return(all_beams, all_columns, scwb_flag)
 
 ############################################################################
 #              ASCE 7-22: Capacity design for braced frame
@@ -1476,7 +1476,6 @@ def design_CBF(input_df, db_string='../resource/'):
     
         
     # beam and column capacity design
-    # TODO: one column per 4 floors
     from building import get_shape
     import numpy as np
     

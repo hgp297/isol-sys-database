@@ -354,9 +354,12 @@ class Building:
         
         self.number_nodes()
         
-        selected_col = get_shape(self.column, 'column')
-        selected_beam = get_shape(self.beam, 'beam')
-        selected_roof = get_shape(self.roof, 'beam')
+        # selected_col = get_shape(self.column, 'column')
+        # selected_beam = get_shape(self.beam, 'beam')
+        # selected_roof = get_shape(self.roof, 'beam')
+        
+        col_list = self.column
+        beam_list = self.beam
         
         # base nodes
         base_nodes = self.node_tags['base']
@@ -366,7 +369,6 @@ class Building:
         
         # wall nodes (should only be two)
         n_bays = int(self.num_bays)
-        n_floors = int(self.num_stories)
         
         wall_nodes = self.node_tags['wall']
         ops.node(wall_nodes[0], 0.0*ft, 0.0*ft, 0.0*ft)
@@ -442,10 +444,10 @@ class Building:
         elastic_mat_tag = 52
         torsion_mat_tag = 53
         
-        # Steel material tag
-        steel_col_tag = 31
-        steel_beam_tag = 32
-        steel_roof_tag = 33
+        # # Steel material tag
+        # steel_col_tag = 31
+        # steel_beam_tag = 32
+        # steel_roof_tag = 33
     
         # Isolation layer tags
         friction_1_tag = 41
@@ -455,6 +457,12 @@ class Building:
         
         # Impact material tags
         impact_mat_tag = 91
+        
+        # reserve blocks of 10 for integration and section tags
+        col_sec = 110
+        
+        beam_sec = 120
+        
         
 ################################################################################
 # define materials
@@ -475,89 +483,16 @@ class Building:
 ################################################################################
 # define spring materials
 ################################################################################
-            
-        # Iz is the stronger axis
-        (Ag_col, Iz_col, Iy_col,
-         Zx_col, Sx_col, d_col,
-         bf_col, tf_col, tw_col) = get_properties(selected_col)
-        (Ag_beam, Iz_beam, Iy_beam,
-         Zx_beam, Sx_beam, d_beam,
-         bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
-        (Ag_roof, Iz_roof, Iy_roof,
-         Zx_roof, Sx_roof, d_roof,
-         bf_roof, tf_roof, tw_roof) = get_properties(selected_roof)
-        
-        # Modified IK steel
-        cIK = 1.0
-        DIK = 1.0
-        (Ke_col, My_col, lam_col,
-         thp_col, thpc_col,
-         kappa_col, thu_col) = modified_IK_params(selected_col, L_col)
-        (Ke_beam, My_beam, lam_beam,
-         thp_beam, thpc_beam,
-         kappa_beam, thu_beam) = modified_IK_params(selected_beam, L_beam)
-        (Ke_roof, My_roof, lam_roof,
-         thp_roof, thpc_roof,
-         kappa_roof, thu_roof) = modified_IK_params(selected_roof, L_beam)
-    
-        # calculate modified section properties to account for spring stiffness being in series with the elastic element stiffness
-        # Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
-        n = 10 # stiffness multiplier for rotational spring
-        
-        Iz_col_mod = Iz_col*(n+1)/n
-        Iz_beam_mod = Iz_beam*(n+1)/n
-        Iz_roof_mod = Iz_roof*(n+1)/n
-    
-        Iy_col_mod = Iy_col*(n+1)/n
-        Iy_beam_mod = Iy_beam*(n+1)/n
-        Iy_roof_mod = Iy_roof*(n+1)/n
-    
-        Ke_col = n*6.0*Es*Iz_col/(0.8*L_col)
-        Ke_beam = n*6.0*Es*Iz_beam/(0.8*L_beam)
-        Ke_roof = n*6.0*Es*Iz_roof/(0.8*L_beam)
-    
-        McMy = 1.11 # ratio of capping moment to yield moment, Mc / My
-        # a_mem_col = (n+1.0)*(My_col*(McMy-1.0))/(Ke_col*thp_col)
-        # b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
-    
-        # a_mem_beam = (n+1.0)*(My_col*(McMy-1.0))/(Ke_beam*thp_beam)
-        # b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
-    
-         
-        ops.uniaxialMaterial('IMKBilin', steel_col_tag, Ke_col,
-                              thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
-                              thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
-                              lam_col, lam_col, lam_col,
-                              cIK, cIK, cIK,
-                              DIK, DIK, DIK)
-        
-        ops.uniaxialMaterial('IMKBilin', steel_beam_tag, Ke_beam,
-                              thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
-                              thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
-                              lam_beam, lam_beam, lam_beam,
-                              cIK, cIK, cIK,
-                              DIK, DIK, DIK)
-
-        ops.uniaxialMaterial('IMKBilin', steel_roof_tag, Ke_roof,
-                              thp_roof, thpc_roof, thu_roof, My_roof, McMy, kappa_roof,
-                              thp_roof, thpc_roof, thu_roof, My_roof, McMy, kappa_roof,
-                              lam_roof, lam_roof, lam_roof,
-                              cIK, cIK, cIK,
-                              DIK, DIK, DIK)
-
-################################################################################
-# define springs
-################################################################################
-
-        # Create springs at column and beam ends
-        # Springs follow Modified Ibarra Krawinkler model
-        # have spring local z be global y, then allow rotation around local z
-        column_x = [0, 0, 1]
-        column_y = [1, 0, 0]
-        beam_x = [1, 0, 0]
-        beam_y = [0, 0, 1]
-        
         def rot_spring_bilin(eleID, matID, nodeI, nodeJ, mem_tag):
+            
+            # Create springs at column and beam ends
+            # Springs follow Modified Ibarra Krawinkler model
+            # have spring local z be global y, then allow rotation around local z
+            column_x = [0, 0, 1]
+            column_y = [1, 0, 0]
+            beam_x = [1, 0, 0]
+            beam_y = [0, 0, 1]
+            
             # columns
             if mem_tag == 1:
                 # Create zero length element (spring), rotations allowed about local z axis
@@ -576,9 +511,70 @@ class Building:
                     '-dir', 1, 2, 3, 4, 5, 6, 
                     '-orient', *beam_x, *beam_y,
                     '-doRayleigh', 1)
-                
-            # ops.equalDOF(nodeI, nodeJ, 1, 2, 3, 4, 6)
+        
+        cIK = 1.0
+        DIK = 1.0
+        n_mik = 10.0
+        McMy = 1.11 # ratio of capping moment to yield moment, Mc / My
+        
+        for fl_col, col in enumerate(col_list):
             
+            current_col = get_shape(col, 'column')
+            
+            # column section
+            # match the tag number with the floor's node number
+            # for column, this is the bottom node (col between 10 and 20 has tag 111)
+            # e.g. first col bot nodes at 3x -> tag 113 and 153
+            
+            current_col_sec = col_sec + fl_col + 1
+            
+            # Iz is the stronger axis
+            (Ag_col, Iz_col, Iy_col,
+             Zx_col, Sx_col, d_col,
+             bf_col, tf_col, tw_col) = get_properties(current_col)
+            
+            # Modified IK steel, adjusted for length from PH to PH
+            (Ke_col, My_col, lam_col,
+             thp_col, thpc_col,
+             kappa_col, thu_col) = modified_IK_params(current_col, 0.8*L_col)
+            
+            ops.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
+                                  thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
+                                  thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
+                                  lam_col, lam_col, lam_col,
+                                  cIK, cIK, cIK,
+                                  DIK, DIK, DIK)
+            
+        for fl_beam, beam in enumerate(beam_list):
+            current_beam = get_shape(beam, 'beam')
+            
+            # beam section: fiber wide flange section
+            # match the tag number with the floor's node number
+            # e.g. first beams nodes at 2x -> tag 132 and 172
+        
+            current_beam_sec = beam_sec + fl_beam + 2
+            
+            # Iz is the stronger axis
+            (Ag_beam, Iz_beam, Iy_beam,
+             Zx_beam, Sx_beam, d_beam,
+             bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
+            
+            # Modified IK steel, adjusted for length from PH to PH
+            (Ke_beam, My_beam, lam_beam,
+             thp_beam, thpc_beam,
+             kappa_beam, thu_beam) = modified_IK_params(current_beam, 0.8*L_beam)
+            
+            ops.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
+                                  thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
+                                  thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
+                                  lam_beam, lam_beam, lam_beam,
+                                  cIK, cIK, cIK,
+                                  DIK, DIK, DIK)
+        
+################################################################################
+# define springs
+################################################################################
+
         # spring elements: #5xxx, xxx is the spring node
         spring_id = self.elem_ids['spring']
         spring_elems = self.elem_tags['spring']
@@ -589,22 +585,37 @@ class Building:
             # if last digit is 6 or 8, assign column transformations
             if (spr_nd%10)%2 == 0:
                 mem_tag = 1
-                rot_spring_bilin(elem_tag, steel_col_tag, 
+                
+                # get xXxx digit (floor number), adjust to correctly identify
+                # floor's column
+                if (spr_nd%10) == 8:
+                    fl_num = (spr_nd//100)%10
+                elif (spr_nd%10) == 6:
+                    fl_num = (spr_nd//100)%10 - 1
+                
+                # add to match previously defined column tags
+                steel_tag = col_sec + fl_num
+                
+                # make spring with the appropriate material/section
+                rot_spring_bilin(elem_tag, steel_tag, 
                                  parent_nd, spr_nd, mem_tag)
             else:
                 mem_tag = 2
                 
-                # if beam is on top floor, use roof beam springs
-                if (parent_nd//10) == n_floors + 1:
-                    rot_spring_bilin(elem_tag, steel_roof_tag, 
-                                     parent_nd, spr_nd, mem_tag)
-                else:
-                    rot_spring_bilin(elem_tag, steel_beam_tag, 
-                                     parent_nd, spr_nd, mem_tag)
-            
+                # get xXxx digit (floor number)
+                fl_num = (spr_nd//100)%10
+                
+                # beam tags end in 2
+                steel_tag = beam_sec + fl_num
+                
+                # make spring with the appropriate material/section
+                rot_spring_bilin(elem_tag, steel_tag, 
+                                 parent_nd, spr_nd, mem_tag)
+                
 ###############################################################################
 # define beams and columns
 ###############################################################################
+        
         # geometric transformation for beam-columns
         # command: geomTransf('Linear', transfTag, *vecxz, '-jntOffset', *dI, *dJ) for 3d
         beam_transf_tag   = 1
@@ -630,13 +641,33 @@ class Building:
         ops.geomTransf('Corotational', col_transf_tag, *vecxz_col) # columns
         
         # outside of concentrated plasticity zones, use elastic beam columns
-        
         # define the columns
         col_id = self.elem_ids['col']
         col_elems = self.elem_tags['col']
         for elem_tag in col_elems:
             i_nd = (elem_tag - col_id)*10 + 8
             j_nd = (elem_tag - col_id + 10)*10 + 6
+            
+            # determine which floor's column to use
+            cur_floor_idx = (elem_tag//10)%10 - 1
+            col_name = col_list[cur_floor_idx]
+            current_col = get_shape(col_name, 'column')
+            
+            # Iz is the stronger axis
+            (Ag_col, Iz_col, Iy_col,
+             Zx_col, Sx_col, d_col,
+             bf_col, tf_col, tw_col) = get_properties(current_col)
+            
+            # TODO: investigate the following usage of n_mik
+            
+            # calculate modified section properties to account for spring stiffness 
+            # being in series with the elastic element stiffness
+            # Ibarra, L. F., and Krawinkler, H. (2005). 
+            # "Global collapse of frame structures under seismic excitations,"
+            
+            Iz_col_mod = Iz_col*(n_mik+1)/n_mik
+            Iy_col_mod = Iy_col*(n_mik+1)/n_mik
+            
             ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         Ag_col, Es, Gs, J, Iy_col_mod, Iz_col_mod, col_transf_tag)
         
@@ -647,16 +678,28 @@ class Building:
             i_nd = (elem_tag - beam_id)*10 + 9
             j_nd = (elem_tag - beam_id + 1)*10 + 7
             
-            # if beam is on top floor, use roof beam
-            if (elem_tag//10)%10 == n_floors + 1:
-                ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
-                            Ag_roof, Es, Gs, J, Iy_roof_mod, Iz_roof_mod, 
-                            beam_transf_tag)
-            else:
-                ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
-                            Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
-                            beam_transf_tag)
-
+            # determine which floor's column to use
+            cur_floor_idx = (elem_tag//10)%10 - 2
+            beam_name = beam_list[cur_floor_idx]
+            current_beam = get_shape(beam_name, 'beam')
+            
+            # Iz is the stronger axis
+            (Ag_beam, Iz_beam, Iy_beam,
+             Zx_beam, Sx_beam, d_beam,
+             bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
+            
+            # calculate modified section properties to account for spring stiffness 
+            # being in series with the elastic element stiffness
+            # Ibarra, L. F., and Krawinkler, H. (2005). 
+            # "Global collapse of frame structures under seismic excitations,"
+            
+            Iz_beam_mod = Iz_beam*(n_mik+1)/n_mik
+            Iy_beam_mod = Iy_beam*(n_mik+1)/n_mik
+            
+            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                        Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
+                        beam_transf_tag)
+        
 ################################################################################
 # define leaning column
 ################################################################################

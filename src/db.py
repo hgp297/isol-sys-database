@@ -251,14 +251,14 @@ class Database:
                                        axis='columns', 
                                        result_type='expand')
         
-        all_mf_designs.columns = ['beam', 'roof', 'column', 'flag']
+        all_mf_designs.columns = ['beam', 'column', 'flag']
         
         if filter_designs == False:
             mf_designs = all_mf_designs
         else:
             # keep the designs that look sensible
             mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
-            mf_designs = all_mf_designs.dropna(subset=['beam','column','roof'])
+            mf_designs = all_mf_designs.dropna(subset=['beam','column'])
             
         tp = time.time() - t0
       
