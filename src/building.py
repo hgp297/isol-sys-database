@@ -847,24 +847,22 @@ class Building:
                 from math import floor
                 n_addl_bearings = floor(n_bays/2)
                 
-                # change temp coefficients to imperial units
-                qL_imp = 0.4046256704 # (lbs/in^3)
-                cL_imp = 0.0311 # (Btu/lb/degF)
-                kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
-                aS_imp = 0.018166036 # (in^2/s)
+                # # change temp coefficients to imperial units
+                # qL_imp = 0.4046256704 # (lbs/in^3)
+                # cL_imp = 0.0311 # (Btu/lb/degF)
+                # kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
+                # aS_imp = 0.018166036 # (in^2/s)
                 
                 if (elem_idx == 0) or (elem_idx == len(isol_elems)):
                     mod_D_inner = (n_addl_bearings+1)*D_inner
                     mod_D_outer = (n_addl_bearings+1)*D_outer
                     ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                                 G_r, K_bulk, mod_D_inner, mod_D_outer,
-                                t_shim, t_layer, n_layers,
-                                qL=qL_imp, cL=cL_imp, kS=kS_imp, aS=aS_imp)
+                                t_shim, t_layer, n_layers)
                 else:
                     ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                                 G_r, K_bulk, D_inner, D_outer,
-                                t_shim, t_layer, n_layers,
-                                qL=qL_imp, cL=cL_imp, kS=kS_imp, aS=aS_imp)
+                                t_shim, t_layer, n_layers)
   
 ################################################################################
 # Walls
@@ -1893,24 +1891,22 @@ class Building:
                 from math import floor
                 n_addl_bearings = floor(n_bays/2)
                 
-                # change temp coefficients to imperial units
-                qL_imp = 0.4046256704 # (lbs/in^3)
-                cL_imp = 0.0311 # (Btu/lb/degF)
-                kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
-                aS_imp = 0.018166036 # (in^2/s)
+                # # change temp coefficients to imperial units
+                # qL_imp = 0.4046256704 # (lbs/in^3)
+                # cL_imp = 0.0311 # (Btu/lb/degF)
+                # kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
+                # aS_imp = 0.018166036 # (in^2/s)
                 
                 if (elem_idx == 0) or (elem_idx == len(isol_elems)):
                     mod_D_inner = (n_addl_bearings+1)*D_inner
                     mod_D_outer = (n_addl_bearings+1)*D_outer
                     ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                                 G_r, K_bulk, mod_D_inner, mod_D_outer,
-                                t_shim, t_layer, n_layers,
-                                qL=qL_imp, cL=cL_imp, kS=kS_imp, aS=aS_imp)
+                                t_shim, t_layer, n_layers)
                 else:
                     ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                                 G_r, K_bulk, D_inner, D_outer,
-                                t_shim, t_layer, n_layers,
-                                qL=qL_imp, cL=cL_imp, kS=kS_imp, aS=aS_imp)
+                                t_shim, t_layer, n_layers)
   
 ################################################################################
 # Walls

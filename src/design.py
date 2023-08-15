@@ -1254,8 +1254,13 @@ def capacity_CBF_column(selected_brace, current_floor,
     Zx = selected_brace['Zx'].iloc[0]
     brace_buckling_moment = 1.1*Ry_hss*Fy*Zx
     brace_buckling_Z_req = brace_buckling_moment/Fy
-    selected_col, passed_Zx_cols = select_member(col_compr_list, 
-        'Zx', brace_buckling_Z_req)
+    
+    Z_current = selected_col['Zx'].iloc[0]
+    if Z_current < brace_buckling_Z_req:
+        selected_col, passed_Zx_cols = select_member(col_compr_list, 
+            'Zx', brace_buckling_Z_req)
+    else:
+        passed_Zx_cols = col_compr_list
     
     return(selected_col, passed_Zx_cols)
 
