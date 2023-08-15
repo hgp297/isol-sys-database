@@ -237,9 +237,9 @@ n = 10 # stiffness multiplier for rotational spring
 IzCol_mod = IzCol*(n+1)/n
 IyCol_mod = IyCol*(n+1)/n
 
-# adjust for increased elastic zone strength to account for plastic hinges
-# being moved 0.1 away from end
-KeCol = n*6.0*Es*IzCol/(0.8*h_story)
+# # adjust for increased elastic zone strength to account for plastic hinges
+# # being moved 0.1 away from end
+# KeCol = n*6.0*Es*IzCol/(0.8*h_story)
 
 McMy = 1.11 # ratio of capping moment to yield moment, Mc / My
 a_mem_col = (n+1.0)*(MyCol*(McMy-1.0))/(KeCol*thpCol)

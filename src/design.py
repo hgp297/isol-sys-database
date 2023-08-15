@@ -734,11 +734,18 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
                                                     h_col[fl], 
                                                     Pr[fl], 
                                                     M_load[fl])
+    if selected_col is np.nan:
+        return(np.nan, np.nan)
+    
     selected_col, passed_Ix_cols = select_member(passed_axial_beams, 
         'Ix', I_col_req)
+    if selected_col is np.nan:
+        return(np.nan, np.nan)
     
     selected_col, passed_Zx_cols = select_member(passed_Ix_cols, 
         'Zx', scwb_Z_req)
+    if selected_col is np.nan:
+        return(np.nan, np.nan)
 
     A_web = A_g - 2*(t_f*b_f)
     V_n  = 0.9*A_web*0.6*Fy
@@ -1240,9 +1247,17 @@ def capacity_CBF_column(selected_brace, current_floor,
                                                              Lc_col, 
                                                              C_des_col)
     
-    # TODO: AISC 341-16 4e-c-2
+    if selected_col is np.nan:
+        return(np.nan, np.nan)
     
-    return(selected_col, col_compr_list)
+    # AISC 341-16 F2 4e-c-2
+    Zx = selected_brace['Zx'].iloc[0]
+    brace_buckling_moment = 1.1*Ry_hss*Fy*Zx
+    brace_buckling_Z_req = brace_buckling_moment/Fy
+    selected_col, passed_Zx_cols = select_member(col_compr_list, 
+        'Zx', brace_buckling_Z_req)
+    
+    return(selected_col, passed_Zx_cols)
 
 '''
 def capacity_CBF_design(selected_brace, Q_per_bay, w_cases, 
