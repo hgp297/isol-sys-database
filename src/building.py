@@ -2224,8 +2224,9 @@ class Building:
         # beam force?
         # column force?
         
+        # TODO: verify z force of these elements
         ops.recorder('Element', '-file', data_dir+'impact_forces.csv', 
-                     '-time', '-closeOnWrite', '-ele', *walls, 'basicForce')
+                     '-time', '-ele', *walls, 'basicForce')
         
         # diaphragm?
         # leaning column?
@@ -2299,10 +2300,10 @@ class Building:
 
         # set recorder for absolute acceleration (requires time series defined)
         ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv',
-                     '-timeSeries', eq_series_tag, '-time', '-closeOnWrite',
+                     '-timeSeries', eq_series_tag, '-time',
                      '-node', *outer_col_nds, '-dof', 1, 'accel')
         ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv',
-                     '-timeSeries', eq_series_tag, '-time', '-closeOnWrite',
+                     '-timeSeries', eq_series_tag, '-time',
                      '-node', *inner_col_nds, '-dof', 1, 'accel')
 
         # set up ground-motion-analysis parameters

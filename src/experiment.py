@@ -13,7 +13,7 @@
 def prepare_results(output_path, design, Tfb, run_status):
     
     import pandas as pd
-    import pandas as np
+    import numpy as np
     
     # TODO: collect Sa values, collect validation indicator (IDA level)
     num_stories = design['num_stories']

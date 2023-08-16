@@ -315,14 +315,29 @@ class Database:
                                             
         self.all_designs = all_des
         
-    def analyze_db(self, gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
+    def analyze_db(self, output_str,
+                   data_path='../data/',
+                   gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
         
-        from building import Building
         from experiment import run_nlth
+        import pandas as pd
         
         all_designs = self.all_designs
         
-        for design in all_designs:
-            bldg_result = run_nlth(design, gm_path)
+        db_results = None
         
+        for index, design in all_designs.iterrows():
+            bldg_result = run_nlth(design, gm_path)
+            
+            # if initial run, start the dataframe with headers from postprocessing.py
+            if db_results is None:
+                db_results = pd.DataFrame(bldg_result)
+            else:
+                db_results = pd.concat([db_results,bldg_result], sort=False)
+                
+            if (len(db_results)%10 == 0):
+                db_results.to_csv(data_path+'temp_save.csv', index=False)
+        
+        db_results.to_csv(data_path+output_str, index=False)
+        self.ops_analysis = db_results
                 
