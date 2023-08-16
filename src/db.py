@@ -258,7 +258,7 @@ class Database:
         else:
             # keep the designs that look sensible
             mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
-            mf_designs = all_mf_designs.dropna(subset=['beam','column'])
+            mf_designs = mf_designs.dropna(subset=['beam','column'])
             
         tp = time.time() - t0
       
@@ -315,9 +315,14 @@ class Database:
                                             
         self.all_designs = all_des
         
+    def analyze_db(self, gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
         
+        from building import Building
+        from experiment import run_nlth
         
+        all_designs = self.all_designs
         
+        for design in all_designs:
+            bldg_result = run_nlth(design, gm_path)
         
-        
-        
+                

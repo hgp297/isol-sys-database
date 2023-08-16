@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(1000)
+main_obj = Database(50)
 
 main_obj.design_bearings(filter_designs=True)
 
@@ -32,6 +32,9 @@ main_obj.scale_gms()
 # mf_tfp_bldg = Building(test_mf_tfp)
 # mf_tfp_bldg.model_frame()
 
+#%%
+
+# main_obj.run_nlth()
 
 #%%
 
@@ -46,8 +49,8 @@ mf_lrb_bldg.apply_grav_load()
 mf_lrb_bldg.provide_damping(80, method='SP',
                        zeta=[0.05], modes=[1])
 
-# dt = 0.005
-# mf_lrb_bldg.run_ground_motion('RSN3905_TOTTORI_OKY002EW', 1.0, dt)
+dt = 0.005
+mf_lrb_bldg.run_ground_motion('RSN3905_TOTTORI_OKY002EW', 1.0, dt)
 
 # test build CBF
 cbf_bldg = Building(test_cbf)

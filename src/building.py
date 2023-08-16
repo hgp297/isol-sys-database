@@ -700,6 +700,8 @@ class Building:
             ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
                         beam_transf_tag)
+            
+        # TODO: ghosts
         
 ################################################################################
 # define leaning column
@@ -2105,7 +2107,6 @@ class Building:
             lambdaJ = lambdaN[modes[-1]-1]
             wj = lambdaJ**(0.5)
             
-        # TODO: return Tfb
         print("Tfb = %.3f s" % Tfb)          
 
         # unfix base
@@ -2150,6 +2151,8 @@ class Building:
             ops.region(regTag, '-ele',
                 *damped_elems,
                 '-rayleigh', x[0], betaK, betaKInit, x[1])
+            
+        return(Tfb)
     
     def run_ground_motion(self, gm_name, scale_factor, dt_transient,
                           gm_dir='../tfp_mf/ground_motions/PEERNGARecords_Unscaled/',
@@ -2161,6 +2164,7 @@ class Building:
         # get list of relevant nodes
         superstructure_system = self.superstructure_system
         isols = self.elem_tags['isolator']
+        walls = self.elem_tags['wall']
         isol_id = self.elem_ids['isolator']
         base_id = self.elem_ids['base']
         
@@ -2183,7 +2187,7 @@ class Building:
             
             # get the list of nodes in all stories for the first outer and inner column
             outer_col_nds = [nd for nd in floor_nodes
-                             if nd%10 == 0 and nd//10 > 1]
+                             if nd%10 == 0]
             
             inner_col_nds = [nd+1 for nd in outer_col_nds]
             
@@ -2208,6 +2212,7 @@ class Building:
         
         
         # isolator node displacement of outer column
+        # TODO: verify response is same in all columns
         ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', '-time',
             '-node', isol_node, '-dof', 1, 3, 5, 'disp')
         
@@ -2218,7 +2223,10 @@ class Building:
         # brace force?
         # beam force?
         # column force?
-        # wall?
+        
+        ops.recorder('Element', '-file', data_dir+'impact_forces.csv', 
+                     '-time', '-closeOnWrite', '-ele', *walls, 'basicForce')
+        
         # diaphragm?
         # leaning column?
         
