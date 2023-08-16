@@ -1683,7 +1683,7 @@ class Building:
         beam_elems = self.elem_tags['beam']
         beam_id = self.elem_ids['beam']
         ghost_beams = [beam_tag//10 for beam_tag in brace_beam_elems
-                       if beam_tag%10 == 1]
+                       if (beam_tag%brace_beam_id in brace_top_nodes)]
         grav_beams = [beam_tag for beam_tag in beam_elems
                       if beam_tag not in ghost_beams]
         
@@ -1991,9 +1991,11 @@ class Building:
             # get elements
             brace_beams = self.elem_tags['brace_beams']
             beams = self.elem_tags['beam']
+            brace_beam_id = self.elem_ids['brace_beam']
+            brace_top_nodes = self.node_tags['brace_top']
             
             ghost_beams = [beam_tag//10 for beam_tag in brace_beams
-                           if beam_tag%10 == 1]
+                           if (beam_tag%brace_beam_id in brace_top_nodes)]
             grav_beams = [beam_tag for beam_tag in beams
                           if beam_tag not in ghost_beams]
             
@@ -2178,6 +2180,11 @@ class Building:
                              if nd%10 == left_col_digit]
             inner_col_nds = [nd+1 for nd in outer_col_nds]
             
+            # insert the isolation layer
+            outer_col_nds.insert(0, outer_col_nds[0]-10)
+            inner_col_nds.insert(0, inner_col_nds[0]-10)
+            
+            # TODO: why is this different if MF?
             isol_elem = [elem for elem in isols
                          if elem%10 == left_col_digit][0]
             isol_node = isol_elem - isol_id - base_id + 10

@@ -77,8 +77,8 @@ def prepare_results(output_path, design, Tfb, run_status):
                          outer_col_vel.abs().max()).tolist()
         PFA = np.maximum(inner_col_acc.abs().max(), 
                          outer_col_acc.abs().max()).tolist()
-        RID = np.maximum(inner_col_drift.iloc[-1], 
-                         outer_col_drift.iloc[-1]).tolist()
+        RID = np.maximum(inner_col_drift.iloc[-1].abs(), 
+                         outer_col_drift.iloc[-1].abs()).tolist()
         
     # if run failed, we find the state corresponding to 0.20 drift across all
     # assumes that once drift crosses 0.20, it only increases (no other floor

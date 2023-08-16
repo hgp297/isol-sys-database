@@ -329,11 +329,12 @@ class Database:
         for index, design in all_designs.iterrows():
             bldg_result = run_nlth(design, gm_path)
             
+            # TODO: find a way to keep the indices
             # if initial run, start the dataframe with headers from postprocessing.py
             if db_results is None:
-                db_results = pd.DataFrame(bldg_result)
+                db_results = pd.DataFrame(bldg_result).T
             else:
-                db_results = pd.concat([db_results,bldg_result], sort=False)
+                db_results = pd.concat([db_results,bldg_result.to_frame().T], sort=False)
                 
             if (len(db_results)%10 == 0):
                 db_results.to_csv(data_path+'temp_save.csv', index=False)
