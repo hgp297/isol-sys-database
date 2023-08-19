@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(50)
+main_obj = Database(30)
 
 main_obj.design_bearings(filter_designs=True)
 
@@ -32,13 +32,31 @@ main_obj.scale_gms()
 # mf_tfp_bldg = Building(test_mf_tfp)
 # mf_tfp_bldg.model_frame()
 
+#%% troubleshoot
+
+troubleshoot_run = main_obj.all_designs.loc[10]
+
+from building import Building
+
+# test build CBF
+troubleshoot_bldg = Building(troubleshoot_run)
+troubleshoot_bldg.model_frame()
+troubleshoot_bldg.apply_grav_load()
+troubleshoot_bldg.provide_damping(80, method='SP',
+                                  zeta=[0.05], modes=[1])
+
+dt = 0.0005
+troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
+                                    troubleshoot_run.scale_factor, 
+                                    dt)
 #%%
 
-main_obj.analyze_db('just_a_test.csv')
+# main_obj.analyze_db('just_a_test.csv')
 
 #%%
 
 # from building import Building
+
 # from bearing import Bearing
 # tfp_example = Bearing(test_mf_tfp)
 
@@ -47,7 +65,7 @@ main_obj.analyze_db('just_a_test.csv')
 # mf_lrb_bldg.model_frame()
 # mf_lrb_bldg.apply_grav_load()
 # mf_lrb_bldg.provide_damping(80, method='SP',
-#                        zeta=[0.05], modes=[1])
+#                         zeta=[0.05], modes=[1])
 
 # dt = 0.005
 # mf_lrb_bldg.run_ground_motion('RSN3905_TOTTORI_OKY002EW', 1.0, dt)
@@ -58,6 +76,9 @@ main_obj.analyze_db('just_a_test.csv')
 # cbf_bldg.apply_grav_load()
 # cbf_bldg.provide_damping(80, method='SP',
 #                           zeta=[0.05], modes=[1])
+
+# dt = 0.005
+# cbf_bldg.run_ground_motion('RSN3905_TOTTORI_OKY002EW', 1.0, dt)
 
 # sample_lrb = main_obj.lrb_designs.iloc[0]
 # from design import design_LRB

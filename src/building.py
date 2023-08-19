@@ -292,7 +292,15 @@ class Building:
             
 
     def model_frame(self):
-        # TODO: print building run info
+        print('=========== Constructing model ===========')
+        print('Frame type:', self.superstructure_system, '|', 
+              'Isolator type:', self.isolator_system)
+        print('%d bays, %d stories' % (self.num_bays, self.num_stories))
+        print('Moat amplification = %.2f | Ry = %.2f' % 
+              (self.moat_ampli, self.RI))
+        print('Tm = %.2f s | Q = %.2f | k_ratio = %.2f' %
+              (self.T_m, self.Q, self.k_ratio))
+        
         if self.superstructure_system == 'MF':
             self.model_moment_frame()
         else:
@@ -302,7 +310,6 @@ class Building:
 #              MOMENT FRAME OPENSEES MODELING
 ###############################################################################
 
-    # TODO: modeling choices (panel zone? plastic hinge length?)
     def model_moment_frame(self):
         
         # import OpenSees and libraries
@@ -658,8 +665,6 @@ class Building:
             (Ag_col, Iz_col, Iy_col,
              Zx_col, Sx_col, d_col,
              bf_col, tf_col, tw_col) = get_properties(current_col)
-            
-            # TODO: investigate the following usage of n_mik
             
             # calculate modified section properties to account for spring stiffness 
             # being in series with the elastic element stiffness
@@ -2147,7 +2152,7 @@ class Building:
             ops.region(regTag, '-ele',
                 *damped_elems,
                 '-rayleigh', 0.0, betaK, betaKInit, a1)
-            print('Structure damped with %0.2f%% at frequency %0.2f Hz' % 
+            print('Structure damped with %0.1f%% at frequency %0.2f Hz' % 
                   (zeta[0]*100, wi))
         elif method == 'Rayleigh':
             ops.region(regTag, '-ele',
@@ -2254,7 +2259,7 @@ class Building:
         # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
         GMDirection = 1  # ground-motion direction
         
-        print('Current ground motion: ', gm_name)
+        print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
         ops.constraints('Plain')
         ops.numberer('RCM')
@@ -2321,8 +2326,12 @@ class Building:
         n_steps = np.floor(T_end/dt_transient)
         
         # actually perform analysis; returns ok=0 if analysis was successful
+        # TODO: investigate fatal failure
+        
+        import time
+        t0 = time.time()
+        
         ok = ops.analyze(n_steps, dt_transient)   
-
         if ok != 0:
             ok = 0
             curr_time = ops.getTime()
@@ -2345,9 +2354,12 @@ class Building:
                         print("That worked. Back to Newton")
                     ops.algorithm(algorithmTypeDynamic)
 
-
-        print('Ground motion done. End time:', ops.getTime())
-
+        t_final = ops.getTime()
+        tp = time.time() - t0
+        minutes = tp//60
+        seconds = tp - 60*minutes
+        print('Ground motion done. End time: %.4f s' % t_final)
+        print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
         ops.wipe()
         
         return(ok)
