@@ -253,6 +253,7 @@ class Database:
         
         all_mf_designs.columns = ['beam', 'column', 'flag']
         
+        # TODO: drop flag column
         if filter_designs == False:
             mf_designs = all_mf_designs
         else:

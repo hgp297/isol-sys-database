@@ -319,7 +319,7 @@ ops.patch('rect', steel_mat_tag, nfw,
     1, -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
 
 # use a distributed plasticity integration with 4 IPs
-n_IP = 7
+n_IP = 4
 ops.beamIntegration('Lobatto', brace_int_tag, 
                     brace_sec_tag, n_IP)
 

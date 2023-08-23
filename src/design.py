@@ -452,8 +452,6 @@ def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
     Cd_code = 5.5
     Ry_code = 8.0
     Cd          = (Cd_code/Ry_code)*R_y
-    
-    Cd          = R_y
 
     thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
     delx        = thetaMax*hsx
@@ -466,6 +464,8 @@ def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
     for i in range(nFloor-2, -1, -1):
         Q[i] = Fx[i] + Q[i+1]
 
+    # an alternative way of doing this is q = Q/n_cols, but then interior
+    # columns must be adjusted to be designed for 2q
     q           = Q/n_bays
 
     return(delxe, q)
@@ -480,7 +480,9 @@ def get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad):
     # required I
     ksi = 1.0
     E           = 29000*ksi
+    
     # story beams
+    # see previous note, if q/n_cols used, replace with 2q
     Ib          = q*hCol**2/(12*delxe*E)*(hCol/beta + L_bay)                             
     Ib[-1]      = q[-1]*hsx[-1]**2/(12*delxe[-1]*E)*(hsx[-1]/(2*beta) + L_bay)
     # roof beams, using hsx since flexibility method assumes h = full column
@@ -617,7 +619,7 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
     (M_n, M_pr, V_pr) = calculate_strength(current_member, L_bay)
 
     ph_VGrav = line_load*L_bay/2
-    ph_VBeam = 2*M_pr/(0.9*L_bay)  # 0.9L_bay for plastic hinge length
+    ph_VBeam = 2*M_pr/(0.8*L_bay)  # 0.9L_bay for plastic hinge length
     ph_location = ph_VBeam > ph_VGrav
 
     if not np.all(ph_location):
@@ -657,20 +659,23 @@ def select_beam(fl, Ib, Zb, sorted_beams, w_load, q_load, M_load, L_bay):
     I_beam_req = Ib[fl]
     Z_beam_req = Zb[fl]
     
-    q = q_load[fl]
-    M_max = M_load[fl]
-    
     selected_beam, passed_Ix_beams = select_member(sorted_beams, 
                                                    'Ix', I_beam_req)
 
     selected_beam, passed_Zx_beams = zx_check(selected_beam, 
                                               passed_Ix_beams, Z_beam_req)
     
+    # due to slab, no need to check axial
+    '''
+    q = q_load[fl]
+    M_max = M_load[fl]
     selected_beam, passed_axial_beams = axial_check(selected_beam, 
                                                     passed_Zx_beams, 
                                                     L_bay, q, M_max)
-
-    story_loads = w_load[:-1]
+    '''
+    passed_axial_beams = passed_Zx_beams
+    
+    story_loads = w_load[fl]
     selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
                                                         passed_axial_beams, 
                                                         story_loads, L_bay)
@@ -747,6 +752,9 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
     if selected_col is np.nan:
         return(np.nan, np.nan)
 
+    (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
+    M_pr = Z_x*(Fy - Pr/A_g)
+    
     A_web = A_g - 2*(t_f*b_f)
     V_n  = 0.9*A_web*0.6*Fy
     V_pr = M_pr[fl]/h_col[fl]
@@ -1072,6 +1080,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
     Tpr = Ag * Fy * Ry_hss
     Cpr_pr = Cpr * 0.3
     
+    '''
     # axial demand on beam
     # Q_per_bay is the stacked force per bay
     L_bldg = n_bays * L_bay
@@ -1080,6 +1089,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
     Fh_braces = (Tpr + Cpr) * cos(theta) # horizontal force from brace action
     
     Pu_beam = Fh_braces - Q_beam
+    '''
     
     # shear/moment demand on beam
     w1 = w_cases['1.2D+0.5L+1.0E'][current_floor]/12 # raw is kip/ft, convert to kip/in
@@ -1108,6 +1118,9 @@ def capacity_CBF_beam(selected_brace, current_floor,
     if selected_beam is np.nan:
         return(np.nan, np.nan)
     
+    # no need to axial check beam because of slab
+    passed_axial_beams = passed_Zx_beams
+    '''
     # axial check
     rad_gy_beam = selected_beam['ry'].iloc[0]
     Ag_beam = selected_beam['A'].iloc[0]
@@ -1121,7 +1134,6 @@ def capacity_CBF_beam(selected_brace, current_floor,
     else:
         passed_axial_beams = passed_Zx_beams
         
-    # TODO: interaction y direction?
     Zx = selected_beam.iloc[0]['Zx']
     Mnx = 50.0*Zx*0.9
     if Pu_beam/Pn_beam > 0.2:
@@ -1152,6 +1164,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
             
         selected_beam, passed_axial_beams = select_member(passed_axial_beams, 
             'interaction', 1.0)
+    '''
     
     # shear check
     # beam shear

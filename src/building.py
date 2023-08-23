@@ -317,6 +317,7 @@ class Building:
         
         # remove existing model
         ops.wipe()
+        ops.wipeAnalysis()
 
         # units: in, kip, s
         # dimensions
@@ -929,6 +930,7 @@ class Building:
         
         # remove existing model
         ops.wipe()
+        ops.wipeAnalysis()
 
         # units: in, kip, s
         # dimensions
@@ -2170,6 +2172,7 @@ class Building:
 
         # get list of relevant nodes
         superstructure_system = self.superstructure_system
+        isol_system = self.isolator_system
         isols = self.elem_tags['isolator']
         walls = self.elem_tags['wall']
         isol_id = self.elem_ids['isolator']
@@ -2189,10 +2192,46 @@ class Building:
             outer_col_nds.insert(0, outer_col_nds[0]-10)
             inner_col_nds.insert(0, inner_col_nds[0]-10)
             
-            # TODO: why is this different if MF?
-            isol_elem = [elem for elem in isols
-                         if elem%10 == left_col_digit][0]
-            isol_node = isol_elem - isol_id - base_id + 10
+            # record brace nodes' displacements
+            brace_tops = self.node_tags['brace_top']
+            brace_bottoms = self.node_tags['brace_bottom']
+            
+            # lowest left bay
+            top_node = min(brace_tops)
+            bottom_left_node = min(brace_bottoms)
+            bottom_right_node = bottom_left_node+1
+            
+            ops.recorder('Node', '-file', data_dir+'brace_node_disp.csv','-time',
+                '-node', top_node, bottom_left_node, bottom_right_node, 
+                '-dof', 1, 2, 'disp')
+            
+            # first story, leftmost bay, left brace
+            brace_ghosts = self.elem_tags['brace_ghosts']
+            bottom_left_ghost = min(brace_ghosts)
+            bottom_right_ghost = bottom_left_ghost + 98
+            ops.recorder('Element','-ele', bottom_left_ghost,
+                         '-file',data_dir+'left_ghost_deformation.csv', '-time',
+                         'deformations')
+            ops.recorder('Element','-ele', bottom_right_ghost,
+                         '-file',data_dir+'right_ghost_deformation.csv', '-time',
+                         'deformations')
+            
+            # first story, leftmost bay, left brace
+            braces = self.elem_tags['brace']
+            bottom_left_brace = min(braces)
+            # corresponding right brace (100 to shift bay, -2 for 9-7 difference)
+            bottom_right_brace = bottom_left_brace + (100 - 2)
+            
+            selected_brace = get_shape(self.brace[0],'brace')
+            d_brace = selected_brace.iloc[0]['b']
+            
+            ops.recorder('Element','-ele', bottom_left_brace,
+                         '-file',data_dir+'brace_left.csv', '-time',
+                         'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+            
+            ops.recorder('Element','-ele', bottom_right_brace,
+                         '-file',data_dir+'brace_right.csv', '-time',
+                         'section','fiber', 0.0, -d_brace/2, 'stressStrain')
             
         else:
             floor_nodes = self.node_tags['floor']
@@ -2203,36 +2242,42 @@ class Building:
             
             inner_col_nds = [nd+1 for nd in outer_col_nds]
             
+        # if lead rubber bearing, take a non-edge bearing 
+        # (edge bearing was "stacked")
+        if isol_system == 'LRB':
+            isol_elem = isols[1]
+            isol_node = isol_elem - isol_id - base_id + 10
+        # TFPs aren't stacked, so just take left-most 
+        else:
             # get the leftmost isolator
             isol_elem = isols[0]
-            
             isol_node = isol_elem - isol_id - base_id + 10
             
         ops.printModel('-file', data_dir+'model.out')
         
         # lateral frame story displacement
         ops.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
-            '-node', *outer_col_nds, '-dof', 1, 'disp')
+                     '-node', *outer_col_nds, '-dof', 1, 'disp')
         ops.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
-            '-node', *inner_col_nds, '-dof', 1, 'disp')
+                     '-node', *inner_col_nds, '-dof', 1, 'disp')
         
         # lateral frame story velocity
         ops.recorder('Node', '-file', data_dir+'outer_col_vel.csv','-time',
-            '-node', *outer_col_nds, '-dof', 1, 'vel')
+                     '-node', *outer_col_nds, '-dof', 1, 'vel')
         ops.recorder('Node', '-file', data_dir+'inner_col_vel.csv','-time',
-            '-node', *inner_col_nds, '-dof', 1, 'vel')
+                     '-node', *inner_col_nds, '-dof', 1, 'vel')
         
         
         # isolator node displacement of outer column
         # TODO: verify response is same in all columns
-        ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', '-time',
-            '-node', isol_node, '-dof', 1, 3, 5, 'disp')
+        ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', 
+                     '-time', '-node', isol_node, '-dof', 1, 3, 5, 'disp')
         
         # isolator response of beneath outer column
         ops.recorder('Element', '-file', data_dir+'isolator_forces.csv',
-            '-time', '-ele', isol_elem, 'localForce')
+                     '-time', '-ele', isol_elem, 'localForce')
         
-        # brace force?
+        # gusset plate?
         # beam force?
         # column force?
         
