@@ -188,23 +188,50 @@ selected_brace = get_shape('HSS9X9X1/4', 'brace')
  bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
 
 # base node
-ops.node(21, L_bay, 0.0, h_story)
-ops.node(22, 2*L_bay, 0.0, h_story)
-
-ops.fix(22, 1, 1, 1, 1, 1, 1)
-ops.fix(21, 1, 1, 1, 1, 1, 1)
+base_nodes = [21, 22]
+for idx, nd in enumerate(base_nodes):
+    ops.node(nd, (idx+1)*L_beam, 0.0*ft, 0.0*ft)
+    ops.fix(nd, 1, 1, 1, 1, 1, 1)
 
 # end node
-ops.node(31, L_bay, 0.0, 2*h_story)
-ops.node(32, 2*L_bay, 0.0, 2*h_story)
-
-ops.fix(31, 0, 1, 0, 1, 0, 1)
-ops.fix(32, 0, 1, 0, 1, 0, 1)
+w_floor = 2.087/12
+m_grav_outer = w_floor * L_bay / 2 /g
+m_grav_brace = w_floor * L_bay / 2 /g
+floor_nodes = [31, 32]
+for nd in floor_nodes:
+    
+    # get multiplier for location from node number
+    bay = nd%10
+    fl = (nd//10)%10 - 1
+    ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+    
+    # assign masses, in direction of motion and stiffness
+    # DOF list: X, Y, Z, rotX, rotY, rotZ
+    m_nd = m_grav_outer
+    negligible = 1e-15
+    ops.mass(nd, m_nd, m_nd, m_nd,
+             negligible, negligible, negligible)
+    
+    # restrain out of plane motion
+    ops.fix(nd, 0, 1, 0, 1, 0, 1)
 
 
 # midbay brace top node
-ops.node(311, L_bay+(L_bay/2), 0.0, 2*h_story)
-ops.fix(311, 0, 1, 0, 1, 0, 1)
+
+
+brace_top_nodes = [311]
+for nd in brace_top_nodes:
+    parent_node = nd // 10
+    
+    # extract their corresponding coordinates from the node numbers
+    fl = parent_node//10 - 1
+    x_coord = (parent_node%10 + 0.5)*L_beam
+    z_coord = fl*L_col
+    
+    m_nd = m_grav_brace
+    ops.node(nd, x_coord, 0.0*ft, z_coord)
+    ops.mass(nd, m_nd, m_nd, m_nd,
+             negligible, negligible, negligible)
 
 # brace nodes
 ofs = 0.25
@@ -841,7 +868,7 @@ node_rxn = 'output/end_reaction.out'
 ops.recorder('Element','-ele',93116,'-file',filename,
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
 ops.recorder('Node','-node', 21, 22,'-file', node_rxn, '-dof', 1, 'reaction')
-ops.recorder('Node','-node', 31,'-file', load_disp, '-dof', 1, 'disp')
+ops.recorder('Node','-node', 311,'-file', load_disp, '-dof', 1, 'disp')
 ops.analysis("Static")                      # create analysis object
 
 peaks = np.arange(0.1, 10.0, 0.5)
