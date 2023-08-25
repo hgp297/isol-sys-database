@@ -549,7 +549,6 @@ def zx_check(current_member, member_list, Z_beam_req):
 
     return(selected_member, qualified_list)
 
-# TODO: finalize interaction check
 def axial_check(current_member, member_list, L_bay, Pu, M_max=0.0):
     # axial check
     rad_gy = current_member['ry'].iloc[0]

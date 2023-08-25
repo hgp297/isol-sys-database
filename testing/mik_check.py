@@ -1,5 +1,5 @@
 ############################################################################
-#               Testing for a single brace element
+#               Testing for a single MIK spring
 
 # Created by:   Huy Pham
 #               University of California, Berkeley

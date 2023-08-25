@@ -1249,11 +1249,11 @@ class Building:
         E_ghost = 100.0
         ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
         
-        
+        # TODO: check steel hardening ratio
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
         Fy  = 50*ksi        # yield strength
-        b   = 0.003           # hardening ratio
+        b   = 0.03           # hardening ratio
         R0 = 15
         cR1 = 0.925
         cR2 = 0.15
