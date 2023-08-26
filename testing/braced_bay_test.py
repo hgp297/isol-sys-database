@@ -140,7 +140,13 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
 ############################################################################
 # Construct braced bay
 ############################################################################
-
+import pandas as pd
+from building import Building
+test_d = {'superstructure_system':'CBF', 'num_bays':1, 'num_stories':1}
+test_design = pd.Series(data=test_d, 
+                          index=['superstructure_system', 'num_bays', 'num_stories'])
+bldg = Building(test_design)
+bldg.number_nodes()
 # import OpenSees and libraries
 import openseespy.opensees as ops
 
@@ -174,10 +180,11 @@ L_col = h_story
 col_list = ['W12X79']
 beam_list = ['W40X149']
 brace_list = ['HSS9X9X1/4']
-
+# brace_list = ['HSS4X4X1/2']
 selected_col = get_shape('W12X79', 'column')
 selected_beam = get_shape('W40X149', 'beam')
 selected_brace = get_shape('HSS9X9X1/4', 'brace')
+# selected_brace = get_shape('HSS4X4X1/2', 'brace')
 
 (Ag_col, Iz_col, Iy_col,
  Zx_col, Sx_col, d_col,
@@ -188,16 +195,16 @@ selected_brace = get_shape('HSS9X9X1/4', 'brace')
  bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
 
 # base node
-base_nodes = [21, 22]
+base_nodes = [10, 11]
 for idx, nd in enumerate(base_nodes):
-    ops.node(nd, (idx+1)*L_beam, 0.0*ft, 0.0*ft)
+    ops.node(nd, (idx)*L_beam, 0.0*ft, 0.0*ft)
     ops.fix(nd, 1, 1, 1, 1, 1, 1)
 
 # end node
 w_floor = 2.087/12
 m_grav_outer = w_floor * L_bay / 2 /g
 m_grav_brace = w_floor * L_bay / 2 /g
-floor_nodes = [31, 32]
+floor_nodes = [20, 21]
 for nd in floor_nodes:
     
     # get multiplier for location from node number
@@ -219,7 +226,7 @@ for nd in floor_nodes:
 # midbay brace top node
 
 
-brace_top_nodes = [311]
+brace_top_nodes = bldg.node_tags['brace_top']
 for nd in brace_top_nodes:
     parent_node = nd // 10
     
@@ -240,7 +247,7 @@ L_diag = ((L_bay/2)**2 + L_col**2)**(0.5)
 L_gp = ofs/2 * L_diag
 
 # brace nodes
-brace_mid_nodes = [3118, 3117]
+brace_mid_nodes = bldg.node_tags['brace_mid']
 for nd in brace_mid_nodes:
     
     # values returned are already in inches
@@ -248,10 +255,10 @@ for nd in brace_mid_nodes:
     ops.node(nd, x_coord, 0.0*ft, z_coord)
     
 # spring nodes
-spring_nodes = [218, 316, 319, 327, 326, 228]
-brace_beam_ends = [31, 32]   
-brace_beam_tab_nodes = [310, 325]
-brace_bot_nodes = [21, 22]
+spring_nodes = bldg.node_tags['spring']
+brace_beam_ends = bldg.node_tags['brace_beam_end']
+brace_beam_tab_nodes = bldg.node_tags['brace_beam_tab']
+brace_bot_nodes = bldg.node_tags['brace_bottom']
 
 col_brace_bay_node = [nd for nd in spring_nodes
                       if (nd//10 in brace_beam_ends 
@@ -293,7 +300,7 @@ for nd in spring_nodes:
     else:
         ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
 
-brace_beam_spr_nodes = [3113, 3114]
+brace_beam_spr_nodes = bldg.node_tags['brace_beam_spring']
 for nd in brace_beam_spr_nodes:
     grandparent_nd = nd//100
     
@@ -323,14 +330,14 @@ for nd in brace_beam_tab_nodes:
         ops.node(nd, bay*L_beam+x_offset, 0.0*ft, fl*L_col)
 
 # each end has offset/2*L_diagonal assigned to gusset plate offset
-brace_bot_gp_nodes = [2103, 2104, 2201, 2202]
+brace_bot_gp_nodes = bldg.node_tags['brace_bottom_spring']
 for nd in brace_bot_gp_nodes:
     
     # values returned are already in inches
     x_coord, z_coord = bot_gp_coord(nd, L_beam, L_col, offset=ofs)
     ops.node(nd, x_coord, 0.0*ft, z_coord)
 
-brace_top_gp_nodes = [3111, 3112, 3115, 3116]
+brace_top_gp_nodes = bldg.node_tags['brace_top_spring']
 for nd in brace_top_gp_nodes:
     # values returned are already in inches
     x_coord, z_coord = top_gp_coord(nd, L_beam, L_col, offset=ofs)
@@ -385,6 +392,7 @@ ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
 # minimal stiffness elements (ghosts)
 A_ghost = 0.05
 E_ghost = 100.0
+I_ghost = 10.0
 ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
 
 # define material: Steel02
@@ -418,12 +426,13 @@ ops.uniaxialMaterial('Steel02', gp_mat_tag, My_GP, K_rot_GP, b_GP, R0, cR1, cR2)
 beam_transf_tag   = 1
 col_transf_tag    = 2
 brace_beam_transf_tag = 3
-brace_transf_tag = 4
+brace_transf_tag_L = 4
+brace_transf_tag_R = 5
 
 # this is different from moment frame
 # beam geometry
-xyz_i = ops.nodeCoord(31)
-xyz_j = ops.nodeCoord(32)
+xyz_i = ops.nodeCoord(10)
+xyz_j = ops.nodeCoord(11)
 beam_x_axis = np.subtract(xyz_j, xyz_i)
 vecxy_beam = [0, 0, 1] # Use any vector in local x-y, but not local x
 vecxz = np.cross(beam_x_axis,vecxy_beam) # What OpenSees expects
@@ -431,33 +440,37 @@ vecxz_beam = vecxz / np.sqrt(np.sum(vecxz**2))
 
 
 # column geometry
-xyz_i = ops.nodeCoord(21)
-xyz_j = ops.nodeCoord(31)
+xyz_i = ops.nodeCoord(10)
+xyz_j = ops.nodeCoord(20)
 col_x_axis = np.subtract(xyz_j, xyz_i)
 vecxy_col = [1, 0, 0] # Use any vector in local x-y, but not local x
 vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
 vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
 
 # brace geometry (we can use one because HSS is symmetric)
-brace_top_nodes = [311]
+brace_top_nodes = bldg.node_tags['brace_top']
 xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10)
 xyz_j = ops.nodeCoord(brace_top_nodes[0])
 brace_x_axis_L = np.subtract(xyz_j, xyz_i)
 brace_x_axis_L = brace_x_axis_L / np.sqrt(np.sum(brace_x_axis_L**2))
 vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
 vecxz = np.cross(brace_x_axis_L,vecxy_brace) # What OpenSees expects
-vecxz_brace = vecxz / np.sqrt(np.sum(vecxz**2))
+vecxz_brace_L = vecxz / np.sqrt(np.sum(vecxz**2))
 
 # brace geometry (we can use one because HSS is symmetric)
 xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10 + 1)
 xyz_j = ops.nodeCoord(brace_top_nodes[0])
 brace_x_axis_R = np.subtract(xyz_j, xyz_i)
 brace_x_axis_R = brace_x_axis_R / np.sqrt(np.sum(brace_x_axis_R**2))
+vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
+vecxz = np.cross(brace_x_axis_R,vecxy_brace) # What OpenSees expects
+vecxz_brace_R = vecxz / np.sqrt(np.sum(vecxz**2))
 
 ops.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
 ops.geomTransf('PDelta', beam_transf_tag, *vecxz_beam) # beams
 ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
-ops.geomTransf('Corotational', brace_transf_tag, *vecxz_brace) # braces
+ops.geomTransf('Corotational', brace_transf_tag_L, *vecxz_brace_L) # braces
+ops.geomTransf('Corotational', brace_transf_tag_R, *vecxz_brace_R) # braces
 
 # outside of concentrated plasticity zones, use elastic beam columns
 
@@ -465,6 +478,7 @@ ops.geomTransf('Corotational', brace_transf_tag, *vecxz_brace) # braces
 nfw = 4     # number of fibers in web
 nff = 4     # number of fibers in each flange
 
+n_IP = 4
 ###################### columns #############################
 
 for fl_col, col in enumerate(col_list):
@@ -479,7 +493,7 @@ for fl_col, col in enumerate(col_list):
     # for column, this is the bottom node (col between 10 and 20 has tag 111)
     # e.g. first col bot nodes at 3x -> tag 113 and 153
     
-    current_col_sec = col_sec + fl_col + 2
+    current_col_sec = col_sec + fl_col + 1
     ops.section('Fiber', current_col_sec, '-GJ', Gs*J)
     ops.patch('rect', steel_mat_tag, 
         1, nff,  d_col/2-tf_col, -bf_col/2, d_col/2, bf_col/2)
@@ -489,15 +503,14 @@ for fl_col, col in enumerate(col_list):
         nfw, 1, -d_col/2+tf_col, -tw_col/2, d_col/2-tf_col, tw_col/2)
     
     
-    current_col_int = col_int + fl_col + 2
-    n_IP = 4
+    current_col_int = col_int + fl_col + 1
     ops.beamIntegration('Lobatto', current_col_int, 
                         current_col_sec, n_IP)
 
 # define the columns
 
-col_id = 100
-col_elems = [121, 122]
+col_id = bldg.elem_ids['col']
+col_elems = bldg.elem_tags['col']
 
 # find which columns belong to the braced bays
 # (if its i-node parent is a brace_bottom_node)
@@ -525,7 +538,7 @@ for fl_beam, beam in enumerate(beam_list):
     # beam section: fiber wide flange section
     # match the tag number with the floor's node number
     # e.g. first beams nodes at 2x -> tag 132 and 172
-    current_brace_beam_sec = beam_sec + fl_beam + 3
+    current_brace_beam_sec = beam_sec + fl_beam + 2
     
     ops.section('Fiber', current_brace_beam_sec, '-GJ', Gs*J)
     ops.patch('rect', steel_mat_tag, 
@@ -536,12 +549,12 @@ for fl_beam, beam in enumerate(beam_list):
         nfw, 1, -d_beam/2+tf_beam, -tw_beam/2, d_beam/2-tf_beam, tw_beam/2)
     
     
-    current_brace_beam_int = beam_int + fl_beam + 3
+    current_brace_beam_int = beam_int + fl_beam + 2
     ops.beamIntegration('Lobatto', current_brace_beam_int, 
                         current_brace_beam_sec, n_IP)
 
-brace_beam_id = 2000
-brace_beam_elems = [2031, 2311]
+brace_beam_id = bldg.elem_ids['brace_beam']
+brace_beam_elems = bldg.elem_tags['brace_beams']
 
 for elem_tag in brace_beam_elems:
     parent_i_nd = (elem_tag - brace_beam_id)
@@ -571,7 +584,7 @@ for fl_br, brace in enumerate(brace_list):
     t_brace = current_brace.iloc[0]['tdes']
     
     # brace section: HSS section
-    brace_sec_tag = br_sec + fl_br + 2
+    brace_sec_tag = br_sec + fl_br + 1
     
     ops.section('Fiber', brace_sec_tag, '-GJ', Gs*J)
     ops.patch('rect', steel_mat_tag, 1, nff,  
@@ -583,12 +596,12 @@ for fl_br, brace in enumerate(brace_list):
     ops.patch('rect', steel_mat_tag, nfw, 1, 
               -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
     
-    brace_int_tag = br_int + fl_br + 2
+    brace_int_tag = br_int + fl_br + 1
     ops.beamIntegration('Lobatto', brace_int_tag, 
                         brace_sec_tag, n_IP)
 
-brace_id = 90000
-brace_elems = [92104, 93116, 93115, 92202]
+brace_id = bldg.elem_ids['brace']
+brace_elems = bldg.elem_tags['brace']
 
 for elem_tag in brace_elems:
     
@@ -609,26 +622,30 @@ for elem_tag in brace_elems:
     j_floor = j_nd//1000
     
     current_brace_int = j_floor - 1 + br_int
+    if (i_nd%10==4) or (i_nd%10==8):
+        brace_transf_tag = brace_transf_tag_L
+    elif (i_nd%10==2) or (i_nd%10==7):
+        brace_transf_tag = brace_transf_tag_R
     ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                 brace_transf_tag, current_brace_int)
     
-# add ghost trusses to the braces to reduce convergence problems
-brace_ghosts = [92207, 92109]
-for elem_tag in brace_ghosts:
-    i_nd = (elem_tag - 5) - brace_id
+# # add ghost trusses to the braces to reduce convergence problems
+# brace_ghosts = bldg.elem_tags['brace_ghosts']
+# for elem_tag in brace_ghosts:
+#     i_nd = (elem_tag - 5) - brace_id
     
-    parent_i_nd = i_nd // 100
-    if elem_tag%10 == 9:
-        j_nd = (parent_i_nd + 10)*100 + 16
-    else:
-        j_nd = (parent_i_nd + 9)*100 + 15
-    ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
+#     parent_i_nd = i_nd // 100
+#     if elem_tag%10 == 9:
+#         j_nd = (parent_i_nd + 10)*100 + 16
+#     else:
+#         j_nd = (parent_i_nd + 9)*100 + 15
+#     ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
     
 ###################### Gusset plates #############################
 
-brace_spr_id = 50000
-brace_top_links = [53111, 53112, 53115, 53116]
-brace_bot_links = [52103, 52104, 52201, 52202]
+brace_spr_id = bldg.elem_ids['brace_spring']
+brace_top_links = bldg.elem_tags['brace_top_springs']
+brace_bot_links = bldg.elem_tags['brace_bot_springs']
 
 # on bottom, the outer (GP non rigid) nodes are 2 and 4
 brace_bot_gp_spring_link = [link for link in brace_bot_links
@@ -669,12 +686,12 @@ for link_tag in brace_top_gp_spring_link:
     if link_tag%10 == 6:
         ops.element('zeroLength', link_tag, i_nd, j_nd,
             '-mat', torsion_mat_tag, gp_mat_tag, 
-            '-dir', 4, 6, 
+            '-dir', 4, 5, 
             '-orient', *brace_x_axis_L, *vecxy_brace)
     else:
         ops.element('zeroLength', link_tag, i_nd, j_nd,
             '-mat', torsion_mat_tag, gp_mat_tag, 
-            '-dir', 4, 6, 
+            '-dir', 4, 5, 
             '-orient', *brace_x_axis_R, *vecxy_brace)
         
     # global z-rotation is restrained
@@ -684,8 +701,8 @@ for link_tag in brace_top_gp_spring_link:
 # define rigid links in the braced bays
 ################################################################################  
 
-spr_id = 5000
-spr_elems = [5218, 5316, 5319, 5327, 5326, 5228]
+spr_id = bldg.elem_ids['spring']
+spr_elems = bldg.elem_tags['spring']
 
 # extract where rigid elements are in the entire frame
 # brace_beam_end_joint = [link for link in spr_elems
@@ -693,7 +710,7 @@ spr_elems = [5218, 5316, 5319, 5327, 5326, 5228]
 #                         and (link%10 == 9 or link%10 == 7)]
 
 
-brace_beam_middle_joint = [53113, 53114]
+brace_beam_middle_joint = bldg.elem_tags['brace_beam_springs']
 
 col_joint = [link for link in spr_elems
              if ((link-spr_id)//10 in brace_beam_ends 
@@ -716,6 +733,7 @@ for link_tag in brace_beam_middle_joint:
                 brace_beam_transf_tag)
   
 # make link for all column in braced bays
+col_joint_not_bottom = col_joint
 for link_tag in col_joint:
     outer_nd = link_tag - spr_id
     
@@ -726,9 +744,14 @@ for link_tag in col_joint:
         i_nd = outer_nd
         j_nd = outer_nd // 10
         
-    ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
-                A_rigid, Es, Gs, J, I_rigid, I_rigid, 
-                col_transf_tag)
+    if link_tag in col_joint_not_bottom:
+        ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
+                    A_rigid, Es, Gs, J, I_rigid, I_rigid, 
+                    col_transf_tag)
+    else:
+        ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
+                    A_ghost, E_ghost, Gs, J, I_ghost, I_ghost, 
+                    col_transf_tag)
     
 # make link for the column/beam to gusset plate connection
 brace_top_rigid_links = [link for link in brace_top_links
@@ -739,6 +762,10 @@ for link_tag in brace_top_rigid_links:
     i_nd = outer_nd
     j_nd = outer_nd//10
     
+    if i_nd%10==1:
+        brace_transf_tag = brace_transf_tag_R
+    elif i_nd%10==2:
+        brace_transf_tag = brace_transf_tag_L
     ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                 A_ghost, E_ghost, Gs, J, I_rigid, I_rigid, 
                 brace_transf_tag)
@@ -750,6 +777,11 @@ for link_tag in brace_bot_rigid_links:
     outer_nd = link_tag - brace_spr_id
     i_nd = outer_nd//100
     j_nd = outer_nd
+    
+    if outer_nd%10==1:
+        brace_transf_tag = brace_transf_tag_R
+    elif outer_nd%10==3:
+        brace_transf_tag = brace_transf_tag_L
     
     ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                 A_ghost, E_ghost, Gs, J, I_rigid, I_rigid, 
@@ -774,7 +806,7 @@ for link_tag in beam_brace_rigid_joints:
 
 # make shear tab pin connections
 # use constraint (fix translation, allow rotation) rather than spring
-shear_tab_pins = [310, 325]
+shear_tab_pins = bldg.node_tags['brace_beam_tab']
 
 for nd in shear_tab_pins:
     if nd%10 == 0:
@@ -794,7 +826,9 @@ ghost_beams = [beam_tag//10 for beam_tag in brace_beam_elems
 #     ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
     
 print('Elements placed.')
+open('./output/model.out', 'w').close()
 ops.printModel('-file', './output/model.out')
+
 #%%
 ############################################################################
 #              Loading and analysis
@@ -816,9 +850,7 @@ ops.timeSeries("Linear", grav_series_tag)
 ops.pattern('Plain', grav_pattern_tag, grav_series_tag)
 
 w_applied = 2.087/12
-ops.eleLoad('-ele', 2311, '-type', '-beamUniform', 
-            -w_applied, 0.0)
-ops.eleLoad('-ele', 2031, '-type', '-beamUniform', 
+ops.eleLoad('-ele', *brace_beam_elems, '-type', '-beamUniform', 
             -w_applied, 0.0)
 
 nStepGravity = 10  # apply gravity in 10 steps
@@ -845,7 +877,7 @@ ops.wipeAnalysis()
 # create TimeSeries
 ops.timeSeries("Linear", monotonic_series_tag)
 ops.pattern('Plain', monotonic_pattern_tag, monotonic_series_tag)
-ops.load(31, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+ops.load(20, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
 tol = 1e-5
 
@@ -864,18 +896,20 @@ ops.constraints("Plain")
 filename = 'output/fiber.out'
 load_disp = 'output/load_disp.out'
 node_rxn = 'output/end_reaction.out'
+mid_disp = 'output/mid_brace_node.out'
 
-ops.recorder('Element','-ele',93116,'-file',filename,
+ops.recorder('Element','-ele',92016,'-file',filename,
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
-ops.recorder('Node','-node', 21, 22,'-file', node_rxn, '-dof', 1, 'reaction')
-ops.recorder('Node','-node', 311,'-file', load_disp, '-dof', 1, 'disp')
+ops.recorder('Node','-node', 10, 11,'-file', node_rxn, '-dof', 1, 'reaction')
+ops.recorder('Node','-node', 20,'-file', load_disp, '-dof', 1, 'disp')
+ops.recorder('Node','-node', 2018,'-file', mid_disp, '-dof', 1, 3, 'disp')
 ops.analysis("Static")                      # create analysis object
 
 peaks = np.arange(0.1, 10.0, 0.5)
 steps = 500
 for i, pk in enumerate(peaks):
     du = (-1.0)**i*(peaks[i] / steps)
-    ops.integrator('DisplacementControl', 31, 1, du, 1, du, du)
+    ops.integrator('DisplacementControl', 20, 1, du, 1, du, du)
     ops.analyze(steps)
 
 # d_mid = ops.nodeDisp(2018)
@@ -919,12 +953,22 @@ forces = pd.read_csv(node_rxn, sep=' ', header=None,
                      names=['force_left', 'force_right'])
 forces['force'] = forces['force_left'] + forces['force_right']
 
+mid_node = pd.read_csv(mid_disp, sep=' ', header=None, names=['x', 'z'])
+
 # cycles
 fig = plt.figure()
 plt.plot(np.arange(1, len(disps['displacement'])+1)/steps, disps['displacement'])
 plt.title('Cyclic history')
 plt.ylabel('Displacement history')
 plt.xlabel('Cycles')
+plt.grid(True)
+
+# buckling movement
+fig = plt.figure()
+plt.plot(mid_node['x'], mid_node['z'])
+plt.title('Movement of mid brace node')
+plt.ylabel('z')
+plt.xlabel('x')
 plt.grid(True)
 
 # force disp

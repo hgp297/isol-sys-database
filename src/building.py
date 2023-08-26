@@ -2252,7 +2252,8 @@ class Building:
             # get the leftmost isolator
             isol_elem = isols[0]
             isol_node = isol_elem - isol_id - base_id + 10
-            
+        
+        open(data_dir+'model.out', 'w').close()
         ops.printModel('-file', data_dir+'model.out')
         
         # lateral frame story displacement
