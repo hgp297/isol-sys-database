@@ -903,6 +903,7 @@ ops.recorder('Element','-ele',92016,'-file',filename,
 ops.recorder('Node','-node', 10, 11,'-file', node_rxn, '-dof', 1, 'reaction')
 ops.recorder('Node','-node', 20,'-file', load_disp, '-dof', 1, 'disp')
 ops.recorder('Node','-node', 2018,'-file', mid_disp, '-dof', 1, 3, 'disp')
+ops.recorder('Node','-node', 201,'-file', 'output/top_brace_node.out', '-dof', 1, 3, 'disp')
 ops.analysis("Static")                      # create analysis object
 
 peaks = np.arange(0.1, 10.0, 0.5)
@@ -953,6 +954,7 @@ forces = pd.read_csv(node_rxn, sep=' ', header=None,
                      names=['force_left', 'force_right'])
 forces['force'] = forces['force_left'] + forces['force_right']
 
+x_coord, z_coord = mid_brace_coord(2018, L_beam, L_col, offset=ofs)
 mid_node = pd.read_csv(mid_disp, sep=' ', header=None, names=['x', 'z'])
 
 # cycles
@@ -965,8 +967,17 @@ plt.grid(True)
 
 # buckling movement
 fig = plt.figure()
-plt.plot(mid_node['x'], mid_node['z'])
+plt.plot(mid_node['x']+x_coord, mid_node['z']+z_coord)
 plt.title('Movement of mid brace node')
+plt.ylabel('z')
+plt.xlabel('x')
+plt.grid(True)
+
+top_node = pd.read_csv('output/top_brace_node.out', sep=' ', header=None, names=['x', 'z'])
+# buckling movement
+fig = plt.figure()
+plt.plot(top_node['x']+L_beam/2, top_node['z']+L_col)
+plt.title('Movement of Top  node')
 plt.ylabel('z')
 plt.xlabel('x')
 plt.grid(True)
