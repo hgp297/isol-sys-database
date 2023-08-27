@@ -405,7 +405,10 @@ ops.recorder('Element','-ele',92016,'-file',filename,
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
 ops.recorder('Node','-node', 10,'-file', node_rxn, '-dof', 1, 'reaction')
 ops.recorder('Node','-node', 201,'-file', load_disp, '-dof', 1, 'disp')
-ops.recorder('Node','-node', 10,'-file', node_rxn, '-dof', 1, 'reaction')
+
+mid_disp = 'output/mid_brace_node.out'
+ops.recorder('Node','-node', 2018,'-file', mid_disp, '-dof', 1, 3, 'disp')
+ops.recorder('Node','-node', 201,'-file', 'output/top_brace_node.out', '-dof', 1, 3, 'disp')
 ops.analysis("Static")                      # create analysis object
 
 peaks = np.arange(0.1, 3.0, 0.1)
@@ -488,3 +491,35 @@ plt.grid(True)
 #     disp = ops.nodeDisp(201, 1)
 #     print('Force: %.5f' %fx)
 #     print('Displacement: %.5f' %disp)
+
+#%% animate
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
+mid_node = pd.read_csv(mid_disp, sep=' ', header=None, names=['x', 'z'])
+
+top_node = pd.read_csv('output/top_brace_node.out', sep=' ', header=None, names=['x', 'z'])
+history_len = len(top_node['x'])
+
+dt = 0.0001
+fig = plt.figure(figsize=(5, 4))
+ax = fig.add_subplot(autoscale_on=False, xlim=(-10, 370), ylim=(-10, 10))
+time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
+time_template = 'time = %.1fs'
+line, = ax.plot([], [], 'o-', lw=2)
+trace, = ax.plot([], [], '.-', lw=1, ms=2)
+
+def animate(i):
+    thisx = [0, mid_node['x'][i]+L_beam/2, top_node['x'][i]+L_beam]
+    thisy = [0, mid_node['z'][i], top_node['z'][i]]
+    
+    line.set_data(thisx, thisy)
+    
+    time_text.set_text(time_template % (i*dt))
+    return line, trace, time_text
+
+ani = animation.FuncAnimation(
+    fig, animate, history_len, interval=dt*history_len, blit=True)
+plt.show()

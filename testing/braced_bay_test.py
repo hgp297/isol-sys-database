@@ -989,3 +989,32 @@ plt.title('Force-displacement recorded at end node')
 plt.ylabel('Force (kip)')
 plt.xlabel('Displacement (in)')
 plt.grid(True)
+
+#%% animate
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
+history_len = len(top_node['x'])
+
+dt = 0.0001
+fig = plt.figure(figsize=(5, 4))
+ax = fig.add_subplot(autoscale_on=False, xlim=(-10, L_beam), ylim=(-10, 1.2*L_col))
+time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
+time_template = 'time = %.1fs'
+line, = ax.plot([], [], 'o-', lw=2)
+trace, = ax.plot([], [], '.-', lw=1, ms=2)
+
+def animate(i):
+    thisx = [0, mid_node['x'][i]+x_coord, top_node['x'][i]+L_beam/2]
+    thisy = [0, mid_node['z'][i]+z_coord, top_node['z'][i]+L_col]
+    
+    line.set_data(thisx, thisy)
+    
+    time_text.set_text(time_template % (i*dt))
+    return line, trace, time_text
+
+ani = animation.FuncAnimation(
+    fig, animate, history_len, interval=dt*history_len, blit=True)
+plt.show()
