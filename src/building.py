@@ -65,9 +65,11 @@ class Building:
         # for braced frames, additional nodes are needed
         if frame_type == 'CBF':
             n_braced = int(round(n_bays/2.25))
+            n_braced = max(n_braced, 1)
             
             # roughly center braces around middle of the building
             n_start = round(n_bays/2 - n_braced/2)
+            n_start = max(n_start, 1)
             
             # start from first interior bay
             # no ground floor included
@@ -706,8 +708,6 @@ class Building:
             ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
                         beam_transf_tag)
-            
-        # TODO: ghosts
         
 ################################################################################
 # define leaning column
@@ -1253,7 +1253,7 @@ class Building:
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
         Fy  = 50*ksi        # yield strength
-        b   = 0.03           # hardening ratio
+        b   = 0.003           # hardening ratio
         R0 = 15
         cR1 = 0.925
         cR2 = 0.15
@@ -1282,7 +1282,8 @@ class Building:
         beam_transf_tag   = 1
         col_transf_tag    = 2
         brace_beam_transf_tag = 3
-        brace_transf_tag = 4
+        brace_transf_tag_L = 4
+        brace_transf_tag_R = 5
         
         # this is different from moment frame
         # beam geometry
@@ -1302,25 +1303,29 @@ class Building:
         vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
         vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
         
-        # brace geometry (we can use one because HSS is symmetric)
+        # brace geometry (left)
         xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10)
         xyz_j = ops.nodeCoord(brace_top_nodes[0])
         brace_x_axis_L = np.subtract(xyz_j, xyz_i)
         brace_x_axis_L = brace_x_axis_L / np.sqrt(np.sum(brace_x_axis_L**2))
         vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
         vecxz = np.cross(brace_x_axis_L,vecxy_brace) # What OpenSees expects
-        vecxz_brace = vecxz / np.sqrt(np.sum(vecxz**2))
+        vecxz_brace_L = vecxz / np.sqrt(np.sum(vecxz**2))
         
-        # brace geometry (we can use one because HSS is symmetric)
+        # brace geometry (right)
         xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10 + 1)
         xyz_j = ops.nodeCoord(brace_top_nodes[0])
         brace_x_axis_R = np.subtract(xyz_j, xyz_i)
         brace_x_axis_R = brace_x_axis_R / np.sqrt(np.sum(brace_x_axis_R**2))
+        vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
+        vecxz = np.cross(brace_x_axis_R,vecxy_brace) # What OpenSees expects
+        vecxz_brace_R = vecxz / np.sqrt(np.sum(vecxz**2))
         
         ops.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
         ops.geomTransf('PDelta', beam_transf_tag, *vecxz_beam) # beams
         ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
-        ops.geomTransf('Corotational', brace_transf_tag, *vecxz_brace) # braces
+        ops.geomTransf('Corotational', brace_transf_tag_L, *vecxz_brace_L) # braces
+        ops.geomTransf('Corotational', brace_transf_tag_R, *vecxz_brace_R) # braces
         
         # outside of concentrated plasticity zones, use elastic beam columns
         
@@ -1471,6 +1476,7 @@ class Building:
         brace_id = self.elem_ids['brace']
         brace_elems = self.elem_tags['brace']
         
+        goes_ne = [4,8]
         for elem_tag in brace_elems:
             
             # if tag is 02 or 04, it extends from the bottom up
@@ -1490,6 +1496,10 @@ class Building:
             j_floor = j_nd//1000
             
             current_brace_int = j_floor - 1 + br_int
+            if (i_nd%10 in goes_ne):
+                brace_transf_tag = brace_transf_tag_L
+            else:
+                brace_transf_tag = brace_transf_tag_R
             ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_transf_tag, current_brace_int)
             
@@ -1615,11 +1625,18 @@ class Building:
         brace_top_rigid_links = [link for link in brace_top_links
                                  if link%10 < 3]
         
+        goes_ne = [2]
+        
         for link_tag in brace_top_rigid_links:
             outer_nd = link_tag - brace_spr_id
             i_nd = outer_nd
             j_nd = outer_nd//10
             
+            if (outer_nd%10 in goes_ne):
+                brace_transf_tag = brace_transf_tag_L
+            else:
+                brace_transf_tag = brace_transf_tag_R
+                
             ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_transf_tag)
@@ -1627,11 +1644,17 @@ class Building:
         brace_bot_rigid_links = [link for link in brace_bot_links
                                  if link%2 == 1]
         
+        goes_ne = [3]
         for link_tag in brace_bot_rigid_links:
             outer_nd = link_tag - brace_spr_id
             i_nd = outer_nd//100
             j_nd = outer_nd
             
+            if (outer_nd%10 in goes_ne):
+                brace_transf_tag = brace_transf_tag_L
+            else:
+                brace_transf_tag = brace_transf_tag_R
+                
             ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_transf_tag)
@@ -2195,15 +2218,20 @@ class Building:
             # record brace nodes' displacements
             brace_tops = self.node_tags['brace_top']
             brace_bottoms = self.node_tags['brace_bottom']
+            brace_mids = self.node_tags['brace_mid']
             
-            # lowest left bay
+            # lowest left bay, left brace displacements
             top_node = min(brace_tops)
-            bottom_left_node = min(brace_bottoms)
-            bottom_right_node = bottom_left_node+1
-            
+            mid_node = min(brace_mids)
+            bottom_node = min(brace_bottoms)
             ops.recorder('Node', '-file', data_dir+'brace_node_disp.csv','-time',
-                '-node', top_node, bottom_left_node, bottom_right_node, 
-                '-dof', 1, 2, 'disp')
+                '-node', bottom_node, mid_node, top_node, 
+                '-dof', 1, 3, 'disp')
+            
+            # force at corresponding top node
+            ops.recorder('Node','-node', top_node,
+                         '-file', data_dir+'brace_top_node_force.csv', 
+                         '-dof', 1, 3, 'reaction')
             
             # first story, leftmost bay, left brace
             brace_ghosts = self.elem_tags['brace_ghosts']
@@ -2372,7 +2400,6 @@ class Building:
         n_steps = np.floor(T_end/dt_transient)
         
         # actually perform analysis; returns ok=0 if analysis was successful
-        # TODO: investigate fatal failure
         
         import time
         t0 = time.time()

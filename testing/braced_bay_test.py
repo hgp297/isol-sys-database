@@ -392,7 +392,6 @@ ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
 # minimal stiffness elements (ghosts)
 A_ghost = 0.05
 E_ghost = 100.0
-I_ghost = 10.0
 ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
 
 # define material: Steel02
@@ -629,17 +628,17 @@ for elem_tag in brace_elems:
     ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                 brace_transf_tag, current_brace_int)
     
-# # add ghost trusses to the braces to reduce convergence problems
-# brace_ghosts = bldg.elem_tags['brace_ghosts']
-# for elem_tag in brace_ghosts:
-#     i_nd = (elem_tag - 5) - brace_id
+# add ghost trusses to the braces to reduce convergence problems
+brace_ghosts = bldg.elem_tags['brace_ghosts']
+for elem_tag in brace_ghosts:
+    i_nd = (elem_tag - 5) - brace_id
     
-#     parent_i_nd = i_nd // 100
-#     if elem_tag%10 == 9:
-#         j_nd = (parent_i_nd + 10)*100 + 16
-#     else:
-#         j_nd = (parent_i_nd + 9)*100 + 15
-#     ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
+    parent_i_nd = i_nd // 100
+    if elem_tag%10 == 9:
+        j_nd = (parent_i_nd + 10)*100 + 16
+    else:
+        j_nd = (parent_i_nd + 9)*100 + 15
+    ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
     
 ###################### Gusset plates #############################
 
@@ -733,7 +732,6 @@ for link_tag in brace_beam_middle_joint:
                 brace_beam_transf_tag)
   
 # make link for all column in braced bays
-col_joint_not_bottom = col_joint
 for link_tag in col_joint:
     outer_nd = link_tag - spr_id
     
@@ -743,15 +741,9 @@ for link_tag in col_joint:
     else:
         i_nd = outer_nd
         j_nd = outer_nd // 10
-        
-    if link_tag in col_joint_not_bottom:
-        ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
-                    A_rigid, Es, Gs, J, I_rigid, I_rigid, 
-                    col_transf_tag)
-    else:
-        ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
-                    A_ghost, E_ghost, Gs, J, I_ghost, I_ghost, 
-                    col_transf_tag)
+    ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
+                A_rigid, Es, Gs, J, I_rigid, I_rigid, 
+                col_transf_tag)
     
 # make link for the column/beam to gusset plate connection
 brace_top_rigid_links = [link for link in brace_top_links
@@ -767,7 +759,7 @@ for link_tag in brace_top_rigid_links:
     elif i_nd%10==2:
         brace_transf_tag = brace_transf_tag_L
     ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
-                A_ghost, E_ghost, Gs, J, I_rigid, I_rigid, 
+                A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                 brace_transf_tag)
     
 brace_bot_rigid_links = [link for link in brace_bot_links
@@ -784,7 +776,7 @@ for link_tag in brace_bot_rigid_links:
         brace_transf_tag = brace_transf_tag_L
     
     ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
-                A_ghost, E_ghost, Gs, J, I_rigid, I_rigid, 
+                A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                 brace_transf_tag)
 
 # make link for beam around where shear tabs are
@@ -819,11 +811,11 @@ ghost_beams = [beam_tag//10 for beam_tag in brace_beam_elems
                if (beam_tag%brace_beam_id in brace_top_nodes)]
 
 # place ghost trusses along braced frame beams to ensure horizontal movement
-# beam_id = 200
-# for elem_tag in ghost_beams:
-#     i_nd = elem_tag - beam_id
-#     j_nd = i_nd + 1
-#     ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
+beam_id = 200
+for elem_tag in ghost_beams:
+    i_nd = elem_tag - beam_id
+    j_nd = i_nd + 1
+    ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
     
 print('Elements placed.')
 open('./output/model.out', 'w').close()

@@ -33,7 +33,7 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-troubleshoot_run = main_obj.all_designs.loc[21]
+troubleshoot_run = main_obj.all_designs.loc[26]
 
 from building import Building
 
@@ -44,15 +44,15 @@ troubleshoot_bldg.apply_grav_load()
 troubleshoot_bldg.provide_damping(80, method='SP',
                                   zeta=[0.05], modes=[1])
 
-# dt = 0.005
-# troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
-#                                     troubleshoot_run.scale_factor, 
-#                                     dt)
+dt = 0.005
+troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
+                                    troubleshoot_run.scale_factor, 
+                                    dt)
 
 #%%
 
-# from plot_structure import plots
-# plots(troubleshoot_bldg)
+from plot_structure import plots
+plots(troubleshoot_bldg)
 #%%
 
 # main_obj.analyze_db('just_a_test.csv')
