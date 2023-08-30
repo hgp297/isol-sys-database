@@ -859,9 +859,24 @@ ops.analysis("Static")
 ops.analyze(nStepGravity)
 
 print("Gravity analysis complete!")
+ops.loadConst('-time', 0.0)
+
+steps = 500
+
+filename = 'output/fiber.out'
+load_disp = 'output/load_disp.out'
+node_rxn = 'output/end_reaction.out'
+mid_disp = 'output/mid_brace_node.out'
+
+ops.recorder('Element','-ele',92016,'-file',filename,
+             'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+ops.recorder('Node','-node', 10, 11,'-file', node_rxn, '-dof', 1, 'reaction')
+ops.recorder('Node','-node', 20,'-file', load_disp, '-dof', 1, 'disp')
+ops.recorder('Node','-node', 2018,'-file', mid_disp, '-dof', 1, 3, 'disp')
+ops.recorder('Node','-node', 201,'-file', 'output/top_brace_node.out', '-dof', 1, 3, 'disp')
 
 #%%
-ops.loadConst('-time', 0.0)
+'''
 # ------------------------------
 # Loading: axial
 # ------------------------------
@@ -885,19 +900,9 @@ ops.system('UmfPack')
 ops.numberer("RCM")
 ops.constraints("Plain")
 
-filename = 'output/fiber.out'
-load_disp = 'output/load_disp.out'
-node_rxn = 'output/end_reaction.out'
-mid_disp = 'output/mid_brace_node.out'
 
-ops.recorder('Element','-ele',92016,'-file',filename,
-             'section','fiber', 0.0, -d_brace/2, 'stressStrain')
-ops.recorder('Node','-node', 10, 11,'-file', node_rxn, '-dof', 1, 'reaction')
-ops.recorder('Node','-node', 20,'-file', load_disp, '-dof', 1, 'disp')
-ops.recorder('Node','-node', 2018,'-file', mid_disp, '-dof', 1, 3, 'disp')
-ops.recorder('Node','-node', 201,'-file', 'output/top_brace_node.out', '-dof', 1, 3, 'disp')
+
 ops.analysis("Static")                      # create analysis object
-
 peaks = np.arange(0.1, 10.0, 0.5)
 steps = 500
 for i, pk in enumerate(peaks):
@@ -914,6 +919,111 @@ for i, pk in enumerate(peaks):
 
 # d_mid = ops.nodeDisp(2018)
 # print(d_mid)
+
+'''
+# # ------------------------------
+# Loading: earthquake
+# ------------------------------
+ops.wipeAnalysis()
+# Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
+GMDirection = 1  # ground-motion direction
+gm_name = 'RSN3905_TOTTORI_OKY002EW'
+scale_factor = 15.0
+print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
+
+ops.constraints('Plain')
+ops.numberer('RCM')
+ops.system('BandGeneral')
+
+# Convergence Test: tolerance
+tolDynamic          = 1e-3 
+
+# Convergence Test: maximum number of iterations that will be performed
+maxIterDynamic      = 500
+
+# Convergence Test: flag used to print information on convergence
+printFlagDynamic    = 0         
+
+testTypeDynamic     = 'NormDispIncr'
+ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+
+# algorithmTypeDynamic    = 'Broyden'
+# ops.algorithm(algorithmTypeDynamic, 8)
+algorithmTypeDynamic    = 'Newton'
+ops.algorithm(algorithmTypeDynamic)
+
+# Newmark-integrator gamma parameter (also HHT)
+newmarkGamma = 0.5
+newmarkBeta = 0.25
+ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+ops.analysis('Transient')
+
+#  ---------------------------------    perform Dynamic Ground-Motion Analysis
+# the following commands are unique to the Uniform Earthquake excitation
+
+gm_dir = '../resource/ground_motions/PEERNGARecords_Unscaled/'
+
+# Uniform EXCITATION: acceleration input
+inFile = gm_dir + gm_name + '.AT2'
+outFile = gm_dir + gm_name + '.g3'
+
+  # call procedure to convert the ground-motion file
+from ReadRecord import ReadRecord
+dt, nPts = ReadRecord(inFile, outFile)
+g = 386.4
+GMfatt = g*scale_factor
+
+eq_series_tag = 100
+eq_pattern_tag = 400
+# time series information
+ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
+                '-filePath', outFile, '-factor', GMfatt)     
+# create uniform excitation
+ops.pattern('UniformExcitation', eq_pattern_tag, 
+            GMDirection, '-accel', eq_series_tag)          
+
+# set up ground-motion-analysis parameters
+sec = 1.0                      
+T_end = 60.0*sec
+
+
+dt_transient = 0.005
+n_steps = int(np.floor(T_end/dt_transient))
+
+# actually perform analysis; returns ok=0 if analysis was successful
+
+import time
+t0 = time.time()
+
+ok = ops.analyze(n_steps, dt_transient)   
+if ok != 0:
+    ok = 0
+    curr_time = ops.getTime()
+    print("Convergence issues at time: ", curr_time)
+    while (curr_time < T_end) and (ok == 0):
+        curr_time     = ops.getTime()
+        ok          = ops.analyze(1, dt_transient)
+        if ok != 0:
+            print("Trying Newton with Initial Tangent...")
+            ops.algorithm('Newton', '-initial')
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
+            ops.algorithm(algorithmTypeDynamic)
+        if ok != 0:
+            print("Trying Newton with line search ...")
+            ops.algorithm('NewtonLineSearch')
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
+            ops.algorithm(algorithmTypeDynamic)
+
+t_final = ops.getTime()
+tp = time.time() - t0
+minutes = tp//60
+seconds = tp - 60*minutes
+print('Ground motion done. End time: %.4f s' % t_final)
+print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
 
 ops.wipe()
 #%%
@@ -990,7 +1100,7 @@ import matplotlib.animation as animation
 
 history_len = len(top_node['x'])
 
-dt = 0.0001
+dt = 0.01
 fig = plt.figure(figsize=(5, 4))
 ax = fig.add_subplot(autoscale_on=False, xlim=(-10, L_beam), ylim=(-10, 1.2*L_col))
 time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
@@ -1008,5 +1118,9 @@ def animate(i):
     return line, trace, time_text
 
 ani = animation.FuncAnimation(
-    fig, animate, history_len, interval=dt*history_len, blit=True)
+    fig, animate, history_len, interval=5, blit=True)
 plt.show()
+
+# ani = animation.FuncAnimation(
+#     fig, animate, history_len, interval=history_len*dt, blit=True)
+# plt.show()

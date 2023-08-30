@@ -817,6 +817,8 @@ class Building:
                             L1, L2, L2, d1, d2, d2,
                             p_vert, uy, kvt, minFv, 1e-5)
                 
+        # TODO: restack LRBs
+        # TODO: fix parameters after bearing testing
         else:
             # LRB modeling
             
