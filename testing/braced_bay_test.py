@@ -132,7 +132,12 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     y_origin = bot_y_coord + y_offset
     # y_terminus = top_y_coord - y_offset
     
-    mid_x_coord = x_origin + L_eff/2 * cos(gamma)
+    # if the last number is 8, the brace connects sw
+    # if the last number is 7, the brace connects se
+    if (nd % 10)%2 == 0:
+        mid_x_coord = x_origin + L_eff/2 * cos(gamma)
+    else:
+        mid_x_coord = x_origin - L_eff/2 * cos(gamma)
     mid_y_coord = y_origin + L_eff/2 * sin(gamma)
     
     return(mid_x_coord, mid_y_coord)
@@ -825,6 +830,29 @@ ops.printModel('-file', './output/model.out')
 ############################################################################
 #              Loading and analysis
 ############################################################################
+
+# provide damping
+modes=[1]
+zeta = [0.05]
+nEigenJ = 2;                    # how many modes to analyze
+lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
+lambda1 = lambdaN[modes[0]-1];           # eigenvalue mode i = 1
+wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
+Tfb = 2*3.1415/wi      # 1st mode period of the structure
+
+print("Tfb = %.3f s" % Tfb)
+
+betaK       = 0.0
+betaKInit   = 0.0
+a1 = 2*zeta[0]/wi     
+
+all_elems = ops.getEleTags()
+ops.region(80, '-ele',
+    *all_elems,
+    '-rayleigh', 0.0, betaK, betaKInit, a1)
+print('Structure damped with %0.1f%% at frequency %0.2f Hz' % 
+      (zeta[0]*100, wi))
+
 monotonic_pattern_tag  = 2
 monotonic_series_tag = 1
 
@@ -863,17 +891,16 @@ ops.loadConst('-time', 0.0)
 
 steps = 500
 
-filename = 'output/fiber.out'
-load_disp = 'output/load_disp.out'
-node_rxn = 'output/end_reaction.out'
-mid_disp = 'output/mid_brace_node.out'
 
-ops.recorder('Element','-ele',92016,'-file',filename,
+ops.recorder('Element','-ele',92016,'-file','output/fiber.out',
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
-ops.recorder('Node','-node', 10, 11,'-file', node_rxn, '-dof', 1, 'reaction')
-ops.recorder('Node','-node', 20,'-file', load_disp, '-dof', 1, 'disp')
-ops.recorder('Node','-node', 2018,'-file', mid_disp, '-dof', 1, 3, 'disp')
-ops.recorder('Node','-node', 201,'-file', 'output/top_brace_node.out', '-dof', 1, 3, 'disp')
+ops.recorder('Node','-node', 10, 11,'-file', 'output/end_reaction.out', '-dof', 1, 'reaction')
+ops.recorder('Node','-node', 2018,'-file', 
+             'output/mid_brace_node_l.out', '-dof', 1, 3, 'disp')
+ops.recorder('Node','-node', 2017,'-file', 
+             'output/mid_brace_node_r.out', '-dof', 1, 3, 'disp')
+ops.recorder('Node','-node', 201,'-file', 
+             'output/top_brace_node.out', '-dof', 1, 3, 'disp')
 
 #%%
 '''
@@ -924,11 +951,12 @@ for i, pk in enumerate(peaks):
 # # ------------------------------
 # Loading: earthquake
 # ------------------------------
+
 ops.wipeAnalysis()
 # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
 GMDirection = 1  # ground-motion direction
 gm_name = 'RSN3905_TOTTORI_OKY002EW'
-scale_factor = 15.0
+scale_factor = 30.0
 print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
 ops.constraints('Plain')
@@ -1038,7 +1066,7 @@ plt.close('all')
 
 res_columns = ['stress1', 'strain1', 'stress2', 'strain2', 'stress3', 'strain3', 'stress4', 'strain4']
 
-brace_res = pd.read_csv(filename, sep=' ', header=None, names=res_columns)
+brace_res = pd.read_csv('output/fiber.out', sep=' ', header=None, names=res_columns)
 
 # stress strain
 fig = plt.figure()
@@ -1048,45 +1076,50 @@ plt.ylabel('Stress (ksi)')
 plt.xlabel('Strain (in/in)')
 plt.grid(True)
 
-# disp plot
-disps = pd.read_csv(load_disp, sep=' ', header=None, names=['displacement'])
 
 # disp plot
-forces = pd.read_csv(node_rxn, sep=' ', header=None, 
+forces = pd.read_csv('output/end_reaction.out', sep=' ', header=None, 
                      names=['force_left', 'force_right'])
 forces['force'] = forces['force_left'] + forces['force_right']
 
-x_coord, z_coord = mid_brace_coord(2018, L_beam, L_col, offset=ofs)
-mid_node = pd.read_csv(mid_disp, sep=' ', header=None, names=['x', 'z'])
+x_coord_L, z_coord_L = mid_brace_coord(2018, L_beam, L_col, offset=ofs)
+mid_node_l = pd.read_csv('output/mid_brace_node_l.out', 
+                       sep=' ', header=None, names=['x', 'z'])
 
-# cycles
-fig = plt.figure()
-plt.plot(np.arange(1, len(disps['displacement'])+1)/steps, disps['displacement'])
-plt.title('Cyclic history')
-plt.ylabel('Displacement history')
-plt.xlabel('Cycles')
-plt.grid(True)
+mid_node_r = pd.read_csv('output/mid_brace_node_r.out', 
+                       sep=' ', header=None, names=['x', 'z'])
 
-# buckling movement
+x_coord_R, z_coord_R = mid_brace_coord(2017, L_beam, L_col, offset=ofs)
+
+# buckling movement (left)
 fig = plt.figure()
-plt.plot(mid_node['x']+x_coord, mid_node['z']+z_coord)
+plt.plot(mid_node_l['x']+x_coord, mid_node_l['z']+z_coord)
 plt.title('Movement of mid brace node')
 plt.ylabel('z')
 plt.xlabel('x')
 plt.grid(True)
 
 top_node = pd.read_csv('output/top_brace_node.out', sep=' ', header=None, names=['x', 'z'])
+
 # buckling movement
 fig = plt.figure()
 plt.plot(top_node['x']+L_beam/2, top_node['z']+L_col)
-plt.title('Movement of Top  node')
+plt.title('Movement of top node')
 plt.ylabel('z')
 plt.xlabel('x')
 plt.grid(True)
 
+# cycles
+fig = plt.figure()
+plt.plot(np.arange(1, len(top_node['x'])+1)/steps, top_node['x'])
+plt.title('Cyclic history')
+plt.ylabel('Displacement history')
+plt.xlabel('Cycles')
+plt.grid(True)
+
 # force disp
 fig = plt.figure()
-plt.plot(disps['displacement'], -forces['force'])
+plt.plot(top_node['x'], -forces['force'])
 plt.title('Force-displacement recorded at end node')
 plt.ylabel('Force (kip)')
 plt.xlabel('Displacement (in)')
@@ -1100,17 +1133,19 @@ import matplotlib.animation as animation
 
 history_len = len(top_node['x'])
 
-dt = 0.01
+dt = 0.005
 fig = plt.figure(figsize=(5, 4))
-ax = fig.add_subplot(autoscale_on=False, xlim=(-10, L_beam), ylim=(-10, 1.2*L_col))
+ax = fig.add_subplot(autoscale_on=False, xlim=(-10, 1.1*L_beam), ylim=(-10, 1.2*L_col))
 time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
 time_template = 'time = %.1fs'
 line, = ax.plot([], [], 'o-', lw=2)
 trace, = ax.plot([], [], '.-', lw=1, ms=2)
 
 def animate(i):
-    thisx = [0, mid_node['x'][i]+x_coord, top_node['x'][i]+L_beam/2]
-    thisy = [0, mid_node['z'][i]+z_coord, top_node['z'][i]+L_col]
+    thisx = [0, mid_node_l['x'][i]+x_coord_L, top_node['x'][i]+L_beam/2,
+             mid_node_r['x'][i]+x_coord_R, L_beam]
+    thisy = [0, mid_node_l['z'][i]+z_coord_L, top_node['z'][i]+L_col,
+             mid_node_r['z'][i]+z_coord_R, 0]
     
     line.set_data(thisx, thisy)
     
@@ -1118,9 +1153,9 @@ def animate(i):
     return line, trace, time_text
 
 ani = animation.FuncAnimation(
-    fig, animate, history_len, interval=5, blit=True)
+    fig, animate, history_len, interval=200/1000, blit=True)
 plt.show()
 
 # ani = animation.FuncAnimation(
-#     fig, animate, history_len, interval=history_len*dt, blit=True)
+#     fig, animate, history_len, interval=60/1000, blit=True)
 # plt.show()

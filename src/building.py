@@ -2615,7 +2615,12 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     y_origin = bot_y_coord + y_offset
     # y_terminus = top_y_coord - y_offset
     
-    mid_x_coord = x_origin + L_eff/2 * cos(gamma)
+    # if the last number is 8, the brace connects sw
+    # if the last number is 7, the brace connects se
+    if (nd % 10)%2 == 0:
+        mid_x_coord = x_origin + L_eff/2 * cos(gamma)
+    else:
+        mid_x_coord = x_origin - L_eff/2 * cos(gamma)
     mid_y_coord = y_origin + L_eff/2 * sin(gamma)
     
     return(mid_x_coord, mid_y_coord)

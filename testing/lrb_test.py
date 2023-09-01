@@ -147,7 +147,7 @@ negligible = 1e-5
 ops.mass(20, m, m, m,
           negligible, negligible, negligible)
 
-tag_1 = 1 # cavitation
+tag_1 = 0 # cavitation
 tag_2 = 1 # buckling load variation
 tag_3 = 1 # horiz stiffness variation
 tag_4 = 1 # vertical stiffness variation
