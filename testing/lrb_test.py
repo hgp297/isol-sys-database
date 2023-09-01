@@ -87,7 +87,7 @@ h = 12.0*inch
 
 g = 9.81
 pi = 3.1415
-m = 253018.
+m = 253018./300
 
 K_bulk = 2000e6
 G_r = 0.4137e6
@@ -117,8 +117,8 @@ k_1 = k_2/alpha
 
 Fy_LRB = Q_d/(1 - alpha)
 
-kc = 10.0
-phi_M = 0.5
+kc = 20.0
+phi_M = 0.75
 ac = 1.0
 
 sdr = 0.5
@@ -147,10 +147,10 @@ negligible = 1e-5
 ops.mass(20, m, m, m,
           negligible, negligible, negligible)
 
-tag_1 = 0 # cavitation
-tag_2 = 0 # buckling load variation
-tag_3 = 0 # horiz stiffness variation
-tag_4 = 0 # vertical stiffness variation
+tag_1 = 1 # cavitation
+tag_2 = 1 # buckling load variation
+tag_3 = 1 # horiz stiffness variation
+tag_4 = 1 # vertical stiffness variation
 tag_5 = 0 # heat
 
 # Fy_h = 4.43e5
@@ -218,6 +218,7 @@ ops.recorder('Node','-node', 20,'-file', 'output/bearing_top.out', '-dof', 1, 3,
 ops.recorder('Element', '-ele', 1900, '-file', 'output/basic_lrb_force.out', 'basicForce')
 ops.recorder('Element', '-ele', 1900, '-file', 'output/basic_lrb_disp.out', 'basicDisplacement')
 
+ops.recorder('Element', '-ele', 1900, '-file', 'output/param.out', 'Parameters')
 steps = 500
 
 # ------------------------------
@@ -243,14 +244,15 @@ tol = 1e-5
 # max_disp = 150.0
 
 
-ops.test('NormDispIncr', 1.0e-15, 10, 3)
+ops.test('NormDispIncr', 1.0e-3, 500, 0)
 ops.algorithm('Newton')
-ops.system('BandSPD')
-ops.numberer("RCM")
+ops.system('SparseGeneral')
+ops.numberer("Plain")
 ops.constraints("Transformation")
+
 ops.analysis("Static")                      # create analysis object
 
-max_disp = 1.5*h
+max_disp = 1*h
 peaks = np.repeat(max_disp*2, 60)
 peaks = np.insert(peaks, 0, max_disp, axis=0)
 du = (-1.0)**0*(peaks[0] / steps)
@@ -416,6 +418,30 @@ plt.title('Force-displacement (basic in element)')
 plt.ylabel('Force (kN)')
 plt.xlabel('Displacement (m)')
 plt.grid(True)
+
+# param plot
+params = pd.read_csv('output/param.out', sep=' ', header=None, 
+                     names=['Fcn', "Fcrn", 'Kv', 'Ke', 'dT', 'qY'])
+
+# TODO: is this measured properly?
+# Cavitation
+fig = plt.figure()
+plt.plot(np.arange(1, len(params['Fcn'])+1)/steps, 
+          forces['axial'] /params['Fcn'])
+plt.title('axial (basic in element)/Cavitation force ')
+plt.ylabel('Cavitation ratio')
+plt.xlabel('Steps')
+plt.grid(True)
+
+# buckling
+fig = plt.figure()
+plt.plot(np.arange(1, len(params['Fcn'])+1)/steps, 
+          forces['axial']/params['Fcrn'])
+plt.title('axial (basic in element)/Buckling force')
+plt.ylabel('Buckling ratio')
+plt.xlabel('Steps')
+plt.grid(True)
+
 #%% animate
 
 # import numpy as np
