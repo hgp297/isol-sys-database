@@ -33,7 +33,7 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-troubleshoot_run = main_obj.all_designs.loc[26]
+troubleshoot_run = main_obj.all_designs.loc[10]
 
 from building import Building
 

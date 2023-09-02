@@ -198,6 +198,19 @@ class Building:
         # make isolators above base nodes
         isol_elems = [nd+isol_id for nd in base_nodes]
         
+        # for LRB, we need additional bearings represented at the edges
+        isol_type = self.isolator_system
+        if isol_type == 'LRB':
+            n_edge_bearings = n_bays+1
+            addl_bearings = round(n_edge_bearings/2) - 1
+            
+            addl_isol_elems = ([isol_elems[0]+10*(j+1) 
+                               for j in range(addl_bearings)] + 
+                               [isol_elems[-1]+10*(j+1) 
+                                for j in range(addl_bearings)])
+            
+            # isol_elems = isol_elems + addl_isol_elems
+        
         # spring elements, series 5000
         spring_id = 5000
         spring_elems = [nd+spring_id for nd in spring_nodes]
@@ -834,7 +847,8 @@ class Building:
             t_layer = t_rubber_whole/n_layers
             
             # calculate yield strength. this assumes design was done correctly
-            Q_L = self.Q * self.W
+            # TODO: check stiffness?
+            Q_L = self.Q * self.W / self.num_bays
             alpha = 1.0/self.k_ratio
             Fy_LRB = Q_L/(1 - alpha)
             
@@ -1901,7 +1915,8 @@ class Building:
             t_layer = t_rubber_whole/n_layers
             
             # calculate yield strength. this assumes design was done correctly
-            Q_L = self.Q * self.W
+            # TODO: check stiffness?
+            Q_L = self.Q * self.W / self.num_bays
             alpha = 1.0/self.k_ratio
             Fy_LRB = Q_L/(1 - alpha)
             
@@ -2300,7 +2315,6 @@ class Building:
         
         
         # isolator node displacement of outer column
-        # TODO: verify response is same in all columns
         ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', 
                      '-time', '-node', isol_node, '-dof', 1, 3, 5, 'disp')
         
@@ -2345,7 +2359,7 @@ class Building:
         tolDynamic          = 1e-3 
         
         # Convergence Test: maximum number of iterations that will be performed
-        maxIterDynamic      = 500
+        maxIterDynamic      = 30
         
         # Convergence Test: flag used to print information on convergence
         printFlagDynamic    = 0         

@@ -395,7 +395,7 @@ I_rigid = 1e6        # moment of inertia for p-delta columns
 ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
 
 # minimal stiffness elements (ghosts)
-A_ghost = 0.05
+A_ghost = 1.
 E_ghost = 100.0
 ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
 
@@ -903,7 +903,7 @@ ops.recorder('Node','-node', 201,'-file',
              'output/top_brace_node.out', '-dof', 1, 3, 'disp')
 
 #%%
-'''
+
 # ------------------------------
 # Loading: axial
 # ------------------------------
@@ -947,11 +947,10 @@ for i, pk in enumerate(peaks):
 # d_mid = ops.nodeDisp(2018)
 # print(d_mid)
 
-'''
 # # ------------------------------
 # Loading: earthquake
 # ------------------------------
-
+'''
 ops.wipeAnalysis()
 # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
 GMDirection = 1  # ground-motion direction
@@ -964,7 +963,7 @@ ops.numberer('RCM')
 ops.system('BandGeneral')
 
 # Convergence Test: tolerance
-tolDynamic          = 1e-3 
+tolDynamic          = 1e-5
 
 # Convergence Test: maximum number of iterations that will be performed
 maxIterDynamic      = 500
@@ -1052,7 +1051,7 @@ minutes = tp//60
 seconds = tp - 60*minutes
 print('Ground motion done. End time: %.4f s' % t_final)
 print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
-
+'''
 ops.wipe()
 #%%
 ############################################################################
@@ -1153,7 +1152,7 @@ def animate(i):
     return line, trace, time_text
 
 ani = animation.FuncAnimation(
-    fig, animate, history_len, interval=200/1000, blit=True)
+    fig, animate, history_len, interval=1, blit=True)
 plt.show()
 
 # ani = animation.FuncAnimation(
