@@ -830,7 +830,7 @@ class Building:
                             L1, L2, L2, d1, d2, d2,
                             p_vert, uy, kvt, minFv, 1e-5)
                 
-        # TODO: restack LRBs
+        
         # TODO: fix parameters after bearing testing
         else:
             # LRB modeling
@@ -848,8 +848,11 @@ class Building:
             
             # calculate yield strength. this assumes design was done correctly
             # TODO: check stiffness?
-            N_lb = 4*self.num_bays
-            Q_L = self.Q * self.W / N_lb
+            pi = 3.14159
+            f_y_Pb = 1.5 # ksi, shear yield strength
+            Q_L = f_y_Pb*pi*D_inner**2/4
+            # N_lb = 4*self.num_bays
+            # Q_L = self.Q * self.W / N_lb
             alpha = 1.0/self.k_ratio
             Fy_LRB = Q_L/(1 - alpha)
             
@@ -861,12 +864,6 @@ class Building:
             for elem_idx, elem_tag in enumerate(isol_elems):
                 i_nd = elem_tag - isol_id
                 j_nd = elem_tag - isol_id - base_id + 10
-                
-                # if top node is furthest left or right, vertical force is outer
-                if (j_nd == 0) or (j_nd%10 == n_bays):
-                    p_vert = p_outer
-                else:
-                    p_vert = p_inner
                     
                 # ad-hoc change edge bearing to have area equivalent to stacked LRBs
                 from math import floor
@@ -878,6 +875,7 @@ class Building:
                 # kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
                 # aS_imp = 0.018166036 # (in^2/s)
                 
+                # TODO: restack LRBs
                 if (elem_idx == 0) or (elem_idx == len(isol_elems)):
                     mod_D_inner = (n_addl_bearings+1)*D_inner
                     mod_D_outer = (n_addl_bearings+1)*D_outer
@@ -1917,8 +1915,11 @@ class Building:
             
             # calculate yield strength. this assumes design was done correctly
             # TODO: check stiffness?
-            N_lb = 4*self.num_bays
-            Q_L = self.Q * self.W / N_lb
+            pi = 3.14159
+            f_y_Pb = 1.5 # ksi, shear yield strength
+            Q_L = f_y_Pb*pi*D_inner**2/4
+            # N_lb = 4*self.num_bays
+            # Q_L = self.Q * self.W / N_lb
             alpha = 1.0/self.k_ratio
             Fy_LRB = Q_L/(1 - alpha)
             
@@ -1930,12 +1931,6 @@ class Building:
             for elem_idx, elem_tag in enumerate(isol_elems):
                 i_nd = elem_tag - isol_id
                 j_nd = elem_tag - isol_id - base_id + 10
-                
-                # if top node is furthest left or right, vertical force is outer
-                if (j_nd == 0) or (j_nd%10 == n_bays):
-                    p_vert = p_outer
-                else:
-                    p_vert = p_inner
                     
                 # change temp coefficients to imperial units
                 # ad-hoc change edge bearing to have area equivalent to stacked LRBs
@@ -1948,6 +1943,7 @@ class Building:
                 # kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
                 # aS_imp = 0.018166036 # (in^2/s)
                 
+                # TODO: restack LRBs
                 if (elem_idx == 0) or (elem_idx == len(isol_elems)):
                     mod_D_inner = (n_addl_bearings+1)*D_inner
                     mod_D_outer = (n_addl_bearings+1)*D_outer

@@ -29,18 +29,19 @@ ops.model('basic', '-ndm', 3, '-ndf', 6)
 # model gravity masses corresponding to the frame placed on building edge
 import numpy as np
 
-'''
 # units: in, kip, s
 # dimensions
 inch    = 1.0
 ft      = 12.0*inch
 sec     = 1.0
 g       = 386.4*inch/(sec**2)
+pi = 3.14159
 kip     = 1.0
 ksi     = kip/(inch**2)
 
 n_bays = 5
-W_bldg = 10768./n_bays
+N_LB = 4*n_bays
+W_bldg = 10768./N_LB
 m = W_bldg/g
 
 # dimensions. Material parameters should not be edited without 
@@ -55,39 +56,38 @@ n_layers = 30
 t_layer = t_rubber_whole/n_layers
 
 # calculate yield strength. this assumes design was done correctly
-Q = 0.099
-W = 12641.66*kip
-Q_L = Q*W
+f_y_Pb = 1.5 # ksi, shear yield strength
+
+Q_d = f_y_Pb*pi*D_inner**2/4
 k_ratio = 13.868
 alpha = 1.0/k_ratio
-Fy_LRB = Q_L/(1 - alpha)
+Fy_LRB = Q_d/(1 - alpha)
 
 kc = 10.0
 phi_M = 0.5
 ac = 1.0
 
 sdr = 0.5
-mb = 0.0
+mb = m
 cd = 0.0
 tc = 1.0
-qL_imp = 11200
-cL_imp = 130
-kS_imp = 50
-aS_imp = 1.41e-5
 
-# qL_imp = 0.4046256704 # (lbs/in^3)
-# cL_imp = 0.0311 # (Btu/lb/degF)
-# kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
-# aS_imp = 0.018166036 # (in^2/s)
+# qL_imp = 11200
+# cL_imp = 3e-1
+# kS_imp = 50
+# aS_imp = 1.41e-5
 
-h = 12.0*inch
-'''
+qL_imp = 0.4046256704 # (lbs/in^3) density of lead 
+cL_imp = 0.03076 # (Btu/lb/degF) specific heat of lead at room temp
+kS_imp = 26.0*12.0 # (Btu/(hr*in*F)) thermal conductivity of steel 
+aS_imp = 0.018166036 # (in^2/s) thermal diffusivity of steel 
+
 # units: m, N, s, g
 # dimensions
-
+'''
 g = 9.81
 pi = 3.1415
-m = 253018./300
+m = 253018/300
 
 K_bulk = 2000e6
 G_r = 0.4137e6
@@ -117,23 +117,21 @@ k_1 = k_2/alpha
 
 Fy_LRB = Q_d/(1 - alpha)
 
-kc = 20.0
-phi_M = 0.75
+kc = 10.0
+phi_M = 0.5
 ac = 1.0
 
 sdr = 0.5
 mb = m
-cd = 0.0
+# TODO: is this really zero?
+cd = 0.
 qL_imp = 19000
-cL_imp = 3300
+cL_imp = 33
 kS_imp = 50
 aS_imp = 1.41e-5
 
-h = t_rubber_whole + (n_layers-1)*t_shim
-# qL_imp = 0.4046256704 # (lbs/in^3)
-# cL_imp = 0.0311 # (Btu/lb/degF)
-# kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
-# aS_imp = 0.018166036 # (in^2/s)
+'''
+h = t_rubber_whole + (n_layers-1)*t_shim + tc
 
 # base node
 ops.node(10, 0.0, 0.0, 0.0)
@@ -141,7 +139,7 @@ ops.fix(10, 1, 1, 1, 1, 1, 1)
 
 # end node
 ops.node(20, 0.0, 0.0, h)
-ops.fix(20, 0, 0, 0, 1, 1, 1)
+ops.fix(20, 0, 0, 0, 0, 1, 0)
 
 negligible = 1e-5
 ops.mass(20, m, m, m,
@@ -150,7 +148,7 @@ ops.mass(20, m, m, m,
 tag_1 = 0 # cavitation
 tag_2 = 1 # buckling load variation
 tag_3 = 1 # horiz stiffness variation
-tag_4 = 1 # vertical stiffness variation
+tag_4 = 0 # vertical stiffness variation
 tag_5 = 0 # heat
 
 # Fy_h = 4.43e5
@@ -222,153 +220,198 @@ ops.recorder('Element', '-ele', 1900, '-file', 'output/param.out', 'Parameters')
 steps = 500
 
 # ------------------------------
-# Loading: cyclic
+# Loading: cyclic file
 # ------------------------------
 
 ops.wipeAnalysis()
 
-# create TimeSeries
-ops.timeSeries("Linear", monotonic_series_tag)
-ops.pattern('Plain', monotonic_pattern_tag, monotonic_series_tag)
-ops.load(20, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+dt = 0.01
+dispSeriesTag = 101
+velSeriesTag = 102
+accelSeriesTag = 103
 
-tol = 1e-5
+ops.timeSeries('Path', dispSeriesTag, '-dt', dt, 
+                '-filePath', './motions/LDDisp.txt', '-factor', 200.0)   
+ops.timeSeries('Path', velSeriesTag, '-dt', dt, 
+                '-filePath', './motions/LDVel.txt', '-factor', 1.0) 
+ops.timeSeries('Path', accelSeriesTag, '-dt', dt, 
+                '-filePath', './motions/LDAcc.txt', '-factor', 1.0) 
 
-# ops.system("BandGeneral")   
-# ops.test("NormDispIncr", tol, 15)
-# ops.numberer("RCM")
-# ops.constraints("Plain")
-# ops.algorithm("Newton")
+eq_series_tag = 100
+eq_pattern_tag = 400
 
-# peaks = np.arange(0.0, 300.0, 5.0)
-# max_disp = 150.0
+ops.pattern('MultipleSupport', eq_pattern_tag)
+ 
+ops.groundMotion(eq_series_tag, 'Plain', 
+                 '-disp', dispSeriesTag, 
+                 '-vel', velSeriesTag, 
+                 '-accel', accelSeriesTag)
 
+ops.imposedMotion(20, 1, eq_series_tag)
 
-ops.test('NormDispIncr', 1.0e-3, 500, 0)
-ops.algorithm('Newton')
 ops.system('SparseGeneral')
-ops.numberer("Plain")
 ops.constraints("Transformation")
-
-ops.analysis("Static")                      # create analysis object
-
-max_disp = 1*h
-peaks = np.repeat(max_disp*2, 60)
-peaks = np.insert(peaks, 0, max_disp, axis=0)
-du = (-1.0)**0*(peaks[0] / steps)
-
-for i, pk in enumerate(peaks):
-    du = (-1.0)**i*(peaks[i] / steps)
-    ops.integrator('DisplacementControl', 20, 1, du, 1, du, du)
-    ops.analyze(steps)
+ops.test('NormDispIncr', 1.0e-5, 20, 0)
+algorithmTypeDynamic = 'Newton'
+ops.algorithm(algorithmTypeDynamic)
+ops.numberer("Plain")
 
 
-# # ------------------------------
-# # Loading: earthquake
-# # ------------------------------
-# ops.wipeAnalysis()
-# # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
-# GMDirection = 1  # ground-motion direction
-# gm_name = 'RSN3905_TOTTORI_OKY002EW'
-# scale_factor = 20.0*10
-# print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
-# ops.constraints('Plain')
-# ops.numberer('RCM')
-# ops.system('BandGeneral')
+newmarkGamma = 0.5
+newmarkBeta = 0.25
+ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+ops.analysis('Transient')
 
-# # Convergence Test: tolerance
-# tolDynamic          = 1e-3 
+# set up ground-motion-analysis parameters
+sec = 1.0                      
 
-# # Convergence Test: maximum number of iterations that will be performed
-# maxIterDynamic      = 500
+dt_transient = 0.01
+T_end = 7470.*dt_transient
+n_steps = int(np.floor(T_end/dt_transient))
 
-# # Convergence Test: flag used to print information on convergence
-# printFlagDynamic    = 0         
+# actually perform analysis; returns ok=0 if analysis was successful
 
-# testTypeDynamic     = 'NormDispIncr'
-# ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+import time
+t0 = time.time()
 
-# # algorithmTypeDynamic    = 'Broyden'
-# # ops.algorithm(algorithmTypeDynamic, 8)
-# algorithmTypeDynamic    = 'Newton'
-# ops.algorithm(algorithmTypeDynamic)
+ok = ops.analyze(n_steps, dt_transient)   
+if ok != 0:
+    ok = 0
+    curr_time = ops.getTime()
+    print("Convergence issues at time: ", curr_time)
+    while (curr_time < T_end) and (ok == 0):
+        curr_time     = ops.getTime()
+        ok          = ops.analyze(1, dt_transient)
+        if ok != 0:
+            print("Trying Newton with Initial Tangent...")
+            ops.algorithm('Newton', '-initial')
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
+            ops.algorithm(algorithmTypeDynamic)
+        if ok != 0:
+            print("Trying Newton with line search ...")
+            ops.algorithm('NewtonLineSearch')
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
+            ops.algorithm(algorithmTypeDynamic)
 
-# # Newmark-integrator gamma parameter (also HHT)
-# newmarkGamma = 0.5
-# newmarkBeta = 0.25
-# ops.integrator('Newmark', newmarkGamma, newmarkBeta)
-# ops.analysis('Transient')
+t_final = ops.getTime()
+tp = time.time() - t0
+minutes = tp//60
+seconds = tp - 60*minutes
+print('Ground motion done. End time: %.4f s' % t_final)
+print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
 
-# #  ---------------------------------    perform Dynamic Ground-Motion Analysis
-# # the following commands are unique to the Uniform Earthquake excitation
+# ------------------------------
+# Loading: earthquake
+# ------------------------------
+'''
+ops.wipeAnalysis()
+# Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
+GMDirection = 1  # ground-motion direction
+gm_name = 'RSN3905_TOTTORI_OKY002EW'
+scale_factor = 50.0
+print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
-# gm_dir = '../resource/ground_motions/PEERNGARecords_Unscaled/'
+ops.constraints('Plain')
+ops.numberer('RCM')
+ops.system('BandGeneral')
 
-# # Uniform EXCITATION: acceleration input
-# inFile = gm_dir + gm_name + '.AT2'
-# outFile = gm_dir + gm_name + '.g3'
+# Convergence Test: tolerance
+tolDynamic          = 1e-3 
 
-#  # call procedure to convert the ground-motion file
-# from ReadRecord import ReadRecord
-# dt, nPts = ReadRecord(inFile, outFile)
-# g = 386.4
-# GMfatt = g*scale_factor
+# Convergence Test: maximum number of iterations that will be performed
+maxIterDynamic      = 500
 
-# eq_series_tag = 100
-# eq_pattern_tag = 400
-# # time series information
-# ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
-#                '-filePath', outFile, '-factor', GMfatt)     
-# # create uniform excitation
-# ops.pattern('UniformExcitation', eq_pattern_tag, 
-#             GMDirection, '-accel', eq_series_tag)          
+# Convergence Test: flag used to print information on convergence
+printFlagDynamic    = 0         
 
-# # set up ground-motion-analysis parameters
-# sec = 1.0                      
-# T_end = 60.0*sec
+testTypeDynamic     = 'NormDispIncr'
+ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+
+# algorithmTypeDynamic    = 'Broyden'
+# ops.algorithm(algorithmTypeDynamic, 8)
+algorithmTypeDynamic    = 'Newton'
+ops.algorithm(algorithmTypeDynamic)
+
+# Newmark-integrator gamma parameter (also HHT)
+newmarkGamma = 0.5
+newmarkBeta = 0.25
+ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+ops.analysis('Transient')
+
+#  ---------------------------------    perform Dynamic Ground-Motion Analysis
+# the following commands are unique to the Uniform Earthquake excitation
+
+gm_dir = '../resource/ground_motions/PEERNGARecords_Unscaled/'
+
+# Uniform EXCITATION: acceleration input
+inFile = gm_dir + gm_name + '.AT2'
+outFile = gm_dir + gm_name + '.g3'
+
+  # call procedure to convert the ground-motion file
+from ReadRecord import ReadRecord
+dt, nPts = ReadRecord(inFile, outFile)
+g = 386.4
+GMfatt = g*scale_factor
+
+eq_series_tag = 100
+eq_pattern_tag = 400
+# time series information
+ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
+                '-filePath', outFile, '-factor', GMfatt)     
+# create uniform excitation
+ops.pattern('UniformExcitation', eq_pattern_tag, 
+            GMDirection, '-accel', eq_series_tag)          
+
+# set up ground-motion-analysis parameters
+sec = 1.0                      
+T_end = 60.0*sec
 
 
-# dt_transient = 0.005
-# n_steps = int(np.floor(T_end/dt_transient))
+dt_transient = 0.005
+n_steps = int(np.floor(T_end/dt_transient))
 
-# # actually perform analysis; returns ok=0 if analysis was successful
+# actually perform analysis; returns ok=0 if analysis was successful
 
-# import time
-# t0 = time.time()
+import time
+t0 = time.time()
 
-# ok = ops.analyze(n_steps, dt_transient)   
-# if ok != 0:
-#     ok = 0
-#     curr_time = ops.getTime()
-#     print("Convergence issues at time: ", curr_time)
-#     while (curr_time < T_end) and (ok == 0):
-#         curr_time     = ops.getTime()
-#         ok          = ops.analyze(1, dt_transient)
-#         if ok != 0:
-#             print("Trying Newton with Initial Tangent...")
-#             ops.algorithm('Newton', '-initial')
-#             ok = ops.analyze(1, dt_transient)
-#             if ok == 0:
-#                 print("That worked. Back to Newton")
-#             ops.algorithm(algorithmTypeDynamic)
-#         if ok != 0:
-#             print("Trying Newton with line search ...")
-#             ops.algorithm('NewtonLineSearch')
-#             ok = ops.analyze(1, dt_transient)
-#             if ok == 0:
-#                 print("That worked. Back to Newton")
-#             ops.algorithm(algorithmTypeDynamic)
+ok = ops.analyze(n_steps, dt_transient)   
+if ok != 0:
+    ok = 0
+    curr_time = ops.getTime()
+    print("Convergence issues at time: ", curr_time)
+    while (curr_time < T_end) and (ok == 0):
+        curr_time     = ops.getTime()
+        ok          = ops.analyze(1, dt_transient)
+        if ok != 0:
+            print("Trying Newton with Initial Tangent...")
+            ops.algorithm('Newton', '-initial')
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
+            ops.algorithm(algorithmTypeDynamic)
+        if ok != 0:
+            print("Trying Newton with line search ...")
+            ops.algorithm('NewtonLineSearch')
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
+            ops.algorithm(algorithmTypeDynamic)
 
-# t_final = ops.getTime()
-# tp = time.time() - t0
-# minutes = tp//60
-# seconds = tp - 60*minutes
-# print('Ground motion done. End time: %.4f s' % t_final)
-# print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
-
+t_final = ops.getTime()
+tp = time.time() - t0
+minutes = tp//60
+seconds = tp - 60*minutes
+print('Ground motion done. End time: %.4f s' % t_final)
+print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
 
 ops.wipe()
+'''
 #%%
 ############################################################################
 #              Plot results
@@ -390,11 +433,20 @@ forces = pd.read_csv(node_rxn, sep=' ', header=None, names=['force'])
 
 # force disp
 fig = plt.figure()
-plt.plot(disps['displacement'], -forces['force']/1000)
+plt.plot(disps['displacement'], -forces['force'])
 plt.title('Force-displacement recorded at end node')
-plt.ylabel('Force (kN)')
-plt.xlabel('Displacement (m)')
+plt.ylabel('Force (kip)')
+plt.xlabel('Displacement (in)')
 plt.grid(True)
+
+# # force disp
+# fig = plt.figure()
+# plt.scatter(disps['displacement'], -forces['force']/1000, 
+#             c=np.arange(1, len(disps['displacement'])+1))
+# plt.title('Force-displacement recorded at end node')
+# plt.ylabel('Force (kN)')
+# plt.xlabel('Displacement (m)')
+# plt.grid(True)
 
 # cycles
 fig = plt.figure()
@@ -413,17 +465,16 @@ forces = pd.read_csv('output/basic_lrb_force.out', sep=' ', header=None, names=b
 
 # force disp
 fig = plt.figure()
-plt.plot(disps['shear'], forces['shear']/1000)
+plt.plot(disps['shear'], forces['shear'])
 plt.title('Force-displacement (basic in element)')
-plt.ylabel('Force (kN)')
-plt.xlabel('Displacement (m)')
+plt.ylabel('Force (kip)')
+plt.xlabel('Displacement (in)')
 plt.grid(True)
 
 # param plot
 params = pd.read_csv('output/param.out', sep=' ', header=None, 
                      names=['Fcn', "Fcrn", 'Kv', 'Ke', 'dT', 'qY'])
 
-# TODO: is this measured properly?
 # Cavitation
 fig = plt.figure()
 plt.plot(np.arange(1, len(params['Fcn'])+1)/steps, 
@@ -439,6 +490,24 @@ plt.plot(np.arange(1, len(params['Fcn'])+1)/steps,
           forces['axial']/params['Fcrn'])
 plt.title('axial (basic in element)/Buckling force')
 plt.ylabel('Buckling ratio')
+plt.xlabel('Steps')
+plt.grid(True)
+
+# ke
+fig = plt.figure()
+plt.plot(np.arange(1, len(params['Fcn'])+1)/steps, 
+          params['Ke'])
+plt.title('Horizontal stiffness')
+plt.ylabel('Ke')
+plt.xlabel('Steps')
+plt.grid(True)
+
+# strain ratio
+fig = plt.figure()
+plt.plot(np.arange(1, len(params['Fcn'])+1)/steps, 
+          disps['shear']/h*100)
+plt.title('Strain ratio')
+plt.ylabel('Strain ratio (%)')
 plt.xlabel('Steps')
 plt.grid(True)
 
