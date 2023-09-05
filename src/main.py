@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(30)
+main_obj = Database(50)
 
 main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)
@@ -33,29 +33,29 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-troubleshoot_run = main_obj.all_designs.loc[10]
+# troubleshoot_run = main_obj.all_designs.loc[10]
 
-from building import Building
+# from building import Building
 
-# test build CBF
-troubleshoot_bldg = Building(troubleshoot_run)
-troubleshoot_bldg.model_frame()
-troubleshoot_bldg.apply_grav_load()
-troubleshoot_bldg.provide_damping(80, method='SP',
-                                  zeta=[0.05], modes=[1])
+# # test build CBF
+# troubleshoot_bldg = Building(troubleshoot_run)
+# troubleshoot_bldg.model_frame()
+# troubleshoot_bldg.apply_grav_load()
+# troubleshoot_bldg.provide_damping(80, method='SP',
+#                                   zeta=[0.05], modes=[1])
 
-dt = 0.005
-troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
-                                    troubleshoot_run.scale_factor, 
-                                    dt)
+# dt = 0.005
+# troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
+#                                     troubleshoot_run.scale_factor, 
+#                                     dt)
 
+# #%%
+
+# from plot_structure import plots
+# plots(troubleshoot_bldg)
 #%%
 
-from plot_structure import plots
-plots(troubleshoot_bldg)
-#%%
-
-# main_obj.analyze_db('just_a_test.csv')
+main_obj.analyze_db('just_a_test.csv')
 
 #%%
 

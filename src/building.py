@@ -848,7 +848,8 @@ class Building:
             
             # calculate yield strength. this assumes design was done correctly
             # TODO: check stiffness?
-            Q_L = self.Q * self.W / self.num_bays
+            N_lb = 4*self.num_bays
+            Q_L = self.Q * self.W / N_lb
             alpha = 1.0/self.k_ratio
             Fy_LRB = Q_L/(1 - alpha)
             
@@ -1916,7 +1917,8 @@ class Building:
             
             # calculate yield strength. this assumes design was done correctly
             # TODO: check stiffness?
-            Q_L = self.Q * self.W / self.num_bays
+            N_lb = 4*self.num_bays
+            Q_L = self.Q * self.W / N_lb
             alpha = 1.0/self.k_ratio
             Fy_LRB = Q_L/(1 - alpha)
             
