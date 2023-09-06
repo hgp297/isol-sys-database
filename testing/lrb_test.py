@@ -161,6 +161,7 @@ ops.element('LeadRubberX', 1900, 10, 20, Fy_LRB, alpha,
             G_r, K_bulk, D_inner, D_outer,
             t_shim, t_layer, n_layers, *addl_params)
 
+
 open('./output/model.out', 'w').close()
 ops.printModel('-file', './output/model.out')
 

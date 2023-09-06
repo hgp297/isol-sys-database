@@ -309,11 +309,16 @@ class Database:
         # scale and select ground motion
         # TODO: this section is inefficient
         from gms import scale_ground_motion
+        import time
+        t0 = time.time()
         all_des[['gm_selected',
                  'scale_factor',
                  'sa_avg']] = all_des.apply(lambda row: scale_ground_motion(row),
                                             axis='columns', result_type='expand')
-                                            
+        tp = time.time() - t0
+        print("Scaled ground motions for %d structures in %.2f s" %
+              (all_des.shape[0], tp))
+        
         self.all_designs = all_des
         
     def analyze_db(self, output_str,

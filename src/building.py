@@ -830,8 +830,6 @@ class Building:
                             L1, L2, L2, d1, d2, d2,
                             p_vert, uy, kvt, minFv, 1e-5)
                 
-        
-        # TODO: fix parameters after bearing testing
         else:
             # LRB modeling
             
@@ -847,7 +845,6 @@ class Building:
             t_layer = t_rubber_whole/n_layers
             
             # calculate yield strength. this assumes design was done correctly
-            # TODO: check stiffness?
             pi = 3.14159
             f_y_Pb = 1.5 # ksi, shear yield strength
             Q_L = f_y_Pb*pi*D_inner**2/4
@@ -855,6 +852,32 @@ class Building:
             # Q_L = self.Q * self.W / N_lb
             alpha = 1.0/self.k_ratio
             Fy_LRB = Q_L/(1 - alpha)
+            
+            kc = 10.0
+            phi_M = 0.5
+            ac = 1.0
+            
+            qL_imp = 0.4046256704 # (lbs/in^3) density of lead 
+            cL_imp = 0.03076 # (Btu/lb/degF) specific heat of lead at room temp
+            kS_imp = 26.0*12.0 # (Btu/(hr*in*F)) thermal conductivity of steel 
+            aS_imp = 0.018166036 # (in^2/s) thermal diffusivity of steel 
+
+            sdr = 0.5
+            # guesstimate 60% of the entire bearing volume's mass in lead
+            mb = qL_imp*pi*D_outer**2/4*t_rubber_whole*0.6
+            cd = 0.0
+            tc = 1.0
+            
+            tag_1 = 0 # cavitation
+            tag_2 = 1 # buckling load variation
+            tag_3 = 1 # horiz stiffness variation
+            tag_4 = 0 # vertical stiffness variation
+            tag_5 = 0 # heat
+            
+            addl_params = [0, 0, 1, 1, 0, 0,
+                           kc, phi_M, ac, sdr, mb, cd, tc,
+                           qL_imp, cL_imp, kS_imp, aS_imp,
+                           tag_1, tag_2, tag_3, tag_4, tag_5]
             
             # define 2-D isolation layer 
             isol_id = self.elem_ids['isolator']
@@ -865,27 +888,23 @@ class Building:
                 i_nd = elem_tag - isol_id
                 j_nd = elem_tag - isol_id - base_id + 10
                     
+                # change temp coefficients to imperial units
                 # ad-hoc change edge bearing to have area equivalent to stacked LRBs
-                from math import floor
-                n_addl_bearings = floor(n_bays/2)
-                
-                # # change temp coefficients to imperial units
-                # qL_imp = 0.4046256704 # (lbs/in^3)
-                # cL_imp = 0.0311 # (Btu/lb/degF)
-                # kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
-                # aS_imp = 0.018166036 # (in^2/s)
+                # from math import floor
+                # n_addl_bearings = floor(n_bays/2)
                 
                 # TODO: restack LRBs
-                if (elem_idx == 0) or (elem_idx == len(isol_elems)):
-                    mod_D_inner = (n_addl_bearings+1)*D_inner
-                    mod_D_outer = (n_addl_bearings+1)*D_outer
-                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                                G_r, K_bulk, mod_D_inner, mod_D_outer,
-                                t_shim, t_layer, n_layers)
-                else:
-                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                                G_r, K_bulk, D_inner, D_outer,
-                                t_shim, t_layer, n_layers)
+                # if (elem_idx == 0) or (elem_idx == len(isol_elems)):
+                #     mod_D_inner = (n_addl_bearings+1)*D_inner
+                #     mod_D_outer = (n_addl_bearings+1)*D_outer
+                #     ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                #                 G_r, K_bulk, mod_D_inner, mod_D_outer,
+                #                 t_shim, t_layer, n_layers, *addl_params)
+                # else:
+                    
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                            G_r, K_bulk, D_inner, D_outer,
+                            t_shim, t_layer, n_layers, *addl_params)
   
 ################################################################################
 # Walls
@@ -1268,7 +1287,7 @@ class Building:
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
         Fy  = 50*ksi        # yield strength
-        b   = 0.003           # hardening ratio
+        b   = 0.03           # hardening ratio
         R0 = 15
         cR1 = 0.925
         cR2 = 0.15
@@ -1280,9 +1299,8 @@ class Building:
         W_w = (L_gp**2 + L_gp**2)**0.5
         L_avg = 0.75* L_gp
         t_gp = 1.375*inch
-        Fy_gp = 50*ksi
+        Fy_gp = 36*ksi
         
-        # TODO: check dimension of gusset plate
         My_GP = (W_w*t_gp**2/6)*Fy_gp
         K_rot_GP = Es/L_avg * (W_w*t_gp**3/12)
         b_GP = 0.01
@@ -1914,7 +1932,6 @@ class Building:
             t_layer = t_rubber_whole/n_layers
             
             # calculate yield strength. this assumes design was done correctly
-            # TODO: check stiffness?
             pi = 3.14159
             f_y_Pb = 1.5 # ksi, shear yield strength
             Q_L = f_y_Pb*pi*D_inner**2/4
@@ -1922,6 +1939,32 @@ class Building:
             # Q_L = self.Q * self.W / N_lb
             alpha = 1.0/self.k_ratio
             Fy_LRB = Q_L/(1 - alpha)
+            
+            kc = 10.0
+            phi_M = 0.5
+            ac = 1.0
+            
+            qL_imp = 0.4046256704 # (lbs/in^3) density of lead 
+            cL_imp = 0.03076 # (Btu/lb/degF) specific heat of lead at room temp
+            kS_imp = 26.0*12.0 # (Btu/(hr*in*F)) thermal conductivity of steel 
+            aS_imp = 0.018166036 # (in^2/s) thermal diffusivity of steel 
+
+            sdr = 0.5
+            # guesstimate 60% of the entire bearing volume's mass in lead
+            mb = qL_imp*pi*D_outer**2/4*t_rubber_whole*0.6
+            cd = 0.0
+            tc = 1.0
+            
+            tag_1 = 0 # cavitation
+            tag_2 = 1 # buckling load variation
+            tag_3 = 1 # horiz stiffness variation
+            tag_4 = 0 # vertical stiffness variation
+            tag_5 = 0 # heat
+            
+            addl_params = [0, 0, 1, 1, 0, 0,
+                           kc, phi_M, ac, sdr, mb, cd, tc,
+                           qL_imp, cL_imp, kS_imp, aS_imp,
+                           tag_1, tag_2, tag_3, tag_4, tag_5]
             
             # define 2-D isolation layer 
             isol_id = self.elem_ids['isolator']
@@ -1934,26 +1977,21 @@ class Building:
                     
                 # change temp coefficients to imperial units
                 # ad-hoc change edge bearing to have area equivalent to stacked LRBs
-                from math import floor
-                n_addl_bearings = floor(n_bays/2)
-                
-                # # change temp coefficients to imperial units
-                # qL_imp = 0.4046256704 # (lbs/in^3)
-                # cL_imp = 0.0311 # (Btu/lb/degF)
-                # kS_imp = 26.0*12.0 # (Btu/(hr*in*F))
-                # aS_imp = 0.018166036 # (in^2/s)
+                # from math import floor
+                # n_addl_bearings = floor(n_bays/2)
                 
                 # TODO: restack LRBs
-                if (elem_idx == 0) or (elem_idx == len(isol_elems)):
-                    mod_D_inner = (n_addl_bearings+1)*D_inner
-                    mod_D_outer = (n_addl_bearings+1)*D_outer
-                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                                G_r, K_bulk, mod_D_inner, mod_D_outer,
-                                t_shim, t_layer, n_layers)
-                else:
-                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                                G_r, K_bulk, D_inner, D_outer,
-                                t_shim, t_layer, n_layers)
+                # if (elem_idx == 0) or (elem_idx == len(isol_elems)):
+                #     mod_D_inner = (n_addl_bearings+1)*D_inner
+                #     mod_D_outer = (n_addl_bearings+1)*D_outer
+                #     ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                #                 G_r, K_bulk, mod_D_inner, mod_D_outer,
+                #                 t_shim, t_layer, n_layers, *addl_params)
+                # else:
+                    
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                            G_r, K_bulk, D_inner, D_outer,
+                            t_shim, t_layer, n_layers, *addl_params)
   
 ################################################################################
 # Walls
