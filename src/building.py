@@ -1292,8 +1292,11 @@ class Building:
         cR1 = 0.925
         cR2 = 0.15
         ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
-        ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
-        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+        
+        ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        
+        # ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
+        # ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5

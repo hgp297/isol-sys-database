@@ -78,7 +78,7 @@ tc = 1.0
 # aS_imp = 1.41e-5
 
 qL_imp = 0.4046256704 # (lbs/in^3) density of lead 
-cL_imp = 0.03076 # (Btu/lb/degF) specific heat of lead at room temp
+cL_imp = 0.03076*500 # (Btu/lb/degF) specific heat of lead at room temp
 kS_imp = 26.0*12.0 # (Btu/(hr*in*F)) thermal conductivity of steel 
 aS_imp = 0.018166036 # (in^2/s) thermal diffusivity of steel 
 
@@ -146,8 +146,8 @@ ops.mass(20, m, m, m,
           negligible, negligible, negligible)
 
 tag_1 = 0 # cavitation
-tag_2 = 1 # buckling load variation
-tag_3 = 1 # horiz stiffness variation
+tag_2 = 0 # buckling load variation
+tag_3 = 0 # horiz stiffness variation
 tag_4 = 0 # vertical stiffness variation
 tag_5 = 0 # heat
 
@@ -232,7 +232,7 @@ velSeriesTag = 102
 accelSeriesTag = 103
 
 ops.timeSeries('Path', dispSeriesTag, '-dt', dt, 
-                '-filePath', './motions/LDDisp.txt', '-factor', 200.0)   
+                '-filePath', './motions/LDDisp.txt', '-factor', 300.0)   
 ops.timeSeries('Path', velSeriesTag, '-dt', dt, 
                 '-filePath', './motions/LDVel.txt', '-factor', 1.0) 
 ops.timeSeries('Path', accelSeriesTag, '-dt', dt, 
@@ -434,7 +434,7 @@ forces = pd.read_csv(node_rxn, sep=' ', header=None, names=['force'])
 
 # force disp
 fig = plt.figure()
-plt.plot(disps['displacement'], -forces['force'])
+plt.plot(disps['displacement']/h, -forces['force'])
 plt.title('Force-displacement recorded at end node')
 plt.ylabel('Force (kip)')
 plt.xlabel('Displacement (in)')

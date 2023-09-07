@@ -407,6 +407,9 @@ R0 = 15
 cR1 = 0.925
 cR2 = 0.15
 ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
+
+# ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+
 ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
 ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
 
@@ -636,13 +639,16 @@ for elem_tag in brace_elems:
 # add ghost trusses to the braces to reduce convergence problems
 brace_ghosts = bldg.elem_tags['brace_ghosts']
 for elem_tag in brace_ghosts:
-    i_nd = (elem_tag - 5) - brace_id
+    # i_nd = (elem_tag - 5) - brace_id
+    i_nd = (elem_tag - 5 - 1) - brace_id
     
     parent_i_nd = i_nd // 100
     if elem_tag%10 == 9:
-        j_nd = (parent_i_nd + 10)*100 + 16
+        # j_nd = (parent_i_nd + 10)*100 + 16
+        j_nd = (parent_i_nd + 10)*100 + 12
     else:
-        j_nd = (parent_i_nd + 9)*100 + 15
+        # j_nd = (parent_i_nd + 9)*100 + 15
+        j_nd = (parent_i_nd + 9)*100 + 11
     ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
     
 ###################### Gusset plates #############################
@@ -889,7 +895,7 @@ ops.analyze(nStepGravity)
 print("Gravity analysis complete!")
 ops.loadConst('-time', 0.0)
 
-steps = 500
+steps = 1000
 
 
 ops.recorder('Element','-ele',92016,'-file','output/fiber.out',
