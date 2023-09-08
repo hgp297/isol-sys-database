@@ -209,7 +209,7 @@ class Building:
                                [isol_elems[-1]+10*(j+1) 
                                 for j in range(addl_bearings)])
             
-            # isol_elems = isol_elems + addl_isol_elems
+            isol_elems = isol_elems + addl_isol_elems
         
         # spring elements, series 5000
         spring_id = 5000
@@ -310,7 +310,8 @@ class Building:
         print('=========== Constructing model ===========')
         print('Frame type:', self.superstructure_system, '|', 
               'Isolator type:', self.isolator_system)
-        print('%d bays, %d stories' % (self.num_bays, self.num_stories))
+        print('%d bays, %d stories, D_m = %.2f' % 
+              (self.num_bays, self.num_stories, self.D_m))
         print('Moat amplification = %.2f | Ry = %.2f' % 
               (self.moat_ampli, self.RI))
         print('Tm = %.2f s | Q = %.2f | k_ratio = %.2f' %
@@ -885,22 +886,16 @@ class Building:
             isol_elems = self.elem_tags['isolator']
             
             for elem_idx, elem_tag in enumerate(isol_elems):
-                i_nd = elem_tag - isol_id
-                j_nd = elem_tag - isol_id - base_id + 10
-                    
-                # change temp coefficients to imperial units
-                # ad-hoc change edge bearing to have area equivalent to stacked LRBs
-                # from math import floor
-                # n_addl_bearings = floor(n_bays/2)
                 
-                # TODO: restack LRBs
-                # if (elem_idx == 0) or (elem_idx == len(isol_elems)):
-                #     mod_D_inner = (n_addl_bearings+1)*D_inner
-                #     mod_D_outer = (n_addl_bearings+1)*D_outer
-                #     ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                #                 G_r, K_bulk, mod_D_inner, mod_D_outer,
-                #                 t_shim, t_layer, n_layers, *addl_params)
-                # else:
+                # if it is an unstacked bearing, it will have xx0x
+                if (elem_tag//10)%10 == 0:
+                    i_nd = elem_tag - isol_id
+                    j_nd = elem_tag - isol_id - base_id + 10
+                else:
+                    bay_pos = elem_tag % 10
+                    i_nd = base_id + bay_pos
+                    j_nd = i_nd - base_id + 10
+                    
                     
                 ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                             G_r, K_bulk, D_inner, D_outer,
@@ -949,11 +944,11 @@ class Building:
         wall_elems = self.elem_tags['wall']
         
         ops.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
-                    '-mat', impact_mat_tag, elastic_mat_tag,
-                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+                    '-mat', impact_mat_tag,
+                    '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
-                    '-mat', impact_mat_tag, elastic_mat_tag,
-                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+                    '-mat', impact_mat_tag,
+                    '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         
         print('Elements placed.')
         # ops.printModel('-file', './test.log')
@@ -1975,22 +1970,15 @@ class Building:
             isol_elems = self.elem_tags['isolator']
             
             for elem_idx, elem_tag in enumerate(isol_elems):
-                i_nd = elem_tag - isol_id
-                j_nd = elem_tag - isol_id - base_id + 10
-                    
-                # change temp coefficients to imperial units
-                # ad-hoc change edge bearing to have area equivalent to stacked LRBs
-                # from math import floor
-                # n_addl_bearings = floor(n_bays/2)
                 
-                # TODO: restack LRBs
-                # if (elem_idx == 0) or (elem_idx == len(isol_elems)):
-                #     mod_D_inner = (n_addl_bearings+1)*D_inner
-                #     mod_D_outer = (n_addl_bearings+1)*D_outer
-                #     ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                #                 G_r, K_bulk, mod_D_inner, mod_D_outer,
-                #                 t_shim, t_layer, n_layers, *addl_params)
-                # else:
+                # if it is an unstacked bearing, it will have xx0x
+                if (elem_tag//10)%10 == 0:
+                    i_nd = elem_tag - isol_id
+                    j_nd = elem_tag - isol_id - base_id + 10
+                else:
+                    bay_pos = elem_tag % 10
+                    i_nd = base_id + bay_pos
+                    j_nd = i_nd - base_id + 10
                     
                 ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                             G_r, K_bulk, D_inner, D_outer,
@@ -2038,12 +2026,13 @@ class Building:
         #   '-dir', *dirs, <'-doRayleigh', rFlag=0>, <'-orient', *vecx, *vecyp>)
         wall_elems = self.elem_tags['wall']
         
+        # TODO: check impact
         ops.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
-                    '-mat', impact_mat_tag, elastic_mat_tag,
-                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+                    '-mat', impact_mat_tag,
+                    '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
-                    '-mat', impact_mat_tag, elastic_mat_tag,
-                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+                    '-mat', impact_mat_tag,
+                    '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         
     #TODO: check loads
     def apply_grav_load(self):
@@ -2221,9 +2210,8 @@ class Building:
         isol_elems = self.elem_tags['isolator']
         truss_elems = self.elem_tags['truss']
         lc_elems = self.elem_tags['leaning'] + self.elem_tags['lc_spring']
-        diaph_elems = self.elem_tags['diaphragm']
         non_damped_elems = (wall_elems + isol_elems + truss_elems + 
-                            lc_elems + diaph_elems)
+                            lc_elems)
         
         damped_elems = [elem for elem in all_elems 
                         if elem not in non_damped_elems]
@@ -2368,8 +2356,14 @@ class Building:
         # TODO: verify z force of these elements
         ops.recorder('Element', '-file', data_dir+'impact_forces.csv', 
                      '-time', '-ele', *walls, 'basicForce')
+        ops.recorder('Element', '-file', data_dir+'impact_disp.csv', 
+                     '-time', '-ele', *walls, 'basicDeformation')
         
         # diaphragm?
+        diaph_elems = self.elem_tags['diaphragm']
+        ops.recorder('Element', '-file', data_dir+'diaphragm_forces.csv', 
+                     '-time', '-ele', diaph_elems[0], 'basicForce')
+        
         # leaning column?
         
         ops.printModel('-file', data_dir+'model.out')

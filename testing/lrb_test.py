@@ -136,10 +136,18 @@ h = t_rubber_whole + (n_layers-1)*t_shim + tc
 # base node
 ops.node(10, 0.0, 0.0, 0.0)
 ops.fix(10, 1, 1, 1, 1, 1, 1)
-
+    
 # end node
 ops.node(20, 0.0, 0.0, h)
 ops.fix(20, 0, 0, 0, 0, 1, 0)
+
+# wall nodes
+wall_nodes = [898, 899]
+ops.node(wall_nodes[0], 0.0*ft, 0.0*ft, h)
+ops.node(wall_nodes[1], 0.0*ft, 0.0*ft, h)
+
+for nd in wall_nodes:
+    ops.fix(nd, 1, 1, 1, 1, 1, 1)
 
 negligible = 1e-5
 ops.mass(20, m, m, m,
@@ -161,6 +169,51 @@ ops.element('LeadRubberX', 1900, 10, 20, Fy_LRB, alpha,
             G_r, K_bulk, D_inner, D_outer,
             t_shim, t_layer, n_layers, *addl_params)
 
+# define impact moat as ZeroLengthImpact3D elements
+# https://opensees.berkeley.edu/wiki/index.php/Impact_Material
+# assume slab of base layer is 6 in
+# model half of slab
+VSlab = (6*inch)*(45*ft)*(90*ft)
+pi = 3.14159
+RSlab = (3/4/pi*VSlab)**(1/3)
+
+# assume wall extends 9 ft up to isolation layer and is 12 in thick
+VWall = (12*inch)*(1*ft)*(45*ft)
+RWall = (3/4/pi*VWall)**(1/3)
+
+# concrete slab and wall properties
+Ec = 3645*ksi
+nu_c = 0.2
+h_impact = (1-nu_c**2)/(pi*Ec)
+
+# impact stiffness parameter from Muthukumar, 2006
+khWall = 4/(3*pi*(h_impact + h_impact))*((RSlab*RWall)/(RSlab + RWall))**(0.5)
+e           = 0.7                                                   # coeff of restitution (1.0 = perfectly elastic collision)
+delM        = 0.025*inch                                            # maximum penetration during pounding event, from Hughes paper
+kEffWall    = khWall*((delM)**(0.5))                                # effective stiffness
+a           = 0.1                                                   # yield coefficient
+delY        = a*delM                                                # yield displacement
+nImpact     = 3/2                                                   # Hertz power rule exponent
+EImpact     = khWall*delM**(nImpact+1)*(1 - e**2)/(nImpact+1)       # energy dissipated during impact
+K1          = kEffWall + EImpact/(a*delM**2)                        # initial impact stiffness
+K2          = kEffWall - EImpact/((1-a)*delM**2)                    # secondary impact stiffness
+
+moat_gap = 20.0
+
+impact_mat_tag = 91
+ops.uniaxialMaterial('ImpactMaterial', impact_mat_tag, 
+                     K1, K2, -delY, -moat_gap)
+
+# command: element('zeroLength', eleTag, *eleNodes, '-mat', *matTags, 
+#   '-dir', *dirs, <'-doRayleigh', rFlag=0>, <'-orient', *vecx, *vecyp>)
+wall_elems = [8898, 8899]
+
+ops.element('zeroLength', wall_elems[0], wall_nodes[0], 20,
+            '-mat', impact_mat_tag,
+            '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
+ops.element('zeroLength', wall_elems[1], 20, wall_nodes[1], 
+            '-mat', impact_mat_tag,
+            '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
 
 open('./output/model.out', 'w').close()
 ops.printModel('-file', './output/model.out')
@@ -217,13 +270,18 @@ ops.recorder('Node','-node', 20,'-file', 'output/bearing_top.out', '-dof', 1, 3,
 ops.recorder('Element', '-ele', 1900, '-file', 'output/basic_lrb_force.out', 'basicForce')
 ops.recorder('Element', '-ele', 1900, '-file', 'output/basic_lrb_disp.out', 'basicDisplacement')
 
+ops.recorder('Element', '-file', 'output/impact_forces.csv', 
+             '-time', '-ele', *wall_elems, 'basicForce')
+ops.recorder('Element', '-file', 'output/impact_disp.csv', 
+             '-time', '-ele', *wall_elems, 'basicDeformation')
+
 ops.recorder('Element', '-ele', 1900, '-file', 'output/param.out', 'Parameters')
 steps = 500
 
 # ------------------------------
 # Loading: cyclic file
 # ------------------------------
-
+'''
 ops.wipeAnalysis()
 
 dt = 0.01
@@ -305,16 +363,16 @@ minutes = tp//60
 seconds = tp - 60*minutes
 print('Ground motion done. End time: %.4f s' % t_final)
 print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
-
+'''
 # ------------------------------
 # Loading: earthquake
 # ------------------------------
-'''
+
 ops.wipeAnalysis()
 # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
 GMDirection = 1  # ground-motion direction
 gm_name = 'RSN3905_TOTTORI_OKY002EW'
-scale_factor = 50.0
+scale_factor = 90.0
 print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
 ops.constraints('Plain')
@@ -412,7 +470,7 @@ print('Ground motion done. End time: %.4f s' % t_final)
 print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
 
 ops.wipe()
-'''
+
 #%%
 ############################################################################
 #              Plot results
@@ -510,6 +568,35 @@ plt.plot(np.arange(1, len(params['Fcn'])+1)/steps,
 plt.title('Strain ratio')
 plt.ylabel('Strain ratio (%)')
 plt.xlabel('Steps')
+plt.grid(True)
+
+# wall
+wall_columns = ['time', 'left_x', 'right_x']
+impact_forces = pd.read_csv('output/impact_forces.csv', sep=' ', 
+                             header=None, names=wall_columns)
+impact_disp = pd.read_csv('output/impact_disp.csv', sep=' ', 
+                             header=None, names=wall_columns)
+
+fig = plt.figure()
+plt.plot(impact_forces['time'], impact_forces['left_x'])
+plt.title('Left wall impact')
+plt.xlabel('Time (s)')
+plt.ylabel('Force (kip)')
+plt.grid(True)
+
+fig = plt.figure()
+plt.plot(impact_forces['time'], impact_forces['right_x'])
+plt.title('Right wall impact')
+plt.xlabel('Time (s)')
+plt.ylabel('Force (kip)')
+plt.grid(True)
+
+fig = plt.figure()
+plt.plot(impact_disp['left_x'], impact_forces['left_x'])
+plt.plot(-impact_disp['right_x'], impact_forces['right_x'])
+plt.title('Impact hysteresis')
+plt.xlabel('Displ (in)')
+plt.ylabel('Force (kip)')
 plt.grid(True)
 
 #%% animate

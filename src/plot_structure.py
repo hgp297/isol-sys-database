@@ -70,17 +70,52 @@ def plots(run):
     isol_type = run.isolator_system
     if isol_type == 'LRB':
         fig = plt.figure()
-        plt.plot(isol_disp['x'], isol_force['iFy'])
+        plt.plot(isol_disp['x'], isol_force['jFy'])
         plt.title('Isolator hystereses (LRB)')
         plt.xlabel('Displ (in)')
         plt.ylabel('V/N')
         plt.grid(True)
     else:
         fig = plt.figure()
-        plt.plot(isol_disp['x'], isol_force['iFy']/isol_force['iFx'])
+        plt.plot(isol_disp['x'], isol_force['jFy']/isol_force['iFx'])
         plt.title('Isolator hystereses (TFP)')
         plt.xlabel('Displ (in)')
         plt.ylabel('V/N')
         plt.grid(True)
         
+    wall_columns = ['time', 'left_x', 'left_z', 'right_x', 'right_z']
+    impact_forces = pd.read_csv(data_dir+'impact_forces.csv', sep=' ', 
+                                 header=None, names=wall_columns)
     
+    # wall
+    wall_columns = ['time', 'left_x', 'right_x']
+    impact_forces = pd.read_csv(data_dir+'impact_forces.csv', sep=' ', 
+                                 header=None, names=wall_columns)
+    impact_disp = pd.read_csv(data_dir+'impact_disp.csv', sep=' ', 
+                                 header=None, names=wall_columns)
+
+    fig = plt.figure()
+    plt.plot(impact_forces['time'], impact_forces['left_x'])
+    plt.title('Left wall impact')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Force (kip)')
+    plt.grid(True)
+
+    fig = plt.figure()
+    plt.plot(impact_disp['left_x'], impact_forces['left_x'])
+    plt.plot(-impact_disp['right_x'], impact_forces['right_x'])
+    plt.title('Impact hysteresis')
+    plt.xlabel('Displ (in)')
+    plt.ylabel('Force (kip)')
+    plt.grid(True)
+    
+    diaph_columns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz']
+    diaph_forces = pd.read_csv(data_dir+'diaphragm_forces.csv', sep=' ', 
+                                 header=None, names=diaph_columns)
+    
+    fig = plt.figure()
+    plt.plot(diaph_forces['time'], diaph_forces['iFx'])
+    plt.title('Diaphragm forces')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Force (kip)')
+    plt.grid(True)
