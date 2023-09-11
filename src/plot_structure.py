@@ -119,3 +119,9 @@ def plots(run):
     plt.xlabel('Time (s)')
     plt.ylabel('Force (kip)')
     plt.grid(True)
+    
+    # drift
+    story_disp = pd.read_csv(data_dir+'inner_col_disp.csv', sep=' ', 
+                                 header=None)
+    isol_disp = pd.read_csv(data_dir+'isolator_displacement.csv', sep=' ', 
+                                 header=None, names=isol_columns)

@@ -865,7 +865,8 @@ class Building:
 
             sdr = 0.5
             # guesstimate 60% of the entire bearing volume's mass in lead
-            mb = qL_imp*pi*D_outer**2/4*t_rubber_whole*0.6
+            # mb = qL_imp*pi*D_outer**2/4*t_rubber_whole*0.6
+            mb = 0.0
             cd = 0.0
             tc = 1.0
             
@@ -1949,7 +1950,8 @@ class Building:
 
             sdr = 0.5
             # guesstimate 60% of the entire bearing volume's mass in lead
-            mb = qL_imp*pi*D_outer**2/4*t_rubber_whole*0.6
+            # mb = qL_imp*pi*D_outer**2/4*t_rubber_whole*0.6
+            mb = 0.0
             cd = 0.0
             tc = 1.0
             

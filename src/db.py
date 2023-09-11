@@ -62,6 +62,12 @@ class Database:
         l_bounds = param_bounds[0,]
         u_bounds = param_bounds[1,]
         
+        self.n_points = n_points
+        
+        # roughly need 7x points to fill desired 
+        n_points = n_points*7
+        self.n_generated = n_points
+        
         dim_params = len(self.param_ranges)
         sampler = qmc.LatinHypercube(d=dim_params, seed=seed)
         sample = sampler.random(n=n_points)
@@ -292,15 +298,18 @@ class Database:
         print("Designs completed for %d braced frames in %.2f s" %
               (cbf_df.shape[0], tp))
         
-        # TODO: method to retain only flat n points
-        
-    def scale_gms(self):
-        
-        import pandas as pd
-        
         # join both systems
         all_des = pd.concat([self.mf_designs, self.cbf_designs], 
                                      axis=0)
+        # retained designs
+        self.retained_designs = all_des.head(self.n_points)
+        self.generated_designs = all_des
+        
+    def scale_gms(self):
+        
+        
+        # only scale motions that will be retained
+        all_des = self.retained_designs.copy()
         
         # set seed to ensure same GMs are selected
         from random import seed
@@ -319,7 +328,7 @@ class Database:
         print("Scaled ground motions for %d structures in %.2f s" %
               (all_des.shape[0], tp))
         
-        self.all_designs = all_des
+        self.retained_designs = all_des
         
     def analyze_db(self, output_str,
                    data_path='../data/',
@@ -328,7 +337,7 @@ class Database:
         from experiment import run_nlth
         import pandas as pd
         
-        all_designs = self.all_designs
+        all_designs = self.retained_designs
         
         db_results = None
         
