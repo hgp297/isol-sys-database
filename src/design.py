@@ -146,6 +146,8 @@ def design_LRB(param_df):
                           bounds=(0.01, 1e3), method='bounded')
     t_r = res.x
     
+    flag = 0
+    
     # try to achieve strain ratio < 250% (realistically can only fix a couple)
     if (moat_ampli*D_m)/t_r > 2.5:
         print('old strain ratio: ', (moat_ampli*D_m)/t_r)
@@ -155,6 +157,10 @@ def design_LRB(param_df):
         t_r = res.x
         print('new strain ratio: ', (moat_ampli*D_m)/t_r)
     
+    # # if strain ratio still to high, raise flag
+    # if (moat_ampli*D_m)/t_r > 3.0:
+    #     flag = 1
+        
     # 60 psi rubber
     # select thickness
     
@@ -176,7 +182,7 @@ def design_LRB(param_df):
     # buckling checks
     #################################################
     
-    flag = 0
+    
     # assume small strain G is 75% larger
     G_ss = 1.75*G_r
     # incompressibility
