@@ -14,14 +14,14 @@
 
 from db import Database
 
-main_obj = Database(50)
+main_obj = Database(20)
 
 main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)
 
-test_mf_tfp = main_obj.mf_designs.iloc[0]
-test_cbf = main_obj.cbf_designs.iloc[0]
-test_mf_lrb = main_obj.mf_designs.iloc[-1]
+# test_mf_tfp = main_obj.mf_designs.iloc[0]
+# test_cbf = main_obj.cbf_designs.iloc[0]
+# test_mf_lrb = main_obj.mf_designs.iloc[-1]
 
 main_obj.scale_gms()
 
@@ -32,26 +32,26 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-# troubleshoot_run = main_obj.all_designs.loc[26]
+troubleshoot_run = main_obj.retained_designs.loc[2]
 
-# from building import Building
+from building import Building
 
-# # test build CBF
-# troubleshoot_bldg = Building(troubleshoot_run)
-# troubleshoot_bldg.model_frame()
-# troubleshoot_bldg.apply_grav_load()
-# troubleshoot_bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
+# test build CBF
+troubleshoot_bldg = Building(troubleshoot_run)
+troubleshoot_bldg.model_frame()
+troubleshoot_bldg.apply_grav_load()
+troubleshoot_bldg.provide_damping(80, method='SP',
+                                  zeta=[0.05], modes=[1])
 
-# dt = 0.005
-# troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
-#                                     troubleshoot_run.scale_factor*1.5, 
-#                                     dt)
+dt = 0.005
+troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
+                                    troubleshoot_run.scale_factor*2.0, 
+                                    dt)
 
 #%%
 
-# from plot_structure import plots
-# plots(troubleshoot_bldg)
+from plot_structure import plots
+plots(troubleshoot_bldg)
 
 #%%
 
@@ -115,27 +115,7 @@ main_obj.scale_gms()
 
 #%%
 
-# plot distribution of parameters
-
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig, axs = plt.subplots(1, 1, figsize=(9, 9))
-
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
-
-# lrbs['strain_ratio'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['t_r']
-# # import pandas as pd
-# # df_plot = pd.concat([lrbs, tfps], axis=0)
-
-# sns.histplot(data=lrbs, x="strain_ratio", kde=True, ax=axs)
-
-# plt.legend()
-# plt.show()
-
-
-# plot distribution of parameters
+# # plot distribution of parameters
 
 # import seaborn as sns
 # import matplotlib.pyplot as plt
@@ -152,4 +132,5 @@ main_obj.scale_gms()
 # sns.histplot(data=lrbs, x="strain_ratio", kde=True, ax=axs)
 
 # # plt.legend()
+# plt.grid()
 # plt.show()
