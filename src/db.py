@@ -140,7 +140,6 @@ class Database:
     # retained. This may result in the LHS distribution being uneven.
     
     # loads are also defined here
-    # TODO: assertions
     
     def design_bearings(self, filter_designs=True):
         import time
@@ -259,14 +258,14 @@ class Database:
         
         all_mf_designs.columns = ['beam', 'column', 'flag']
         
-        # TODO: drop flag column
         if filter_designs == False:
             mf_designs = all_mf_designs
         else:
             # keep the designs that look sensible
             mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
             mf_designs = mf_designs.dropna(subset=['beam','column'])
-            
+         
+        mf_designs = mf_designs.drop(['flag'], axis=1)
         tp = time.time() - t0
       
         # get the design params of those bearings
