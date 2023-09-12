@@ -129,6 +129,7 @@ def design_LRB(param_df):
     
     # design displacement
     D_m = g*S_1*T_m/(4*pi**2*B_m)
+    moat_ampli = param_df['moat_ampli']
     k_M = (2*pi/T_m)**2 * (W_tot/g)
 
     k_2 = (k_M*D_m - Q_L)/D_m
@@ -144,6 +145,15 @@ def design_LRB(param_df):
                           args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
                           bounds=(0.01, 1e3), method='bounded')
     t_r = res.x
+    
+    # try to achieve strain ratio < 250% (realistically can only fix a couple)
+    if (moat_ampli*D_m)/t_r > 2.5:
+        print('old strain ratio: ', (moat_ampli*D_m)/t_r)
+        res = minimize_scalar(iterate_bearing_height,
+                              args=(D_m, k_M, Q_L, rho_k, N_lb/2, S_pad_trial),
+                              bounds=(0.01, 1e3), method='bounded')
+        t_r = res.x
+        print('new strain ratio: ', (moat_ampli*D_m)/t_r)
     
     # 60 psi rubber
     # select thickness

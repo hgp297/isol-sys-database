@@ -117,39 +117,18 @@ main_obj.scale_gms()
 
 # plot distribution of parameters
 
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig, axs = plt.subplots(1, 1, figsize=(9, 9))
+import seaborn as sns
+import matplotlib.pyplot as plt
+plt.close('all')
+fig, axs = plt.subplots(1, 1, figsize=(9, 9))
 
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
+lrbs = main_obj.lrb_designs
+tfps = main_obj.tfp_designs
 
-# lrbs['strain_ratio'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['t_r']
-# # import pandas as pd
-# # df_plot = pd.concat([lrbs, tfps], axis=0)
+lrbs['strain_ratio'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['t_r']
+# import pandas as pd
+# df_plot = pd.concat([lrbs, tfps], axis=0)
 
-# sns.histplot(data=lrbs, x="strain_ratio", kde=True, ax=axs)
+sns.histplot(data=lrbs, x="strain_ratio", kde=True, ax=axs)
 
-# plt.legend()
-# plt.show()
-
-
-# plot distribution of parameters
-
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig, axs = plt.subplots(1, 1, figsize=(9, 9))
-
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
-
-# lrbs['strain_ratio'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['t_r']
-# # import pandas as pd
-# # df_plot = pd.concat([lrbs, tfps], axis=0)
-
-# sns.histplot(data=lrbs, x="strain_ratio", kde=True, ax=axs)
-
-# # plt.legend()
-# plt.show()
+plt.show()
