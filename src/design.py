@@ -150,6 +150,7 @@ def design_LRB(param_df):
     
     # try to achieve strain ratio < 250% (realistically can only fix a couple)
     if (moat_ampli*D_m)/t_r > 2.5:
+        print('------------- high strain ---------')
         print('old strain ratio: ', (moat_ampli*D_m)/t_r)
         res = minimize_scalar(iterate_bearing_height,
                               args=(D_m, k_M, Q_L, rho_k, N_lb/2, S_pad_trial),
@@ -157,9 +158,9 @@ def design_LRB(param_df):
         t_r = res.x
         print('new strain ratio: ', (moat_ampli*D_m)/t_r)
     
-    # # if strain ratio still to high, raise flag
-    # if (moat_ampli*D_m)/t_r > 3.0:
-    #     flag = 1
+    # if strain ratio still to high, raise flag
+    if (moat_ampli*D_m)/t_r > 3.0:
+        flag = 1
         
     # 60 psi rubber
     # select thickness
