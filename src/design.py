@@ -77,6 +77,7 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb, S_des=15.0):
     # assume lead has shear modulus of 150 MPa ~ 21 ksi
     G_Pb = 21.0 # ksi
     h_Pb = (G_Pb * A_Pb + A_r * G_r)*N_lb/k_1
+    # h_Pb = (G_Pb * A_Pb *N_lb)/(k_1 - G_r*A_r/tr_guess*N_lb)
     
     # try for shape factor of 15
     t_pad_req = b_s / (2*S_des)
@@ -152,8 +153,9 @@ def design_LRB(param_df):
     if (moat_ampli*D_m)/t_r > 2.5:
         print('------------- high strain ---------')
         print('old strain ratio: ', (moat_ampli*D_m)/t_r)
+        N_lb = N_lb/2
         res = minimize_scalar(iterate_bearing_height,
-                              args=(D_m, k_M, Q_L, rho_k, N_lb/2, S_pad_trial),
+                              args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
                               bounds=(0.01, 1e3), method='bounded')
         t_r = res.x
         print('new strain ratio: ', (moat_ampli*D_m)/t_r)
