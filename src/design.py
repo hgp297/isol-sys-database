@@ -149,10 +149,13 @@ def design_LRB(param_df):
     
     flag = 0
     
+    lam_strain = (moat_ampli*D_m)/t_r
+    
     # try to achieve strain ratio < 250% (realistically can only fix a couple)
-    if (moat_ampli*D_m)/t_r > 2.5:
+    if lam_strain > 2.5:
         print('------------- high strain ---------')
-        print('old strain ratio: ', (moat_ampli*D_m)/t_r)
+        print('old strain ratio: ', lam_strain)
+        
         N_lb = N_lb/2
         res = minimize_scalar(iterate_bearing_height,
                               args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
