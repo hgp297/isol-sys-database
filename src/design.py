@@ -188,7 +188,6 @@ def design_LRB(param_df):
     # buckling checks
     #################################################
     
-    
     # assume small strain G is 75% larger
     G_ss = 1.75*G_r
     # incompressibility
