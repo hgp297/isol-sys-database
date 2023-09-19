@@ -68,7 +68,12 @@ def prepare_results(output_path, design, Tfb, run_status):
     inner_col_vel = inner_col_vel.drop(columns=['time'])
     outer_col_vel = outer_col_vel.drop(columns=['time'])
     
-    ok_thresh = 0.20
+    ss_type = design['superstructure_system']
+    if ss_type == 'MF':
+        ok_thresh = 0.20
+    else:
+        ok_thresh = 0.05
+        
     # if run was OK, we collect true max values
     if run_status == 0:
         PID = np.maximum(inner_col_drift.abs().max(), 

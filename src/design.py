@@ -167,6 +167,12 @@ def design_LRB(param_df):
     #################################################
     
     flag = 0
+    
+    # high strain
+    moat_ampli = param_df['moat_ampli']
+    if moat_ampli*D_m/t_r > 3.0:
+        flag = 1
+    
     # assume small strain G is 75% larger
     G_ss = 1.75*G_r
     # incompressibility
