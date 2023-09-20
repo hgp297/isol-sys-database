@@ -198,6 +198,7 @@ class Database:
         
         
         all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
+                                   'N_lb', 'S_pad', 'S_2',
                                    'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
         
         if filter_designs == False:
