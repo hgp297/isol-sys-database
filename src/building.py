@@ -199,6 +199,7 @@ class Building:
         isol_elems = [nd+isol_id for nd in base_nodes]
         
         # for LRB, we need additional bearings represented at the edges
+        # TODO: account for N_lb
         isol_type = self.isolator_system
         if isol_type == 'LRB':
             n_edge_bearings = n_bays+1
@@ -840,6 +841,7 @@ class Building:
             G_r = 0.060*ksi
             D_inner = self.d_lead
             D_outer = self.d_bearing
+            # TODO: variable t_shim
             t_shim = 0.1*inch
             t_rubber_whole = self.t_r
             n_layers = int(self.n_layers)
@@ -897,7 +899,7 @@ class Building:
                     i_nd = base_id + bay_pos
                     j_nd = i_nd - base_id + 10
                     
-                    
+                
                 ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                             G_r, K_bulk, D_inner, D_outer,
                             t_shim, t_layer, n_layers, *addl_params)

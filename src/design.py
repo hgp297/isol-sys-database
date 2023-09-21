@@ -113,11 +113,6 @@ def large_strain_bearing(tr_old, A_delta, D_m, k_M, Q_L, rho_k, N_lb_old,
     A_r = k_2 * tr_min / (G_r * N_lb)
     A_Pb = (Q_L/f_y_Pb)/N_lb
     
-    pi = 3.14159
-    d_r = (4*(A_r + A_Pb)/pi)**(0.5)
-    b_s = (d_r - 0.5)/2
-    d_Pb = (4*A_Pb/pi)**(0.5)
-    
     # yielding force
     k_1 = rho_k * k_2
     # assume lead has shear modulus of 150 MPa ~ 21 ksi
@@ -126,10 +121,34 @@ def large_strain_bearing(tr_old, A_delta, D_m, k_M, Q_L, rho_k, N_lb_old,
     
     # portion of height not covered by rubber
     H = h_Pb - tr_min
-    n_shims = ceil(H/0.13)
     
-    return(tr_min, N_lb)
+    return(tr_min, N_lb, H)
+
+def lead_plug_cover(S_tshim_array, H, d_r, t_r):
+    # 60 psi rubber
+    # select thickness
+    S_pad_trial = S_tshim_array[0]
+    t_shim = S_tshim_array[1]
     
+    # shape factor (circular)
+    b_s = (d_r - 0.5)/2
+    
+    # try for shape factor of 15
+    # S_pad_trial = 30.0
+    # t_pad_req = (b_s - a)/(2*S_pad_trial)
+    t_pad_req = b_s/(2*S_pad_trial)
+    
+    from math import floor
+    n_layers = floor(t_r/t_pad_req)
+
+    n_shims = n_layers - 1
+    
+    h = n_shims*t_shim # 3.5mm shims
+    
+    p1 = abs(H-h)/H
+    p2 = abs(S_pad_trial - 20)/S_pad_trial
+    loss_fcn = p1 + p2 
+    return loss_fcn
     
 def design_LRB(param_df):
     
@@ -148,7 +167,7 @@ def design_LRB(param_df):
     
     # converge design on damping
     # design will achieve T_m, Q, rho_k as specified
-    from scipy.optimize import minimize_scalar
+    from scipy.optimize import minimize_scalar, minimize
     res = minimize_scalar(iterate_LRB, args=(S_1, T_m, Q_L, rho_k, W_tot),
                           bounds=(0.01, 0.35), method='bounded')
 
@@ -177,6 +196,7 @@ def design_LRB(param_df):
     d_Pb = (4*A_Pb/pi)**(0.5)
     
     # converge on t_r necessary to achieve rho_k
+    # if this succeeds, no guesswork is necessary on shims and layers
     S_pad_trial = 20.0
     res = minimize_scalar(iterate_bearing_height,
                           args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
@@ -187,10 +207,23 @@ def design_LRB(param_df):
     
     lam_strain = (moat_ampli*D_m)/t_r
     
-    # try to achieve strain ratio < 250% (realistically can only fix a couple)
-    if lam_strain > 2.5:
-        t_r, N_lb = large_strain_bearing(t_r, moat_ampli, D_m, k_M, Q_L, rho_k, 
-                                         N_lb, S_des=15.0, gam_max = 3.0)
+    # import numpy as np
+    # # try to achieve strain ratio < 300%
+    # # requires additional design of shims
+    # if lam_strain > 2.5:
+    #     t_r, N_lb, H = large_strain_bearing(t_r, moat_ampli, D_m, k_M, Q_L, rho_k, 
+    #                                      N_lb, S_des=15.0, gam_max = 3.0)
+    #     S_t_init = np.array([15, 0.13])
+    #     S_t_bnds = ((15., 40.), (0.079, 0.125))
+        
+    #     G_r = 0.060 # ksi, shear modulus
+    #     A_r = k_2 * t_r / (G_r * N_lb)
+    #     d_r = (4*(A_r + A_Pb)/pi)**(0.5)
+        
+    #     res = minimize(lead_plug_cover, S_t_init, bounds=S_t_bnds,
+    #                    args=(H, d_r, t_r))
+        
+    #     S_tshim = res.x
         
     # 60 psi rubber
     # select thickness
@@ -218,7 +251,6 @@ def design_LRB(param_df):
     # incompressibility
     K_inc = 290 # ksi
     
-    
     # shape factor (circular)
     a = d_Pb/2
     b = d_r/2
@@ -234,7 +266,7 @@ def design_LRB(param_df):
     
     # if nonsense n_layers reach, stop calculations now (to be discarded)
     if n_layers < 1:
-        return(1.0, 1.0, 1.0, 1.0, 1, T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
     # if too many layers, try a lower S_pad
     elif n_layers > 60:
         S_pad_trial = 0.75*S_pad_trial
@@ -250,7 +282,7 @@ def design_LRB(param_df):
     
     I = pi/4 * (b_s**4 - a**4)
     A = pi*(b_s**2 - a**2)
-    h = t_r + n_shims*0.13 # 11x0.1 in thick shim
+    h = t_r + n_shims*0.13 # 3.5mm shims
     # S_pad = (b_s - a)/(2*t)
     S_pad = b_s/(2*t)
     eta = a/b_s
@@ -286,6 +318,7 @@ def design_LRB(param_df):
     # rough vertical capacity of bearing (no buckling yet)
     E_Pb = 2000 # ksi
     P_vert = E_c * A_r + E_Pb * A_Pb
+    
     #################################################
     # bending behavior
     #################################################
@@ -336,17 +369,7 @@ def design_LRB(param_df):
     w_floor = param_df['w_fl'] # k/ft
     L_bay = param_df['L_bay'] # ft
     P_estimate = sum(w_floor)*L_bay
-    
-    # P_estimate = W_tot/(N_lb + N_sl)
-    
-    if P_estimate/P_crit > 1.0:
-        flag = 1
-        
-    if P_estimate/P_vert > 1.0:
-        flag = 1
-        
-    if N_lb > (n_bays+1)**2:
-        flag = 1
+    pressure_estimate = P_estimate/(pi*b_s**2)
     
     # normalize stiffness by weight
     k_e_norm = k_e/W_tot
@@ -354,8 +377,27 @@ def design_LRB(param_df):
     # # shortcut for circular bearing (pressure solution)
     # # compare the strength with an equivalent circular bearing
     # p_crit_compare = P_crit/(pi*b_s**2)
-    S_2 = d_r/t_r
-    # p_crit_circ = G_ss*pi*S_pad*S_2/(2*2**0.5)
+    S_2 = 2*b_s/t_r
+    p_crit_circ = G_ss*pi*S_pad*S_2/(2*2**0.5)
+    
+    # buckling loads and pressure check
+    # displacement
+    if moat_ampli*D_m/d_r > 1.0:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+    if moat_ampli*D_m/t_r > 3.0:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+    # buckling load
+    if P_estimate/P_crit > 1.0:
+        flag = 1
+    # compression load
+    if P_estimate/P_vert > 1.0:
+        flag = 1
+    # critical pressure (S2 solution)
+    if pressure_estimate/p_crit_circ > 1:
+        flag = 1
+    # number of bearings too much 
+    if N_lb > (n_bays+1)**2:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
     
     return(d_r, d_Pb, t_r, t, n_layers, N_lb, S_pad, S_2, T_e, 
            k_e_norm, zeta_E, D_m, flag)
