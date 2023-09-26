@@ -312,9 +312,10 @@ class Database:
         print('%d moment frames | %d braced frames' % 
               (len(self.retained_designs[self.retained_designs['superstructure_system'] == 'MF']),
                len(self.retained_designs[self.retained_designs['superstructure_system'] == 'CBF'])))
-        print('%d LRBs | %d TFP' % 
+        print('%d LRBs | %d TFPs' % 
               (len(self.retained_designs[self.retained_designs['isolator_system'] == 'LRB']),
                len(self.retained_designs[self.retained_designs['isolator_system'] == 'TFP'])))
+        print('======================================')
         
     def scale_gms(self):
         
