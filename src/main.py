@@ -14,10 +14,10 @@
 
 from db import Database
 
-main_obj = Database(2000)
+main_obj = Database(450)
 
 main_obj.design_bearings(filter_designs=True)
-# main_obj.design_structure(filter_designs=True)
+main_obj.design_structure(filter_designs=True)
 
 # test_mf_tfp = main_obj.mf_designs.iloc[0]
 # test_cbf = main_obj.cbf_designs.iloc[0]

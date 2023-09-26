@@ -199,7 +199,6 @@ class Building:
         isol_elems = [nd+isol_id for nd in base_nodes]
         
         # for LRB, we need additional bearings represented at the edges
-        # TODO: account for N_lb
         isol_type = self.isolator_system
         if isol_type == 'LRB':
             n_edge_bearings = n_bays+1
@@ -841,8 +840,7 @@ class Building:
             G_r = 0.060*ksi
             D_inner = self.d_lead
             D_outer = self.d_bearing
-            # TODO: variable t_shim
-            t_shim = 0.1*inch
+            t_shim = 0.13*inch
             t_rubber_whole = self.t_r
             n_layers = int(self.n_layers)
             t_layer = t_rubber_whole/n_layers
@@ -1927,7 +1925,7 @@ class Building:
             G_r = 0.060*ksi
             D_inner = self.d_lead
             D_outer = self.d_bearing
-            t_shim = 0.1*inch
+            t_shim = 0.13*inch
             t_rubber_whole = self.t_r
             n_layers = int(self.n_layers)
             t_layer = t_rubber_whole/n_layers

@@ -61,8 +61,6 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb, S_des=15.0):
     f_y_Pb = 1.5 # ksi, shear yield strength
     A_Pb = (Q_L/f_y_Pb) / N_lb # in^2
     pi = 3.14159
-    d_Pb = (4*A_Pb/pi)**(0.5)
-    a = d_Pb/2
     
     # 60 psi rubber
     # select thickness
@@ -145,9 +143,10 @@ def lead_plug_cover(S_tshim_array, H, d_r, t_r):
     
     h = n_shims*t_shim # 3.5mm shims
     
-    p1 = abs(H-h)/H
-    p2 = abs(S_pad_trial - 20)/S_pad_trial
-    loss_fcn = p1 + p2 
+    # p1 = abs(H-h)/H
+    # p2 = abs(S_pad_trial - 20)/S_pad_trial
+    # loss_fcn = p1 + p2 
+    loss_fcn = (h - H)**2
     return loss_fcn
     
 def design_LRB(param_df):
@@ -167,7 +166,7 @@ def design_LRB(param_df):
     
     # converge design on damping
     # design will achieve T_m, Q, rho_k as specified
-    from scipy.optimize import minimize_scalar, minimize
+    from scipy.optimize import minimize_scalar
     res = minimize_scalar(iterate_LRB, args=(S_1, T_m, Q_L, rho_k, W_tot),
                           bounds=(0.01, 0.35), method='bounded')
 
@@ -190,10 +189,47 @@ def design_LRB(param_df):
 
     k_2 = (k_M*D_m - Q_L)/D_m
     
+    # edge cases where k_M*D_m < Q_L
+    if k_2 < 0:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_m, k_M, zeta_m, D_m, 1)
+    
     # required area of lead per bearing
     f_y_Pb = 1.5 # ksi, shear yield strength
     A_Pb = (Q_L/f_y_Pb) / N_lb # in^2
     d_Pb = (4*A_Pb/pi)**(0.5)
+    
+    flag = 0
+    
+    '''
+    import numpy as np
+    # try to achieve strain ratio < 300%
+    # requires additional design of shims
+    if lam_strain > 3.0:
+        t_r, N_lb, H = large_strain_bearing(t_r, moat_ampli, D_m, k_M, Q_L, rho_k, 
+                                          N_lb, S_des=15.0, gam_max = 3.0)
+    
+        from scipy.optimize import minimize
+        S_t_init = np.array([15, 0.13])
+        S_t_bnds = ((15., 40.), (0.079, 0.125))
+        
+        G_r = 0.060 # ksi, shear modulus
+        A_r = k_2 * t_r / (G_r * N_lb)
+        d_r = (4*(A_r + A_Pb)/pi)**(0.5)
+        
+        from scipy.optimize import basinhopping
+        minimizer_kwargs={'args':(H, d_r, t_r),'bounds':S_t_bnds}
+        res = basinhopping(lead_plug_cover, S_t_init, minimizer_kwargs=minimizer_kwargs)
+        
+        # res = minimize(lead_plug_cover, S_t_init, bounds=S_t_bnds,
+        #                 args=(H, d_r, t_r))
+        
+        S_tshim = res.x
+        # if res.fun > 2.0:
+        #     flag = 1
+            
+        S_pad_trial = S_tshim[0]
+        t_shim = S_tshim[1]
+    '''
     
     # converge on t_r necessary to achieve rho_k
     # if this succeeds, no guesswork is necessary on shims and layers
@@ -202,29 +238,8 @@ def design_LRB(param_df):
                           args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
                           bounds=(0.01, 1e3), method='bounded')
     t_r = res.x
+    t_shim = 0.13
     
-    flag = 0
-    
-    lam_strain = (moat_ampli*D_m)/t_r
-    
-    # import numpy as np
-    # # try to achieve strain ratio < 300%
-    # # requires additional design of shims
-    # if lam_strain > 2.5:
-    #     t_r, N_lb, H = large_strain_bearing(t_r, moat_ampli, D_m, k_M, Q_L, rho_k, 
-    #                                      N_lb, S_des=15.0, gam_max = 3.0)
-    #     S_t_init = np.array([15, 0.13])
-    #     S_t_bnds = ((15., 40.), (0.079, 0.125))
-        
-    #     G_r = 0.060 # ksi, shear modulus
-    #     A_r = k_2 * t_r / (G_r * N_lb)
-    #     d_r = (4*(A_r + A_Pb)/pi)**(0.5)
-        
-    #     res = minimize(lead_plug_cover, S_t_init, bounds=S_t_bnds,
-    #                    args=(H, d_r, t_r))
-        
-    #     S_tshim = res.x
-        
     # 60 psi rubber
     # select thickness
     
@@ -241,7 +256,7 @@ def design_LRB(param_df):
     T_e = 2*pi*(W_tot/(g*k_e))**0.5
     W_e = 4*Q_L*(D_m - D_y)
     zeta_E = W_e/(2*pi*k_e*D_m**2)
-    
+    lam_strain = (moat_ampli*D_m)/t_r
     #################################################
     # buckling checks
     #################################################
@@ -253,7 +268,7 @@ def design_LRB(param_df):
     
     # shape factor (circular)
     a = d_Pb/2
-    b = d_r/2
+    # b = d_r/2
     b_s = (d_r - 0.5)/2
     
     # try for shape factor of 15
@@ -282,7 +297,7 @@ def design_LRB(param_df):
     
     I = pi/4 * (b_s**4 - a**4)
     A = pi*(b_s**2 - a**2)
-    h = t_r + n_shims*0.13 # 3.5mm shims
+    h = t_r + n_shims*t_shim # 3.5mm shims
     # S_pad = (b_s - a)/(2*t)
     S_pad = b_s/(2*t)
     eta = a/b_s
@@ -384,7 +399,7 @@ def design_LRB(param_df):
     # displacement
     if moat_ampli*D_m/d_r > 1.0:
         return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
-    if moat_ampli*D_m/t_r > 3.0:
+    if lam_strain > 3.0:
         return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
     # buckling load
     if P_estimate/P_crit > 1.0:
@@ -402,7 +417,6 @@ def design_LRB(param_df):
     return(d_r, d_Pb, t_r, t, n_layers, N_lb, S_pad, S_2, T_e, 
            k_e_norm, zeta_E, D_m, flag)
     
-
 
 
 # perform one iteration of TFP design to return a damping coefficient
@@ -1535,7 +1549,8 @@ def design_CBF(input_df, db_string='../resource/'):
     # w_grav = input_df['w_fl']/12
     
     import pandas as pd
-
+    import numpy as np
+    
     # ASCE 7-22: Story forces
     n_braced = round(n_bays/2.25)
     delxe, Q_per_bay = get_CBF_element_forces(hsx, Fx, R_y, n_braced)
@@ -1571,18 +1586,22 @@ def design_CBF(input_df, db_string='../resource/'):
         selected_brace, qualified_braces = select_compression_member(sorted_braces, 
                                                                      Lc_brace, 
                                                                      C_brace)
-        
-        A_min = A_brace[fl]
-        if selected_brace['A'].iloc[0] < A_min:
-            selected_brace = select_member(qualified_braces, 'A', A_min)
-            
-        all_braces.append(selected_brace.iloc[0]['AISC_Manual_Label'])
-        
-    
+        # if brace design was not possible, stop all design (beams and cols are
+        # dependent on braces)
+        if selected_brace is not np.nan:
+            A_min = A_brace[fl]
+            if selected_brace['A'].iloc[0] < A_min:
+                selected_brace = select_member(qualified_braces, 'A', A_min)
+                
+            all_braces.append(selected_brace.iloc[0]['AISC_Manual_Label'])
+        else:
+            all_braces = np.nan
+            all_beams = np.nan
+            all_columns = np.nan
+            return(all_braces, all_beams, all_columns)
         
     # beam and column capacity design
     from building import get_shape
-    import numpy as np
     
     all_beams = []
     for fl, brace in enumerate(all_braces):

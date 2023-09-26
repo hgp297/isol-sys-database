@@ -16,7 +16,7 @@ class Database:
     
     # sets up the problem by generating building specifications
     
-    def __init__(self, n_points=5000, seed=985):
+    def __init__(self, n_points=5000, seed=985, n_buffer=15):
         
         from scipy.stats import qmc
         import numpy as np
@@ -65,12 +65,11 @@ class Database:
         self.n_points = n_points
         
         # roughly need 7x points to fill desired 
-        n_points = n_points*7
-        self.n_generated = n_points
+        self.n_generated = n_points*n_buffer
         
         dim_params = len(self.param_ranges)
         sampler = qmc.LatinHypercube(d=dim_params, seed=seed)
-        sample = sampler.random(n=n_points)
+        sample = sampler.random(n=self.n_generated)
         
         params = qmc.scale(sample, l_bounds, u_bounds)
         param_selection = pd.DataFrame(params)
@@ -88,7 +87,7 @@ class Database:
         # generate random integers within the bounds and place into array
         config_names = list(config_dict.keys())       
         num_categories = len(config_dict)
-        config_selection = np.empty([n_points, num_categories])
+        config_selection = np.empty([self.n_generated, num_categories])
         
         # set seed
         np.random.seed(seed)
@@ -96,7 +95,7 @@ class Database:
         for index, (key, bounds) in enumerate(config_dict.items()):
             config_selection[:,index] = np.random.randint(bounds[0], 
                                                                high=bounds[1]+1, 
-                                                               size=n_points)
+                                                               size=self.n_generated)
         config_selection = pd.DataFrame(config_selection)
         
         
@@ -104,10 +103,13 @@ class Database:
         import random
         random.seed(seed)
         struct_sys_list = ['MF', 'CBF']
-        isol_sys_list = ['TFP', 'LRB']
         
-        structs = random.choices(struct_sys_list, k=n_points)
-        isols = random.choices(isol_sys_list, k=n_points)
+        # upweigh LRBs to ensure fair split
+        isol_sys_list = ['TFP', 'LRB']
+        isol_wts = [1, 4]
+        
+        structs = random.choices(struct_sys_list, k=self.n_generated)
+        isols = random.choices(isol_sys_list, k=self.n_generated, weights=isol_wts)
         system_selection = pd.DataFrame(np.array([structs, isols]).T)
         system_names = ['superstructure_system', 'isolator_system']
         
@@ -122,10 +124,10 @@ class Database:
         # find the number of bay (try to keep around 3 to 8)
         target_Lbay = 30.0
         target_hstory = 14.0
-        self.raw_input['num_bays'] = self.raw_input.apply(lambda row: round(row['L_bldg']/target_Lbay),
-                                                          axis=1)
-        self.raw_input['num_stories'] = self.raw_input.apply(lambda row: round(row['h_bldg']/target_hstory),
-                                                          axis=1)
+        self.raw_input['num_bays'] = self.raw_input.apply(
+            lambda row: round(row['L_bldg']/target_Lbay), axis=1)
+        self.raw_input['num_stories'] = self.raw_input.apply(
+            lambda row: round(row['h_bldg']/target_hstory), axis=1)
         self.raw_input['L_bay'] = (self.raw_input['L_bldg'] / 
                                    self.raw_input['num_bays'])
         self.raw_input['h_story'] = (self.raw_input['h_bldg'] / 
@@ -304,6 +306,15 @@ class Database:
         # retained designs
         self.retained_designs = all_des.head(self.n_points)
         self.generated_designs = all_des
+        
+        print('======================================')
+        print('Final database: %d structures.' % len(self.retained_designs))
+        print('%d moment frames | %d braced frames' % 
+              (len(self.retained_designs[self.retained_designs['superstructure_system'] == 'MF']),
+               len(self.retained_designs[self.retained_designs['superstructure_system'] == 'CBF'])))
+        print('%d LRBs | %d TFP' % 
+              (len(self.retained_designs[self.retained_designs['isolator_system'] == 'LRB']),
+               len(self.retained_designs[self.retained_designs['isolator_system'] == 'TFP'])))
         
     def scale_gms(self):
         
