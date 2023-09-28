@@ -48,7 +48,7 @@ class Database:
             'T_m' : [2.0, 5.0],
             'k_ratio' :[5.0, 18.0],
             'Q': [0.05, 0.12],
-            'moat_ampli' : [0.8, 1.8],
+            'moat_ampli' : [0.6, 1.6],
             'RI' : [0.5, 2.25],
             'L_bldg': [75.0, 250.0],
             'h_bldg': [30.0, 100.0]
@@ -354,9 +354,11 @@ class Database:
         db_results = None
         
         for index, design in all_designs.iterrows():
+            i_run = all_designs.index.get_loc(index)
+            print('========= Run %d of %d ==========' % 
+                  (i_run+1, len(all_designs)))
             bldg_result = run_nlth(design, gm_path)
             
-            # TODO: find a way to keep the indices
             # if initial run, start the dataframe with headers from postprocessing.py
             if db_results is None:
                 db_results = pd.DataFrame(bldg_result).T

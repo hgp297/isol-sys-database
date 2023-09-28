@@ -2028,7 +2028,6 @@ class Building:
         #   '-dir', *dirs, <'-doRayleigh', rFlag=0>, <'-orient', *vecx, *vecyp>)
         wall_elems = self.elem_tags['wall']
         
-        # TODO: check impact
         ops.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
                     '-mat', impact_mat_tag,
                     '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
@@ -2391,7 +2390,7 @@ class Building:
         ops.system('BandGeneral')
         
         # Convergence Test: tolerance
-        tolDynamic          = 1e-3 
+        tolDynamic          = 1e-5 
         
         # Convergence Test: maximum number of iterations that will be performed
         maxIterDynamic      = 30
