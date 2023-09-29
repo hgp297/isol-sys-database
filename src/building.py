@@ -2335,6 +2335,12 @@ class Building:
         ops.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
                      '-node', *inner_col_nds, '-dof', 1, 'disp')
         
+        # vertical frame story displacement
+        ops.recorder('Node', '-file', data_dir+'outer_col_vert.csv','-time',
+                     '-node', *outer_col_nds, '-dof', 3, 'disp')
+        ops.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
+                     '-node', *inner_col_nds, '-dof', 3, 'disp')
+        
         # lateral frame story velocity
         ops.recorder('Node', '-file', data_dir+'outer_col_vel.csv','-time',
                      '-node', *outer_col_nds, '-dof', 1, 'vel')

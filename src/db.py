@@ -366,8 +366,8 @@ class Database:
                 db_results = pd.concat([db_results,bldg_result.to_frame().T], sort=False)
                 
             if (len(db_results)%10 == 0):
-                db_results.to_csv(data_path+'temp_save.csv', index=False)
+                db_results.to_csv(data_path+'temp_save.csv')
         
-        db_results.to_csv(data_path+output_str, index=False)
+        db_results.to_csv(data_path+output_str)
         self.ops_analysis = db_results
                 

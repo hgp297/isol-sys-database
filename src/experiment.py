@@ -105,7 +105,7 @@ def prepare_results(output_path, design, Tfb, run_status):
         # if collapse, just collect PID as residual
         RID = PID
     
-    impact_cols = ['time', 'dirX_left', 'dirZ_left', 'dirX_right', 'dirZ_right']
+    impact_cols = ['time', 'dirX_left', 'dirX_right']
     impact_force = pd.read_csv(output_path+'impact_forces.csv',
                                sep = ' ', header=None, names=impact_cols)
     impact_thresh = 100   # kips
