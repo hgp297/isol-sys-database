@@ -359,15 +359,17 @@ class Database:
                   (i_run+1, len(all_designs)))
             bldg_result = run_nlth(design, gm_path)
             
+            # TODO: find a way to keep indices
             # if initial run, start the dataframe with headers from postprocessing.py
             if db_results is None:
                 db_results = pd.DataFrame(bldg_result).T
             else:
-                db_results = pd.concat([db_results,bldg_result.to_frame().T], sort=False)
+                db_results = pd.concat([db_results,bldg_result.to_frame().T], 
+                                       sort=False)
                 
             if (len(db_results)%10 == 0):
-                db_results.to_csv(data_path+'temp_save.csv')
+                db_results.to_csv(data_path+'temp_save.csv', index=False)
         
-        db_results.to_csv(data_path+output_str)
+        db_results.to_csv(data_path+output_str, index=False)
         self.ops_analysis = db_results
                 

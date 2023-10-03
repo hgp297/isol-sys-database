@@ -190,7 +190,11 @@ def run_nlth(design,
                                             data_dir=output_path)
     if run_status != 0:
         print('Recording run and moving on.')
-        
+       
+    # add a little delay to prevent weird overwriting
+    import time
+    time.sleep(3)
+    
     results_series = prepare_results(output_path, design, Tfb, run_status)
     return(results_series)
     

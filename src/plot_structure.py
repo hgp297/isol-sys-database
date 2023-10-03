@@ -160,7 +160,7 @@ def animate_gm(run, data_dir='./outputs/'):
     import pandas as pd
     import matplotlib.pyplot as plt
     
-    plt.close('all')
+    # plt.close('all')
     num_stories = run.num_stories
     
     # gather EDPs from opensees output
@@ -185,7 +185,7 @@ def animate_gm(run, data_dir='./outputs/'):
     import matplotlib.animation as animation
 
     dt = 0.005
-    fig = plt.figure(figsize=(5, 4))
+    fig = plt.figure()
     ax = fig.add_subplot(autoscale_on=True, xlim=(-50, 50),
                          ylim=(0, h_story*num_stories*12+50))
     time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
@@ -207,5 +207,4 @@ def animate_gm(run, data_dir='./outputs/'):
 
     ani = animation.FuncAnimation(
         fig, animate, n, interval=1/4, blit=True)
-    plt.show()
     

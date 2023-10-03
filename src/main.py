@@ -32,7 +32,7 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-troubleshoot_run = main_obj.retained_designs.loc[1026]
+troubleshoot_run = main_obj.retained_designs.loc[882]
 
 from building import Building
 
@@ -45,15 +45,18 @@ troubleshoot_bldg.provide_damping(80, method='SP',
 
 dt = 0.005
 troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
-                                    troubleshoot_run.scale_factor, 
+                                    troubleshoot_run.scale_factor*2.0, 
                                     dt)
+
+# from experiment import run_nlth
+# res = run_nlth(troubleshoot_run)
 
 #%%
 
 from plot_structure import plots, animate_gm
 plots(troubleshoot_bldg)
 
-# animate_gm(troubleshoot_bldg)
+animate_gm(troubleshoot_bldg)
 
 #%%
 

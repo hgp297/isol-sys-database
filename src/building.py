@@ -910,12 +910,13 @@ class Building:
         # https://opensees.berkeley.edu/wiki/index.php/Impact_Material
         # assume slab of base layer is 6 in
         # model half of slab
-        VSlab = (6*inch)*(45*ft)*(90*ft)
+        L_bldg = self.L_bldg
+        VSlab = (6*inch)*(L_bldg/2*ft)*(L_bldg*ft)
         pi = 3.14159
         RSlab = (3/4/pi*VSlab)**(1/3)
         
-        # assume wall extends 9 ft up to isolation layer and is 12 in thick
-        VWall = (12*inch)*(1*ft)*(45*ft)
+        # assume wall extends 1 ft up to isolation layer and is 12 in thick
+        VWall = (12*inch)*(1*ft)*(L_bldg/2*ft)
         RWall = (3/4/pi*VWall)**(1/3)
         
         # concrete slab and wall properties
@@ -1279,11 +1280,10 @@ class Building:
         E_ghost = 100.0
         ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
         
-        # TODO: check steel hardening ratio
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
         Fy  = 50*ksi        # yield strength
-        b   = 0.03           # hardening ratio
+        b   = 0.003           # hardening ratio
         R0 = 15
         cR1 = 0.925
         cR2 = 0.15
@@ -1989,17 +1989,19 @@ class Building:
 ################################################################################
 # Walls
 ################################################################################
-
+        
+        # TODO: redefine wall volumes
         # define impact moat as ZeroLengthImpact3D elements
         # https://opensees.berkeley.edu/wiki/index.php/Impact_Material
         # assume slab of base layer is 6 in
         # model half of slab
-        VSlab = (6*inch)*(45*ft)*(90*ft)
+        L_bldg = self.L_bldg
+        VSlab = (6*inch)*(L_bldg/2*ft)*(L_bldg*ft)
         pi = 3.14159
         RSlab = (3/4/pi*VSlab)**(1/3)
         
-        # assume wall extends 9 ft up to isolation layer and is 12 in thick
-        VWall = (12*inch)*(1*ft)*(45*ft)
+        # assume wall extends 1 ft up to isolation layer and is 12 in thick
+        VWall = (12*inch)*(1*ft)*(L_bldg/2*ft)
         RWall = (3/4/pi*VWall)**(1/3)
         
         # concrete slab and wall properties
@@ -2489,6 +2491,7 @@ class Building:
         seconds = tp - 60*minutes
         print('Ground motion done. End time: %.4f s' % t_final)
         print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
+        
         ops.wipe()
         
         return(ok)
