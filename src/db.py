@@ -244,7 +244,8 @@ class Database:
                'h_col', 
                'hsx', 
                'Fx', 
-               'Vs']] = df_in.apply(lambda row: define_lateral_forces(row),
+               'Vs',
+               'T_fbe']] = df_in.apply(lambda row: define_lateral_forces(row),
                                     axis='columns', result_type='expand')
         
         # separate by superstructure systems

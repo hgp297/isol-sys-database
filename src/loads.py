@@ -195,4 +195,4 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
 
     Fx      = Cvx*Vs
     
-    return(wx, hx, h_col, hsx, Fx, Vs)
+    return(wx, hx, h_col, hsx, Fx, Vs, T_fb)

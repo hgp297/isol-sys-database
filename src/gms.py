@@ -45,9 +45,8 @@ def scale_ground_motion(input_df,
         S_s, S_1/target_spectrum['Period (sec)'])
     
     # calculate desired target spectrum average (0.2*Tm, 1.5*Tm)
-    # TODO: T_fb shouldn't be fixed
-    T_fb = 0.6
-    t_lower = T_fb
+    T_fb = input_df['T_fbe']
+    t_lower = min(T_fb, 0.2*T_m)
     t_upper = 1.5*T_m
 
     # geometric mean from Eads et al. (2015)
