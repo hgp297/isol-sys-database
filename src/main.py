@@ -45,7 +45,7 @@ troubleshoot_bldg.provide_damping(80, method='SP',
 
 dt = 0.005
 troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
-                                    troubleshoot_run.scale_factor*2.0, 
+                                    troubleshoot_run.scale_factor, 
                                     dt)
 
 # from experiment import run_nlth

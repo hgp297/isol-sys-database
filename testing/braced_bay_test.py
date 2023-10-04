@@ -454,9 +454,9 @@ vecxy_col = [1, 0, 0] # Use any vector in local x-y, but not local x
 vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
 vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
 
-# brace geometry (we can use one because HSS is symmetric)
+# brace geometry 
 brace_top_nodes = bldg.node_tags['brace_top']
-xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10)
+xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10 - 1)
 xyz_j = ops.nodeCoord(brace_top_nodes[0])
 brace_x_axis_L = np.subtract(xyz_j, xyz_i)
 brace_x_axis_L = brace_x_axis_L / np.sqrt(np.sum(brace_x_axis_L**2))
@@ -464,8 +464,7 @@ vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
 vecxz = np.cross(brace_x_axis_L,vecxy_brace) # What OpenSees expects
 vecxz_brace_L = vecxz / np.sqrt(np.sum(vecxz**2))
 
-# brace geometry (we can use one because HSS is symmetric)
-xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10 + 1)
+xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10)
 xyz_j = ops.nodeCoord(brace_top_nodes[0])
 brace_x_axis_R = np.subtract(xyz_j, xyz_i)
 brace_x_axis_R = brace_x_axis_R / np.sqrt(np.sum(brace_x_axis_R**2))

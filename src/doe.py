@@ -12,7 +12,7 @@
 
 ############################################################################
 
-
+# TODO: implement Sangri's IMSE_w with LOOCV bias
 
 class GP:
     

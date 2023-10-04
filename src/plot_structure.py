@@ -157,6 +157,9 @@ def plots(run, data_dir='./outputs/'):
     plt.grid(True)
     
 def animate_gm(run, data_dir='./outputs/'):
+    
+    # run = troubleshoot_run
+    # data_dir = './outputs/'
     import pandas as pd
     import matplotlib.pyplot as plt
     
@@ -181,10 +184,9 @@ def animate_gm(run, data_dir='./outputs/'):
     h_story = run.h_story
     h_up = [fl * h_story * 12 + 12 for fl in range(0,num_stories+1)]
     
-    import matplotlib.pyplot as plt
     import matplotlib.animation as animation
 
-    dt = 0.005
+    # dt = 0.005
     fig = plt.figure()
     ax = fig.add_subplot(autoscale_on=True, xlim=(-50, 50),
                          ylim=(0, h_story*num_stories*12+50))
@@ -205,6 +207,8 @@ def animate_gm(run, data_dir='./outputs/'):
         time_text.set_text(time_template % (story_disp['time'][i]))
         return line, trace, time_text
 
-    ani = animation.FuncAnimation(
-        fig, animate, n, interval=1/4, blit=True)
+    animation.FuncAnimation(fig, animate, n, interval=1/4, blit=True)
+    # ani.save(filename="../outputs/gm_animation.mp4", writer="ffmpeg")
+    
+    
     
