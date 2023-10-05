@@ -1990,7 +1990,6 @@ class Building:
 # Walls
 ################################################################################
         
-        # TODO: redefine wall volumes
         # define impact moat as ZeroLengthImpact3D elements
         # https://opensees.berkeley.edu/wiki/index.php/Impact_Material
         # assume slab of base layer is 6 in

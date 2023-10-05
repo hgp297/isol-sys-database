@@ -106,7 +106,7 @@ class Database:
         
         # upweigh LRBs to ensure fair split
         isol_sys_list = ['TFP', 'LRB']
-        isol_wts = [1, 4]
+        isol_wts = [1, 3.5]
         
         structs = random.choices(struct_sys_list, k=self.n_generated)
         isols = random.choices(isol_sys_list, k=self.n_generated, weights=isol_wts)
