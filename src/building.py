@@ -2231,7 +2231,216 @@ class Building:
                 '-rayleigh', x[0], betaK, betaKInit, x[1])
             
         return(Tfb)
-    
+
+    def run_pushover(self, max_drift_ratio=0.1, 
+                     data_dir='./outputs/pushover/'):
+        import numpy as np
+        import openseespy.opensees as ops
+        
+        # get list of relevant nodes
+        superstructure_system = self.superstructure_system
+        isol_system = self.isolator_system
+        isols = self.elem_tags['isolator']
+        walls = self.elem_tags['wall']
+        isol_id = self.elem_ids['isolator']
+        base_id = self.elem_ids['base']
+        
+        if superstructure_system == 'CBF':
+            # extract nodes that belong to the braced portion
+            brace_beam_ends = self.node_tags['brace_beam_end']
+            left_col_digit = min([nd%10 for nd in brace_beam_ends])
+            
+            # get the list of nodes in all stories for the first outer and inner column
+            outer_col_nds = [nd for nd in brace_beam_ends
+                             if nd%10 == left_col_digit]
+            inner_col_nds = [nd+1 for nd in outer_col_nds]
+            
+            # insert the isolation layer
+            outer_col_nds.insert(0, outer_col_nds[0]-10)
+            inner_col_nds.insert(0, inner_col_nds[0]-10)
+            
+            # record brace nodes' displacements
+            brace_tops = self.node_tags['brace_top']
+            brace_bottoms = self.node_tags['brace_bottom']
+            brace_mids = self.node_tags['brace_mid']
+            
+            # lowest left bay, left brace displacements
+            top_node = min(brace_tops)
+            mid_node = min(brace_mids)
+            bottom_node = min(brace_bottoms)
+            ops.recorder('Node', '-file', data_dir+'brace_node_disp.csv','-time',
+                '-node', bottom_node, mid_node, top_node, 
+                '-dof', 1, 3, 'disp')
+            
+            # force at corresponding top node
+            ops.recorder('Node','-node', top_node,
+                         '-file', data_dir+'brace_top_node_force.csv', 
+                         '-dof', 1, 3, 'reaction')
+            
+            # first story, leftmost bay, left brace
+            brace_ghosts = self.elem_tags['brace_ghosts']
+            bottom_left_ghost = min(brace_ghosts)
+            bottom_right_ghost = bottom_left_ghost + 98
+            ops.recorder('Element','-ele', bottom_left_ghost,
+                         '-file',data_dir+'left_ghost_deformation.csv', '-time',
+                         'deformations')
+            ops.recorder('Element','-ele', bottom_right_ghost,
+                         '-file',data_dir+'right_ghost_deformation.csv', '-time',
+                         'deformations')
+            
+            # first story, leftmost bay, left brace
+            braces = self.elem_tags['brace']
+            bottom_left_brace = min(braces)
+            # corresponding right brace (100 to shift bay, -2 for 9-7 difference)
+            bottom_right_brace = bottom_left_brace + (100 - 2)
+            
+            selected_brace = get_shape(self.brace[0],'brace')
+            d_brace = selected_brace.iloc[0]['b']
+            
+            ops.recorder('Element','-ele', bottom_left_brace,
+                         '-file',data_dir+'brace_left.csv', '-time',
+                         'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+            
+            ops.recorder('Element','-ele', bottom_right_brace,
+                         '-file',data_dir+'brace_right.csv', '-time',
+                         'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+            
+        else:
+            floor_nodes = self.node_tags['floor']
+            
+            # get the list of nodes in all stories for the first outer and inner column
+            outer_col_nds = [nd for nd in floor_nodes
+                             if nd%10 == 0]
+            
+            inner_col_nds = [nd+1 for nd in outer_col_nds]
+        
+        # Set lateral load pattern with a Linear TimeSeries
+        pushoverPatternTag  = 400
+        gravSeriesTag   = 1
+        ops.timeSeries("Linear", gravSeriesTag)
+        ops.pattern('Plain', pushoverPatternTag, gravSeriesTag)
+
+        # Create nodal loads at outer column nodes
+        #    nd    FX  FY  FZ MX MY MZ
+        
+        Fx_vec = self.Fx
+        
+        for fl_idx, Fx in enumerate(Fx_vec):
+            ops.load(outer_col_nds[fl_idx+1], Fx, 0.0, 0.0, 0.0, 0.0)
+        
+        #----------------------------------------------------
+        # Start of modifications to analysis for push over
+        # ----------------------------------------------------
+        ops.wipeAnalysis()
+
+        # units: in, kip, s
+        # dimensions
+
+        hsx     = self.hsx
+        # Set some parameters
+        dU = 0.005  # Displacement increment
+
+        # Change the integration scheme to be displacement control
+        #                             node dof init Jd min max
+        ops.integrator('DisplacementControl', outer_col_nds[-1], 1, dU, 1, dU, dU)
+        
+        # ------------------------------
+        # Finally perform the analysis
+        # ------------------------------
+
+        # Set some parameters
+        maxU = max_drift_ratio*hsx.sum()  # Max displacement
+        nSteps = int(round(maxU/dU))
+        ok = 0
+
+        # Create the system of equation, a sparse solver with partial pivoting
+        ops.system('BandGeneral')
+
+        # Create the constraint handler, the transformation method
+        ops.constraints('Plain')
+
+        # Create the DOF numberer, the reverse Cuthill-McKee algorithm
+        ops.numberer('RCM')
+
+        ops.test('NormUnbalance', 1.0e-3, 4000)
+        ops.algorithm('Newton')
+        # Create the analysis object
+        ops.analysis('Static')
+
+        ok = ops.analyze(nSteps)
+        # for gravity analysis, load control is fine, 0.1 is the load factor increment 
+        # (http://opensees.berkeley.edu/wiki/index.php/Load_Control)
+
+        testList = {1:'NormDispIncr', 2: 'RelativeEnergyIncr', 
+                    4: 'RelativeNormUnbalance',5: 'RelativeNormDispIncr', 
+                    6: 'NormUnbalance'}
+        algoList = {1:'KrylovNewton', 2: 'SecantNewton' , 
+                    4: 'RaphsonNewton',5: 'PeriodicNewton', 
+                    6: 'BFGS', 7: 'Broyden', 8: 'NewtonLineSearch'}
+                    
+        for i in testList:
+            for j in algoList:
+
+                if ok != 0:
+                    if j < 4:
+                        ops.algorithm(algoList[j], '-initial')
+                        
+                    else:
+                        ops.algorithm(algoList[j])
+                        
+                    ops.test(testList[i], 1e-3, 1000)
+                    ok = ops.analyze(nSteps)                            
+                    print(testList[i], algoList[j], ok)             
+                    if ok == 0:
+                        break
+                else:
+                    continue
+                
+        print('Pushover complete!')
+        '''
+        # read in the output files
+        dispColumns = ['time', 'isol1', 'isol2', 'isol3', 'isol4', 'isolLC']
+        forceColumns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz', 
+                        'jFx', 'jFy', 'jFz', 'jMx', 'jMy', 'jMz']
+        
+        isol1Force = pd.read_csv(dataDir+'isol1Force.csv', sep = ' ', 
+                                 header=None, names=forceColumns)
+        isol2Force = pd.read_csv(dataDir+'isol2Force.csv', sep = ' ', 
+                                 header=None, names=forceColumns)
+        isol3Force = pd.read_csv(dataDir+'isol3Force.csv', sep = ' ', 
+                                 header=None, names=forceColumns)
+        isol4Force = pd.read_csv(dataDir+'isol4Force.csv', sep = ' ', 
+                                 header=None, names=forceColumns)
+        
+        isolDisp = pd.read_csv(dataDir+'isolDisp.csv', sep=' ', 
+                                 header=None, names=dispColumns)
+        story3Disp = pd.read_csv(dataDir+'story3Disp.csv', sep=' ', 
+                                 header=None, names=dispColumns)
+        
+        col1Force = pd.read_csv(dataDir+'colForce1.csv', sep = ' ', 
+                                header=None, names=forceColumns)
+        col2Force = pd.read_csv(dataDir+'colForce2.csv', sep = ' ', 
+                                header=None, names=forceColumns)
+        col3Force = pd.read_csv(dataDir+'colForce3.csv', sep = ' ', 
+                                header=None, names=forceColumns)
+        col4Force = pd.read_csv(dataDir+'colForce4.csv', sep = ' ', 
+                                header=None, names=forceColumns)
+        
+        sumAxial = (isol1Force['iFx'] + isol2Force['iFx'] +
+                    isol3Force['iFx'] + isol4Force['iFx'])
+       
+
+        baseShear = (col1Force['iFy'] + col2Force['iFy'] + 
+                     col3Force['iFy'] + col4Force['iFy'])
+        baseShearNormalize = baseShear/sumAxial
+        
+        # rewrite the output to pushover
+        pushover_df = pd.DataFrame({'roof_disp': story3Disp['isol1'],
+                                    'isol_disp': isolDisp['isol1'],
+                                    'base_shear_normalized': baseShearNormalize,
+                                    'base_shear': baseShear})
+        pushover_df.to_csv(pushoverStr, index=False)
+        '''
     def run_ground_motion(self, gm_name, scale_factor, dt_transient,
                           gm_dir='../tfp_mf/ground_motions/PEERNGARecords_Unscaled/',
                           data_dir='./outputs/'):

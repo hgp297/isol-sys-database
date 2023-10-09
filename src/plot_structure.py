@@ -145,7 +145,9 @@ def plots(run, data_dir='./outputs/'):
     
     
     PID = story_drift.abs().max().tolist()
+    PID.insert(0, 0)
     h_up = [fl/num_stories for fl in range(1, num_stories+1)]
+    h_up.insert(0, 0)
     
     plt.figure()
     plt.plot(PID, h_up)
