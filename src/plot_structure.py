@@ -52,7 +52,7 @@ def plots(run, data_dir='./outputs/'):
         
         # stress strain
         plt.figure()
-        plt.plot(-left_brace_res['strain1'], -left_brace_res['stress1'])
+        plt.plot(left_brace_res['strain1'], left_brace_res['stress1'])
         plt.title('Axial stress-strain brace (midpoint, top fiber)')
         plt.ylabel('Stress (ksi)')
         plt.xlabel('Strain (in/in)')

@@ -2234,16 +2234,11 @@ class Building:
 
     def run_pushover(self, max_drift_ratio=0.1, 
                      data_dir='./outputs/pushover/'):
-        import numpy as np
+        
         import openseespy.opensees as ops
         
         # get list of relevant nodes
         superstructure_system = self.superstructure_system
-        isol_system = self.isolator_system
-        isols = self.elem_tags['isolator']
-        walls = self.elem_tags['wall']
-        isol_id = self.elem_ids['isolator']
-        base_id = self.elem_ids['base']
         
         if superstructure_system == 'CBF':
             # extract nodes that belong to the braced portion
@@ -2313,20 +2308,34 @@ class Building:
                              if nd%10 == 0]
             
             inner_col_nds = [nd+1 for nd in outer_col_nds]
+            
+        # TODO: record forces
+        # lateral frame story displacement
+        ops.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
+                     '-node', *outer_col_nds, '-dof', 1, 'disp')
+        ops.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
+                     '-node', *inner_col_nds, '-dof', 1, 'disp')
+        
+        # vertical frame story displacement
+        ops.recorder('Node', '-file', data_dir+'outer_col_vert.csv','-time',
+                     '-node', *outer_col_nds, '-dof', 3, 'disp')
+        ops.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
+                     '-node', *inner_col_nds, '-dof', 3, 'disp')
         
         # Set lateral load pattern with a Linear TimeSeries
-        pushoverPatternTag  = 400
-        gravSeriesTag   = 1
-        ops.timeSeries("Linear", gravSeriesTag)
-        ops.pattern('Plain', pushoverPatternTag, gravSeriesTag)
+        pushover_pattern_tag  = 400
+        pushover_series_tag   = 4
+        ops.timeSeries("Linear", pushover_series_tag)
+        ops.pattern('Plain', pushover_pattern_tag, pushover_series_tag)
 
         # Create nodal loads at outer column nodes
         #    nd    FX  FY  FZ MX MY MZ
+        print('Running pushover...')
         
         Fx_vec = self.Fx
         
         for fl_idx, Fx in enumerate(Fx_vec):
-            ops.load(outer_col_nds[fl_idx+1], Fx, 0.0, 0.0, 0.0, 0.0)
+            ops.load(outer_col_nds[fl_idx+1], Fx, 0.0, 0.0, 0.0, 0.0, 0.0)
         
         #----------------------------------------------------
         # Start of modifications to analysis for push over
@@ -2395,8 +2404,11 @@ class Building:
                         break
                 else:
                     continue
-                
+        
+        ops.wipe()
         print('Pushover complete!')
+        
+        
         '''
         # read in the output files
         dispColumns = ['time', 'isol1', 'isol2', 'isol3', 'isol4', 'isolLC']
