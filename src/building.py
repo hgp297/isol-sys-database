@@ -2309,7 +2309,6 @@ class Building:
             
             inner_col_nds = [nd+1 for nd in outer_col_nds]
             
-        # TODO: record forces
         # lateral frame story displacement
         ops.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
                      '-node', *outer_col_nds, '-dof', 1, 'disp')
@@ -2322,18 +2321,28 @@ class Building:
         ops.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
                      '-node', *inner_col_nds, '-dof', 3, 'disp')
         
+        base_nodes = self.node_tags['base']
+        wall_nodes = self.node_tags['wall']
+        
+        ground_nodes = base_nodes + wall_nodes
+        ops.recorder('Node', '-file', data_dir+'ground_rxn.csv', 
+                     '-time', '-node', 
+                     *ground_nodes, '-dof', 1, 'reaction')
+        
         # Set lateral load pattern with a Linear TimeSeries
         pushover_pattern_tag  = 400
         pushover_series_tag   = 4
         ops.timeSeries("Linear", pushover_series_tag)
         ops.pattern('Plain', pushover_pattern_tag, pushover_series_tag)
 
-        # Create nodal loads at outer column nodes
-        #    nd    FX  FY  FZ MX MY MZ
+        import time
+        t0 = time.time()
         print('Running pushover...')
         
         Fx_vec = self.Fx
         
+        # Create nodal loads at outer column nodes
+        #    nd    FX  FY  FZ MX MY MZ
         for fl_idx, Fx in enumerate(Fx_vec):
             ops.load(outer_col_nds[fl_idx+1], Fx, 0.0, 0.0, 0.0, 0.0, 0.0)
         
@@ -2406,7 +2415,11 @@ class Building:
                     continue
         
         ops.wipe()
-        print('Pushover complete!')
+        
+        tp = time.time() - t0
+        minutes = tp//60
+        seconds = tp - 60*minutes
+        print('Pushover complete. Time elapsed %dm %ds.' % (minutes, seconds))
         
         
         '''

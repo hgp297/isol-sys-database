@@ -13,8 +13,7 @@
 ############################################################################
 
 
-
-def plots(run, data_dir='./outputs/'):
+def plot_dynamic(run, data_dir='./outputs/'):
     import pandas as pd
     import matplotlib.pyplot as plt
     plt.close('all')
@@ -157,6 +156,74 @@ def plots(run, data_dir='./outputs/'):
     plt.xlim([0, 5e-2])
     plt.ylim([0, 1])
     plt.grid(True)
+    
+def plot_pushover(run, data_dir='./outputs/pushover/'):
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    
+    plt.close('all')
+    
+    # gather EDPs from opensees output
+    # also collecting story 0, which is isol layer
+    num_stories = run.num_stories
+    num_bays = run.num_bays
+    story_names = ['story_'+str(story)
+                   for story in range(0,num_stories+1)]
+    story_names.insert(0, 'time')
+    
+    rxn_cols = ['bay_'+str(bay)
+                 for bay in range(0, num_bays+1)]
+    rxn_cols.insert(-1, 'left_wall')
+    rxn_cols.insert(-1, 'right_wall')
+    
+    bay_names = rxn_cols.copy()
+    rxn_cols.insert(0, 'time')
+    
+    ground_reactions = pd.read_csv(data_dir+'ground_rxn.csv', sep=' ', 
+                           header=None, names=rxn_cols)
+    
+    # drift
+    story_disp = pd.read_csv(data_dir+'outer_col_disp.csv', sep=' ', 
+                                 header=None, names=story_names)
+    
+    # drift ratios recorded. diff takes difference with adjacent column
+    ft = 12
+    h_story = run.h_story
+    h_bldg = h_story*num_stories
+    story_drift = story_disp.diff(axis=1).drop(
+        columns=['time', 'story_0'])/(h_story*ft)
+    
+    base_shear = -ground_reactions[bay_names].sum(axis=1)
+    
+    # base shear vs roof
+    plt.figure()
+    plt.plot(story_disp[story_names[-1]], base_shear)
+    plt.title('Pushover curve (roof)')
+    plt.xlabel('Roof displacement (in)')
+    plt.ylabel('Base shear')
+    plt.grid(True)
+    plt.show()
+    
+    # base shear vs roof
+    bldg_drift = (story_disp[story_names[-1]]-
+                  story_disp[story_names[1]])/(h_bldg*12)
+    plt.figure()
+    plt.plot(bldg_drift, base_shear)
+    plt.title('Pushover curve (superstructure only)')
+    plt.xlabel('Building drift (roof - isolation)')
+    plt.ylabel('Base shear')
+    plt.grid(True)
+    plt.show()
+    
+    # story drifts
+    plt.figure()
+    for story_name in story_drift.columns.tolist():
+        plt.plot(story_drift[story_name], base_shear)
+    plt.title('Drift pushover (ground reaction)')
+    plt.ylabel('Base shear (ground rxn)')
+    plt.xlabel('Drift ratio')
+    plt.grid(True)
+    plt.show()
     
 def animate_gm(run, data_dir='./outputs/'):
     

@@ -32,11 +32,11 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-# # cbf
-# troubleshoot_run = main_obj.retained_designs.loc[279]
+# cbf
+troubleshoot_run = main_obj.retained_designs.loc[279]
 
-# mf
-troubleshoot_run = main_obj.retained_designs.loc[68]
+# # mf
+# troubleshoot_run = main_obj.retained_designs.loc[68]
 
 from building import Building
 
@@ -59,10 +59,12 @@ troubleshoot_bldg.provide_damping(80, method='SP',
 
 troubleshoot_bldg.run_pushover()
 
+from plot_structure import plot_pushover
+plot_pushover(troubleshoot_bldg)
 #%%
 
-# from plot_structure import plots, animate_gm
-# plots(troubleshoot_bldg)
+# from plot_structure import plot_dynamic, animate_gm
+# plot_dynamic(troubleshoot_bldg)
 
 # animate_gm(troubleshoot_bldg)
 
