@@ -2239,6 +2239,10 @@ class Building:
         
         # get list of relevant nodes
         superstructure_system = self.superstructure_system
+        isol_id = self.elem_ids['isolator']
+        isol_system = self.isolator_system
+        isols = self.elem_tags['isolator']
+        base_id = self.elem_ids['base']
         
         if superstructure_system == 'CBF':
             # extract nodes that belong to the braced portion
@@ -2320,6 +2324,25 @@ class Building:
                      '-node', *outer_col_nds, '-dof', 3, 'disp')
         ops.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
                      '-node', *inner_col_nds, '-dof', 3, 'disp')
+        
+        # if lead rubber bearing, take a non-edge bearing 
+        # (edge bearing was "stacked")
+        if isol_system == 'LRB':
+            isol_elem = isols[1]
+            isol_node = isol_elem - isol_id - base_id + 10
+        # TFPs aren't stacked, so just take left-most 
+        else:
+            # get the leftmost isolator
+            isol_elem = isols[0]
+            isol_node = isol_elem - isol_id - base_id + 10
+        
+        # isolator node displacement of outer column
+        ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', 
+                     '-time', '-node', isol_node, '-dof', 1, 3, 5, 'disp')
+        
+        # isolator response of beneath outer column
+        ops.recorder('Element', '-file', data_dir+'isolator_forces.csv',
+                     '-time', '-ele', isol_elem, 'localForce')
         
         base_nodes = self.node_tags['base']
         wall_nodes = self.node_tags['wall']

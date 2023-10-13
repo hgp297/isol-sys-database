@@ -32,19 +32,19 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-# cbf
-troubleshoot_run = main_obj.retained_designs.loc[279]
+# # cbf
+# run = main_obj.retained_designs.loc[279]
 
-# # mf
-# troubleshoot_run = main_obj.retained_designs.loc[68]
+# mf
+run = main_obj.retained_designs.loc[42]
 
 from building import Building
 
 # test build CBF
-troubleshoot_bldg = Building(troubleshoot_run)
-troubleshoot_bldg.model_frame()
-troubleshoot_bldg.apply_grav_load()
-troubleshoot_bldg.provide_damping(80, method='SP',
+bldg = Building(run)
+bldg.model_frame()
+bldg.apply_grav_load()
+bldg.provide_damping(80, method='SP',
                                   zeta=[0.05], modes=[1])
 
 # dt = 0.005
@@ -55,20 +55,27 @@ troubleshoot_bldg.provide_damping(80, method='SP',
 # from experiment import run_nlth
 # res = run_nlth(troubleshoot_run)
 
-#%%
+#%% ground motion spectrum
 
-troubleshoot_bldg.run_pushover()
+# from gms import plot_spectrum
+
+# plot_spectrum(run)
+
+#%% pushover
+
+bldg.run_pushover(max_drift_ratio=0.1)
 
 from plot_structure import plot_pushover
-plot_pushover(troubleshoot_bldg)
-#%%
+plot_pushover(bldg)
+
+#%% dynamic run
 
 # from plot_structure import plot_dynamic, animate_gm
-# plot_dynamic(troubleshoot_bldg)
+# plot_dynamic(bldg)
 
-# animate_gm(troubleshoot_bldg)
+# animate_gm(bldg)
 
-#%%
+#%% generate analyze database
 
 # main_obj.analyze_db('structural_db_branch.csv')
 

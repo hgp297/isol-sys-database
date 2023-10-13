@@ -129,6 +129,89 @@ def scale_ground_motion(input_df,
             break
     
     return(gm_name, sf, target_average)
+
+def get_ST(input_df, T_query, 
+           db_dir='../resource/ground_motions/gm_db.csv',
+           spec_dir='../resource/ground_motions/gm_spectra.csv'):
+
+    import re
+    import pandas as pd
+    import numpy as np
+
+    # load in sections of the sheet
+    unscaled_spectra = pd.read_csv(spec_dir)
     
+    GM_file = input_df['gm_selected']
+    scale_factor = input_df['scale_factor']
+
+    rsn = re.search('(\d+)', GM_file).group(1)
+    gm_unscaled_name = 'RSN-' + str(rsn) + ' Horizontal-1 pSa (g)'
+    gm_spectrum = unscaled_spectra[['Period (sec)', gm_unscaled_name]]
+    gm_spectrum.columns  = ['Period', 'Sa']
+
+    Sa_query_unscaled  = np.interp(T_query, gm_spectrum.Period, gm_spectrum.Sa)
+    Sa_query = scale_factor*Sa_query_unscaled
+    return(Sa_query)
+    
+def plot_spectrum(input_df,
+                  spec_dir='../resource/ground_motions/gm_spectra.csv'):
+    
+    import re
+    import pandas as pd
+
+    # load in sections of the sheet
+    unscaled_spectra = pd.read_csv(spec_dir)
+    
+    GM_name = input_df['gm_selected']
+    scale_factor = input_df['scale_factor']
+
+    rsn = re.search('(\d+)', GM_name).group(1)
+    gm_unscaled_name = 'RSN-' + str(rsn) + ' Horizontal-1 pSa (g)'
+    gm_spectrum = unscaled_spectra[['Period (sec)', gm_unscaled_name]]
+    gm_spectrum.columns  = ['Period', 'Sa']
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    S_1 = input_df['S_1']
+    T_m = input_df['T_m']
+    
+    # default='warn', ignore SettingWithCopyWarning
+    pd.options.mode.chained_assignment = None  
+    
+    # info from building class
+    S_s = 2.2815
+    
+    # Scale both Ss and S1
+    # Create design spectrum
+    
+    T_short = S_1/S_s
+    target_spectrum  = unscaled_spectra[['Period (sec)']]
+    target_spectrum['Target_Sa'] = np.where(
+        target_spectrum['Period (sec)'] < T_short, 
+        S_s, S_1/target_spectrum['Period (sec)'])
+    
+    # calculate desired target spectrum average (0.2*Tm, 1.5*Tm)
+    T_fb = input_df['T_fbe']
+    t_lower = min(T_fb, 0.2*T_m)
+    t_upper = 1.5*T_m
+    
+    # geometric mean from Eads et al. (2015)
+    target_range = target_spectrum[
+        target_spectrum['Period (sec)'].between(t_lower,t_upper)]['Target_Sa']
+    target_average = target_range.prod()**(1/target_range.size)
+    
+    plt.figure()
+    plt.plot(gm_spectrum.Period, gm_spectrum.Sa*scale_factor)
+    plt.plot(target_spectrum['Period (sec)'], target_spectrum.Target_Sa)
+    plt.axvline(t_lower, linestyle=':', color='red')
+    plt.axvline(t_upper, linestyle=':', color='red')
+    plt.axvline(T_m, linestyle=':', color='red')
+    plt.axhline(target_average, linestyle=':', color='black')
+    plt.title('Spectrum for '+GM_name)
+    plt.xlabel(r'Period $T_n$ (s)')
+    plt.ylabel(r'Spectral acceleration $Sa$ (g)')
+    plt.xlim([0, 5])
+    plt.grid(True)
     
 # a, b = scale_ground_motion()

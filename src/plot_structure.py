@@ -195,6 +195,33 @@ def plot_pushover(run, data_dir='./outputs/pushover/'):
     
     base_shear = -ground_reactions[bay_names].sum(axis=1)
     
+    # isolators
+    isol_columns = ['time', 'x', 'z', 'rot']
+    isol_disp = pd.read_csv(data_dir+'isolator_displacement.csv', sep=' ', 
+                                 header=None, names=isol_columns)
+    
+    force_columns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz', 
+                    'jFx', 'jFy', 'jFz', 'jMx', 'jMy', 'jMz']
+    isol_force = pd.read_csv(data_dir+'isolator_forces.csv', sep=' ', 
+                                 header=None, names=force_columns)
+    
+    # All hystereses
+    isol_type = run.isolator_system
+    if isol_type == 'LRB':
+        plt.figure()
+        plt.plot(isol_disp['x'], isol_force['jFy'])
+        plt.title('Isolator hystereses (LRB)')
+        plt.xlabel('Displ (in)')
+        plt.ylabel('V/N')
+        plt.grid(True)
+    else:
+        plt.figure()
+        plt.plot(isol_disp['x'], isol_force['jFy']/isol_force['iFx'])
+        plt.title('Isolator hystereses (TFP)')
+        plt.xlabel('Displ (in)')
+        plt.ylabel('V/N')
+        plt.grid(True)
+    
     # base shear vs roof
     plt.figure()
     plt.plot(story_disp[story_names[-1]], base_shear)

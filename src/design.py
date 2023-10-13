@@ -153,6 +153,7 @@ def lead_plug_cover(S_tshim_array, H, d_r, t_r):
     
 def design_LRB(param_df):
     
+    # TODO: note changed W_s here
     # read in parameters
     T_m = param_df['T_m']
     S_1 = param_df['S_1']

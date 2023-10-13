@@ -14,6 +14,7 @@ def prepare_results(output_path, design, Tfb, run_status):
     
     import pandas as pd
     import numpy as np
+    from gms import get_ST
     
     # TODO: collect Sa values, collect validation indicator (IDA level)
     num_stories = design['num_stories']
@@ -114,8 +115,13 @@ def prepare_results(output_path, design, Tfb, run_status):
         impact_bool = 1
     else:
         impact_bool = 0
+        
+    Sa_Tm = get_ST(design, design['T_m'])
+    Sa_1 = get_ST(design, 1.0)
     
-    result_dict = {'constructed_moat': design['moat_ampli']*design['D_m'],
+    result_dict = {'sa_tm': Sa_Tm,
+                   'sa_1': Sa_1,
+                   'constructed_moat': design['moat_ampli']*design['D_m'],
                    'T_fb': Tfb,
                    'max_isol_disp': isol_max_horiz_disp,
                    'PID': PID,
