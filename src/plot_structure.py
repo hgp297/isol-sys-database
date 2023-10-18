@@ -12,7 +12,6 @@
 
 ############################################################################
 
-
 def plot_dynamic(run, data_dir='./outputs/'):
     import pandas as pd
     import matplotlib.pyplot as plt
@@ -66,20 +65,31 @@ def plot_dynamic(run, data_dir='./outputs/'):
     isol_force = pd.read_csv(data_dir+'isolator_forces.csv', sep=' ', 
                                  header=None, names=force_columns)
     # All hystereses
+    from bearing import Bearing
+    isolator = Bearing(run)
+    u_bearing, fs_bearing = isolator.get_backbone()
+    
+    # TODO: print useful information on hystereses
     isol_type = run.isolator_system
     if isol_type == 'LRB':
         plt.figure()
         plt.plot(isol_disp['x'], isol_force['jFy'])
+        plt.plot(u_bearing, fs_bearing, linestyle='--')
+        plt.axvline(run.moat_ampli*run.D_m, linestyle=':', color='red')
+        plt.axvline(-run.moat_ampli*run.D_m, linestyle=':', color='red')
         plt.title('Isolator hystereses (LRB)')
         plt.xlabel('Displ (in)')
-        plt.ylabel('V/N')
+        plt.ylabel('Lateral force (kip)')
         plt.grid(True)
     else:
         plt.figure()
         plt.plot(isol_disp['x'], isol_force['jFy']/isol_force['iFx'])
+        plt.plot(u_bearing, fs_bearing, linestyle='--')
+        plt.axvline(run.moat_ampli*run.D_m, linestyle=':', color='red')
+        plt.axvline(-run.moat_ampli*run.D_m, linestyle=':', color='red')
         plt.title('Isolator hystereses (TFP)')
         plt.xlabel('Displ (in)')
-        plt.ylabel('V/N')
+        plt.ylabel('Lateral friction (V/N)')
         plt.grid(True)
         
     wall_columns = ['time', 'left_x', 'left_z', 'right_x', 'right_z']

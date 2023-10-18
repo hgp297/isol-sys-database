@@ -779,7 +779,6 @@ class Building:
         if self.isolator_system == 'TFP':
             
             # TFP system
-            # TODO: check displacement capacities
             # Isolator parameters
             R1 = self.R_1
             R2 = self.R_2
@@ -2212,8 +2211,9 @@ class Building:
         isol_elems = self.elem_tags['isolator']
         truss_elems = self.elem_tags['truss']
         lc_elems = self.elem_tags['leaning'] + self.elem_tags['lc_spring']
+        diaph_elems = self.elem_tags['diaphragm']
         non_damped_elems = (wall_elems + isol_elems + truss_elems + 
-                            lc_elems)
+                            lc_elems + diaph_elems)
         
         damped_elems = [elem for elem in all_elems 
                         if elem not in non_damped_elems]

@@ -32,11 +32,17 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-# # cbf
+# # cbf lrb
 # run = main_obj.retained_designs.loc[279]
 
-# mf
-run = main_obj.retained_designs.loc[42]
+# # cbf tfp
+# run = main_obj.retained_designs.loc[193]
+
+# # mf lrb
+# run = main_obj.retained_designs.loc[704]
+
+# mf tfp
+run = main_obj.retained_designs.loc[68]
 
 from building import Building
 
@@ -47,33 +53,34 @@ bldg.apply_grav_load()
 bldg.provide_damping(80, method='SP',
                                   zeta=[0.05], modes=[1])
 
-# dt = 0.005
-# troubleshoot_bldg.run_ground_motion(troubleshoot_run.gm_selected, 
-#                                     troubleshoot_run.scale_factor, 
-#                                     dt)
+dt = 0.005
+bldg.run_ground_motion(run.gm_selected, 
+                       run.scale_factor, 
+                       dt)
 
 # from experiment import run_nlth
 # res = run_nlth(troubleshoot_run)
 
-#%% ground motion spectrum
-
-# from gms import plot_spectrum
-
-# plot_spectrum(run)
 
 #%% pushover
 
-bldg.run_pushover(max_drift_ratio=0.1)
+# bldg.run_pushover(max_drift_ratio=0.1)
 
-from plot_structure import plot_pushover
-plot_pushover(bldg)
+# from plot_structure import plot_pushover
+# plot_pushover(bldg)
 
 #%% dynamic run
 
-# from plot_structure import plot_dynamic, animate_gm
-# plot_dynamic(bldg)
+from plot_structure import plot_dynamic
+plot_dynamic(run)
 
 # animate_gm(bldg)
+
+#%% ground motion spectrum
+
+from gms import plot_spectrum
+
+plot_spectrum(run)
 
 #%% generate analyze database
 

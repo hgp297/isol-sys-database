@@ -65,6 +65,8 @@ def scale_ground_motion(input_df,
     scale_factor = scale_factor.reset_index()
     scale_factor.columns = ['full_RSN', 'sf_average_spectral']
 
+    # TODO: stop making separate dfs for each step
+    
     # rename back to old convention and merge with previous dataframe
     scale_factor[' Record Sequence Number'] = scale_factor['full_RSN'].str.extract('(\d+)')
     scale_factor = scale_factor.astype({' Record Sequence Number': int})
@@ -89,7 +91,9 @@ def scale_ground_motion(input_df,
     uniq_EQs = pd.unique(elig_freq[' Earthquake Name'])
     final_GM = None
 
+    # TODO: reintroduce randomness here
     # Select earthquakes that are least severely scaled
+    # This section ensures no more than 3 motions per event
     for earthquake in uniq_EQs:
         match_eqs = elig_freq[elig_freq[' Earthquake Name'] == earthquake]
         match_eqs['scale_difference'] = abs(match_eqs['sf_average_spectral']-1.0)
@@ -109,9 +113,17 @@ def scale_ground_motion(input_df,
     final_GM.columns = ['RSN', 'sf_average_spectral', 
                         'earthquake_name', 'lowest_frequency', 'filename']
     
+    # filter excessively scaled GMs
+    final_GM = final_GM[final_GM['sf_average_spectral'] < 20.0]
+    
     # select random GM from the list
     from random import randrange
+    ind = randrange(len(final_GM.index))
+    filename = str(final_GM['filename'].iloc[ind]) # ground motion name
+    gm_name = filename.replace('.AT2', '') # remove extension from file name
+    sf = float(final_GM['sf_average_spectral'].iloc[ind])  # scale factor used
     
+    '''
     sf = 40.0
     
     # keep selecting until we have a GM with <20
@@ -127,6 +139,7 @@ def scale_ground_motion(input_df,
         if tries > len(final_GM.index):
             print('No GM found.')
             break
+    '''
     
     return(gm_name, sf, target_average)
 

@@ -13,8 +13,6 @@
 
 ############################################################################
 
-# TODO: bearings consistently displace LESS than design D_m
-
 def get_layout(n_bays):
     # place bearings on edge
     num_bearings = (n_bays+1)**2
