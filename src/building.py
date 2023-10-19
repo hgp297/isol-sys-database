@@ -2164,6 +2164,20 @@ class Building:
             ops.fix(nodeTag,  1, 1, 1, 1, 1, 1)
         if(action == "unfix"):
             ops.fix(nodeTag,  0, 1, 0, 1, 0, 1)
+            
+    # TODO: are these natural periods too low?
+    def run_eigen(self):
+        import openseespy.opensees as ops
+        
+        nEigenJ = 1;                    # how many modes to analyze
+        lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
+        lambda1 = lambdaN[0];           # eigenvalue mode i = 1
+        wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
+        T_1 = 2*3.1415/wi      # 1st mode period of the structure
+        
+        print("T_1 = %.3f s" % T_1)   
+        
+        return(T_1)
 
     def provide_damping(self, regTag, method='SP',
                         zeta=[0.05], modes=[1]):

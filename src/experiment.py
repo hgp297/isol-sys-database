@@ -10,7 +10,7 @@
 ############################################################################
 
 # prepare the pandas output of the run
-def prepare_results(output_path, design, Tfb, run_status):
+def prepare_results(output_path, design, T_1, Tfb, run_status):
     
     import pandas as pd
     import numpy as np
@@ -122,6 +122,7 @@ def prepare_results(output_path, design, Tfb, run_status):
     result_dict = {'sa_tm': Sa_Tm,
                    'sa_1': Sa_1,
                    'constructed_moat': design['moat_ampli']*design['D_m'],
+                   'T_1': T_1,
                    'T_fb': Tfb,
                    'max_isol_disp': isol_max_horiz_disp,
                    'PID': PID,
@@ -150,6 +151,7 @@ def run_nlth(design,
     
     # apply gravity loads, perform eigenvalue analysis, add damping
     bldg.apply_grav_load()
+    T_1 = bldg.run_eigen()
     Tfb = bldg.provide_damping(80, method='SP',
                                zeta=[0.05], modes=[1])
     
@@ -170,6 +172,7 @@ def run_nlth(design,
         
         # apply gravity loads, perform eigenvalue analysis, add damping
         bldg.apply_grav_load()
+        T_1 = bldg.run_eigen()
         Tfb = bldg.provide_damping(80, method='SP',
                                    zeta=[0.05], modes=[1])
         
@@ -186,6 +189,7 @@ def run_nlth(design,
         
         # apply gravity loads, perform eigenvalue analysis, add damping
         bldg.apply_grav_load()
+        T_1 = bldg.run_eigen()
         Tfb = bldg.provide_damping(80, method='SP',
                                    zeta=[0.05], modes=[1])
         
@@ -201,6 +205,6 @@ def run_nlth(design,
     import time
     time.sleep(3)
     
-    results_series = prepare_results(output_path, design, Tfb, run_status)
+    results_series = prepare_results(output_path, design, T_1, Tfb, run_status)
     return(results_series)
     
