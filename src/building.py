@@ -2598,6 +2598,9 @@ class Building:
             isol_elem = isols[0]
             isol_node = isol_elem - isol_id - base_id + 10
         
+        # isol nodes are diaphragm nodes
+        isol_nodes_all = self.node_tags['diaphragm']
+        
         open(data_dir+'model.out', 'w').close()
         ops.printModel('-file', data_dir+'model.out')
         
@@ -2627,6 +2630,24 @@ class Building:
         # isolator response of beneath outer column
         ops.recorder('Element', '-file', data_dir+'isolator_forces.csv',
                      '-time', '-ele', isol_elem, 'localForce')
+        
+        base_nodes = self.node_tags['base']
+        
+        if isol_system == 'LRB':
+            ops.recorder('Node', '-file', data_dir+'lrb_disp.csv', 
+                         '-time', '-node', *isol_nodes_all, '-dof', 1, 'disp')
+            ops.recorder('Node', '-file', data_dir+'lrb_base_rxn.csv', 
+                         '-time', '-node', 
+                         *base_nodes, '-dof', 1, 'reaction')
+        elif isol_system == 'TFP':
+            ops.recorder('Node', '-file', data_dir+'tfp_disp.csv', 
+                         '-time', '-node', *isol_nodes_all, '-dof', 1, 'disp')
+            ops.recorder('Node', '-file', data_dir+'tfp_base_rxn.csv', 
+                         '-time', '-node', 
+                         *base_nodes, '-dof', 1, 'reaction')
+            ops.recorder('Node', '-file', data_dir+'tfp_base_vert.csv', 
+                         '-time', '-node', 
+                         *base_nodes, '-dof', 3, 'reaction')
         
         # gusset plate?
         # beam force?

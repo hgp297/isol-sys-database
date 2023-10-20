@@ -20,6 +20,7 @@ def plot_dynamic(run, data_dir='./outputs/'):
     
     # L_bay = run.L_bay
     h_story = run.h_story
+    num_bays = run.num_bays
     
     if structure_type == 'CBF':
         res_columns = ['stress1', 'strain1', 'stress2', 'strain2', 
@@ -78,17 +79,69 @@ def plot_dynamic(run, data_dir='./outputs/'):
         plt.plot(u_bearing, fs_bearing, linestyle='--')
         plt.axvline(run.moat_ampli*run.D_m, linestyle=':', color='red')
         plt.axvline(-run.moat_ampli*run.D_m, linestyle=':', color='red')
-        plt.title('Isolator hystereses (LRB)')
+        plt.title('Single isolator hystereses (LRB)')
         plt.xlabel('Displ (in)')
         plt.ylabel('Lateral force (kip)')
         plt.grid(True)
+        
+        col_line = ['column_'+str(col)
+                       for col in range(0,num_bays+1)]
+        just_cols = col_line.copy()
+        col_line.insert(0, 'time')
+        lrb_disp = pd.read_csv(data_dir+'lrb_disp.csv', sep=' ', 
+                                     header=None, names=col_line)
+        
+        lrb_base_rxn = pd.read_csv(data_dir+'lrb_base_rxn.csv', sep=' ', 
+                                     header=None, names=col_line)
+        
+        lrb_shear = lrb_base_rxn[just_cols].sum(axis=1)
+        u_bearing, fs_bearing = isolator.get_backbone(mode='building')
+        
+        plt.figure()
+        plt.plot(lrb_disp['column_0'], -lrb_shear)
+        plt.plot(u_bearing, fs_bearing, linestyle='--')
+        plt.axvline(run.moat_ampli*run.D_m, linestyle=':', color='red')
+        plt.axvline(-run.moat_ampli*run.D_m, linestyle=':', color='red')
+        plt.title('Isolator hystereses (whole building) (LRB)')
+        plt.xlabel('Displ (in)')
+        plt.ylabel('Lateral force (kip)')
+        plt.grid(True)
+        
     else:
         plt.figure()
         plt.plot(isol_disp['x'], isol_force['jFy']/isol_force['iFx'])
         plt.plot(u_bearing, fs_bearing, linestyle='--')
         plt.axvline(run.moat_ampli*run.D_m, linestyle=':', color='red')
         plt.axvline(-run.moat_ampli*run.D_m, linestyle=':', color='red')
-        plt.title('Isolator hystereses (TFP)')
+        plt.title('Single isolator hystereses (TFP)')
+        plt.xlabel('Displ (in)')
+        plt.ylabel('Lateral friction (V/N)')
+        plt.grid(True)
+        
+        col_line = ['column_'+str(col)
+                       for col in range(0,num_bays+1)]
+        just_cols = col_line.copy()
+        col_line.insert(0, 'time')
+        tfp_disp = pd.read_csv(data_dir+'tfp_disp.csv', sep=' ', 
+                                     header=None, names=col_line)
+        
+        tfp_base_rxn = pd.read_csv(data_dir+'tfp_base_rxn.csv', sep=' ', 
+                                     header=None, names=col_line)
+        
+        tfp_base_vert = pd.read_csv(data_dir+'tfp_base_vert.csv', sep=' ', 
+                                     header=None, names=col_line)
+        
+        tfp_shear = tfp_base_rxn[just_cols].sum(axis=1)
+        tfp_axial = tfp_base_vert[just_cols].sum(axis=1)
+        
+        u_bearing, fs_bearing = isolator.get_backbone(mode='building')
+        
+        plt.figure()
+        plt.plot(tfp_disp['column_0'], -tfp_shear/tfp_axial)
+        plt.plot(u_bearing, fs_bearing, linestyle='--')
+        plt.axvline(run.moat_ampli*run.D_m, linestyle=':', color='red')
+        plt.axvline(-run.moat_ampli*run.D_m, linestyle=':', color='red')
+        plt.title('Isolator hystereses (whole_building) (LRB)')
         plt.xlabel('Displ (in)')
         plt.ylabel('Lateral friction (V/N)')
         plt.grid(True)

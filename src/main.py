@@ -32,14 +32,14 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-# cbf lrb
-run = main_obj.retained_designs.loc[279]
+# # cbf lrb
+# run = main_obj.retained_designs.loc[279]
 
 # # cbf tfp
 # run = main_obj.retained_designs.loc[193]
 
-# # mf lrb
-# run = main_obj.retained_designs.loc[704]
+# mf lrb
+run = main_obj.retained_designs.loc[704]
 
 # # mf tfp
 # run = main_obj.retained_designs.loc[68]

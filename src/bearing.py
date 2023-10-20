@@ -23,18 +23,27 @@ class Bearing:
         for key, value in design.items():
             setattr(self, key, value)
             
-    def get_backbone(self):
+    def get_backbone(self, mode='single'):
         bearing_type = self.isolator_system
         
         # design displacement
         D_m = self.D_m
         
-        if bearing_type == 'LRB':
-            Q_L = self.Q * self.W / self.N_lb
-            k_M = self.k_e * self.W / self.N_lb
-        else:
-            Q_L = self.Q
-            k_M = self.k_e
+        if mode=='single':
+            if bearing_type == 'LRB':
+                Q_L = self.Q * self.W / self.N_lb
+                k_M = self.k_e * self.W / self.N_lb
+            else:
+                Q_L = self.Q
+                k_M = self.k_e
+        # assume 2 lateral frames
+        elif mode =='building':
+            if bearing_type == 'LRB':
+                Q_L = self.Q * self.W / 2
+                k_M = self.k_e * self.W / 2
+            else:
+                Q_L = self.Q
+                k_M = self.k_e
         
         # from Q, zeta, and T_m
         k_2 = (k_M*D_m - Q_L)/D_m
