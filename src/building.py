@@ -1061,6 +1061,10 @@ class Building:
                 m_nd = m_grav_outer[fl]
             elif (bay == n_start) or (bay == n_start+n_braced):
                 m_nd = m_grav_br_col[fl]
+            # if column is within braces, but not edge of braced bays
+            # it would take wL/4 from each side
+            elif (bay > n_start) and (bay < n_start+n_braced):
+                m_nd = m_grav_brace[fl]
             else:
                 m_nd = m_grav_inner[fl]
             negligible = 1e-15
@@ -1288,10 +1292,10 @@ class Building:
         cR2 = 0.15
         ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
         
-        # ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
         
-        ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
-        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+        # ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
+        # ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
@@ -2692,12 +2696,12 @@ class Building:
         tolDynamic          = 1e-5 
         
         # Convergence Test: maximum number of iterations that will be performed
-        maxIterDynamic      = 30
+        maxIterDynamic      = 100
         
         # Convergence Test: flag used to print information on convergence
         printFlagDynamic    = 0         
         
-        testTypeDynamic     = 'NormDispIncr'
+        testTypeDynamic     = 'EnergyIncr'
         ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
         
         # algorithmTypeDynamic    = 'Broyden'
@@ -2710,6 +2714,10 @@ class Building:
         newmarkBeta = 0.25
         ops.integrator('Newmark', newmarkGamma, newmarkBeta)
         ops.analysis('Transient')
+        
+        # # TRBDF2 integrator, best with energy
+        # ops.integrator('TRBDF2')
+        # ops.analysis('Transient')
 
         #  ---------------------------------    perform Dynamic Ground-Motion Analysis
         # the following commands are unique to the Uniform Earthquake excitation
@@ -2775,6 +2783,20 @@ class Building:
                     if ok == 0:
                         print("That worked. Back to Newton")
                     ops.algorithm(algorithmTypeDynamic)
+                if ok != 0:
+                    print('Trying Broyden ... ')
+                    algorithmTypeDynamic = 'Broyden'
+                    ops.algorithm(algorithmTypeDynamic, 8)
+                    ok = ops.analyze(1, dt_transient)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
+                if ok != 0:
+                    print('Trying BFGS ... ')
+                    algorithmTypeDynamic = 'BFGS'
+                    ops.algorithm(algorithmTypeDynamic)
+                    ok = ops.analyze(1, dt_transient)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
 
         t_final = ops.getTime()
         tp = time.time() - t0

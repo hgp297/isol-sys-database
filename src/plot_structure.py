@@ -199,9 +199,18 @@ def plot_dynamic(run, data_dir='./outputs/'):
     story_drift = story_disp.diff(axis=1).drop(
         columns=['time', 'story_0'])/(h_story*ft)
     
+    global_drift = (story_disp[story_names[-1]] - story_disp['story_0'])/(run.h_bldg*ft)
+    
     plt.figure()
     plt.plot(story_disp['time'], story_drift['story_1'])
     plt.title('Story 1 drift history')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Drift ratio')
+    plt.grid(True)
+    
+    plt.figure()
+    plt.plot(story_disp['time'], global_drift)
+    plt.title('Global drift history')
     plt.xlabel('Time (s)')
     plt.ylabel('Drift ratio')
     plt.grid(True)
@@ -344,8 +353,6 @@ def animate_gm(run, data_dir='./outputs/'):
     h_story = run.h_story
     h_up = [fl * h_story * 12 + 12 for fl in range(0,num_stories+1)]
     
-    import matplotlib.animation as animation
-
     # dt = 0.005
     fig = plt.figure()
     ax = fig.add_subplot(autoscale_on=True, xlim=(-50, 50),
@@ -366,8 +373,11 @@ def animate_gm(run, data_dir='./outputs/'):
         
         time_text.set_text(time_template % (story_disp['time'][i]))
         return line, trace, time_text
+    
+    return(fig, animate, n)
 
-    animation.FuncAnimation(fig, animate, n, interval=1/4, blit=True)
+    # animation.FuncAnimation(fig, animate, n, interval=1/40, blit=True)
+    # plt.show()
     # ani.save(filename="../outputs/gm_animation.mp4", writer="ffmpeg")
     
     

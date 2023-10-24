@@ -105,6 +105,9 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
         
         # if collapse, just collect PID as residual
         RID = PID
+        
+    # TODO: CBFs may not be stable enough to record high drift even if failure
+    # Find way to record it
     
     impact_cols = ['time', 'dirX_left', 'dirX_right']
     impact_force = pd.read_csv(output_path+'impact_forces.csv',
