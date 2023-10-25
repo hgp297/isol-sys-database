@@ -896,8 +896,8 @@ class Building:
                     i_nd = base_id + bay_pos
                     j_nd = i_nd - base_id + 10
                     
-                
-                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                # TODO: changed Fy_lb to Q_L... (edit for CBF too)
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Q_L, alpha,
                             G_r, K_bulk, D_inner, D_outer,
                             t_shim, t_layer, n_layers, *addl_params)
   
@@ -1921,7 +1921,6 @@ class Building:
                             p_vert, uy, kvt, minFv, 1e-5)
         else:
             # LRB modeling
-            
             # dimensions. Material parameters should not be edited without 
             # modifying design script
             K_bulk = 290.0*ksi
@@ -1985,7 +1984,7 @@ class Building:
                     i_nd = base_id + bay_pos
                     j_nd = i_nd - base_id + 10
                     
-                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Q_L, alpha,
                             G_r, K_bulk, D_inner, D_outer,
                             t_shim, t_layer, n_layers, *addl_params)
   
