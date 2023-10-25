@@ -847,11 +847,15 @@ class Building:
             # calculate yield strength. this assumes design was done correctly
             pi = 3.14159
             f_y_Pb = 1.5 # ksi, shear yield strength
-            Q_L = f_y_Pb*pi*D_inner**2/4
-            # N_lb = 4*self.num_bays
-            # Q_L = self.Q * self.W / N_lb
+            
+            Fy_LRB = f_y_Pb*pi*D_inner**2/4
+            
+            # Q_L = f_y_Pb*pi*D_inner**2/4
+            # # N_lb = 4*self.num_bays
+            # # Q_L = self.Q * self.W / N_lb
+            
             alpha = 1.0/self.k_ratio
-            Fy_LRB = Q_L/(1 - alpha)
+            # Fy_LRB = Q_L/(1 - alpha)
             
             kc = 10.0
             phi_M = 0.5
@@ -896,8 +900,7 @@ class Building:
                     i_nd = base_id + bay_pos
                     j_nd = i_nd - base_id + 10
                     
-                # TODO: changed Fy_lb to Q_L... (edit for CBF too)
-                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Q_L, alpha,
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                             G_r, K_bulk, D_inner, D_outer,
                             t_shim, t_layer, n_layers, *addl_params)
   
@@ -1935,11 +1938,15 @@ class Building:
             # calculate yield strength. this assumes design was done correctly
             pi = 3.14159
             f_y_Pb = 1.5 # ksi, shear yield strength
-            Q_L = f_y_Pb*pi*D_inner**2/4
-            # N_lb = 4*self.num_bays
-            # Q_L = self.Q * self.W / N_lb
+            
+            Fy_LRB = f_y_Pb*pi*D_inner**2/4
+            
+            # Q_L = f_y_Pb*pi*D_inner**2/4
+            # # N_lb = 4*self.num_bays
+            # # Q_L = self.Q * self.W / N_lb
+            
             alpha = 1.0/self.k_ratio
-            Fy_LRB = Q_L/(1 - alpha)
+            # Fy_LRB = Q_L/(1 - alpha)
             
             kc = 10.0
             phi_M = 0.5
@@ -1984,7 +1991,7 @@ class Building:
                     i_nd = base_id + bay_pos
                     j_nd = i_nd - base_id + 10
                     
-                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Q_L, alpha,
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                             G_r, K_bulk, D_inner, D_outer,
                             t_shim, t_layer, n_layers, *addl_params)
   
@@ -2168,7 +2175,6 @@ class Building:
         if(action == "unfix"):
             ops.fix(nodeTag,  0, 1, 0, 1, 0, 1)
             
-    # TODO: are these natural periods too low?
     def run_eigen(self):
         import openseespy.opensees as ops
         
