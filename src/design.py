@@ -381,6 +381,7 @@ def design_LRB(param_df):
     # # already accounts for A_s effective shear area
     # P_crit = pi/t_r * ((E_c * I/3)*G_ss*A)**(0.5)
     
+    # this includes diaphragm, which is accurate representation of load above LRB
     w_floor = param_df['w_fl'] # k/ft
     L_bay = param_df['L_bay'] # ft
     P_estimate = sum(w_floor)*L_bay
@@ -950,9 +951,10 @@ def design_MF(input_df, db_string='../resource/'):
     Fx = input_df['Fx']
     h_col = input_df['h_col']
     
+    # TODO: removed diaphragm level for floor designs
     load_cases = input_df['all_w_cases']
-    case_1 = load_cases['1.2D+0.5L+1.0E']/12
-    case_2 = load_cases['0.9D-1.0E']/12
+    case_1 = load_cases['1.2D+0.5L+1.0E'][1:]/12
+    case_2 = load_cases['0.9D-1.0E'][1:]/12
     
     import numpy as np
     w_load = np.maximum(case_1, case_2)
@@ -1540,9 +1542,10 @@ def design_CBF(input_df, db_string='../resource/'):
     h_story = input_df['h_story']*ft
     
     # cases specific to earthquake design
+    # TODO: removed diaphragm level for floor designs
     load_cases = input_df['all_w_cases']
-    case_1 = load_cases['1.2D+0.5L+1.0E']/12
-    case_2 = load_cases['0.9D-1.0E']/12
+    case_1 = load_cases['1.2D+0.5L+1.0E'][1:]/12
+    case_2 = load_cases['0.9D-1.0E'][1:]/12
     
     # # gravity case for all uses
     # # import numpy as np

@@ -364,10 +364,12 @@ class Building:
         m_grav_inner = w_floor * L_bay / g
         m_grav_outer = w_floor * L_bay / 2 /g
         m_lc = p_lc / g
-        # prepend mass onto the "ground" level
-        m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
-        m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
-        m_lc = np.insert(m_lc, 0 , m_lc[0])
+        
+        # TODO: no need to prepend diaphragm
+        # # prepend mass onto the "ground" level
+        # m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
+        # m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
+        # m_lc = np.insert(m_lc, 0 , m_lc[0])
         
         # load for isolators vertical
         p_outer = sum(w_floor)*L_bay/2
@@ -998,12 +1000,14 @@ class Building:
         m_grav_brace = w_floor * L_bay / 2 /g
         m_grav_br_col = w_floor * L_bay * 3/4 /g
         m_lc = p_lc / g
-        # prepend mass onto the "ground" level
-        m_grav_brace = np.insert(m_grav_brace, 0 , m_grav_brace[0])
-        m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
-        m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
-        m_grav_br_col = np.insert(m_grav_br_col, 0 , m_grav_br_col[0])
-        m_lc = np.insert(m_lc, 0 , m_lc[0])
+        
+        # TODO: no need to prepend diaphragm
+        # # prepend mass onto the "ground" level
+        # m_grav_brace = np.insert(m_grav_brace, 0 , m_grav_brace[0])
+        # m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
+        # m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
+        # m_grav_br_col = np.insert(m_grav_br_col, 0 , m_grav_br_col[0])
+        # m_lc = np.insert(m_lc, 0 , m_lc[0])
         
         # load for isolators vertical
         p_outer = sum(w_floor)*L_bay/2
@@ -2063,9 +2067,10 @@ class Building:
         w_floor = w_cases['1.0D+0.5L'] / ft
         p_lc = plc_cases['1.0D+0.5L'] / ft
         
-        # append diaphragm level loads
-        w_floor = np.insert(w_floor, 0, w_floor[0])
-        p_lc = np.insert(p_lc, 0, p_lc[0])
+        # TODO: no need to prepend
+        # # append diaphragm level loads
+        # w_floor = np.insert(w_floor, 0, w_floor[0])
+        # p_lc = np.insert(p_lc, 0, p_lc[0])
         
         # create TimeSeries
         ops.timeSeries("Linear", grav_series)

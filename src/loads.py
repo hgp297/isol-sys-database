@@ -25,12 +25,13 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     
     import numpy as np
     
+    # TODO: changed to include diaphragm here (it affects W_tot)
     # assuming 100 psf D and 50 psf L for floors 
     # assume that D already includes structural members
     if D_load is None:
-        D_load = np.repeat(100.0/1000, n_floors)
+        D_load = np.repeat(100.0/1000, n_floors+1)
     if L_load is None:
-        L_load = np.repeat(50.0/1000, n_floors)
+        L_load = np.repeat(50.0/1000, n_floors+1)
         
     # roof loading is lighter
     D_load[-1] = 75.0/1000
@@ -142,6 +143,7 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
     
     # assuming 100 psf D and 50 psf L for floors 
     # assume that D already includes structural members
+    # here we do not tack on diaphragm level because these are story lateral forces
     if D_load is None:
         D_load = np.repeat(100.0/1000, n_floors)
         # roof loading is lighter
