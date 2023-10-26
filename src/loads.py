@@ -132,8 +132,6 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
     zeta_e = input_df['zeta_e']
     R_y = input_df['RI']
     struct_type = input_df['superstructure_system']
-    S_1 = input_df['S_1']
-    S_s = input_df['S_s']
     n_floors = input_df['num_stories']
     n_bays = input_df['num_bays']
     n_frames = input_df['num_frames']
@@ -146,19 +144,18 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
     # assume that D already includes structural members
     if D_load is None:
         D_load = np.repeat(100.0/1000, n_floors)
+        # roof loading is lighter
+        D_load[-1] = 75.0/1000
     if L_load is None:
         L_load = np.repeat(50.0/1000, n_floors)
-        
-    # roof loading is lighter
-    D_load[-1] = 75.0/1000
-    L_load[-1] = 20.0/1000
+        L_load[-1] = 20.0/1000
     
     # assuming square building
     A_bldg = (L_bay*n_bays)**2
     
     # seismic weight: ASCE 7-22, Ch. 12.7.2
-    W_tot = np.sum(D_load*A_bldg)
-    W_s = np.sum(D_load[1:]*A_bldg)
+    W_tot = input_df['W']
+    W_s = input_df['W_s']
     
     # assuming square building
     A_bldg = (L_bay*n_bays)**2

@@ -2115,7 +2115,14 @@ class Building:
                 w_applied = w_floor[floor_idx]
                 ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
                             -w_applied, 0.0)
-                
+         
+        # line loads on diaphragm
+        diaph_elems = self.elem_tags['diaphragm']
+        for elem in diaph_elems:
+            w_applied = w_floor[0]
+            ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                        -w_applied, 0.0)
+        
         # point loads on LC
         lc_nodes = self.node_tags['leaning']
         for nd in lc_nodes:
