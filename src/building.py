@@ -199,15 +199,25 @@ class Building:
         isol_elems = [nd+isol_id for nd in base_nodes]
         
         # for LRB, we need additional bearings represented at the edges
+        from math import ceil
         isol_type = self.isolator_system
         if isol_type == 'LRB':
             n_edge_bearings = n_bays+1
-            addl_bearings = round(n_edge_bearings/2) - 1
+            total_addl_bearings = n_edge_bearings - 2
             
+            left_bearings = ceil(total_addl_bearings/2)
+            right_bearings = total_addl_bearings - left_bearings
             addl_isol_elems = ([isol_elems[0]+10*(j+1) 
-                               for j in range(addl_bearings)] + 
+                               for j in range(left_bearings)] + 
                                [isol_elems[-1]+10*(j+1) 
-                                for j in range(addl_bearings)])
+                                for j in range(right_bearings)])
+                
+            # addl_bearings = round(n_edge_bearings/2) - 1
+            
+            # addl_isol_elems = ([isol_elems[0]+10*(j+1) 
+            #                    for j in range(addl_bearings)] + 
+            #                    [isol_elems[-1]+10*(j+1) 
+            #                     for j in range(addl_bearings)])
             
             isol_elems = isol_elems + addl_isol_elems
         
