@@ -211,13 +211,6 @@ class Building:
                                for j in range(left_bearings)] + 
                                [isol_elems[-1]+10*(j+1) 
                                 for j in range(right_bearings)])
-                
-            # addl_bearings = round(n_edge_bearings/2) - 1
-            
-            # addl_isol_elems = ([isol_elems[0]+10*(j+1) 
-            #                    for j in range(addl_bearings)] + 
-            #                    [isol_elems[-1]+10*(j+1) 
-            #                     for j in range(addl_bearings)])
             
             isol_elems = isol_elems + addl_isol_elems
         
@@ -2146,6 +2139,7 @@ class Building:
             ops.load(nd, 0, 0, -p_applied, 0, 0, 0)
             
         # The following assumes two lateral frames. If more, then fix
+        # TODO: new w scheme including diaphragm may affect TFP addl loading
         isol_sys = self.isolator_system
         if isol_sys == 'TFP':
             # load right above isolation layer to increase stiffness to half-building for TFP
