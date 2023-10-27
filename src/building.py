@@ -2152,7 +2152,7 @@ class Building:
             n_bays = self.num_bays
             w_total = w_floor.sum()
             pOuter = w_total*(L_bay/2)*ft* ((L_bldg - L_bay)/L_bay)
-            pInner = w_total*(L_bay/2)*ft* ((L_bldg - L_bay)/L_bay)
+            pInner = w_total*(L_bay)*ft* ((L_bldg - L_bay)/L_bay)
 
             diaph_nds = self.node_tags['diaphragm']
             
