@@ -3,6 +3,11 @@
 */inputs/
 */output/
 */outputs/
+/tfp_mf/data/
+/src/archive/
+/testing/motions/
+/outputs/
+*.svg
 *.eps
 *.pptx
 *.xlsx
