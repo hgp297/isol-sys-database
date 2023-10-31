@@ -210,4 +210,22 @@ def plot_spectrum(input_df,
     plt.xlim([0, 5])
     plt.grid(True)
     
+    g = 386.4
+    pi = 3.14159
+    disp_gm = gm_spectrum.Sa*scale_factor*g*gm_spectrum.Period**2/(4*pi**2)
+    disp_target = target_spectrum.Target_Sa*g*target_spectrum['Period (sec)']**2/(4*pi**2)
+    
+    plt.figure()
+    plt.plot(gm_spectrum.Period, disp_gm)
+    plt.plot(target_spectrum['Period (sec)'], disp_target)
+    plt.axvline(t_lower, linestyle=':', color='red')
+    plt.axvline(t_upper, linestyle=':', color='red')
+    plt.axvline(T_m, linestyle=':', color='red')
+    plt.title('Displacement spectrum for '+GM_name)
+    plt.xlabel(r'Period $T_n$ (s)')
+    plt.ylabel(r'Displacement $D$ (in)')
+    plt.ylim([0, 50])
+    plt.xlim([0, 5])
+    plt.grid(True)
+    
 # a, b = scale_ground_motion()
