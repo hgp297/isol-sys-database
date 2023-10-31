@@ -212,8 +212,17 @@ def plot_spectrum(input_df,
     
     g = 386.4
     pi = 3.14159
+    from numpy import interp
+    
+    # from ASCE Ch. 17, get damping multiplier
+    zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    
+    # from T_m, zeta_M, S_1
+    B_m = interp(input_df['zeta_e'], zetaRef, BmRef)
+    
     disp_gm = gm_spectrum.Sa*scale_factor*g*gm_spectrum.Period**2/(4*pi**2)
-    disp_target = target_spectrum.Target_Sa*g*target_spectrum['Period (sec)']**2/(4*pi**2)
+    disp_target = target_spectrum.Target_Sa*g*target_spectrum['Period (sec)']**2/(4*pi**2*B_m)
     
     plt.figure()
     plt.plot(gm_spectrum.Period, disp_gm)
