@@ -352,7 +352,6 @@ class Building:
         w_cases = self.all_w_cases
         plc_cases = self.all_Plc_cases
         
-        # TODO: is p_lc divided here?
         w_floor = w_cases['1.0D+0.5L'] / ft
         p_lc = plc_cases['1.0D+0.5L']
         # w_floor = self.w_fl / ft    # kip/ft to kip/in
@@ -985,7 +984,6 @@ class Building:
         w_cases = self.all_w_cases
         plc_cases = self.all_Plc_cases
         
-        # TODO: is p_lc divided here?
         w_floor = w_cases['1.0D+0.5L'] / ft
         p_lc = plc_cases['1.0D+0.5L']
         # w_floor = self.w_fl / ft    # kip/ft to kip/in
@@ -2054,7 +2052,6 @@ class Building:
                     '-mat', impact_mat_tag,
                     '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         
-    #TODO: check loads
     def apply_grav_load(self):
         import openseespy.opensees as ops
         
@@ -2067,7 +2064,6 @@ class Building:
         w_cases = self.all_w_cases
         plc_cases = self.all_Plc_cases
         
-        # TODO: is p_lc divided here
         ft = 12.0
         w_floor = w_cases['1.0D+0.5L'] / ft
         p_lc = plc_cases['1.0D+0.5L']
@@ -2141,7 +2137,6 @@ class Building:
             ops.load(nd, 0, 0, -p_applied, 0, 0, 0)
             
         # The following assumes two lateral frames. If more, then fix
-        # TODO: new w scheme including diaphragm may affect TFP addl loading
         isol_sys = self.isolator_system
         if isol_sys == 'TFP':
             # load right above isolation layer to increase stiffness to half-building for TFP

@@ -951,7 +951,6 @@ def design_MF(input_df, db_string='../resource/'):
     Fx = input_df['Fx']
     h_col = input_df['h_col']
     
-    # TODO: removed diaphragm level for floor designs
     load_cases = input_df['all_w_cases']
     case_1 = load_cases['1.2D+0.5L+1.0E'][1:]/12
     case_2 = load_cases['0.9D-1.0E'][1:]/12
@@ -1542,7 +1541,6 @@ def design_CBF(input_df, db_string='../resource/'):
     h_story = input_df['h_story']*ft
     
     # cases specific to earthquake design
-    # TODO: removed diaphragm level for floor designs
     load_cases = input_df['all_w_cases']
     case_1 = load_cases['1.2D+0.5L+1.0E'][1:]/12
     case_2 = load_cases['0.9D-1.0E'][1:]/12

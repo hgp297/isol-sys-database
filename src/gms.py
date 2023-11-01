@@ -236,5 +236,7 @@ def plot_spectrum(input_df,
     plt.ylim([0, 50])
     plt.xlim([0, 5])
     plt.grid(True)
-    
+ 
+# TODO: plot real spectrum
+
 # a, b = scale_ground_motion()

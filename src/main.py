@@ -45,7 +45,7 @@ main_obj.scale_gms()
 # run = main_obj.retained_designs.loc[68]
 
 # troubleshoot
-run = main_obj.retained_designs.iloc[26]
+run = main_obj.retained_designs.iloc[0]
 
 from building import Building
 

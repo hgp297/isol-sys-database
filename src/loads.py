@@ -25,7 +25,6 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     
     import numpy as np
     
-    # TODO: changed to include diaphragm here (it affects W_tot)
     # assuming 100 psf D and 50 psf L for floors 
     # assume that D already includes structural members
     # D_loads in kip/ft^2
