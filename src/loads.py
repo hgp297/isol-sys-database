@@ -28,6 +28,7 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     # TODO: changed to include diaphragm here (it affects W_tot)
     # assuming 100 psf D and 50 psf L for floors 
     # assume that D already includes structural members
+    # D_loads in kip/ft^2
     if D_load is None:
         D_load = np.repeat(100.0/1000, n_floors+1)
     if L_load is None:
@@ -38,16 +39,16 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     L_load[-1] = 20.0/1000
     
     # assuming square building
-    A_bldg = (L_bay*n_bays)**2
+    A_bldg = (L_bay*n_bays)**2 # ft^2
     
-    # seismic weight: ASCE 7-22, Ch. 12.7.2
+    # seismic weight: ASCE 7-22, Ch. 12.7.2 (kips)
     W_seis = np.sum(D_load*A_bldg)
     W_super = np.sum(D_load[1:]*A_bldg)
     
     # assume lateral frames are placed on the edge
     trib_width_lat = L_bay/2
     
-    # line loads for lateral frame
+    # line loads for lateral frame (kip/ft)
     w_D = D_load*trib_width_lat
     w_L = L_load*trib_width_lat
     w_Ev = 0.2*S_s*w_D
@@ -72,7 +73,7 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     trib_width_LC = (L_bldg/n_frames) - trib_width_lat 
     trib_area_LC = trib_width_LC * L_bldg
     
-    # point loads for leaning column
+    # point loads for leaning column (kips)
     P_D = D_load*trib_area_LC
     P_L = L_load*trib_area_LC
     P_Ev = 0.2*S_s*P_D

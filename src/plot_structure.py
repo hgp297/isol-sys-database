@@ -141,7 +141,7 @@ def plot_dynamic(run, data_dir='./outputs/'):
         plt.plot(u_bearing, fs_bearing, linestyle='--')
         plt.axvline(run.moat_ampli*run.D_m, linestyle=':', color='red')
         plt.axvline(-run.moat_ampli*run.D_m, linestyle=':', color='red')
-        plt.title('Isolator hystereses (whole_building) (LRB)')
+        plt.title('Isolator hystereses (whole_building) (TFP)')
         plt.xlabel('Displ (in)')
         plt.ylabel('Lateral friction (V/N)')
         plt.grid(True)

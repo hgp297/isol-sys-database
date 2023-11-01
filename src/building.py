@@ -352,8 +352,9 @@ class Building:
         w_cases = self.all_w_cases
         plc_cases = self.all_Plc_cases
         
+        # TODO: is p_lc divided here?
         w_floor = w_cases['1.0D+0.5L'] / ft
-        p_lc = plc_cases['1.0D+0.5L'] / ft
+        p_lc = plc_cases['1.0D+0.5L']
         # w_floor = self.w_fl / ft    # kip/ft to kip/in
         # p_lc = self.P_lc
         
@@ -984,8 +985,9 @@ class Building:
         w_cases = self.all_w_cases
         plc_cases = self.all_Plc_cases
         
+        # TODO: is p_lc divided here?
         w_floor = w_cases['1.0D+0.5L'] / ft
-        p_lc = plc_cases['1.0D+0.5L'] / ft
+        p_lc = plc_cases['1.0D+0.5L']
         # w_floor = self.w_fl / ft    # kip/ft to kip/in
         # p_lc = self.P_lc
         
@@ -2055,7 +2057,6 @@ class Building:
     #TODO: check loads
     def apply_grav_load(self):
         import openseespy.opensees as ops
-        import numpy as np
         
         superstructure_system = self.superstructure_system
         
@@ -2066,9 +2067,10 @@ class Building:
         w_cases = self.all_w_cases
         plc_cases = self.all_Plc_cases
         
+        # TODO: is p_lc divided here
         ft = 12.0
         w_floor = w_cases['1.0D+0.5L'] / ft
-        p_lc = plc_cases['1.0D+0.5L'] / ft
+        p_lc = plc_cases['1.0D+0.5L']
         
         # TODO: no need to prepend
         # # append diaphragm level loads

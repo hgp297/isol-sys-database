@@ -38,11 +38,11 @@ main_obj.scale_gms()
 # # cbf tfp
 # run = main_obj.retained_designs.loc[193]
 
-# mf lrb
-run = main_obj.retained_designs.loc[704]
+# # mf lrb
+# run = main_obj.retained_designs.loc[704]
 
-# # mf tfp
-# run = main_obj.retained_designs.loc[68]
+# mf tfp
+run = main_obj.retained_designs.loc[68]
 
 from building import Building
 
