@@ -71,7 +71,6 @@ def plot_dynamic(run, data_dir='./outputs/'):
     u_bearing, fs_bearing = isolator.get_backbone()
     
     # TODO: print useful information on hystereses
-    # TODO: collect hysteresis for entire building
     isol_type = run.isolator_system
     if isol_type == 'LRB':
         plt.figure()
@@ -175,8 +174,6 @@ def plot_dynamic(run, data_dir='./outputs/'):
     plt.xlabel('Time (s)')
     plt.ylabel('Force (kip)')
     plt.grid(True)
-    
-    
     
     # TODO: collect Sa values, collect validation indicator (IDA level)
     num_stories = run.num_stories
