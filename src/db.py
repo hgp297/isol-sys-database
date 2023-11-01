@@ -343,7 +343,7 @@ class Database:
         
         self.retained_designs = all_des
         
-    def analyze_db(self, output_str,
+    def analyze_db(self, output_str, save_interval=10,
                    data_path='../data/',
                    gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
         
@@ -368,7 +368,7 @@ class Database:
                 db_results = pd.concat([db_results,bldg_result.to_frame().T], 
                                        sort=False)
                 
-            if (len(db_results)%10 == 0):
+            if (len(db_results)%save_interval == 0):
                 db_results.to_csv(data_path+'temp_save.csv', index=False)
         
         db_results.to_csv(data_path+output_str, index=False)

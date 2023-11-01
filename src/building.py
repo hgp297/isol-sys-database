@@ -2190,8 +2190,12 @@ class Building:
             ops.remove('sp', nodeTag, j)
         if(action == "fix"):
             ops.fix(nodeTag,  1, 1, 1, 1, 1, 1)
-        if(action == "unfix"):
+        elif(action == "unfix"):
             ops.fix(nodeTag,  0, 1, 0, 1, 0, 1)
+        elif(action == 'fix_lc'):
+            ops.fix(nodeTag,  1, 1, 1, 1, 0, 1)
+        elif(action == 'unfix_lc'):
+            ops.fix(nodeTag,  0, 1, 1, 1, 0, 1)
             
     def run_eigen(self):
         import openseespy.opensees as ops
@@ -2212,9 +2216,10 @@ class Building:
         
         diaph_nodes = self.node_tags['diaphragm']
         # fix base for Tfb
-        
+        lc_base = self.node_tags['leaning'][0]
         for diaph_nd in diaph_nodes:
             self.refix(diaph_nd, "fix")
+        self.refix(lc_base, 'fix_lc')
 
         nEigenJ = 2;                    # how many modes to analyze
         lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
@@ -2231,7 +2236,7 @@ class Building:
         # unfix base
         for diaph_nd in diaph_nodes:
             self.refix(diaph_nd, "unfix")
-        
+        self.refix(lc_base, 'unfix_lc')
         # provide damping to superstructure only
         import numpy as np
         
@@ -2792,13 +2797,6 @@ class Building:
             while (curr_time < T_end) and (ok == 0):
                 curr_time     = ops.getTime()
                 ok          = ops.analyze(1, dt_transient)
-                if ok != 0:
-                    print("Trying Newton with Initial Tangent...")
-                    ops.algorithm('Newton', '-initial')
-                    ok = ops.analyze(1, dt_transient)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
-                    ops.algorithm(algorithmTypeDynamic)
                 if ok != 0:
                     print("Trying Newton with line search ...")
                     ops.algorithm('NewtonLineSearch')
