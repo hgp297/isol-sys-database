@@ -14,7 +14,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     
     import pandas as pd
     import numpy as np
-    from gms import get_ST
+    from gms import get_gm_ST
     
     # TODO: collect Sa values, collect validation indicator (IDA level)
     num_stories = design['num_stories']
@@ -73,7 +73,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     if ss_type == 'MF':
         ok_thresh = 0.20
     else:
-        ok_thresh = 0.05
+        ok_thresh = 0.1
     # if run was OK, we collect true max values
     if run_status == 0:
         PID = np.maximum(inner_col_drift.abs().max(), 
@@ -119,11 +119,19 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     else:
         impact_bool = 0
         
-    Sa_Tm = get_ST(design, design['T_m'])
-    Sa_1 = get_ST(design, 1.0)
+    Tms_interest = np.array([design['T_m'], 1.0, Tfb])
+    Sa_gm = get_gm_ST(design, Tms_interest)
+    
+    Sa_Tm = Sa_gm[0]
+    Sa_1 = Sa_gm[1]
+    Sa_Tfb = Sa_gm[2]
+        
+    # Sa_Tm = get_ST(design, design['T_m'])
+    # Sa_1 = get_ST(design, 1.0)
     
     result_dict = {'sa_tm': Sa_Tm,
                    'sa_1': Sa_1,
+                   'sa_tfb': Sa_Tfb,
                    'constructed_moat': design['moat_ampli']*design['D_m'],
                    'T_1': T_1,
                    'T_fb': Tfb,

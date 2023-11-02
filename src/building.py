@@ -2784,6 +2784,7 @@ class Building:
         import time
         t0 = time.time()
         
+        # TODO: fatal errors in Broyden and BFGS (RAM related?)
         ok = ops.analyze(n_steps, dt_transient)   
         if ok != 0:
             ok = 0
@@ -2791,7 +2792,7 @@ class Building:
             print("Convergence issues at time: ", curr_time)
             while (curr_time < T_end) and (ok == 0):
                 curr_time     = ops.getTime()
-                ok          = ops.analyze(1, dt_transient)
+                ok = ops.analyze(1, dt_transient)
                 if ok != 0:
                     print("Trying Newton with line search ...")
                     ops.algorithm('NewtonLineSearch')
@@ -2813,7 +2814,6 @@ class Building:
                     ok = ops.analyze(1, dt_transient)
                     if ok == 0:
                         print("That worked. Back to Newton")
-
         t_final = ops.getTime()
         tp = time.time() - t0
         minutes = tp//60

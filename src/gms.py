@@ -126,6 +126,12 @@ def scale_ground_motion(input_df,
     
     return(gm_name, sf, target_average)
 
+def get_gm_ST(input_df, T_query):
+    Tn, gm_A, gm_D = generate_spectrum(input_df)
+    from numpy import interp
+    Sa_query = interp(T_query, Tn, gm_A)
+    return(Sa_query)
+    
 # TODO: convert grabbing spectrum values to real spectrum
 def get_ST(input_df, T_query, 
            db_dir='../resource/ground_motions/gm_db.csv',
@@ -193,7 +199,11 @@ def plot_spectrum(input_df,
     
     # generate true spectra for ground motion
     # scale factor applied internally, spectrum for damping of zeta_e
+    import time
+    t0 = time.time()
     Tn, gm_A, gm_D = generate_spectrum(input_df)
+    tp = time.time() - t0
+    print("Created spectrum in %.2f s" % tp)
     
     plt.figure()
     plt.plot(Tn, gm_A)
@@ -251,13 +261,9 @@ def generate_spectrum(input_df,
                            names=['Tn'], header=None)
     zeta = input_df['zeta_e']
     
-    import time
-    t0 = time.time()
     spec_df[['A', 
              'D']] = spec_df.apply(lambda row: spectrum_frequency_domain(row, zeta, uddg, dt),
                                                 axis='columns', result_type='expand')
-    tp = time.time() - t0
-    print("Created spectrum in %.2f s" % tp)
     
     return spec_df['Tn'], spec_df['A'], spec_df['D']
 

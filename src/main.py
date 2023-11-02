@@ -32,8 +32,8 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-# cbf lrb
-run = main_obj.retained_designs.loc[113]
+# # cbf lrb
+# run = main_obj.retained_designs.loc[113]
 
 # # cbf tfp
 # run = main_obj.retained_designs.loc[193]
@@ -45,12 +45,11 @@ run = main_obj.retained_designs.loc[113]
 # run = main_obj.retained_designs.loc[68]
 
 # # troubleshoot
-# run = main_obj.retained_designs.iloc[0]
+# run = main_obj.retained_designs.iloc[20]
 
-from building import Building
+# from building import Building
 
-# test build CBF
-bldg = Building(run)
+# bldg = Building(run)
 # bldg.model_frame()
 # bldg.apply_grav_load()
 
@@ -91,8 +90,8 @@ bldg = Building(run)
 
 #%% ground motion spectrum
 
-from gms import plot_spectrum
-plot_spectrum(run)
+# from gms import plot_spectrum
+# plot_spectrum(run)
 
 
 #%% animation
@@ -104,7 +103,7 @@ plot_spectrum(run)
 
 #%% generate analyze database
 
-# main_obj.analyze_db('structural_db_branch.csv', save_interval=5)
+main_obj.analyze_db('structural_db_branch.csv', save_interval=5)
 
 #%%
 
