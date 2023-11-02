@@ -268,6 +268,8 @@ def run_pushover(inputStr, pushoverStr, max_drift_ratio=0.1):
     isol4Force = pd.read_csv(dataDir+'isol4Force.csv', sep = ' ', 
                              header=None, names=forceColumns)
     
+    isolDisp = pd.read_csv(dataDir+'isolDisp.csv', sep=' ', 
+                             header=None, names=dispColumns)
     story3Disp = pd.read_csv(dataDir+'story3Disp.csv', sep=' ', 
                              header=None, names=dispColumns)
     
@@ -290,9 +292,10 @@ def run_pushover(inputStr, pushoverStr, max_drift_ratio=0.1):
     
     # rewrite the output to pushover
     pushover_df = pd.DataFrame({'roof_disp': story3Disp['isol1'],
+                                'isol_disp': isolDisp['isol1'],
                                 'base_shear_normalized': baseShearNormalize,
                                 'base_shear': baseShear})
-    pushover_df.to_csv('./outputs/pushover/'+pushoverStr, index=False)
+    pushover_df.to_csv(pushoverStr, index=False)
     
     return()
 
@@ -421,8 +424,21 @@ def plot_pushover(data_dir):
 #%% main runs
 
 inputString = './inputs/bearingInputVal_baseline.csv'
-outputString = 'pushover_addl_baseline.csv'
-run_pushover(inputString, outputString)
+outputString = './data/pushover/pushover_baseline.csv'
+run_pushover(inputString, outputString, max_drift_ratio=0.19)
+
+inputString = './inputs/bearingInputVal10.csv'
+outputString = './data/pushover/pushover_10.csv'
+run_pushover(inputString, outputString, max_drift_ratio=0.19)
+
+inputString = './inputs/bearingInputVal5.csv'
+outputString = './data/pushover/pushover_5.csv'
+run_pushover(inputString, outputString, max_drift_ratio=0.19)
+
+inputString = './inputs/bearingInputVal2_5.csv'
+outputString = './data/pushover/pushover_2_5.csv'
+run_pushover(inputString, outputString, max_drift_ratio=0.2)
+
 #%%
 
 # inputString = './inputs/bearingInputVal2_5.csv'
@@ -430,7 +446,8 @@ run_pushover(inputString, outputString)
 # run_pushover(inputString, outputString, max_drift_ratio=0.15)
 
 #%%
-plot_pushover('./outputs/pushover/')
+
+# plot_pushover('./outputs/pushover/')
 
 # inputString = './inputs/bearingInputVal5.csv'
 # outputString = 'pushover_addl_5.csv'

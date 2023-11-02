@@ -16,7 +16,7 @@ class Database:
     
     # sets up the problem by generating building specifications
     
-    def __init__(self, n_points=5000, seed=985):
+    def __init__(self, n_points=5000, seed=985, n_buffer=15):
         
         from scipy.stats import qmc
         import numpy as np
@@ -48,7 +48,7 @@ class Database:
             'T_m' : [2.0, 5.0],
             'k_ratio' :[5.0, 18.0],
             'Q': [0.05, 0.12],
-            'moat_ampli' : [0.8, 1.8],
+            'moat_ampli' : [0.6, 1.6],
             'RI' : [0.5, 2.25],
             'L_bldg': [75.0, 250.0],
             'h_bldg': [30.0, 100.0]
@@ -62,9 +62,14 @@ class Database:
         l_bounds = param_bounds[0,]
         u_bounds = param_bounds[1,]
         
+        self.n_points = n_points
+        
+        # roughly need 7x points to fill desired 
+        self.n_generated = n_points*n_buffer
+        
         dim_params = len(self.param_ranges)
         sampler = qmc.LatinHypercube(d=dim_params, seed=seed)
-        sample = sampler.random(n=n_points)
+        sample = sampler.random(n=self.n_generated)
         
         params = qmc.scale(sample, l_bounds, u_bounds)
         param_selection = pd.DataFrame(params)
@@ -82,7 +87,7 @@ class Database:
         # generate random integers within the bounds and place into array
         config_names = list(config_dict.keys())       
         num_categories = len(config_dict)
-        config_selection = np.empty([n_points, num_categories])
+        config_selection = np.empty([self.n_generated, num_categories])
         
         # set seed
         np.random.seed(seed)
@@ -90,7 +95,7 @@ class Database:
         for index, (key, bounds) in enumerate(config_dict.items()):
             config_selection[:,index] = np.random.randint(bounds[0], 
                                                                high=bounds[1]+1, 
-                                                               size=n_points)
+                                                               size=self.n_generated)
         config_selection = pd.DataFrame(config_selection)
         
         
@@ -98,10 +103,13 @@ class Database:
         import random
         random.seed(seed)
         struct_sys_list = ['MF', 'CBF']
-        isol_sys_list = ['TFP', 'LRB']
         
-        structs = random.choices(struct_sys_list, k=n_points)
-        isols = random.choices(isol_sys_list, k=n_points)
+        # upweigh LRBs to ensure fair split
+        isol_sys_list = ['TFP', 'LRB']
+        isol_wts = [1, 3]
+        
+        structs = random.choices(struct_sys_list, k=self.n_generated)
+        isols = random.choices(isol_sys_list, k=self.n_generated, weights=isol_wts)
         system_selection = pd.DataFrame(np.array([structs, isols]).T)
         system_names = ['superstructure_system', 'isolator_system']
         
@@ -116,12 +124,14 @@ class Database:
         # find the number of bay (try to keep around 3 to 8)
         target_Lbay = 30.0
         target_hstory = 14.0
-        self.raw_input['num_bays'] = self.raw_input.apply(lambda row: round(row['L_bldg']/target_Lbay),
-                                                          axis=1)
-        self.raw_input['num_stories'] = self.raw_input.apply(lambda row: round(row['h_bldg']/target_hstory),
-                                                          axis=1)
-        self.raw_input['L_bay'] = self.raw_input['L_bldg'] / self.raw_input['num_bays']
-        self.raw_input['h_story'] = self.raw_input['h_bldg'] / self.raw_input['num_stories']
+        self.raw_input['num_bays'] = self.raw_input.apply(
+            lambda row: round(row['L_bldg']/target_Lbay), axis=1)
+        self.raw_input['num_stories'] = self.raw_input.apply(
+            lambda row: round(row['h_bldg']/target_hstory), axis=1)
+        self.raw_input['L_bay'] = (self.raw_input['L_bldg'] / 
+                                   self.raw_input['num_bays'])
+        self.raw_input['h_story'] = (self.raw_input['h_bldg'] / 
+                                     self.raw_input['num_stories'])
         self.raw_input['S_s'] = 2.2815
         
 ###############################################################################
@@ -132,7 +142,6 @@ class Database:
     # retained. This may result in the LHS distribution being uneven.
     
     # loads are also defined here
-    # TODO: assertions
     
     def design_bearings(self, filter_designs=True):
         import time
@@ -191,6 +200,7 @@ class Database:
         
         
         all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
+                                   'N_lb', 'S_pad', 'S_2',
                                    'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
         
         if filter_designs == False:
@@ -234,7 +244,8 @@ class Database:
                'h_col', 
                'hsx', 
                'Fx', 
-               'Vs']] = df_in.apply(lambda row: define_lateral_forces(row),
+               'Vs',
+               'T_fbe']] = df_in.apply(lambda row: define_lateral_forces(row),
                                     axis='columns', result_type='expand')
         
         # separate by superstructure systems
@@ -249,15 +260,16 @@ class Database:
                                        axis='columns', 
                                        result_type='expand')
         
-        all_mf_designs.columns = ['beam', 'roof', 'column', 'flag']
+        all_mf_designs.columns = ['beam', 'column', 'flag']
         
         if filter_designs == False:
             mf_designs = all_mf_designs
         else:
             # keep the designs that look sensible
             mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
-            mf_designs = all_mf_designs.dropna(subset=['beam','column','roof'])
-            
+            mf_designs = mf_designs.dropna(subset=['beam','column'])
+         
+        mf_designs = mf_designs.drop(['flag'], axis=1)
         tp = time.time() - t0
       
         # get the design params of those bearings
@@ -289,15 +301,28 @@ class Database:
         print("Designs completed for %d braced frames in %.2f s" %
               (cbf_df.shape[0], tp))
         
-        # TODO: method to retain only flat n points
-        
-    def scale_gms(self):
-        
-        import pandas as pd
-        
         # join both systems
         all_des = pd.concat([self.mf_designs, self.cbf_designs], 
                                      axis=0)
+        # retained designs
+        self.retained_designs = all_des.head(self.n_points)
+        self.generated_designs = all_des
+        
+        print('======================================')
+        print('Final database: %d structures.' % len(self.retained_designs))
+        print('%d moment frames | %d braced frames' % 
+              (len(self.retained_designs[self.retained_designs['superstructure_system'] == 'MF']),
+               len(self.retained_designs[self.retained_designs['superstructure_system'] == 'CBF'])))
+        print('%d LRBs | %d TFPs' % 
+              (len(self.retained_designs[self.retained_designs['isolator_system'] == 'LRB']),
+               len(self.retained_designs[self.retained_designs['isolator_system'] == 'TFP'])))
+        print('======================================')
+        
+    def scale_gms(self):
+        
+        
+        # only scale motions that will be retained
+        all_des = self.retained_designs.copy()
         
         # set seed to ensure same GMs are selected
         from random import seed
@@ -306,16 +331,46 @@ class Database:
         # scale and select ground motion
         # TODO: this section is inefficient
         from gms import scale_ground_motion
+        import time
+        t0 = time.time()
         all_des[['gm_selected',
                  'scale_factor',
                  'sa_avg']] = all_des.apply(lambda row: scale_ground_motion(row),
                                             axis='columns', result_type='expand')
-                                            
-        self.all_designs = all_des
+        tp = time.time() - t0
+        print("Scaled ground motions for %d structures in %.2f s" %
+              (all_des.shape[0], tp))
         
+        self.retained_designs = all_des
         
+    def analyze_db(self, output_str, save_interval=10,
+                   data_path='../data/',
+                   gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
         
+        from experiment import run_nlth
+        import pandas as pd
         
+        all_designs = self.retained_designs
         
+        db_results = None
         
+        for index, design in all_designs.iterrows():
+            i_run = all_designs.index.get_loc(index)
+            print('========= Run %d of %d ==========' % 
+                  (i_run+1, len(all_designs)))
+            bldg_result = run_nlth(design, gm_path)
+            
+            # TODO: find a way to keep indices
+            # if initial run, start the dataframe with headers from postprocessing.py
+            if db_results is None:
+                db_results = pd.DataFrame(bldg_result).T
+            else:
+                db_results = pd.concat([db_results,bldg_result.to_frame().T], 
+                                       sort=False)
+                
+            if (len(db_results)%save_interval == 0):
+                db_results.to_csv(data_path+'temp_save.csv', index=False)
         
+        db_results.to_csv(data_path+output_str, index=False)
+        self.ops_analysis = db_results
+                

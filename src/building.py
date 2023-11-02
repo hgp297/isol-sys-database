@@ -45,7 +45,7 @@ class Building:
         ##############################
         
         # base nodes
-        base_id = 800
+        base_id = 900
         base_nodes = [node for node in range(base_id, base_id+n_bays+1)]
         
         # wall nodes
@@ -58,13 +58,18 @@ class Building:
         
         # flatten list to get all nodes
         floor_nodes = [nd for fl in nds for nd in fl]
+        
+        diaph_nodes = [nd for nd in floor_nodes
+                       if nd//10 == 1]
             
         # for braced frames, additional nodes are needed
         if frame_type == 'CBF':
             n_braced = int(round(n_bays/2.25))
+            n_braced = max(n_braced, 1)
             
             # roughly center braces around middle of the building
             n_start = round(n_bays/2 - n_braced/2)
+            n_start = max(n_start, 1)
             
             # start from first interior bay
             # no ground floor included
@@ -193,6 +198,22 @@ class Building:
         # make isolators above base nodes
         isol_elems = [nd+isol_id for nd in base_nodes]
         
+        # for LRB, we need additional bearings represented at the edges
+        from math import ceil
+        isol_type = self.isolator_system
+        if isol_type == 'LRB':
+            n_edge_bearings = n_bays+1
+            total_addl_bearings = n_edge_bearings - 2
+            
+            left_bearings = ceil(total_addl_bearings/2)
+            right_bearings = total_addl_bearings - left_bearings
+            addl_isol_elems = ([isol_elems[0]+10*(j+1) 
+                               for j in range(left_bearings)] + 
+                               [isol_elems[-1]+10*(j+1) 
+                                for j in range(right_bearings)])
+            
+            isol_elems = isol_elems + addl_isol_elems
+        
         # spring elements, series 5000
         spring_id = 5000
         spring_elems = [nd+spring_id for nd in spring_nodes]
@@ -233,7 +254,8 @@ class Building:
             'floor': floor_nodes,
             'leaning': leaning_nodes,
             'spring': spring_nodes,
-            'lc_spring': lc_spr_nodes
+            'lc_spring': lc_spr_nodes,
+            'diaphragm': diaph_nodes
             }
         
         if frame_type == 'CBF':
@@ -288,6 +310,16 @@ class Building:
             
 
     def model_frame(self):
+        print('=========== Constructing model ===========')
+        print('Frame type:', self.superstructure_system, '|', 
+              'Isolator type:', self.isolator_system)
+        print('%d bays, %d stories, D_m = %.2f' % 
+              (self.num_bays, self.num_stories, self.D_m))
+        print('Moat amplification = %.2f | Ry = %.2f' % 
+              (self.moat_ampli, self.RI))
+        print('Tm = %.2f s | Q = %.2f | k_ratio = %.2f' %
+              (self.T_m, self.Q, self.k_ratio))
+        
         if self.superstructure_system == 'MF':
             self.model_moment_frame()
         else:
@@ -304,6 +336,7 @@ class Building:
         
         # remove existing model
         ops.wipe()
+        ops.wipeAnalysis()
 
         # units: in, kip, s
         # dimensions
@@ -320,7 +353,7 @@ class Building:
         plc_cases = self.all_Plc_cases
         
         w_floor = w_cases['1.0D+0.5L'] / ft
-        p_lc = plc_cases['1.0D+0.5L'] / ft
+        p_lc = plc_cases['1.0D+0.5L']
         # w_floor = self.w_fl / ft    # kip/ft to kip/in
         # p_lc = self.P_lc
         
@@ -334,10 +367,12 @@ class Building:
         m_grav_inner = w_floor * L_bay / g
         m_grav_outer = w_floor * L_bay / 2 /g
         m_lc = p_lc / g
-        # prepend mass onto the "ground" level
-        m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
-        m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
-        m_lc = np.insert(m_lc, 0 , m_lc[0])
+        
+        # TODO: no need to prepend diaphragm
+        # # prepend mass onto the "ground" level
+        # m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
+        # m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
+        # m_lc = np.insert(m_lc, 0 , m_lc[0])
         
         # load for isolators vertical
         p_outer = sum(w_floor)*L_bay/2
@@ -349,9 +384,12 @@ class Building:
         
         self.number_nodes()
         
-        selected_col = get_shape(self.column, 'column')
-        selected_beam = get_shape(self.beam, 'beam')
-        selected_roof = get_shape(self.roof, 'beam')
+        # selected_col = get_shape(self.column, 'column')
+        # selected_beam = get_shape(self.beam, 'beam')
+        # selected_roof = get_shape(self.roof, 'beam')
+        
+        col_list = self.column
+        beam_list = self.beam
         
         # base nodes
         base_nodes = self.node_tags['base']
@@ -361,7 +399,6 @@ class Building:
         
         # wall nodes (should only be two)
         n_bays = int(self.num_bays)
-        n_floors = int(self.num_stories)
         
         wall_nodes = self.node_tags['wall']
         ops.node(wall_nodes[0], 0.0*ft, 0.0*ft, 0.0*ft)
@@ -437,10 +474,10 @@ class Building:
         elastic_mat_tag = 52
         torsion_mat_tag = 53
         
-        # Steel material tag
-        steel_col_tag = 31
-        steel_beam_tag = 32
-        steel_roof_tag = 33
+        # # Steel material tag
+        # steel_col_tag = 31
+        # steel_beam_tag = 32
+        # steel_roof_tag = 33
     
         # Isolation layer tags
         friction_1_tag = 41
@@ -450,6 +487,12 @@ class Building:
         
         # Impact material tags
         impact_mat_tag = 91
+        
+        # reserve blocks of 10 for integration and section tags
+        col_sec = 110
+        
+        beam_sec = 120
+        
         
 ################################################################################
 # define materials
@@ -470,86 +513,16 @@ class Building:
 ################################################################################
 # define spring materials
 ################################################################################
-            
-        # Iz is the stronger axis
-        (Ag_col, Iz_col, Iy_col,
-         Zx_col, Sx_col, d_col,
-         bf_col, tf_col, tw_col) = get_properties(selected_col)
-        (Ag_beam, Iz_beam, Iy_beam,
-         Zx_beam, Sx_beam, d_beam,
-         bf_beam, tf_beam, tw_beam) = get_properties(selected_beam)
-        (Ag_roof, Iz_roof, Iy_roof,
-         Zx_roof, Sx_roof, d_roof,
-         bf_roof, tf_roof, tw_roof) = get_properties(selected_roof)
-        
-        # Modified IK steel
-        cIK = 1.0
-        DIK = 1.0
-        (Ke_col, My_col, lam_col,
-         thp_col, thpc_col,
-         kappa_col, thu_col) = modified_IK_params(selected_col, L_col)
-        (Ke_beam, My_beam, lam_beam,
-         thp_beam, thpc_beam,
-         kappa_beam, thu_beam) = modified_IK_params(selected_beam, L_beam)
-        (Ke_roof, My_roof, lam_roof,
-         thp_roof, thpc_roof,
-         kappa_roof, thu_roof) = modified_IK_params(selected_roof, L_beam)
-    
-        # calculate modified section properties to account for spring stiffness being in series with the elastic element stiffness
-        # Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
-        n = 10 # stiffness multiplier for rotational spring
-        
-        Iz_col_mod = Iz_col*(n+1)/n
-        Iz_beam_mod = Iz_beam*(n+1)/n
-        Iz_roof_mod = Iz_roof*(n+1)/n
-    
-        Iy_col_mod = Iy_col*(n+1)/n
-        Iy_beam_mod = Iy_beam*(n+1)/n
-        Iy_roof_mod = Iy_roof*(n+1)/n
-    
-        Ke_col = n*6.0*Es*Iz_col/(0.8*L_col)
-        Ke_beam = n*6.0*Es*Iz_beam/(0.8*L_beam)
-        Ke_roof = n*6.0*Es*Iz_roof/(0.8*L_beam)
-    
-        McMy = 1.05 # ratio of capping moment to yield moment, Mc / My
-        a_mem_col = (n+1.0)*(My_col*(McMy-1.0))/(Ke_col*thp_col)
-        b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
-    
-        a_mem_beam = (n+1.0)*(My_col*(McMy-1.0))/(Ke_beam*thp_beam)
-        b_beam = a_mem_beam/(1.0+n*(1.0-a_mem_beam))
-    
-        # TODO: change this to the new IMKBilin element
-        ops.uniaxialMaterial('Bilin', steel_col_tag, Ke_col, b_col, b_col,
-                              My_col, -My_col, lam_col, 
-                              0, 0, 0, cIK, cIK, cIK, cIK, 
-                              thp_col, thp_col, thpc_col, thpc_col, 
-                              kappa_col, kappa_col, thu_col, thu_col, DIK, DIK)
-    
-        ops.uniaxialMaterial('Bilin', steel_beam_tag, Ke_beam, b_beam, b_beam,
-                              My_beam, -My_beam, lam_beam, 
-                              0, 0, 0, cIK, cIK, cIK, cIK, 
-                              thp_beam, thp_beam, thpc_beam, thpc_beam, 
-                              kappa_beam, kappa_beam, thu_beam, thu_beam, DIK, DIK)
-    
-        ops.uniaxialMaterial('Bilin', steel_roof_tag, Ke_roof, b_beam, b_beam,
-                              My_roof, -My_roof, lam_roof, 
-                              0, 0, 0, cIK, cIK, cIK, cIK, 
-                              thp_roof, thp_roof, thpc_roof, thpc_roof, 
-                              kappa_roof, kappa_roof, thu_roof, thu_roof, DIK, DIK)
-        
-################################################################################
-# define springs
-################################################################################
-
-        # Create springs at column and beam ends
-        # Springs follow Modified Ibarra Krawinkler model
-        # have spring local z be global y, then allow rotation around local z
-        column_x = [0, 0, 1]
-        column_y = [1, 0, 0]
-        beam_x = [1, 0, 0]
-        beam_y = [0, 0, 1]
-        
         def rot_spring_bilin(eleID, matID, nodeI, nodeJ, mem_tag):
+            
+            # Create springs at column and beam ends
+            # Springs follow Modified Ibarra Krawinkler model
+            # have spring local z be global y, then allow rotation around local z
+            column_x = [0, 0, 1]
+            column_y = [1, 0, 0]
+            beam_x = [1, 0, 0]
+            beam_y = [0, 0, 1]
+            
             # columns
             if mem_tag == 1:
                 # Create zero length element (spring), rotations allowed about local z axis
@@ -568,9 +541,70 @@ class Building:
                     '-dir', 1, 2, 3, 4, 5, 6, 
                     '-orient', *beam_x, *beam_y,
                     '-doRayleigh', 1)
-                
-            # ops.equalDOF(nodeI, nodeJ, 1, 2, 3, 4, 6)
+        
+        cIK = 1.0
+        DIK = 1.0
+        n_mik = 10.0
+        McMy = 1.11 # ratio of capping moment to yield moment, Mc / My
+        
+        for fl_col, col in enumerate(col_list):
             
+            current_col = get_shape(col, 'column')
+            
+            # column section
+            # match the tag number with the floor's node number
+            # for column, this is the bottom node (col between 10 and 20 has tag 111)
+            # e.g. first col bot nodes at 3x -> tag 113 and 153
+            
+            current_col_sec = col_sec + fl_col + 1
+            
+            # Iz is the stronger axis
+            (Ag_col, Iz_col, Iy_col,
+             Zx_col, Sx_col, d_col,
+             bf_col, tf_col, tw_col) = get_properties(current_col)
+            
+            # Modified IK steel, adjusted for length from PH to PH
+            (Ke_col, My_col, lam_col,
+             thp_col, thpc_col,
+             kappa_col, thu_col) = modified_IK_params(current_col, 0.8*L_col)
+            
+            ops.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
+                                  thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
+                                  thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
+                                  lam_col, lam_col, lam_col,
+                                  cIK, cIK, cIK,
+                                  DIK, DIK, DIK)
+            
+        for fl_beam, beam in enumerate(beam_list):
+            current_beam = get_shape(beam, 'beam')
+            
+            # beam section: fiber wide flange section
+            # match the tag number with the floor's node number
+            # e.g. first beams nodes at 2x -> tag 132 and 172
+        
+            current_beam_sec = beam_sec + fl_beam + 2
+            
+            # Iz is the stronger axis
+            (Ag_beam, Iz_beam, Iy_beam,
+             Zx_beam, Sx_beam, d_beam,
+             bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
+            
+            # Modified IK steel, adjusted for length from PH to PH
+            (Ke_beam, My_beam, lam_beam,
+             thp_beam, thpc_beam,
+             kappa_beam, thu_beam) = modified_IK_params(current_beam, 0.8*L_beam)
+            
+            ops.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
+                                  thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
+                                  thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
+                                  lam_beam, lam_beam, lam_beam,
+                                  cIK, cIK, cIK,
+                                  DIK, DIK, DIK)
+        
+################################################################################
+# define springs
+################################################################################
+
         # spring elements: #5xxx, xxx is the spring node
         spring_id = self.elem_ids['spring']
         spring_elems = self.elem_tags['spring']
@@ -581,22 +615,37 @@ class Building:
             # if last digit is 6 or 8, assign column transformations
             if (spr_nd%10)%2 == 0:
                 mem_tag = 1
-                rot_spring_bilin(elem_tag, steel_col_tag, 
+                
+                # get xXxx digit (floor number), adjust to correctly identify
+                # floor's column
+                if (spr_nd%10) == 8:
+                    fl_num = (spr_nd//100)%10
+                elif (spr_nd%10) == 6:
+                    fl_num = (spr_nd//100)%10 - 1
+                
+                # add to match previously defined column tags
+                steel_tag = col_sec + fl_num
+                
+                # make spring with the appropriate material/section
+                rot_spring_bilin(elem_tag, steel_tag, 
                                  parent_nd, spr_nd, mem_tag)
             else:
                 mem_tag = 2
                 
-                # if beam is on top floor, use roof beam springs
-                if (parent_nd//10) == n_floors + 1:
-                    rot_spring_bilin(elem_tag, steel_roof_tag, 
-                                     parent_nd, spr_nd, mem_tag)
-                else:
-                    rot_spring_bilin(elem_tag, steel_beam_tag, 
-                                     parent_nd, spr_nd, mem_tag)
-            
+                # get xXxx digit (floor number)
+                fl_num = (spr_nd//100)%10
+                
+                # beam tags end in 2
+                steel_tag = beam_sec + fl_num
+                
+                # make spring with the appropriate material/section
+                rot_spring_bilin(elem_tag, steel_tag, 
+                                 parent_nd, spr_nd, mem_tag)
+                
 ###############################################################################
 # define beams and columns
 ###############################################################################
+        
         # geometric transformation for beam-columns
         # command: geomTransf('Linear', transfTag, *vecxz, '-jntOffset', *dI, *dJ) for 3d
         beam_transf_tag   = 1
@@ -622,13 +671,31 @@ class Building:
         ops.geomTransf('Corotational', col_transf_tag, *vecxz_col) # columns
         
         # outside of concentrated plasticity zones, use elastic beam columns
-        
         # define the columns
         col_id = self.elem_ids['col']
         col_elems = self.elem_tags['col']
         for elem_tag in col_elems:
             i_nd = (elem_tag - col_id)*10 + 8
             j_nd = (elem_tag - col_id + 10)*10 + 6
+            
+            # determine which floor's column to use
+            cur_floor_idx = (elem_tag//10)%10 - 1
+            col_name = col_list[cur_floor_idx]
+            current_col = get_shape(col_name, 'column')
+            
+            # Iz is the stronger axis
+            (Ag_col, Iz_col, Iy_col,
+             Zx_col, Sx_col, d_col,
+             bf_col, tf_col, tw_col) = get_properties(current_col)
+            
+            # calculate modified section properties to account for spring stiffness 
+            # being in series with the elastic element stiffness
+            # Ibarra, L. F., and Krawinkler, H. (2005). 
+            # "Global collapse of frame structures under seismic excitations,"
+            
+            Iz_col_mod = Iz_col*(n_mik+1)/n_mik
+            Iy_col_mod = Iy_col*(n_mik+1)/n_mik
+            
             ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         Ag_col, Es, Gs, J, Iy_col_mod, Iz_col_mod, col_transf_tag)
         
@@ -639,16 +706,28 @@ class Building:
             i_nd = (elem_tag - beam_id)*10 + 9
             j_nd = (elem_tag - beam_id + 1)*10 + 7
             
-            # if beam is on top floor, use roof beam
-            if (elem_tag//10)%10 == n_floors + 1:
-                ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
-                            Ag_roof, Es, Gs, J, Iy_roof_mod, Iz_roof_mod, 
-                            beam_transf_tag)
-            else:
-                ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
-                            Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
-                            beam_transf_tag)
-
+            # determine which floor's column to use
+            cur_floor_idx = (elem_tag//10)%10 - 2
+            beam_name = beam_list[cur_floor_idx]
+            current_beam = get_shape(beam_name, 'beam')
+            
+            # Iz is the stronger axis
+            (Ag_beam, Iz_beam, Iy_beam,
+             Zx_beam, Sx_beam, d_beam,
+             bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
+            
+            # calculate modified section properties to account for spring stiffness 
+            # being in series with the elastic element stiffness
+            # Ibarra, L. F., and Krawinkler, H. (2005). 
+            # "Global collapse of frame structures under seismic excitations,"
+            
+            Iz_beam_mod = Iz_beam*(n_mik+1)/n_mik
+            Iy_beam_mod = Iy_beam*(n_mik+1)/n_mik
+            
+            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                        Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
+                        beam_transf_tag)
+        
 ################################################################################
 # define leaning column
 ################################################################################
@@ -705,7 +784,6 @@ class Building:
         if self.isolator_system == 'TFP':
             
             # TFP system
-            # TODO: check displacement capacities
             # Isolator parameters
             R1 = self.R_1
             R2 = self.R_2
@@ -766,15 +844,50 @@ class Building:
             G_r = 0.060*ksi
             D_inner = self.d_lead
             D_outer = self.d_bearing
-            t_shim = 0.1*inch
+            t_shim = 0.13*inch
             t_rubber_whole = self.t_r
             n_layers = int(self.n_layers)
             t_layer = t_rubber_whole/n_layers
             
             # calculate yield strength. this assumes design was done correctly
-            Q_L = self.Q * self.W
+            pi = 3.14159
+            f_y_Pb = 1.5 # ksi, shear yield strength
+            
+            Fy_LRB = f_y_Pb*pi*D_inner**2/4
+            
+            # Q_L = f_y_Pb*pi*D_inner**2/4
+            # # N_lb = 4*self.num_bays
+            # # Q_L = self.Q * self.W / N_lb
+            
             alpha = 1.0/self.k_ratio
-            Fy_LRB = Q_L/(1 - alpha)
+            # Fy_LRB = Q_L/(1 - alpha)
+            
+            kc = 10.0
+            phi_M = 0.5
+            ac = 1.0
+            
+            qL_imp = 0.4046256704 # (lbs/in^3) density of lead 
+            cL_imp = 0.03076 # (Btu/lb/degF) specific heat of lead at room temp
+            kS_imp = 26.0*12.0 # (Btu/(hr*in*F)) thermal conductivity of steel 
+            aS_imp = 0.018166036 # (in^2/s) thermal diffusivity of steel 
+
+            sdr = 0.5
+            # guesstimate 60% of the entire bearing volume's mass in lead
+            # mb = qL_imp*pi*D_outer**2/4*t_rubber_whole*0.6
+            mb = 0.0
+            cd = 0.0
+            tc = 1.0
+            
+            tag_1 = 0 # cavitation
+            tag_2 = 1 # buckling load variation
+            tag_3 = 1 # horiz stiffness variation
+            tag_4 = 0 # vertical stiffness variation
+            tag_5 = 0 # heat
+            
+            addl_params = [0, 0, 1, 1, 0, 0,
+                           kc, phi_M, ac, sdr, mb, cd, tc,
+                           qL_imp, cL_imp, kS_imp, aS_imp,
+                           tag_1, tag_2, tag_3, tag_4, tag_5]
             
             # define 2-D isolation layer 
             isol_id = self.elem_ids['isolator']
@@ -782,29 +895,19 @@ class Building:
             isol_elems = self.elem_tags['isolator']
             
             for elem_idx, elem_tag in enumerate(isol_elems):
-                i_nd = elem_tag - isol_id
-                j_nd = elem_tag - isol_id - base_id + 10
                 
-                # if top node is furthest left or right, vertical force is outer
-                if (j_nd == 0) or (j_nd%10 == n_bays):
-                    p_vert = p_outer
+                # if it is an unstacked bearing, it will have xx0x
+                if (elem_tag//10)%10 == 0:
+                    i_nd = elem_tag - isol_id
+                    j_nd = elem_tag - isol_id - base_id + 10
                 else:
-                    p_vert = p_inner
+                    bay_pos = elem_tag % 10
+                    i_nd = base_id + bay_pos
+                    j_nd = i_nd - base_id + 10
                     
-                # TODO: change temp coefficients to imperial units
-                # ad-hoc change edge bearing to have area equivalent to stacked LRBs
-                from math import floor
-                n_addl_bearings = floor(n_bays/2)
-                if (elem_idx == 0) or (elem_idx == len(isol_elems)):
-                    mod_D_inner = (n_addl_bearings+1)*D_inner
-                    mod_D_outer = (n_addl_bearings+1)*D_outer
-                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                                G_r, K_bulk, mod_D_inner, mod_D_outer,
-                                t_shim, t_layer, n_layers)
-                else:
-                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                                G_r, K_bulk, D_inner, D_outer,
-                                t_shim, t_layer, n_layers)
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                            G_r, K_bulk, D_inner, D_outer,
+                            t_shim, t_layer, n_layers, *addl_params)
   
 ################################################################################
 # Walls
@@ -814,12 +917,13 @@ class Building:
         # https://opensees.berkeley.edu/wiki/index.php/Impact_Material
         # assume slab of base layer is 6 in
         # model half of slab
-        VSlab = (6*inch)*(45*ft)*(90*ft)
+        L_bldg = self.L_bldg
+        VSlab = (6*inch)*(L_bldg/2*ft)*(L_bldg*ft)
         pi = 3.14159
         RSlab = (3/4/pi*VSlab)**(1/3)
         
-        # assume wall extends 9 ft up to isolation layer and is 12 in thick
-        VWall = (12*inch)*(1*ft)*(45*ft)
+        # assume wall extends 1 ft up to isolation layer and is 12 in thick
+        VWall = (12*inch)*(1*ft)*(L_bldg/2*ft)
         RWall = (3/4/pi*VWall)**(1/3)
         
         # concrete slab and wall properties
@@ -849,11 +953,11 @@ class Building:
         wall_elems = self.elem_tags['wall']
         
         ops.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
-                    '-mat', impact_mat_tag, elastic_mat_tag,
-                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+                    '-mat', impact_mat_tag,
+                    '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
-                    '-mat', impact_mat_tag, elastic_mat_tag,
-                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+                    '-mat', impact_mat_tag,
+                    '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         
         print('Elements placed.')
         # ops.printModel('-file', './test.log')
@@ -864,6 +968,7 @@ class Building:
         
         # remove existing model
         ops.wipe()
+        ops.wipeAnalysis()
 
         # units: in, kip, s
         # dimensions
@@ -880,7 +985,7 @@ class Building:
         plc_cases = self.all_Plc_cases
         
         w_floor = w_cases['1.0D+0.5L'] / ft
-        p_lc = plc_cases['1.0D+0.5L'] / ft
+        p_lc = plc_cases['1.0D+0.5L']
         # w_floor = self.w_fl / ft    # kip/ft to kip/in
         # p_lc = self.P_lc
         
@@ -898,12 +1003,14 @@ class Building:
         m_grav_brace = w_floor * L_bay / 2 /g
         m_grav_br_col = w_floor * L_bay * 3/4 /g
         m_lc = p_lc / g
-        # prepend mass onto the "ground" level
-        m_grav_brace = np.insert(m_grav_brace, 0 , m_grav_brace[0])
-        m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
-        m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
-        m_grav_br_col = np.insert(m_grav_br_col, 0 , m_grav_br_col[0])
-        m_lc = np.insert(m_lc, 0 , m_lc[0])
+        
+        # TODO: no need to prepend diaphragm
+        # # prepend mass onto the "ground" level
+        # m_grav_brace = np.insert(m_grav_brace, 0 , m_grav_brace[0])
+        # m_grav_inner = np.insert(m_grav_inner, 0 , m_grav_inner[0])
+        # m_grav_outer = np.insert(m_grav_outer, 0 , m_grav_outer[0])
+        # m_grav_br_col = np.insert(m_grav_br_col, 0 , m_grav_br_col[0])
+        # m_lc = np.insert(m_lc, 0 , m_lc[0])
         
         # load for isolators vertical
         p_outer = sum(w_floor)*L_bay/2
@@ -964,6 +1071,10 @@ class Building:
                 m_nd = m_grav_outer[fl]
             elif (bay == n_start) or (bay == n_start+n_braced):
                 m_nd = m_grav_br_col[fl]
+            # if column is within braces, but not edge of braced bays
+            # it would take wL/4 from each side
+            elif (bay > n_start) and (bay < n_start+n_braced):
+                m_nd = m_grav_brace[fl]
             else:
                 m_nd = m_grav_inner[fl]
             negligible = 1e-15
@@ -1182,7 +1293,6 @@ class Building:
         E_ghost = 100.0
         ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
         
-        
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
         Fy  = 50*ksi        # yield strength
@@ -1191,16 +1301,18 @@ class Building:
         cR1 = 0.925
         cR2 = 0.15
         ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
-        ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
-        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+        
+        ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        
+        # ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
+        # ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
         L_avg = 0.75* L_gp
         t_gp = 1.375*inch
-        Fy_gp = 50*ksi
+        Fy_gp = 36*ksi
         
-        # TODO: check dimension of gusset plate
         My_GP = (W_w*t_gp**2/6)*Fy_gp
         K_rot_GP = Es/L_avg * (W_w*t_gp**3/12)
         b_GP = 0.01
@@ -1215,7 +1327,8 @@ class Building:
         beam_transf_tag   = 1
         col_transf_tag    = 2
         brace_beam_transf_tag = 3
-        brace_transf_tag = 4
+        brace_transf_tag_L = 4
+        brace_transf_tag_R = 5
         
         # this is different from moment frame
         # beam geometry
@@ -1235,25 +1348,29 @@ class Building:
         vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
         vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
         
-        # brace geometry (we can use one because HSS is symmetric)
+        # brace geometry (left)
         xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10)
         xyz_j = ops.nodeCoord(brace_top_nodes[0])
         brace_x_axis_L = np.subtract(xyz_j, xyz_i)
         brace_x_axis_L = brace_x_axis_L / np.sqrt(np.sum(brace_x_axis_L**2))
         vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
         vecxz = np.cross(brace_x_axis_L,vecxy_brace) # What OpenSees expects
-        vecxz_brace = vecxz / np.sqrt(np.sum(vecxz**2))
+        vecxz_brace_L = vecxz / np.sqrt(np.sum(vecxz**2))
         
-        # brace geometry (we can use one because HSS is symmetric)
+        # brace geometry (right)
         xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10 + 1)
         xyz_j = ops.nodeCoord(brace_top_nodes[0])
         brace_x_axis_R = np.subtract(xyz_j, xyz_i)
         brace_x_axis_R = brace_x_axis_R / np.sqrt(np.sum(brace_x_axis_R**2))
+        vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
+        vecxz = np.cross(brace_x_axis_R,vecxy_brace) # What OpenSees expects
+        vecxz_brace_R = vecxz / np.sqrt(np.sum(vecxz**2))
         
         ops.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
         ops.geomTransf('PDelta', beam_transf_tag, *vecxz_beam) # beams
         ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
-        ops.geomTransf('Corotational', brace_transf_tag, *vecxz_brace) # braces
+        ops.geomTransf('Corotational', brace_transf_tag_L, *vecxz_brace_L) # braces
+        ops.geomTransf('Corotational', brace_transf_tag_R, *vecxz_brace_R) # braces
         
         # outside of concentrated plasticity zones, use elastic beam columns
         
@@ -1404,6 +1521,7 @@ class Building:
         brace_id = self.elem_ids['brace']
         brace_elems = self.elem_tags['brace']
         
+        goes_ne = [4,8]
         for elem_tag in brace_elems:
             
             # if tag is 02 or 04, it extends from the bottom up
@@ -1423,6 +1541,10 @@ class Building:
             j_floor = j_nd//1000
             
             current_brace_int = j_floor - 1 + br_int
+            if (i_nd%10 in goes_ne):
+                brace_transf_tag = brace_transf_tag_L
+            else:
+                brace_transf_tag = brace_transf_tag_R
             ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_transf_tag, current_brace_int)
             
@@ -1548,11 +1670,18 @@ class Building:
         brace_top_rigid_links = [link for link in brace_top_links
                                  if link%10 < 3]
         
+        goes_ne = [2]
+        
         for link_tag in brace_top_rigid_links:
             outer_nd = link_tag - brace_spr_id
             i_nd = outer_nd
             j_nd = outer_nd//10
             
+            if (outer_nd%10 in goes_ne):
+                brace_transf_tag = brace_transf_tag_L
+            else:
+                brace_transf_tag = brace_transf_tag_R
+                
             ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_transf_tag)
@@ -1560,11 +1689,17 @@ class Building:
         brace_bot_rigid_links = [link for link in brace_bot_links
                                  if link%2 == 1]
         
+        goes_ne = [3]
         for link_tag in brace_bot_rigid_links:
             outer_nd = link_tag - brace_spr_id
             i_nd = outer_nd//100
             j_nd = outer_nd
             
+            if (outer_nd%10 in goes_ne):
+                brace_transf_tag = brace_transf_tag_L
+            else:
+                brace_transf_tag = brace_transf_tag_R
+                
             ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_transf_tag)
@@ -1623,7 +1758,7 @@ class Building:
         beam_elems = self.elem_tags['beam']
         beam_id = self.elem_ids['beam']
         ghost_beams = [beam_tag//10 for beam_tag in brace_beam_elems
-                       if beam_tag%10 == 1]
+                       if (beam_tag%brace_beam_id in brace_top_nodes)]
         grav_beams = [beam_tag for beam_tag in beam_elems
                       if beam_tag not in ghost_beams]
         
@@ -1796,22 +1931,56 @@ class Building:
                             p_vert, uy, kvt, minFv, 1e-5)
         else:
             # LRB modeling
-            
             # dimensions. Material parameters should not be edited without 
             # modifying design script
             K_bulk = 290.0*ksi
             G_r = 0.060*ksi
             D_inner = self.d_lead
             D_outer = self.d_bearing
-            t_shim = 0.1*inch
+            t_shim = 0.13*inch
             t_rubber_whole = self.t_r
             n_layers = int(self.n_layers)
             t_layer = t_rubber_whole/n_layers
             
             # calculate yield strength. this assumes design was done correctly
-            Q_L = self.Q * self.W
+            pi = 3.14159
+            f_y_Pb = 1.5 # ksi, shear yield strength
+            
+            Fy_LRB = f_y_Pb*pi*D_inner**2/4
+            
+            # Q_L = f_y_Pb*pi*D_inner**2/4
+            # # N_lb = 4*self.num_bays
+            # # Q_L = self.Q * self.W / N_lb
+            
             alpha = 1.0/self.k_ratio
-            Fy_LRB = Q_L/(1 - alpha)
+            # Fy_LRB = Q_L/(1 - alpha)
+            
+            kc = 10.0
+            phi_M = 0.5
+            ac = 1.0
+            
+            qL_imp = 0.4046256704 # (lbs/in^3) density of lead 
+            cL_imp = 0.03076 # (Btu/lb/degF) specific heat of lead at room temp
+            kS_imp = 26.0*12.0 # (Btu/(hr*in*F)) thermal conductivity of steel 
+            aS_imp = 0.018166036 # (in^2/s) thermal diffusivity of steel 
+
+            sdr = 0.5
+            # guesstimate 60% of the entire bearing volume's mass in lead
+            # mb = qL_imp*pi*D_outer**2/4*t_rubber_whole*0.6
+            mb = 0.0
+            cd = 0.0
+            tc = 1.0
+            
+            tag_1 = 0 # cavitation
+            tag_2 = 1 # buckling load variation
+            tag_3 = 1 # horiz stiffness variation
+            tag_4 = 0 # vertical stiffness variation
+            tag_5 = 0 # heat
+            
+            addl_params = [0, 0, 1, 1, 0, 0,
+                           kc, phi_M, ac, sdr, mb, cd, tc,
+                           qL_imp, cL_imp, kS_imp, aS_imp,
+                           tag_1, tag_2, tag_3, tag_4, tag_5]
             
             # define 2-D isolation layer 
             isol_id = self.elem_ids['isolator']
@@ -1819,44 +1988,35 @@ class Building:
             isol_elems = self.elem_tags['isolator']
             
             for elem_idx, elem_tag in enumerate(isol_elems):
-                i_nd = elem_tag - isol_id
-                j_nd = elem_tag - isol_id - base_id + 10
                 
-                # if top node is furthest left or right, vertical force is outer
-                if (j_nd == 0) or (j_nd%10 == n_bays):
-                    p_vert = p_outer
+                # if it is an unstacked bearing, it will have xx0x
+                if (elem_tag//10)%10 == 0:
+                    i_nd = elem_tag - isol_id
+                    j_nd = elem_tag - isol_id - base_id + 10
                 else:
-                    p_vert = p_inner
+                    bay_pos = elem_tag % 10
+                    i_nd = base_id + bay_pos
+                    j_nd = i_nd - base_id + 10
                     
-                # TODO: change temp coefficients to imperial units
-                # ad-hoc change edge bearing to have area equivalent to stacked LRBs
-                from math import floor
-                n_addl_bearings = floor(n_bays/2)
-                if (elem_idx == 0) or (elem_idx == len(isol_elems)):
-                    mod_D_inner = (n_addl_bearings+1)*D_inner
-                    mod_D_outer = (n_addl_bearings+1)*D_outer
-                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                                G_r, K_bulk, mod_D_inner, mod_D_outer,
-                                t_shim, t_layer, n_layers)
-                else:
-                    ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
-                                G_r, K_bulk, D_inner, D_outer,
-                                t_shim, t_layer, n_layers)
+                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                            G_r, K_bulk, D_inner, D_outer,
+                            t_shim, t_layer, n_layers, *addl_params)
   
 ################################################################################
 # Walls
 ################################################################################
-
+        
         # define impact moat as ZeroLengthImpact3D elements
         # https://opensees.berkeley.edu/wiki/index.php/Impact_Material
         # assume slab of base layer is 6 in
         # model half of slab
-        VSlab = (6*inch)*(45*ft)*(90*ft)
+        L_bldg = self.L_bldg
+        VSlab = (6*inch)*(L_bldg/2*ft)*(L_bldg*ft)
         pi = 3.14159
         RSlab = (3/4/pi*VSlab)**(1/3)
         
-        # assume wall extends 9 ft up to isolation layer and is 12 in thick
-        VWall = (12*inch)*(1*ft)*(45*ft)
+        # assume wall extends 1 ft up to isolation layer and is 12 in thick
+        VWall = (12*inch)*(1*ft)*(L_bldg/2*ft)
         RWall = (3/4/pi*VWall)**(1/3)
         
         # concrete slab and wall properties
@@ -1886,15 +2046,16 @@ class Building:
         wall_elems = self.elem_tags['wall']
         
         ops.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
-                    '-mat', impact_mat_tag, elastic_mat_tag,
-                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+                    '-mat', impact_mat_tag,
+                    '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
-                    '-mat', impact_mat_tag, elastic_mat_tag,
-                    '-dir', 1, 3, '-orient', 1, 0, 0, 0, 1, 0)
+                    '-mat', impact_mat_tag,
+                    '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         
     def apply_grav_load(self):
         import openseespy.opensees as ops
-        import numpy as np
+        
+        superstructure_system = self.superstructure_system
         
         grav_series   = 1
         grav_pattern  = 1
@@ -1905,11 +2066,12 @@ class Building:
         
         ft = 12.0
         w_floor = w_cases['1.0D+0.5L'] / ft
-        p_lc = plc_cases['1.0D+0.5L'] / ft
+        p_lc = plc_cases['1.0D+0.5L']
         
-        # append diaphragm level loads
-        w_floor = np.insert(w_floor, 0, w_floor[0])
-        p_lc = np.insert(p_lc, 0, p_lc[0])
+        # TODO: no need to prepend
+        # # append diaphragm level loads
+        # w_floor = np.insert(w_floor, 0, w_floor[0])
+        # p_lc = np.insert(p_lc, 0, p_lc[0])
         
         # create TimeSeries
         ops.timeSeries("Linear", grav_series)
@@ -1917,46 +2079,84 @@ class Building:
         # create plain load pattern
         ops.pattern('Plain', grav_pattern, grav_series)
         
-        # get elements
-        brace_beams = self.elem_tags['brace_beams']
-        beams = self.elem_tags['beam']
-        lc_nodes = self.node_tags['leaning']
-        
-        ghost_beams = [beam_tag//10 for beam_tag in brace_beams
-                       if beam_tag%10 == 1]
-        grav_beams = [beam_tag for beam_tag in beams
-                      if beam_tag not in ghost_beams]
-        
-        brace_beam_id = self.elem_ids['brace_beam']
-        beam_id = self.elem_ids['beam']
-        
-        # line loads on elements
-        # this loading scheme assumes that local-y is vertical direction (global-z)
-        # this is currently true for both MRF and CBF beams
-        for elem in brace_beams:
-            attached_node = elem - brace_beam_id
-            floor_idx = int(str(attached_node)[0]) - 1
-            w_applied = w_floor[floor_idx]
+        if superstructure_system == 'CBF':
+            # get elements
+            brace_beams = self.elem_tags['brace_beams']
+            beams = self.elem_tags['beam']
+            brace_beam_id = self.elem_ids['brace_beam']
+            brace_top_nodes = self.node_tags['brace_top']
+            
+            ghost_beams = [beam_tag//10 for beam_tag in brace_beams
+                           if (beam_tag%brace_beam_id in brace_top_nodes)]
+            grav_beams = [beam_tag for beam_tag in beams
+                          if beam_tag not in ghost_beams]
+            
+            brace_beam_id = self.elem_ids['brace_beam']
+            beam_id = self.elem_ids['beam']
+            
+            # line loads on elements
+            # this loading scheme assumes that local-y is vertical direction (global-z)
+            # this is currently true for both MRF and CBF beams
+            for elem in brace_beams:
+                attached_node = elem - brace_beam_id
+                floor_idx = int(str(attached_node)[0]) - 1
+                w_applied = w_floor[floor_idx]
+                ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                            -w_applied, 0.0)
+                
+            for elem in grav_beams:
+                attached_node = elem - beam_id
+                floor_idx = attached_node//10 - 1 
+                w_applied = w_floor[floor_idx]
+                ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                            -w_applied, 0.0)
+                
+        elif superstructure_system == 'MF':
+            beams = self.elem_tags['beam']
+            beam_id = self.elem_ids['beam']
+                
+            for elem in beams:
+                attached_node = elem - beam_id
+                floor_idx = attached_node//10 - 1 
+                w_applied = w_floor[floor_idx]
+                ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                            -w_applied, 0.0)
+         
+        # line loads on diaphragm
+        diaph_elems = self.elem_tags['diaphragm']
+        for elem in diaph_elems:
+            w_applied = w_floor[0]
             ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
                         -w_applied, 0.0)
-            
-        for elem in grav_beams:
-            attached_node = elem - beam_id
-            floor_idx = attached_node//10 - 1 
-            w_applied = w_floor[floor_idx]
-            ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
-                        -w_applied, 0.0)
-            
+        
         # point loads on LC
+        lc_nodes = self.node_tags['leaning']
         for nd in lc_nodes:
             floor_idx = nd//10 - 1
             p_applied = p_lc[floor_idx]
             ops.load(nd, 0, 0, -p_applied, 0, 0, 0)
             
-        # TODO: adjustment of vertical load for TFP
+        # The following assumes two lateral frames. If more, then fix
         isol_sys = self.isolator_system
         if isol_sys == 'TFP':
-            print('do load')
+            # load right above isolation layer to increase stiffness to half-building for TFP
+            # line load accounts for Lbay/2 of tributary, we linearly scale
+            # to include the remaining portion of Lbldg/2
+            ft = 12.0
+            L_bay = self.L_bay
+            L_bldg = self.L_bldg
+            n_bays = self.num_bays
+            w_total = w_floor.sum()
+            pOuter = w_total*(L_bay/2)*ft* ((L_bldg - L_bay)/L_bay)
+            pInner = w_total*(L_bay)*ft* ((L_bldg - L_bay)/L_bay)
+
+            diaph_nds = self.node_tags['diaphragm']
+            
+            for nd in diaph_nds:
+                if (nd%10 == 0) or (nd%10 == n_bays):
+                    ops.load(nd, 0, 0, -pOuter, 0, 0, 0)
+                else:
+                    ops.load(nd, 0, 0, -pInner, 0, 0, 0)
         
         # ------------------------------
         # Start of analysis generation: gravity
@@ -1979,19 +2179,369 @@ class Building:
 
         ops.loadConst('-time', 0.0)
         
-    # TODO: DAMPING
-    
-    # TODO: eigenvalue analysis
-    
-    def run_ground_motion(self, GM_name):
+    def refix(self, nodeTag, action):
+        import openseespy.opensees as ops
+        for j in range(1,7):
+            ops.remove('sp', nodeTag, j)
+        if(action == "fix"):
+            ops.fix(nodeTag,  1, 1, 1, 1, 1, 1)
+        elif(action == "unfix"):
+            ops.fix(nodeTag,  0, 1, 0, 1, 0, 1)
+        elif(action == 'fix_lc'):
+            ops.fix(nodeTag,  1, 1, 1, 1, 0, 1)
+        elif(action == 'unfix_lc'):
+            ops.fix(nodeTag,  0, 1, 1, 1, 0, 1)
+            
+    def run_eigen(self):
+        import openseespy.opensees as ops
+        
+        nEigenJ = 1;                    # how many modes to analyze
+        lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
+        lambda1 = lambdaN[0];           # eigenvalue mode i = 1
+        wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
+        T_1 = 2*3.1415/wi      # 1st mode period of the structure
+        
+        print("T_1 = %.3f s" % T_1)   
+        
+        return(T_1)
+
+    def provide_damping(self, regTag, method='SP',
+                        zeta=[0.05], modes=[1]):
+        import openseespy.opensees as ops
+        
+        diaph_nodes = self.node_tags['diaphragm']
+        # fix base for Tfb
+        lc_base = self.node_tags['leaning'][0]
+        for diaph_nd in diaph_nodes:
+            self.refix(diaph_nd, "fix")
+        self.refix(lc_base, 'fix_lc')
+
+        nEigenJ = 2;                    # how many modes to analyze
+        lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
+        lambda1 = lambdaN[modes[0]-1];           # eigenvalue mode i = 1
+        wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
+        Tfb = 2*3.1415/wi      # 1st mode period of the structure
+        
+        if method=='Rayleigh':
+            lambdaJ = lambdaN[modes[-1]-1]
+            wj = lambdaJ**(0.5)
+            
+        print("Tfb = %.3f s" % Tfb)          
+
+        # unfix base
+        for diaph_nd in diaph_nodes:
+            self.refix(diaph_nd, "unfix")
+        self.refix(lc_base, 'unfix_lc')
+        # provide damping to superstructure only
+        import numpy as np
+        
+        if method == 'Rayleigh':
+            A = np.array([[1/wi, wi],[1/wj, wj]])
+            b = np.array([zeta[0],zeta[-1]])
+            
+            x = np.linalg.solve(A,2*b)
+        else:
+            betaK       = 0.0
+            betaKInit   = 0.0
+            a1 = 2*zeta[0]/wi
+        
+        all_elems = ops.getEleTags()
+
+        # elems that don't need damping
+        wall_elems = self.elem_tags['wall']
+        isol_elems = self.elem_tags['isolator']
+        truss_elems = self.elem_tags['truss']
+        lc_elems = self.elem_tags['leaning'] + self.elem_tags['lc_spring']
+        diaph_elems = self.elem_tags['diaphragm']
+        non_damped_elems = (wall_elems + isol_elems + truss_elems + 
+                            lc_elems + diaph_elems)
+        
+        damped_elems = [elem for elem in all_elems 
+                        if elem not in non_damped_elems]
+        
+        # stiffness proportional
+        if method == 'SP':
+            ops.region(regTag, '-ele',
+                *damped_elems,
+                '-rayleigh', 0.0, betaK, betaKInit, a1)
+            print('Structure damped with %0.1f%% at frequency %0.2f Hz' % 
+                  (zeta[0]*100, wi))
+        elif method == 'Rayleigh':
+            ops.region(regTag, '-ele',
+                *damped_elems,
+                '-rayleigh', x[0], betaK, betaKInit, x[1])
+            
+        return(Tfb)
+
+    def run_pushover(self, max_drift_ratio=0.1, 
+                     data_dir='./outputs/pushover/'):
+        
+        import openseespy.opensees as ops
+        
+        # get list of relevant nodes
+        superstructure_system = self.superstructure_system
+        isol_id = self.elem_ids['isolator']
+        isol_system = self.isolator_system
+        isols = self.elem_tags['isolator']
+        base_id = self.elem_ids['base']
+        
+        if superstructure_system == 'CBF':
+            # extract nodes that belong to the braced portion
+            brace_beam_ends = self.node_tags['brace_beam_end']
+            left_col_digit = min([nd%10 for nd in brace_beam_ends])
+            
+            # get the list of nodes in all stories for the first outer and inner column
+            outer_col_nds = [nd for nd in brace_beam_ends
+                             if nd%10 == left_col_digit]
+            inner_col_nds = [nd+1 for nd in outer_col_nds]
+            
+            # insert the isolation layer
+            outer_col_nds.insert(0, outer_col_nds[0]-10)
+            inner_col_nds.insert(0, inner_col_nds[0]-10)
+            
+            # record brace nodes' displacements
+            brace_tops = self.node_tags['brace_top']
+            brace_bottoms = self.node_tags['brace_bottom']
+            brace_mids = self.node_tags['brace_mid']
+            
+            # lowest left bay, left brace displacements
+            top_node = min(brace_tops)
+            mid_node = min(brace_mids)
+            bottom_node = min(brace_bottoms)
+            ops.recorder('Node', '-file', data_dir+'brace_node_disp.csv','-time',
+                '-node', bottom_node, mid_node, top_node, 
+                '-dof', 1, 3, 'disp')
+            
+            # force at corresponding top node
+            ops.recorder('Node','-node', top_node,
+                         '-file', data_dir+'brace_top_node_force.csv', 
+                         '-dof', 1, 3, 'reaction')
+            
+            # first story, leftmost bay, left brace
+            brace_ghosts = self.elem_tags['brace_ghosts']
+            bottom_left_ghost = min(brace_ghosts)
+            bottom_right_ghost = bottom_left_ghost + 98
+            ops.recorder('Element','-ele', bottom_left_ghost,
+                         '-file',data_dir+'left_ghost_deformation.csv', '-time',
+                         'deformations')
+            ops.recorder('Element','-ele', bottom_right_ghost,
+                         '-file',data_dir+'right_ghost_deformation.csv', '-time',
+                         'deformations')
+            
+            # first story, leftmost bay, left brace
+            braces = self.elem_tags['brace']
+            bottom_left_brace = min(braces)
+            # corresponding right brace (100 to shift bay, -2 for 9-7 difference)
+            bottom_right_brace = bottom_left_brace + (100 - 2)
+            
+            selected_brace = get_shape(self.brace[0],'brace')
+            d_brace = selected_brace.iloc[0]['b']
+            
+            ops.recorder('Element','-ele', bottom_left_brace,
+                         '-file',data_dir+'brace_left.csv', '-time',
+                         'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+            
+            ops.recorder('Element','-ele', bottom_right_brace,
+                         '-file',data_dir+'brace_right.csv', '-time',
+                         'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+            
+        else:
+            floor_nodes = self.node_tags['floor']
+            
+            # get the list of nodes in all stories for the first outer and inner column
+            outer_col_nds = [nd for nd in floor_nodes
+                             if nd%10 == 0]
+            
+            inner_col_nds = [nd+1 for nd in outer_col_nds]
+            
+        # lateral frame story displacement
+        ops.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
+                     '-node', *outer_col_nds, '-dof', 1, 'disp')
+        ops.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
+                     '-node', *inner_col_nds, '-dof', 1, 'disp')
+        
+        # vertical frame story displacement
+        ops.recorder('Node', '-file', data_dir+'outer_col_vert.csv','-time',
+                     '-node', *outer_col_nds, '-dof', 3, 'disp')
+        ops.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
+                     '-node', *inner_col_nds, '-dof', 3, 'disp')
+        
+        # if lead rubber bearing, take a non-edge bearing 
+        # (edge bearing was "stacked")
+        if isol_system == 'LRB':
+            isol_elem = isols[1]
+            isol_node = isol_elem - isol_id - base_id + 10
+        # TFPs aren't stacked, so just take left-most 
+        else:
+            # get the leftmost isolator
+            isol_elem = isols[0]
+            isol_node = isol_elem - isol_id - base_id + 10
+        
+        # isolator node displacement of outer column
+        ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', 
+                     '-time', '-node', isol_node, '-dof', 1, 3, 5, 'disp')
+        
+        # isolator response of beneath outer column
+        ops.recorder('Element', '-file', data_dir+'isolator_forces.csv',
+                     '-time', '-ele', isol_elem, 'localForce')
+        
+        base_nodes = self.node_tags['base']
+        wall_nodes = self.node_tags['wall']
+        
+        ground_nodes = base_nodes + wall_nodes
+        ops.recorder('Node', '-file', data_dir+'ground_rxn.csv', 
+                     '-time', '-node', 
+                     *ground_nodes, '-dof', 1, 'reaction')
+        
+        # Set lateral load pattern with a Linear TimeSeries
+        pushover_pattern_tag  = 400
+        pushover_series_tag   = 4
+        ops.timeSeries("Linear", pushover_series_tag)
+        ops.pattern('Plain', pushover_pattern_tag, pushover_series_tag)
+
+        import time
+        t0 = time.time()
+        print('Running pushover...')
+        
+        Fx_vec = self.Fx
+        
+        # Create nodal loads at outer column nodes
+        #    nd    FX  FY  FZ MX MY MZ
+        for fl_idx, Fx in enumerate(Fx_vec):
+            ops.load(outer_col_nds[fl_idx+1], Fx, 0.0, 0.0, 0.0, 0.0, 0.0)
+        
+        #----------------------------------------------------
+        # Start of modifications to analysis for push over
+        # ----------------------------------------------------
+        ops.wipeAnalysis()
+
+        # units: in, kip, s
+        # dimensions
+
+        hsx     = self.hsx
+        # Set some parameters
+        dU = 0.005  # Displacement increment
+
+        # Change the integration scheme to be displacement control
+        #                             node dof init Jd min max
+        ops.integrator('DisplacementControl', outer_col_nds[-1], 1, dU, 1, dU, dU)
+        
+        # ------------------------------
+        # Finally perform the analysis
+        # ------------------------------
+
+        # Set some parameters
+        maxU = max_drift_ratio*hsx.sum()  # Max displacement
+        nSteps = int(round(maxU/dU))
+        ok = 0
+
+        # Create the system of equation, a sparse solver with partial pivoting
+        ops.system('BandGeneral')
+
+        # Create the constraint handler, the transformation method
+        ops.constraints('Plain')
+
+        # Create the DOF numberer, the reverse Cuthill-McKee algorithm
+        ops.numberer('RCM')
+
+        ops.test('NormUnbalance', 1.0e-3, 4000)
+        ops.algorithm('Newton')
+        # Create the analysis object
+        ops.analysis('Static')
+
+        ok = ops.analyze(nSteps)
+        # for gravity analysis, load control is fine, 0.1 is the load factor increment 
+        # (http://opensees.berkeley.edu/wiki/index.php/Load_Control)
+
+        testList = {1:'NormDispIncr', 2: 'RelativeEnergyIncr', 
+                    4: 'RelativeNormUnbalance',5: 'RelativeNormDispIncr', 
+                    6: 'NormUnbalance'}
+        algoList = {1:'KrylovNewton', 2: 'SecantNewton' , 
+                    4: 'RaphsonNewton',5: 'PeriodicNewton', 
+                    6: 'BFGS', 7: 'Broyden', 8: 'NewtonLineSearch'}
+                    
+        for i in testList:
+            for j in algoList:
+
+                if ok != 0:
+                    if j < 4:
+                        ops.algorithm(algoList[j], '-initial')
+                        
+                    else:
+                        ops.algorithm(algoList[j])
+                        
+                    ops.test(testList[i], 1e-3, 1000)
+                    ok = ops.analyze(nSteps)                            
+                    print(testList[i], algoList[j], ok)             
+                    if ok == 0:
+                        break
+                else:
+                    continue
+        
+        ops.wipe()
+        
+        tp = time.time() - t0
+        minutes = tp//60
+        seconds = tp - 60*minutes
+        print('Pushover complete. Time elapsed %dm %ds.' % (minutes, seconds))
+        
+        
+        '''
+        # read in the output files
+        dispColumns = ['time', 'isol1', 'isol2', 'isol3', 'isol4', 'isolLC']
+        forceColumns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz', 
+                        'jFx', 'jFy', 'jFz', 'jMx', 'jMy', 'jMz']
+        
+        isol1Force = pd.read_csv(dataDir+'isol1Force.csv', sep = ' ', 
+                                 header=None, names=forceColumns)
+        isol2Force = pd.read_csv(dataDir+'isol2Force.csv', sep = ' ', 
+                                 header=None, names=forceColumns)
+        isol3Force = pd.read_csv(dataDir+'isol3Force.csv', sep = ' ', 
+                                 header=None, names=forceColumns)
+        isol4Force = pd.read_csv(dataDir+'isol4Force.csv', sep = ' ', 
+                                 header=None, names=forceColumns)
+        
+        isolDisp = pd.read_csv(dataDir+'isolDisp.csv', sep=' ', 
+                                 header=None, names=dispColumns)
+        story3Disp = pd.read_csv(dataDir+'story3Disp.csv', sep=' ', 
+                                 header=None, names=dispColumns)
+        
+        col1Force = pd.read_csv(dataDir+'colForce1.csv', sep = ' ', 
+                                header=None, names=forceColumns)
+        col2Force = pd.read_csv(dataDir+'colForce2.csv', sep = ' ', 
+                                header=None, names=forceColumns)
+        col3Force = pd.read_csv(dataDir+'colForce3.csv', sep = ' ', 
+                                header=None, names=forceColumns)
+        col4Force = pd.read_csv(dataDir+'colForce4.csv', sep = ' ', 
+                                header=None, names=forceColumns)
+        
+        sumAxial = (isol1Force['iFx'] + isol2Force['iFx'] +
+                    isol3Force['iFx'] + isol4Force['iFx'])
+       
+
+        baseShear = (col1Force['iFy'] + col2Force['iFy'] + 
+                     col3Force['iFy'] + col4Force['iFy'])
+        baseShearNormalize = baseShear/sumAxial
+        
+        # rewrite the output to pushover
+        pushover_df = pd.DataFrame({'roof_disp': story3Disp['isol1'],
+                                    'isol_disp': isolDisp['isol1'],
+                                    'base_shear_normalized': baseShearNormalize,
+                                    'base_shear': baseShear})
+        pushover_df.to_csv(pushoverStr, index=False)
+        '''
+    def run_ground_motion(self, gm_name, scale_factor, dt_transient,
+                          gm_dir='../resource/ground_motions/PEERNGARecords_Unscaled/',
+                          data_dir='./outputs/'):
         
         # Recorders
         import openseespy.opensees as ops
-        data_dir         = './outputs/'          # output folder
 
         # get list of relevant nodes
         superstructure_system = self.superstructure_system
+        isol_system = self.isolator_system
         isols = self.elem_tags['isolator']
+        walls = self.elem_tags['wall']
         isol_id = self.elem_ids['isolator']
         base_id = self.elem_ids['base']
         
@@ -2005,58 +2555,142 @@ class Building:
                              if nd%10 == left_col_digit]
             inner_col_nds = [nd+1 for nd in outer_col_nds]
             
-            isol_elem = [elem for elem in isols
-                         if elem%10 == left_col_digit][0]
-            isol_node = isol_elem - isol_id - base_id + 10
+            # insert the isolation layer
+            outer_col_nds.insert(0, outer_col_nds[0]-10)
+            inner_col_nds.insert(0, inner_col_nds[0]-10)
+            
+            # record brace nodes' displacements
+            brace_tops = self.node_tags['brace_top']
+            brace_bottoms = self.node_tags['brace_bottom']
+            brace_mids = self.node_tags['brace_mid']
+            
+            # lowest left bay, left brace displacements
+            top_node = min(brace_tops)
+            mid_node = min(brace_mids)
+            bottom_node = min(brace_bottoms)
+            ops.recorder('Node', '-file', data_dir+'brace_node_disp.csv','-time',
+                '-node', bottom_node, mid_node, top_node, 
+                '-dof', 1, 3, 'disp')
+            
+            # force at corresponding top node
+            ops.recorder('Node','-node', top_node,
+                         '-file', data_dir+'brace_top_node_force.csv', 
+                         '-dof', 1, 3, 'reaction')
+            
+            # first story, leftmost bay, left brace
+            brace_ghosts = self.elem_tags['brace_ghosts']
+            bottom_left_ghost = min(brace_ghosts)
+            bottom_right_ghost = bottom_left_ghost + 98
+            ops.recorder('Element','-ele', bottom_left_ghost,
+                         '-file',data_dir+'left_ghost_deformation.csv', '-time',
+                         'deformations')
+            ops.recorder('Element','-ele', bottom_right_ghost,
+                         '-file',data_dir+'right_ghost_deformation.csv', '-time',
+                         'deformations')
+            
+            # first story, leftmost bay, left brace
+            braces = self.elem_tags['brace']
+            bottom_left_brace = min(braces)
+            # corresponding right brace (100 to shift bay, -2 for 9-7 difference)
+            bottom_right_brace = bottom_left_brace + (100 - 2)
+            
+            selected_brace = get_shape(self.brace[0],'brace')
+            d_brace = selected_brace.iloc[0]['b']
+            
+            ops.recorder('Element','-ele', bottom_left_brace,
+                         '-file',data_dir+'brace_left.csv', '-time',
+                         'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+            
+            ops.recorder('Element','-ele', bottom_right_brace,
+                         '-file',data_dir+'brace_right.csv', '-time',
+                         'section','fiber', 0.0, -d_brace/2, 'stressStrain')
             
         else:
             floor_nodes = self.node_tags['floor']
             
             # get the list of nodes in all stories for the first outer and inner column
             outer_col_nds = [nd for nd in floor_nodes
-                             if nd%10 == 0 and nd//10 > 1]
+                             if nd%10 == 0]
             
             inner_col_nds = [nd+1 for nd in outer_col_nds]
             
+        # if lead rubber bearing, take a non-edge bearing 
+        # (edge bearing was "stacked")
+        if isol_system == 'LRB':
+            isol_elem = isols[1]
+            isol_node = isol_elem - isol_id - base_id + 10
+        # TFPs aren't stacked, so just take left-most 
+        else:
             # get the leftmost isolator
             isol_elem = isols[0]
-            
             isol_node = isol_elem - isol_id - base_id + 10
-            
+        
+        # isol nodes are diaphragm nodes
+        isol_nodes_all = self.node_tags['diaphragm']
+        
+        open(data_dir+'model.out', 'w').close()
         ops.printModel('-file', data_dir+'model.out')
         
         # lateral frame story displacement
         ops.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
-            '-node', *outer_col_nds, '-dof', 1, 'disp')
+                     '-node', *outer_col_nds, '-dof', 1, 'disp')
         ops.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
-            '-node', *inner_col_nds, '-dof', 1, 'disp')
+                     '-node', *inner_col_nds, '-dof', 1, 'disp')
         
-        ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv','-time',
-            '-node', *outer_col_nds, '-dof', 1, 'vel')
-        ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv','-time',
-            '-node', *inner_col_nds, '-dof', 1, 'vel')
+        # vertical frame story displacement
+        ops.recorder('Node', '-file', data_dir+'outer_col_vert.csv','-time',
+                     '-node', *outer_col_nds, '-dof', 3, 'disp')
+        ops.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
+                     '-node', *inner_col_nds, '-dof', 3, 'disp')
         
+        # lateral frame story velocity
+        ops.recorder('Node', '-file', data_dir+'outer_col_vel.csv','-time',
+                     '-node', *outer_col_nds, '-dof', 1, 'vel')
+        ops.recorder('Node', '-file', data_dir+'inner_col_vel.csv','-time',
+                     '-node', *inner_col_nds, '-dof', 1, 'vel')
         
-        # TODO: need absolute acceleration by using GM file
-        
-        ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv','-time',
-            '-node', *outer_col_nds, '-dof', 1, 'accel')
-        ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv','-time',
-            '-node', *inner_col_nds, '-dof', 1, 'accel')
         
         # isolator node displacement of outer column
-        ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', '-time',
-            '-node', isol_node, '-dof', 1, 3, 5, 'disp')
+        ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', 
+                     '-time', '-node', isol_node, '-dof', 1, 3, 5, 'disp')
         
         # isolator response of beneath outer column
         ops.recorder('Element', '-file', data_dir+'isolator_forces.csv',
-            '-time', '-ele', isol_elem, 'localForce')
+                     '-time', '-ele', isol_elem, 'localForce')
         
-        # brace force?
+        base_nodes = self.node_tags['base']
+        
+        if isol_system == 'LRB':
+            ops.recorder('Node', '-file', data_dir+'lrb_disp.csv', 
+                         '-time', '-node', *isol_nodes_all, '-dof', 1, 'disp')
+            ops.recorder('Node', '-file', data_dir+'lrb_base_rxn.csv', 
+                         '-time', '-node', 
+                         *base_nodes, '-dof', 1, 'reaction')
+        elif isol_system == 'TFP':
+            ops.recorder('Node', '-file', data_dir+'tfp_disp.csv', 
+                         '-time', '-node', *isol_nodes_all, '-dof', 1, 'disp')
+            ops.recorder('Node', '-file', data_dir+'tfp_base_rxn.csv', 
+                         '-time', '-node', 
+                         *base_nodes, '-dof', 1, 'reaction')
+            ops.recorder('Node', '-file', data_dir+'tfp_base_vert.csv', 
+                         '-time', '-node', 
+                         *base_nodes, '-dof', 3, 'reaction')
+        
+        # gusset plate?
         # beam force?
         # column force?
-        # wall?
+        
+        # TODO: verify z force of these elements
+        ops.recorder('Element', '-file', data_dir+'impact_forces.csv', 
+                     '-time', '-ele', *walls, 'basicForce')
+        ops.recorder('Element', '-file', data_dir+'impact_disp.csv', 
+                     '-time', '-ele', *walls, 'basicDeformation')
+        
         # diaphragm?
+        diaph_elems = self.elem_tags['diaphragm']
+        ops.recorder('Element', '-file', data_dir+'diaphragm_forces.csv', 
+                     '-time', '-ele', diaph_elems[0], 'basicForce')
+        
         # leaning column?
         
         ops.printModel('-file', data_dir+'model.out')
@@ -2069,20 +2703,127 @@ class Building:
         #     '-time', '-ele', 113, 'localForce')
         # ops.recorder('Element', '-file', data_dir+'colForce4.csv',
         #     '-time', '-ele', 114, 'localForce')
+
+        ops.wipeAnalysis()
+
+        # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
+        GMDirection = 1  # ground-motion direction
         
+        print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
+
+        ops.constraints('Plain')
+        ops.numberer('RCM')
+        ops.system('BandGeneral')
         
-        # ground motion file read in
+        # Convergence Test: tolerance
+        tolDynamic          = 1e-5 
         
-        # ground motion file scaling
+        # Convergence Test: maximum number of iterations that will be performed
+        maxIterDynamic      = 100
         
-        # ground motion series
+        # Convergence Test: flag used to print information on convergence
+        printFlagDynamic    = 0         
         
-        # analysis settings
+        testTypeDynamic     = 'EnergyIncr'
+        ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
         
-        # recursive convergence strategies
+        # algorithmTypeDynamic    = 'Broyden'
+        # ops.algorithm(algorithmTypeDynamic, 8)
+        algorithmTypeDynamic    = 'Newton'
+        ops.algorithm(algorithmTypeDynamic)
         
+        # Newmark-integrator gamma parameter (also HHT)
+        newmarkGamma = 0.5
+        newmarkBeta = 0.25
+        ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+        ops.analysis('Transient')
         
-        print('Running.')
+        # # TRBDF2 integrator, best with energy
+        # ops.integrator('TRBDF2')
+        # ops.analysis('Transient')
+
+        #  ---------------------------------    perform Dynamic Ground-Motion Analysis
+        # the following commands are unique to the Uniform Earthquake excitation
+
+        # Uniform EXCITATION: acceleration input
+        inFile = gm_dir + gm_name + '.AT2'
+        outFile = gm_dir + gm_name + '.g3'
+
+         # call procedure to convert the ground-motion file
+        from ReadRecord import ReadRecord
+        dt, nPts = ReadRecord(inFile, outFile)
+        g = 386.4
+        GMfatt = g*scale_factor
+
+        eq_series_tag = 100
+        eq_pattern_tag = 400
+        # time series information
+        ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
+                       '-filePath', outFile, '-factor', GMfatt)     
+        # create uniform excitation
+        ops.pattern('UniformExcitation', eq_pattern_tag, 
+                    GMDirection, '-accel', eq_series_tag)          
+
+        # set recorder for absolute acceleration (requires time series defined)
+        ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv',
+                     '-timeSeries', eq_series_tag, '-time',
+                     '-node', *outer_col_nds, '-dof', 1, 'accel')
+        ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv',
+                     '-timeSeries', eq_series_tag, '-time',
+                     '-node', *inner_col_nds, '-dof', 1, 'accel')
+
+        # set up ground-motion-analysis parameters
+        sec = 1.0                      
+        T_end = 60.0*sec
+        
+        import numpy as np
+        n_steps = np.floor(T_end/dt_transient)
+        
+        # actually perform analysis; returns ok=0 if analysis was successful
+        
+        import time
+        t0 = time.time()
+        
+        # TODO: fatal errors in Broyden and BFGS (RAM related?)
+        ok = ops.analyze(n_steps, dt_transient)   
+        if ok != 0:
+            ok = 0
+            curr_time = ops.getTime()
+            print("Convergence issues at time: ", curr_time)
+            while (curr_time < T_end) and (ok == 0):
+                curr_time     = ops.getTime()
+                ok = ops.analyze(1, dt_transient)
+                if ok != 0:
+                    print("Trying Newton with line search ...")
+                    ops.algorithm('NewtonLineSearch')
+                    ok = ops.analyze(1, dt_transient)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
+                    ops.algorithm(algorithmTypeDynamic)
+                if ok != 0:
+                    print('Trying Broyden ... ')
+                    algorithmTypeDynamic = 'Broyden'
+                    ops.algorithm(algorithmTypeDynamic, 8)
+                    ok = ops.analyze(1, dt_transient)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
+                if ok != 0:
+                    print('Trying BFGS ... ')
+                    algorithmTypeDynamic = 'BFGS'
+                    ops.algorithm(algorithmTypeDynamic)
+                    ok = ops.analyze(1, dt_transient)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
+        t_final = ops.getTime()
+        tp = time.time() - t0
+        minutes = tp//60
+        seconds = tp - 60*minutes
+        print('Ground motion done. End time: %.4f s' % t_final)
+        print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
+        
+        ops.wipe()
+        
+        return(ok)
 ###############################################################################
 #              Steel dimensions and parameters
 ###############################################################################
@@ -2120,13 +2861,13 @@ def get_properties(shape):
 #              Bilinear deteriorating model parameters
 ###############################################################################
 
-# TODO: update parameters to match SMRF definitions
 def modified_IK_params(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi
     Es = 29000 # ksi
 
     Zx = float(shape['Zx'])
+    # Sx = float(shape['Sx'])
     Iz = float(shape['Ix'])
     d = float(shape['d'])
     htw = float(shape['h/tw'])
@@ -2135,16 +2876,16 @@ def modified_IK_params(shape, L):
     c1 = 25.4
     c2 = 6.895
 
+    # approximate adjustment for isotropic hardening
     My = Fy * Zx * 1.17
     thy = My/(6*Es*Iz/L)
     Ke = My/thy
     # consider using Lb = 0 for beams bc of slab?
     Lb = L
     kappa = 0.4
-    thu = 0.055
 
     if d > 21.0:
-        Lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
+        lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
             *(Lb/ry)**(-0.130)*(c2*Fy/355)**(-0.291))
         thp = (0.318*(htw)**(-0.550)*(bftf)**(-0.345)
             *(Lb/ry)**(-0.0230)*(L/d)**(0.090)*(c1*d/533)**(-0.330)*
@@ -2153,19 +2894,16 @@ def modified_IK_params(shape, L):
             *(Lb/ry)**(-0.110)*(c1*d/533)**(-0.161)*
             (c2*Fy/355)**(-0.320))
     else:
-        Lam = 495*(htw)**(-1.34)*(bftf)**(-0.595)*(c2*Fy/355)**(-0.360)
+        lam = 495*(htw)**(-1.34)*(bftf)**(-0.595)*(c2*Fy/355)**(-0.360)
         thp = (0.0865*(htw)**(-0.365)*(bftf)**(-0.140)
             *(L/d)**(0.340)*(c1*d/533)**(-0.721)*
             (c2*Fy/355)**(-0.230))
         thpc = (5.63*(htw)**(-0.565)*(bftf)**(-0.800)
             *(c1*d/533)**(-0.280)*(c2*Fy/355)**(-0.430))
+        
+    thu = 0.2
 
-    # Lam = 1000
-    # thp = 0.025
-    # thpc = 0.3
-    thu = 0.4
-
-    return(Ke, My, Lam, thp, thpc, kappa, thu)  
+    return(Ke, My, lam, thp, thpc, kappa, thu)
 
 ###############################################################################
 #              Brace geometry
@@ -2263,7 +3001,12 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     y_origin = bot_y_coord + y_offset
     # y_terminus = top_y_coord - y_offset
     
-    mid_x_coord = x_origin + L_eff/2 * cos(gamma)
+    # if the last number is 8, the brace connects sw
+    # if the last number is 7, the brace connects se
+    if (nd % 10)%2 == 0:
+        mid_x_coord = x_origin + L_eff/2 * cos(gamma)
+    else:
+        mid_x_coord = x_origin - L_eff/2 * cos(gamma)
     mid_y_coord = y_origin + L_eff/2 * sin(gamma)
     
     return(mid_x_coord, mid_y_coord)

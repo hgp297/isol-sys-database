@@ -61,8 +61,6 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb, S_des=15.0):
     f_y_Pb = 1.5 # ksi, shear yield strength
     A_Pb = (Q_L/f_y_Pb) / N_lb # in^2
     pi = 3.14159
-    d_Pb = (4*A_Pb/pi)**(0.5)
-    a = d_Pb/2
     
     # 60 psi rubber
     # select thickness
@@ -77,6 +75,7 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb, S_des=15.0):
     # assume lead has shear modulus of 150 MPa ~ 21 ksi
     G_Pb = 21.0 # ksi
     h_Pb = (G_Pb * A_Pb + A_r * G_r)*N_lb/k_1
+    # h_Pb = (G_Pb * A_Pb *N_lb)/(k_1 - G_r*A_r/tr_guess*N_lb)
     
     # try for shape factor of 15
     t_pad_req = b_s / (2*S_des)
@@ -86,7 +85,7 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb, S_des=15.0):
     n_layers = floor(tr_guess/t_pad_req)
     n_shims = n_layers - 1
     
-    # assume 12 layers (11 shims at ~3.5mm thickness)
+    # assume shims at ~3.5mm thickness
     # assume lead core goes 0.5 inch into each endplate
     tr_req = h_Pb - (n_shims*0.13) - 1.0
     
@@ -94,6 +93,62 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb, S_des=15.0):
     
     return(err)
 
+def large_strain_bearing(tr_old, A_delta, D_m, k_M, Q_L, rho_k, N_lb_old,
+                         S_des=15.0, gam_max = 3.0):
+    # required tr to stay under strain limit
+    tr_min = A_delta * D_m / gam_max
+    
+    # old values
+    G_r = 0.060 # ksi, shear modulus
+    f_y_Pb = 1.5 # ksi, shear yield strength
+    k_2 = (k_M*D_m - Q_L)/D_m
+    A_r_old = k_2 * tr_old / (G_r * N_lb_old)
+    A_Pb_old = (Q_L/f_y_Pb) / N_lb_old
+    
+    # new N_lb estimates
+    from math import ceil
+    N_lb = ceil(D_m * k_M / ((A_r_old*G_r/tr_min) + A_Pb_old/f_y_Pb))
+    A_r = k_2 * tr_min / (G_r * N_lb)
+    A_Pb = (Q_L/f_y_Pb)/N_lb
+    
+    # yielding force
+    k_1 = rho_k * k_2
+    # assume lead has shear modulus of 150 MPa ~ 21 ksi
+    G_Pb = 21.0 # ksi
+    h_Pb = (G_Pb * A_Pb + A_r * G_r)*N_lb/k_1
+    
+    # portion of height not covered by rubber
+    H = h_Pb - tr_min
+    
+    return(tr_min, N_lb, H)
+
+def lead_plug_cover(S_tshim_array, H, d_r, t_r):
+    # 60 psi rubber
+    # select thickness
+    S_pad_trial = S_tshim_array[0]
+    t_shim = S_tshim_array[1]
+    
+    # shape factor (circular)
+    b_s = (d_r - 0.5)/2
+    
+    # try for shape factor of 15
+    # S_pad_trial = 30.0
+    # t_pad_req = (b_s - a)/(2*S_pad_trial)
+    t_pad_req = b_s/(2*S_pad_trial)
+    
+    from math import floor
+    n_layers = floor(t_r/t_pad_req)
+
+    n_shims = n_layers - 1
+    
+    h = n_shims*t_shim # 3.5mm shims
+    
+    # p1 = abs(H-h)/H
+    # p2 = abs(S_pad_trial - 20)/S_pad_trial
+    # loss_fcn = p1 + p2 
+    loss_fcn = (h - H)**2
+    return loss_fcn
+    
 def design_LRB(param_df):
     
     # read in parameters
@@ -129,21 +184,61 @@ def design_LRB(param_df):
     
     # design displacement
     D_m = g*S_1*T_m/(4*pi**2*B_m)
+    moat_ampli = param_df['moat_ampli']
     k_M = (2*pi/T_m)**2 * (W_tot/g)
 
     k_2 = (k_M*D_m - Q_L)/D_m
+    
+    # edge cases where k_M*D_m < Q_L
+    if k_2 < 0:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_m, k_M, zeta_m, D_m, 1)
     
     # required area of lead per bearing
     f_y_Pb = 1.5 # ksi, shear yield strength
     A_Pb = (Q_L/f_y_Pb) / N_lb # in^2
     d_Pb = (4*A_Pb/pi)**(0.5)
     
+    flag = 0
+    
+    '''
+    import numpy as np
+    # try to achieve strain ratio < 300%
+    # requires additional design of shims
+    if lam_strain > 3.0:
+        t_r, N_lb, H = large_strain_bearing(t_r, moat_ampli, D_m, k_M, Q_L, rho_k, 
+                                          N_lb, S_des=15.0, gam_max = 3.0)
+    
+        from scipy.optimize import minimize
+        S_t_init = np.array([15, 0.13])
+        S_t_bnds = ((15., 40.), (0.079, 0.125))
+        
+        G_r = 0.060 # ksi, shear modulus
+        A_r = k_2 * t_r / (G_r * N_lb)
+        d_r = (4*(A_r + A_Pb)/pi)**(0.5)
+        
+        from scipy.optimize import basinhopping
+        minimizer_kwargs={'args':(H, d_r, t_r),'bounds':S_t_bnds}
+        res = basinhopping(lead_plug_cover, S_t_init, minimizer_kwargs=minimizer_kwargs)
+        
+        # res = minimize(lead_plug_cover, S_t_init, bounds=S_t_bnds,
+        #                 args=(H, d_r, t_r))
+        
+        S_tshim = res.x
+        # if res.fun > 2.0:
+        #     flag = 1
+            
+        S_pad_trial = S_tshim[0]
+        t_shim = S_tshim[1]
+    '''
+    
     # converge on t_r necessary to achieve rho_k
+    # if this succeeds, no guesswork is necessary on shims and layers
     S_pad_trial = 20.0
     res = minimize_scalar(iterate_bearing_height,
                           args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
                           bounds=(0.01, 1e3), method='bounded')
     t_r = res.x
+    t_shim = 0.13
     
     # 60 psi rubber
     # select thickness
@@ -161,22 +256,19 @@ def design_LRB(param_df):
     T_e = 2*pi*(W_tot/(g*k_e))**0.5
     W_e = 4*Q_L*(D_m - D_y)
     zeta_E = W_e/(2*pi*k_e*D_m**2)
-    
+    lam_strain = (moat_ampli*D_m)/t_r
     #################################################
     # buckling checks
     #################################################
     
-    flag = 0
     # assume small strain G is 75% larger
     G_ss = 1.75*G_r
     # incompressibility
     K_inc = 290 # ksi
     
-    
     # shape factor (circular)
-    # assumes 12 layers
     a = d_Pb/2
-    b = d_r/2
+    # b = d_r/2
     b_s = (d_r - 0.5)/2
     
     # try for shape factor of 15
@@ -189,7 +281,12 @@ def design_LRB(param_df):
     
     # if nonsense n_layers reach, stop calculations now (to be discarded)
     if n_layers < 1:
-        return(1.0, 1.0, 1.0, 1.0, 1, T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+    # if too many layers, try a lower S_pad
+    elif n_layers > 60:
+        S_pad_trial = 0.75*S_pad_trial
+        t_pad_req = b_s/(2*S_pad_trial)
+        n_layers = floor(t_r/t_pad_req)
     
     n_shims = n_layers - 1
     t = t_r/n_layers
@@ -200,7 +297,7 @@ def design_LRB(param_df):
     
     I = pi/4 * (b_s**4 - a**4)
     A = pi*(b_s**2 - a**2)
-    h = t_r + n_shims*0.13 # 11x0.1 in thick shim
+    h = t_r + n_shims*t_shim # 3.5mm shims
     # S_pad = (b_s - a)/(2*t)
     S_pad = b_s/(2*t)
     eta = a/b_s
@@ -213,10 +310,10 @@ def design_LRB(param_df):
     # compressive behavior
     #################################################
     
-    # shape factor adjusts for annular shape
-    from math import log
-    lam = (b**2 + a**2 - ((b**2 - a**2)/(log(b/a))))/((b - a)**2)
-    E_pc = 6*lam*G_ss*S_pad**2
+    # # shape factor adjusts for annular shape
+    # from math import log
+    # lam = (b**2 + a**2 - ((b**2 - a**2)/(log(b/a))))/((b - a)**2)
+    # E_pc = 6*lam*G_ss*S_pad**2
     
     # this seems to adjusts for incompressibility but is ad hoc
     # E_c = (E_pc*K_inc)/(E_pc + K_inc) 
@@ -232,6 +329,10 @@ def design_LRB(param_df):
     
     E_c = (K_inc*(1 + C1p*(iv(1, th) - eta*iv(1,eta*th)) +
                   C2p*(kv(1, th) - eta*kv(1, eta*th))))
+    
+    # rough vertical capacity of bearing (no buckling yet)
+    E_Pb = 2000 # ksi
+    P_vert = E_c * A_r + E_Pb * A_Pb
     
     #################################################
     # bending behavior
@@ -261,10 +362,6 @@ def design_LRB(param_df):
     
     EI_eff_comp = EI_eff_inc * EI_comp_ratio
     
-    # assume 1.0 inch cover plates
-    # height of lead core
-    # h_Pb = t_r + 11*0.1 + 1.0
-    
     # global buckling check, uses EI_s = 1/3 E_c I h/tr
     # full unsimplified equation
     P_S = G_ss*A*h/t_r
@@ -284,26 +381,43 @@ def design_LRB(param_df):
     # # already accounts for A_s effective shear area
     # P_crit = pi/t_r * ((E_c * I/3)*G_ss*A)**(0.5)
     
+    # this includes diaphragm, which is accurate representation of load above LRB
     w_floor = param_df['w_fl'] # k/ft
     L_bay = param_df['L_bay'] # ft
     P_estimate = sum(w_floor)*L_bay
-    
-    # P_estimate = W_tot/(N_lb + N_sl)
-    
-    if P_estimate/P_crit > 1.0:
-        flag = 1
+    pressure_estimate = P_estimate/(pi*b_s**2)
     
     # normalize stiffness by weight
     k_e_norm = k_e/W_tot
     
-    # shortcut for circular bearing 
-    # compare the strength with an equivalent circular bearing
-    p_crit_compare = P_crit/(pi*b_s**2)
-    S_2 = b_s/t_r
+    # # shortcut for circular bearing (pressure solution)
+    # # compare the strength with an equivalent circular bearing
+    # p_crit_compare = P_crit/(pi*b_s**2)
+    S_2 = 2*b_s/t_r
     p_crit_circ = G_ss*pi*S_pad*S_2/(2*2**0.5)
-    return(d_r, d_Pb, t_r, t, n_layers, T_e, k_e_norm, zeta_E, D_m, flag)
     
-
+    # buckling loads and pressure check
+    # displacement
+    if moat_ampli*D_m/d_r > 1.0:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+    if lam_strain > 3.0:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+    # buckling load
+    if P_estimate/P_crit > 1.0:
+        flag = 1
+    # compression load
+    if P_estimate/P_vert > 1.0:
+        flag = 1
+    # critical pressure (S2 solution)
+    if pressure_estimate/p_crit_circ > 1:
+        flag = 1
+    # number of bearings too much 
+    if N_lb > (n_bays+1)**2:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+    
+    return(d_r, d_Pb, t_r, t, n_layers, N_lb, S_pad, S_2, T_e, 
+           k_e_norm, zeta_E, D_m, flag)
+    
 
 
 # perform one iteration of TFP design to return a damping coefficient
@@ -452,8 +566,6 @@ def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
     Cd_code = 5.5
     Ry_code = 8.0
     Cd          = (Cd_code/Ry_code)*R_y
-    
-    Cd          = R_y
 
     thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
     delx        = thetaMax*hsx
@@ -466,6 +578,8 @@ def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
     for i in range(nFloor-2, -1, -1):
         Q[i] = Fx[i] + Q[i+1]
 
+    # an alternative way of doing this is q = Q/n_cols, but then interior
+    # columns must be adjusted to be designed for 2q
     q           = Q/n_bays
 
     return(delxe, q)
@@ -480,7 +594,9 @@ def get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad):
     # required I
     ksi = 1.0
     E           = 29000*ksi
+    
     # story beams
+    # see previous note, if q/n_cols used, replace with 2q
     Ib          = q*hCol**2/(12*delxe*E)*(hCol/beta + L_bay)                             
     Ib[-1]      = q[-1]*hsx[-1]**2/(12*delxe[-1]*E)*(hsx[-1]/(2*beta) + L_bay)
     # roof beams, using hsx since flexibility method assumes h = full column
@@ -493,7 +609,27 @@ def get_required_modulus(q, hCol, hsx, delxe, L_bay, wLoad):
     Mu              = MEq + MGrav
     Zb              = Mu/(0.9*Fy)
 
-    return(Ib, Ic, Zb)
+    return(Ib, Ic, Zb, Mu)
+
+def compressive_strength(Ag, ry, Lc_r, Ry=1.0):
+    
+    Ry_hss = Ry
+    
+    E = 29000.0 # ksi
+    pi = 3.14159
+    Fy = 50.0 # ksi for ASTM A500 brace
+    Fy_pr = Fy*Ry_hss
+    
+    Fe = pi**2*E/(Lc_r**2)
+    
+    if (Lc_r <= 4.71*(E/Fy)**0.5):
+        F_cr = 0.658**(Fy_pr/Fe)*Fy_pr
+    else:
+        F_cr = 0.877*Fe
+        
+    phi = 0.9
+    phi_Pn = phi * Ag * F_cr
+    return(phi_Pn)
 
 def select_member(member_list, req_var, req_val):
     # req_var is string 'Ix' or 'Zx'
@@ -509,8 +645,6 @@ def select_member(member_list, req_var, req_val):
     return(selected_member, qualified_list)
 
 # Zx check
-
-
 def zx_check(current_member, member_list, Z_beam_req):
     
     from numpy import nan
@@ -526,14 +660,58 @@ def zx_check(current_member, member_list, Z_beam_req):
     else:
         selected_member = current_member
         qualified_list = member_list
-        
-    # TODO: check beam axial
-    # TODO: check beam interaction
 
     return(selected_member, qualified_list)
 
-# PH location check
+def axial_check(current_member, member_list, L_bay, Pu, M_max=0.0):
+    # axial check
+    rad_gy = current_member['ry'].iloc[0]
+    Ag = current_member['A'].iloc[0]
+    Lc_r = L_bay / rad_gy
+    Pn = compressive_strength(Ag, rad_gy, Lc_r)
+    
+    if Pu > Pn:
+        selected_member, passed_axial_members = select_compression_member(member_list, 
+                                                                          L_bay, 
+                                                                          Pu)
+    else:
+        passed_axial_members = member_list
+        selected_member = current_member
+        
+    Zx = current_member.iloc[0]['Zx']
+    Mnx = 50.0*Zx*0.9
+    if Pu/Pn > 0.2:
+        # H1-1a/b
+        combined_forces_coef = Pu/Pn + 8/9*(M_max/Mnx)
+    else:
+        combined_forces_coef = Pu/(2*Pn) + 8/9*(M_max/Mnx)
+        
+    # if fail the interaction equation, design based on that
+    if combined_forces_coef > 1.0:
+        # calculate coef for all available beams
+        Lc_beam = L_bay
+        passed_axial_members['Lc_r'] = Lc_beam/passed_axial_members['ry']
+        passed_axial_members['phi_Pn'] = passed_axial_members.apply(lambda row: 
+                                                                compressive_strength(
+                                                                    row['A'],
+                                                                    row['ry'],
+                                                                    row['Lc_r']),
+                                                                axis='columns')
+        
+        passed_axial_members['interaction'] = passed_axial_members.apply(lambda row: 
+                                                                      interaction_equation(
+                                                                          row['Zx'],
+                                                                          Pu,
+                                                                          row['phi_Pn'],
+                                                                          M_max),
+                                                                      axis='columns')
+            
+        selected_member, passed_axial_members = select_member(passed_axial_members, 
+            'interaction', 1.0)
+    
+    return(selected_member, passed_axial_members)
 
+# PH location check
 def ph_shear_check(current_member, member_list, line_load, L_bay):
     
     import numpy as np
@@ -554,7 +732,7 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
     (M_n, M_pr, V_pr) = calculate_strength(current_member, L_bay)
 
     ph_VGrav = line_load*L_bay/2
-    ph_VBeam = 2*M_pr/(0.9*L_bay)  # 0.9L_bay for plastic hinge length
+    ph_VBeam = 2*M_pr/(0.8*L_bay)  # 0.9L_bay for plastic hinge length
     ph_location = ph_VBeam > ph_VGrav
 
     if not np.all(ph_location):
@@ -589,14 +767,46 @@ def ph_shear_check(current_member, member_list, line_load, L_bay):
 
     return(selected_member, shear_list)
 
+def select_beam(fl, Ib, Zb, sorted_beams, w_load, q_load, M_load, L_bay):
+    
+    I_beam_req = Ib[fl]
+    Z_beam_req = Zb[fl]
+    
+    selected_beam, passed_Ix_beams = select_member(sorted_beams, 
+                                                   'Ix', I_beam_req)
+
+    selected_beam, passed_Zx_beams = zx_check(selected_beam, 
+                                              passed_Ix_beams, Z_beam_req)
+    
+    # due to slab, no need to check axial
+    '''
+    q = q_load[fl]
+    M_max = M_load[fl]
+    selected_beam, passed_axial_beams = axial_check(selected_beam, 
+                                                    passed_Zx_beams, 
+                                                    L_bay, q, M_max)
+    '''
+    passed_axial_beams = passed_Zx_beams
+    
+    story_loads = w_load[fl]
+    selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
+                                                        passed_axial_beams, 
+                                                        story_loads, L_bay)
+    
+    return(selected_beam, passed_checks_beams)
+    
 # SCWB design
-def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list, 
-    I_col_req, I_beam_req):
+def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list, 
+                  Ic, Ib):
 
     import numpy as np
+    from building import get_shape
     
-    if (current_beam is np.nan) or (current_roof is np.nan):
-        return(np.nan, np.nan, False)
+    I_col_req = Ic[fl]
+    I_beam_req = Ib[fl]
+    
+    if any([beam is np.nan for beam in all_beams]):
+        return(np.nan, np.nan)
     
     ksi = 1.0
     Fy = 50.0*ksi
@@ -604,58 +814,63 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     V_grav      = wLoad*L_bay
 
     nFloor = len(wLoad)
-
-    (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
-    (M_n_roof, M_pr_roof, V_pr_roof) = calculate_strength(current_roof, L_bay)
-
+    
     # find axial demands
     Pr              = np.empty(nFloor)
-    Pr[-1]          = V_pr_beam + V_grav[-1]
+    roof_beam_name = all_beams[-1]
+    roof_beam = get_shape(roof_beam_name, 'beam', csv_dir='../resource/')
+    (M_n_roof, M_pr_roof, V_pr_roof) = calculate_strength(roof_beam, L_bay)
+    Pr[-1]          = V_pr_roof + V_grav[-1]
     for i in range(nFloor-2, -1, -1):
+        beam_name = all_beams[i]
+        current_beam = get_shape(beam_name, 'beam', csv_dir='../resource/')
+        (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
         Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
-        
-    # TODO: check SMRF column axial capacity
-    # TODO: check SMRF column interaction
     
     # initial guess: use columns that has similar Ix to beam
     qualified_Ix = col_list[col_list['Ix'] > I_beam_req]
     from numpy import nan
     if len(qualified_Ix) < 1:
         return (nan, nan, False)
+    # select the first few that qualifies Ix
     selected_col = qualified_Ix.loc[[(qualified_Ix.Ix - 
-                                       I_beam_req).abs().idxmin()]] # select the first few that qualifies Ix
+                                       I_beam_req).abs().idxmin()]] 
     
     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
     M_pr = Z_x*(Fy - Pr/A_g)
 
     # find required Zx for SCWB to be true
-    scwb_Z_req        = np.max(M_pr_beam/(Fy - Pr[:-1]/A_g))
+    beam_name = all_beams[fl]
+    current_beam = get_shape(beam_name, 'beam', csv_dir='../resource/')
+    (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
+    
+    scwb_Z_req = (M_pr_beam/(Fy - Pr[fl]/A_g))
 
     # select column based on SCWB
-    selected_col, passed_Ix_cols = select_member(col_list, 
+    selected_col, passed_axial_beams = axial_check(selected_col, 
+                                                    col_list, 
+                                                    h_col[fl], 
+                                                    Pr[fl], 
+                                                    M_load[fl])
+    if selected_col is np.nan:
+        return(np.nan, np.nan)
+    
+    selected_col, passed_Ix_cols = select_member(passed_axial_beams, 
         'Ix', I_col_req)
+    if selected_col is np.nan:
+        return(np.nan, np.nan)
+    
     selected_col, passed_Zx_cols = select_member(passed_Ix_cols, 
         'Zx', scwb_Z_req)
-    
-    import pandas as pd
-    if isinstance(selected_col, pd.DataFrame):
-        (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
+    if selected_col is np.nan:
+        return(np.nan, np.nan)
+
+    (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
     M_pr = Z_x*(Fy - Pr/A_g)
     
-
-    # check final SCWB
-    ratio           = np.empty(nFloor-1)
-    
-    scwb_flag = False
-    for i in range(nFloor-2, -1, -1):
-        ratio[i] = (M_pr[i+1] + M_pr[i])/(2*M_pr_beam)
-        if (ratio[i] < 1.0):
-            # print('SCWB check failed at floor ' + str(nFloor+1) + ".")
-            scwb_flag = True
-
     A_web = A_g - 2*(t_f*b_f)
     V_n  = 0.9*A_web*0.6*Fy
-    V_pr = np.max(M_pr/h_col)
+    V_pr = M_pr[fl]/h_col[fl]
     col_shear_fail   = V_n < V_pr
 
     if col_shear_fail:
@@ -668,8 +883,59 @@ def select_column(wLoad, L_bay, h_col, current_beam, current_roof, col_list,
     else:
         shear_list = passed_Zx_cols
 
-    return(selected_col, shear_list, scwb_flag)
+    return(selected_col, shear_list)
 
+def scwb_check(all_columns, all_beams, w_load, L_bay):
+    import pandas as pd
+    import numpy as np
+    from building import get_shape
+        
+    ksi = 1.0
+    Fy = 50.0*ksi
+    V_grav = w_load*L_bay
+    nFloor = len(all_columns)
+    
+    # find axial demands
+    Pr = np.empty(nFloor)
+    roof_beam_name = all_beams[-1]
+    roof_beam = get_shape(roof_beam_name, 'beam', csv_dir='../resource/')
+    (M_n_roof, M_pr_roof, V_pr_roof) = calculate_strength(roof_beam, L_bay)
+    Pr[-1]          = V_pr_roof + V_grav[-1]
+    Mpr_beams = []
+    Mpr_beams.append(M_pr_roof)
+    for i in range(nFloor-2, -1, -1):
+        beam_name = all_beams[i]
+        current_beam = get_shape(beam_name, 'beam', csv_dir='../resource/')
+        (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
+        Mpr_beams.append(M_pr_beam)
+        Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
+        
+    Mpr_beams.reverse()
+    
+    # check final SCWB
+    ratio = np.empty(nFloor)
+    
+    M_pr = np.empty(len(all_columns))
+    
+    for i in range(len(all_columns)):
+        col_name = all_columns[i]
+        selected_col = get_shape(col_name, 'column', csv_dir='../resource/')
+        if isinstance(selected_col, pd.DataFrame):
+            (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
+            
+        M_pr[i] = Z_x*(Fy - Pr[i]/A_g)
+     
+    scwb_flag = False
+    for i in range(len(all_columns)):
+        if i != len(all_columns)-1:
+            ratio[i] = (M_pr[i+1] + M_pr[i])/(2*Mpr_beams[i])
+        else:
+            ratio[i] = 2.0 # no need to be OK at roof
+        if (ratio[i] < 1.0):
+            # print('SCWB check failed at floor ' + str(nFloor+1) + ".")
+            scwb_flag = True
+            
+    return(scwb_flag)
 ############################################################################
 #              ASCE 7-22: Capacity design for moment frame
 ############################################################################
@@ -686,8 +952,8 @@ def design_MF(input_df, db_string='../resource/'):
     h_col = input_df['h_col']
     
     load_cases = input_df['all_w_cases']
-    case_1 = load_cases['1.2D+0.5L+1.0E']/12
-    case_2 = load_cases['0.9D-1.0E']/12
+    case_1 = load_cases['1.2D+0.5L+1.0E'][1:]/12
+    case_2 = load_cases['0.9D-1.0E'][1:]/12
     
     import numpy as np
     w_load = np.maximum(case_1, case_2)
@@ -700,14 +966,7 @@ def design_MF(input_df, db_string='../resource/'):
     delxe, q = get_MRF_element_forces(hsx, Fx, R_y, n_bays)
     
     # get required section specs
-    Ib, Ic, Zb = get_required_modulus(q, h_col, hsx, delxe, L_bay, w_load)
-
-    I_beam_req        = Ib.max()
-    I_col_req         = Ic.max()
-    Z_beam_req        = Zb.max()
-    
-    I_roof_beam_req    = Ib[-1]
-    Z_roof_beam_req    = Zb[-1]
+    Ib, Ic, Zb, Mu = get_required_modulus(q, h_col, hsx, delxe, L_bay, w_load)
     
     # import shapes 
     
@@ -718,15 +977,63 @@ def design_MF(input_df, db_string='../resource/'):
     col_shapes       = pd.read_csv(db_string+'colShapes.csv',
         index_col=None, header=0)
     sorted_cols      = col_shapes.sort_values(by=['Ix'])
-
-
+    
+    # select beams
+    all_beams = []
+    for fl in range(len(w_load)):
+        
+        # select beam for each floor
+        selected_beam, qualified_beams = select_beam(fl, Ib, Zb, 
+                                                     sorted_beams, 
+                                                     w_load, q, Mu,
+                                                     L_bay)
+        
+        if selected_beam is not np.nan:
+            all_beams.append(selected_beam.iloc[0]['AISC_Manual_Label'])
+        else:
+            all_beams = np.nan
+            break
+      
+    # select columns
+    all_columns = []
+    for fl in range(len(w_load)):
+        
+        # splice once every 4 floors
+        if (fl%4) == 0:
+            selected_column, passed_check_cols = select_column(fl, w_load, 
+                                                               Mu,
+                                                               L_bay, 
+                                                               h_col, 
+                                                               all_beams, 
+                                                               sorted_cols, 
+                                                               Ic, Ib)
+            if selected_column is not np.nan:
+                all_columns.append(selected_column.iloc[0]['AISC_Manual_Label'])
+            else:
+                all_columns = np.nan
+                break
+        else:
+            selected_column = all_columns[fl-1]
+            all_columns.append(selected_column)
+        
+    # strong column weak beam check
+    if (all_columns is not np.nan) and (all_beams is not np.nan):
+        scwb_flag = scwb_check(all_columns, all_beams, w_load, L_bay)
+    else:
+        scwb_flag = True
+    
+    ######################### OLD ##################################
+    '''
     # Floor beams
-    # TODO: extend one beam/floor to MF, column splices as well
     selected_beam, passed_Ix_beams = select_member(sorted_beams, 
                                                    'Ix', I_beam_req)
 
     selected_beam, passed_Zx_beams = zx_check(selected_beam, 
                                               passed_Ix_beams, Z_beam_req)
+    
+    # selected_beam, passed_axial_beams = axial_check(selected_beam, 
+    #                                                      passed_Zx_beams, 
+    #                                                      L_bay, q)
 
     story_loads = w_load[:-1]
     selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
@@ -746,11 +1053,6 @@ def design_MF(input_df, db_string='../resource/'):
     selected_roof_beam, passed_checks_roof_beams = ph_shear_check(selected_roof_beam, 
         passed_Zx_roof_beams, roof_load, L_bay)
     
-    # columns
-    selected_column, passed_check_cols, scwb_flag = select_column(w_load, L_bay, 
-        h_col, selected_beam, selected_roof_beam, sorted_cols, 
-        I_col_req, I_beam_req)
-    
     # return only string to keep data management clean
     if isinstance(selected_beam, pd.DataFrame):
         selected_beam = selected_beam.iloc[0]['AISC_Manual_Label']
@@ -758,8 +1060,9 @@ def design_MF(input_df, db_string='../resource/'):
         selected_roof_beam = selected_roof_beam.iloc[0]['AISC_Manual_Label']
     if isinstance(selected_column, pd.DataFrame):
         selected_column = selected_column.iloc[0]['AISC_Manual_Label']
+    '''
     
-    return(selected_beam, selected_roof_beam, selected_column, scwb_flag)
+    return(all_beams, all_columns, scwb_flag)
 
 ############################################################################
 #              ASCE 7-22: Capacity design for braced frame
@@ -824,25 +1127,7 @@ def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
 #     loss = (phi_Pn - C)**2 + (x[0]**2 + x[1]**2)**(0.5)
 #     return(loss)
 
-def compressive_strength(Ag, ry, Lc_r, Ry=1.0):
-    
-    Ry_hss = Ry
-    
-    E = 29000.0 # ksi
-    pi = 3.14159
-    Fy = 50.0 # ksi for ASTM A500 brace
-    Fy_pr = Fy*Ry_hss
-    
-    Fe = pi**2*E/(Lc_r**2)
-    
-    if (Lc_r <= 4.71*(E/Fy)**0.5):
-        F_cr = 0.658**(Fy_pr/Fe)*Fy_pr
-    else:
-        F_cr = 0.877*Fe
-        
-    phi = 0.9
-    phi_Pn = phi * Ag * F_cr
-    return(phi_Pn)
+
 
 def select_compression_member(mem_list, Lc, C_design):
     
@@ -908,6 +1193,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
     Tpr = Ag * Fy * Ry_hss
     Cpr_pr = Cpr * 0.3
     
+    '''
     # axial demand on beam
     # Q_per_bay is the stacked force per bay
     L_bldg = n_bays * L_bay
@@ -916,6 +1202,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
     Fh_braces = (Tpr + Cpr) * cos(theta) # horizontal force from brace action
     
     Pu_beam = Fh_braces - Q_beam
+    '''
     
     # shear/moment demand on beam
     w1 = w_cases['1.2D+0.5L+1.0E'][current_floor]/12 # raw is kip/ft, convert to kip/in
@@ -944,6 +1231,9 @@ def capacity_CBF_beam(selected_brace, current_floor,
     if selected_beam is np.nan:
         return(np.nan, np.nan)
     
+    # no need to axial check beam because of slab
+    passed_axial_beams = passed_Zx_beams
+    '''
     # axial check
     rad_gy_beam = selected_beam['ry'].iloc[0]
     Ag_beam = selected_beam['A'].iloc[0]
@@ -957,7 +1247,6 @@ def capacity_CBF_beam(selected_brace, current_floor,
     else:
         passed_axial_beams = passed_Zx_beams
         
-    # TODO: interaction check (y direction?)
     Zx = selected_beam.iloc[0]['Zx']
     Mnx = 50.0*Zx*0.9
     if Pu_beam/Pn_beam > 0.2:
@@ -988,6 +1277,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
             
         selected_beam, passed_axial_beams = select_member(passed_axial_beams, 
             'interaction', 1.0)
+    '''
     
     # shear check
     # beam shear
@@ -1083,9 +1373,22 @@ def capacity_CBF_column(selected_brace, current_floor,
                                                              Lc_col, 
                                                              C_des_col)
     
-    # TODO: AISC 341-16 4e-c-2
+    if selected_col is np.nan:
+        return(np.nan, np.nan)
     
-    return(selected_col, col_compr_list)
+    # AISC 341-16 F2 4e-c-2
+    Zx = selected_brace['Zx'].iloc[0]
+    brace_buckling_moment = 1.1*Ry_hss*Fy*Zx
+    brace_buckling_Z_req = brace_buckling_moment/Fy
+    
+    Z_current = selected_col['Zx'].iloc[0]
+    if Z_current < brace_buckling_Z_req:
+        selected_col, passed_Zx_cols = select_member(col_compr_list, 
+            'Zx', brace_buckling_Z_req)
+    else:
+        passed_Zx_cols = col_compr_list
+    
+    return(selected_col, passed_Zx_cols)
 
 '''
 def capacity_CBF_design(selected_brace, Q_per_bay, w_cases, 
@@ -1239,15 +1542,16 @@ def design_CBF(input_df, db_string='../resource/'):
     
     # cases specific to earthquake design
     load_cases = input_df['all_w_cases']
-    case_1 = load_cases['1.2D+0.5L+1.0E']/12
-    case_2 = load_cases['0.9D-1.0E']/12
+    case_1 = load_cases['1.2D+0.5L+1.0E'][1:]/12
+    case_2 = load_cases['0.9D-1.0E'][1:]/12
     
     # # gravity case for all uses
     # # import numpy as np
     # w_grav = input_df['w_fl']/12
     
     import pandas as pd
-
+    import numpy as np
+    
     # ASCE 7-22: Story forces
     n_braced = round(n_bays/2.25)
     delxe, Q_per_bay = get_CBF_element_forces(hsx, Fx, R_y, n_braced)
@@ -1283,19 +1587,22 @@ def design_CBF(input_df, db_string='../resource/'):
         selected_brace, qualified_braces = select_compression_member(sorted_braces, 
                                                                      Lc_brace, 
                                                                      C_brace)
-        
-        A_min = A_brace[fl]
-        if selected_brace['A'].iloc[0] < A_min:
-            selected_brace = select_member(qualified_braces, 'A', A_min)
-            
-        all_braces.append(selected_brace.iloc[0]['AISC_Manual_Label'])
-        
-    
+        # if brace design was not possible, stop all design (beams and cols are
+        # dependent on braces)
+        if selected_brace is not np.nan:
+            A_min = A_brace[fl]
+            if selected_brace['A'].iloc[0] < A_min:
+                selected_brace = select_member(qualified_braces, 'A', A_min)
+                
+            all_braces.append(selected_brace.iloc[0]['AISC_Manual_Label'])
+        else:
+            all_braces = np.nan
+            all_beams = np.nan
+            all_columns = np.nan
+            return(all_braces, all_beams, all_columns)
         
     # beam and column capacity design
-    # TODO: one column per 4 floors
     from building import get_shape
-    import numpy as np
     
     all_beams = []
     for fl, brace in enumerate(all_braces):
@@ -1317,16 +1624,20 @@ def design_CBF(input_df, db_string='../resource/'):
     for fl, brace in enumerate(all_braces):
         current_brace = get_shape(brace, 'brace')
         
-        selected_col, qualified_cols = capacity_CBF_column(current_brace, fl,
-                                                           Q_per_bay, load_cases, 
-                                                           h_story, L_bay, n_bays,
-                                                           sorted_cols)
-        
-        if selected_col is not np.nan:
-            all_columns.append(selected_col.iloc[0]['AISC_Manual_Label'])
+        # splice every 4 floors: if 4th floor, select new column
+        if (fl%4 == 0):
+            selected_col, qualified_cols = capacity_CBF_column(current_brace, fl,
+                                                               Q_per_bay, load_cases, 
+                                                               h_story, L_bay, n_bays,
+                                                               sorted_cols)
+            if selected_col is not np.nan:
+                all_columns.append(selected_col.iloc[0]['AISC_Manual_Label'])
+            else:
+                all_columns = np.nan
+                break
         else:
-            all_columns = np.nan
-            break
-    
+            selected_col = all_columns[fl-1]
+            all_columns.append(selected_col)
+            
     return(all_braces, all_beams, all_columns)
     

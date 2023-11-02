@@ -3,9 +3,17 @@
 */inputs/
 */output/
 */outputs/
+/tfp_mf/data/
+/src/archive/
+/testing/motions/
+/outputs/
+*.svg
 *.eps
 *.pptx
 *.xlsx
+*/figures*
+./tfp_mf/data/val/
+./tfp_mf/data/pushover/
 old/
 *temp_save.csv
 *.zip
