@@ -126,6 +126,7 @@ def scale_ground_motion(input_df,
     
     return(gm_name, sf, target_average)
 
+# TODO: convert grabbing spectrum values to real spectrum
 def get_ST(input_df, T_query, 
            db_dir='../resource/ground_motions/gm_db.csv',
            spec_dir='../resource/ground_motions/gm_spectra.csv'):
@@ -148,23 +149,16 @@ def get_ST(input_df, T_query,
     Sa_query_unscaled  = np.interp(T_query, gm_spectrum.Period, gm_spectrum.Sa)
     Sa_query = scale_factor*Sa_query_unscaled
     return(Sa_query)
-    
+
 def plot_spectrum(input_df,
                   spec_dir='../resource/ground_motions/gm_spectra.csv'):
     
-    import re
     import pandas as pd
 
     # load in sections of the sheet
     unscaled_spectra = pd.read_csv(spec_dir)
     
     GM_name = input_df['gm_selected']
-    scale_factor = input_df['scale_factor']
-
-    rsn = re.search('(\d+)', GM_name).group(1)
-    gm_unscaled_name = 'RSN-' + str(rsn) + ' Horizontal-1 pSa (g)'
-    gm_spectrum = unscaled_spectra[['Period (sec)', gm_unscaled_name]]
-    gm_spectrum.columns  = ['Period', 'Sa']
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -172,11 +166,11 @@ def plot_spectrum(input_df,
     S_1 = input_df['S_1']
     T_m = input_df['T_m']
     
-    # default='warn', ignore SettingWithCopyWarning
-    pd.options.mode.chained_assignment = None  
-    
     # info from building class
     S_s = 2.2815
+    
+    # default='warn', ignore SettingWithCopyWarning
+    pd.options.mode.chained_assignment = None  
     
     # Scale both Ss and S1
     # Create design spectrum
@@ -197,12 +191,16 @@ def plot_spectrum(input_df,
         target_spectrum['Period (sec)'].between(t_lower,t_upper)]['Target_Sa']
     target_average = target_range.prod()**(1/target_range.size)
     
+    # generate true spectra for ground motion
+    # scale factor applied internally, spectrum for damping of zeta_e
+    Tn, gm_A, gm_D = generate_spectrum(input_df)
+    
     plt.figure()
-    plt.plot(gm_spectrum.Period, gm_spectrum.Sa*scale_factor)
+    plt.plot(Tn, gm_A)
     plt.plot(target_spectrum['Period (sec)'], target_spectrum.Target_Sa)
     plt.axvline(t_lower, linestyle=':', color='red')
     plt.axvline(t_upper, linestyle=':', color='red')
-    plt.axvline(T_m, linestyle=':', color='red')
+    plt.axvline(T_m, linestyle='--', color='red')
     plt.axhline(target_average, linestyle=':', color='black')
     plt.title('Spectrum for '+GM_name)
     plt.xlabel(r'Period $T_n$ (s)')
@@ -221,22 +219,143 @@ def plot_spectrum(input_df,
     # from T_m, zeta_M, S_1
     B_m = interp(input_df['zeta_e'], zetaRef, BmRef)
     
-    disp_gm = gm_spectrum.Sa*scale_factor*g*gm_spectrum.Period**2/(4*pi**2)
     disp_target = target_spectrum.Target_Sa*g*target_spectrum['Period (sec)']**2/(4*pi**2*B_m)
     
     plt.figure()
-    plt.plot(gm_spectrum.Period, disp_gm)
+    plt.plot(Tn, gm_D)
     plt.plot(target_spectrum['Period (sec)'], disp_target)
-    plt.axvline(t_lower, linestyle=':', color='red')
-    plt.axvline(t_upper, linestyle=':', color='red')
-    plt.axvline(T_m, linestyle=':', color='red')
+    plt.axvline(T_m, linestyle='--', color='red')
     plt.title('Displacement spectrum for '+GM_name)
     plt.xlabel(r'Period $T_n$ (s)')
     plt.ylabel(r'Displacement $D$ (in)')
     plt.ylim([0, 50])
     plt.xlim([0, 5])
     plt.grid(True)
- 
-# TODO: plot real spectrum
 
+def generate_spectrum(input_df,
+                      gm_path = '../resource/ground_motions/PEERNGARecords_Unscaled/',
+                      spec_dir = '../resource/ground_motions/'):
+    
+    gm_name = input_df['gm_selected']
+    scale_factor = input_df['scale_factor']
+    
+    # call procedure to convert the ground-motion file
+    from ReadRecord import ReadRecord
+    dt, nPts = ReadRecord(gm_path+gm_name+'.AT2', gm_path+gm_name+'.g3')
+   
+    import numpy as np
+    uddg = np.loadtxt(gm_path+gm_name+'.g3').flatten()*scale_factor
+    
+    import pandas as pd
+    spec_df = pd.read_csv(spec_dir+'period_range.csv',
+                           names=['Tn'], header=None)
+    zeta = input_df['zeta_e']
+    
+    import time
+    t0 = time.time()
+    spec_df[['A', 
+             'D']] = spec_df.apply(lambda row: spectrum_frequency_domain(row, zeta, uddg, dt),
+                                                axis='columns', result_type='expand')
+    tp = time.time() - t0
+    print("Created spectrum in %.2f s" % tp)
+    
+    return spec_df['Tn'], spec_df['A'], spec_df['D']
+
+
+# make function to parallellize spectrum
+# uddg is in g
+def spectrum_time_domain(df, zeta, uddg, dt):
+    Tn = df['Tn']
+    pi = 3.14159
+    m = 1
+    omega_n = 2*pi/Tn
+    k = m*omega_n**2
+    
+    c = 2*m*omega_n*zeta
+    g = 386.4
+    p = -m*uddg*g
+    
+    u_caa, v_caa, a_caa = newmark_SDOF(m, k, c, p, dt, 0, 0, 'constant')
+    
+    A = max(abs(u_caa))*omega_n**2/g
+    D = max(abs(u_caa))
+    
+    return(A, D)
+
+# use frequency domain to calculate spectrum (faster)
+def next_power_of_2(x):  
+    return 1 if x == 0 else 2**(x - 1).bit_length()
+
+
+def spectrum_frequency_domain(df, zeta, uddg, dt):
+    Tn = df['Tn']
+    pi = 3.14159
+    m = 1
+    omega_n = 2*pi/Tn
+    
+    g = 386.4
+    nw = next_power_of_2(len(uddg))
+    half_nw = int(nw/2)
+    dw = 2*pi/(dt*nw)
+    import numpy as np
+    omega = np.zeros(nw)
+    for i in range(half_nw):
+        omega[i] = i*dw
+    for j in range(half_nw, nw):
+        omega[j] = (-half_nw + (j - half_nw + 1))*dw
+    
+    # pad ground motion to make it cyclical
+    uddg_pad = np.zeros(nw)
+    uddg_pad[:len(uddg)] = uddg*g
+    
+    
+    from scipy.fft import ifft, fft
+    Uddgw = fft(-m*uddg_pad)
+    
+    H = 1/(omega_n**2 - omega**2 + 2*zeta*1j*omega_n*omega)
+    uw = -H*Uddgw
+    ut = np.real(ifft(uw))
+    
+    A = max(abs(ut))*omega_n**2/g
+    D = max(abs(ut))
+    
+    return(A, D)
+
+def newmark_SDOF(m, k, c, p, dt, u0, v0, method):
+    numPoints = len(p)
+    
+    if method == 'constant':
+        beta = 1/4
+        gamma = 1/2
+    else:
+        beta = 1/6
+        gamma = 1/2
+        
+    import numpy as np
+    
+    # Initial conditions
+    u = np.zeros(numPoints)
+    v = np.zeros(numPoints)
+    a = np.zeros(numPoints)
+    
+    u[0] = u0
+    v[0] = v0
+    a[0] = (p[0]-c*v[0]-k*u[0])/m
+    
+    a1 = m/(beta*dt**2) + gamma/(beta*dt)*c
+    a2 = m/(beta*dt) + (gamma/beta-1)*c
+    a3 = (1/(2*beta)-1)*m + dt*(gamma/(2*beta)-1)*c
+    k_hat = k + a1
+    
+    # Loop through time i in forcing function to calculate response at i+1
+    for i in range(numPoints-1):
+        p_hat = p[i+1] + a1*u[i] + a2*v[i] + a3*a[i]
+        
+        u[i+1] = p_hat/k_hat
+        v[i+1] = (gamma/(beta*dt)*(u[i+1] - u[i]) + 
+                  (1-gamma/beta)*v[i] + dt*(1-gamma/(2*beta)))
+        a[i+1] = ((u[i+1] - u[i])/(beta*dt**2) - 
+                  v[i]/(beta*dt) - (1/(2*beta)-1)*a[i])
+        
+    return u, v, a
 # a, b = scale_ground_motion()

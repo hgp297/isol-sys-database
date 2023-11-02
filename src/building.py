@@ -2531,7 +2531,7 @@ class Building:
         pushover_df.to_csv(pushoverStr, index=False)
         '''
     def run_ground_motion(self, gm_name, scale_factor, dt_transient,
-                          gm_dir='../tfp_mf/ground_motions/PEERNGARecords_Unscaled/',
+                          gm_dir='../resource/ground_motions/PEERNGARecords_Unscaled/',
                           data_dir='./outputs/'):
         
         # Recorders
