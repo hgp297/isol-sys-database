@@ -157,8 +157,8 @@ def plot_dynamic(run, data_dir='./outputs/'):
                                  header=None, names=wall_columns)
 
     plt.figure()
-    plt.plot(impact_disp['left_x'], impact_forces['left_x'])
-    plt.plot(-impact_disp['right_x'], impact_forces['right_x'])
+    plt.plot(impact_disp['left_x'], -impact_forces['left_x'])
+    plt.plot(-impact_disp['right_x'], -impact_forces['right_x'])
     plt.title('Impact hysteresis')
     plt.xlabel('Displ (in)')
     plt.ylabel('Force (kip)')
