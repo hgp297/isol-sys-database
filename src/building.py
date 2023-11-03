@@ -2800,20 +2800,20 @@ class Building:
                     if ok == 0:
                         print("That worked. Back to Newton")
                     ops.algorithm(algorithmTypeDynamic)
-                if ok != 0:
-                    print('Trying Broyden ... ')
-                    algorithmTypeDynamic = 'Broyden'
-                    ops.algorithm(algorithmTypeDynamic, 8)
-                    ok = ops.analyze(1, dt_transient)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
-                if ok != 0:
-                    print('Trying BFGS ... ')
-                    algorithmTypeDynamic = 'BFGS'
-                    ops.algorithm(algorithmTypeDynamic)
-                    ok = ops.analyze(1, dt_transient)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
+                # if ok != 0:
+                #     print('Trying Broyden ... ')
+                #     algorithmTypeDynamic = 'Broyden'
+                #     ops.algorithm(algorithmTypeDynamic, 8)
+                #     ok = ops.analyze(1, dt_transient)
+                #     if ok == 0:
+                #         print("That worked. Back to Newton")
+                # if ok != 0:
+                #     print('Trying BFGS ... ')
+                #     algorithmTypeDynamic = 'BFGS'
+                #     ops.algorithm(algorithmTypeDynamic)
+                #     ok = ops.analyze(1, dt_transient)
+                #     if ok == 0:
+                #         print("That worked. Back to Newton")
         t_final = ops.getTime()
         tp = time.time() - t0
         minutes = tp//60

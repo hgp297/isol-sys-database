@@ -19,16 +19,7 @@ main_obj = Database(50)
 main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)
 
-# test_mf_tfp = main_obj.mf_designs.iloc[0]
-# test_cbf = main_obj.cbf_designs.iloc[0]
-# test_mf_lrb = main_obj.mf_designs.iloc[-1]
-
 main_obj.scale_gms()
-
-# # test build one building (MF, TFP only)
-# from building import Building
-# mf_tfp_bldg = Building(test_mf_tfp)                                                                        
-# mf_tfp_bldg.model_frame()
 
 #%% troubleshoot
 
@@ -44,24 +35,24 @@ main_obj.scale_gms()
 # # mf tfp
 # run = main_obj.retained_designs.loc[68]
 
-# # troubleshoot
-# run = main_obj.retained_designs.iloc[20]
+# troubleshoot
+run = main_obj.retained_designs.iloc[20]
 
-# from building import Building
+from building import Building
 
-# bldg = Building(run)
-# bldg.model_frame()
-# bldg.apply_grav_load()
+bldg = Building(run)
+bldg.model_frame()
+bldg.apply_grav_load()
 
-# T_1 = bldg.run_eigen()
+T_1 = bldg.run_eigen()
 
-# bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
+bldg.provide_damping(80, method='SP',
+                                  zeta=[0.05], modes=[1])
 
-# dt = 0.005
-# bldg.run_ground_motion(run.gm_selected, 
-#                         run.scale_factor*1, 
-#                         dt)
+dt = 0.005
+bldg.run_ground_motion(run.gm_selected, 
+                        run.scale_factor*1, 
+                        dt)
 
 # from experiment import run_nlth
 # res = run_nlth(troubleshoot_run)
@@ -85,13 +76,13 @@ main_obj.scale_gms()
 
 #%% dynamic run
 
-# from plot_structure import plot_dynamic
-# plot_dynamic(run)
+from plot_structure import plot_dynamic
+plot_dynamic(run)
 
 #%% ground motion spectrum
 
-# from gms import plot_spectrum
-# plot_spectrum(run)
+from gms import plot_spectrum
+plot_spectrum(run)
 
 
 #%% animation
@@ -103,7 +94,7 @@ main_obj.scale_gms()
 
 #%% generate analyze database
 
-main_obj.analyze_db('structural_db_branch.csv', save_interval=5)
+# main_obj.analyze_db('structural_db_branch.csv', save_interval=5)
 
 #%%
 

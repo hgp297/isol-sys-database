@@ -132,7 +132,6 @@ def get_gm_ST(input_df, T_query):
     Sa_query = interp(T_query, Tn, gm_A)
     return(Sa_query)
     
-# TODO: convert grabbing spectrum values to real spectrum
 def get_ST(input_df, T_query, 
            db_dir='../resource/ground_motions/gm_db.csv',
            spec_dir='../resource/ground_motions/gm_spectra.csv'):
@@ -253,17 +252,26 @@ def generate_spectrum(input_df,
     from ReadRecord import ReadRecord
     dt, nPts = ReadRecord(gm_path+gm_name+'.AT2', gm_path+gm_name+'.g3')
    
-    import numpy as np
-    uddg = np.loadtxt(gm_path+gm_name+'.g3').flatten()*scale_factor
-    
     import pandas as pd
+    import numpy as np
+    
+    # read g3 file and catch uneven columns
+    df_uddg = pd.read_csv(gm_path+gm_name+'.g3', 
+                          header=None, delim_whitespace=True)
+    array_uddg = df_uddg.values.flatten()
+    
+    # scaled here, drop NaNs
+    uddg = array_uddg[~np.isnan(array_uddg)]*scale_factor
+    
+    # Tn vector to match PEER
     spec_df = pd.read_csv(spec_dir+'period_range.csv',
                            names=['Tn'], header=None)
     zeta = input_df['zeta_e']
     
-    spec_df[['A', 
-             'D']] = spec_df.apply(lambda row: spectrum_frequency_domain(row, zeta, uddg, dt),
-                                                axis='columns', result_type='expand')
+    # calculate damped frequency using frequency domain
+    spec_df[['A', 'D']] = spec_df.apply(lambda row: 
+                                        spectrum_frequency_domain(row, zeta, uddg, dt),
+                                        axis='columns', result_type='expand')
     
     return spec_df['Tn'], spec_df['A'], spec_df['D']
 
@@ -292,7 +300,7 @@ def spectrum_time_domain(df, zeta, uddg, dt):
 def next_power_of_2(x):  
     return 1 if x == 0 else 2**(x - 1).bit_length()
 
-
+# frequency domain spectrum analysis (CE 223)
 def spectrum_frequency_domain(df, zeta, uddg, dt):
     Tn = df['Tn']
     pi = 3.14159
@@ -302,6 +310,9 @@ def spectrum_frequency_domain(df, zeta, uddg, dt):
     g = 386.4
     nw = next_power_of_2(len(uddg))
     half_nw = int(nw/2)
+    
+    # first half of array is positive frequency (fft specification)
+    # second half is negative
     dw = 2*pi/(dt*nw)
     import numpy as np
     omega = np.zeros(nw)
@@ -315,11 +326,15 @@ def spectrum_frequency_domain(df, zeta, uddg, dt):
     uddg_pad[:len(uddg)] = uddg*g
     
     
+    # perform Fourier transform of ground motion
     from scipy.fft import ifft, fft
     Uddgw = fft(-m*uddg_pad)
     
+    # transfer function
     H = 1/(omega_n**2 - omega**2 + 2*zeta*1j*omega_n*omega)
     uw = -H*Uddgw
+    
+    # get result in time domain
     ut = np.real(ifft(uw))
     
     A = max(abs(ut))*omega_n**2/g
