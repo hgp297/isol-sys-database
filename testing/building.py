@@ -67,9 +67,9 @@ class Building:
             n_braced = int(round(n_bays/2.25))
             n_braced = max(n_braced, 1)
             
+            # TODO: change here for testing one bay
             # roughly center braces around middle of the building
-            n_start = round(n_bays/2 - n_braced/2)
-            n_start = max(n_start, 1)
+            n_start = 0
             
             # start from first interior bay
             # no ground floor included
@@ -82,8 +82,7 @@ class Building:
             # bottom brace supports, none on top floor
             # bottom nodes are just a copy of the existing main nodes where braces connect
             brace_bottoms = [nd for nd in floor_nodes
-                             if ((nd//10)%10 != n_stories+1) and
-                             (nd%10 >= n_start) and (nd%10 <= n_start+n_braced)]
+                             if ((nd//10)%10 != n_stories+1)]
             
             brace_beam_ends = [nd+10 for nd in brace_bottoms]
             
@@ -1288,10 +1287,10 @@ class Building:
         cR2 = 0.15
         ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
         
-        # ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
         
-        ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
-        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+        # ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
+        # ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
@@ -2518,13 +2517,13 @@ class Building:
         # Recorders
         import openseespy.opensees as ops
         
-        # # TODO: fix just to test
-        # diaph_nodes = self.node_tags['diaphragm']
-        # # fix base for Tfb
-        # lc_base = self.node_tags['leaning'][0]
-        # for diaph_nd in diaph_nodes:
-        #     self.refix(diaph_nd, "fix")
-        # self.refix(lc_base, 'fix_lc')
+        # TODO: fix just to test
+        diaph_nodes = self.node_tags['diaphragm']
+        # fix base for Tfb
+        lc_base = self.node_tags['leaning'][0]
+        for diaph_nd in diaph_nodes:
+            self.refix(diaph_nd, "fix")
+        self.refix(lc_base, 'fix_lc')
         
         # get list of relevant nodes
         superstructure_system = self.superstructure_system
@@ -2703,40 +2702,31 @@ class Building:
         ops.numberer('RCM')
         ops.system('BandGeneral')
         
+        # Convergence Test: tolerance
+        tolDynamic          = 1e-5 
         
         # Convergence Test: maximum number of iterations that will be performed
         maxIterDynamic      = 100
         
         # Convergence Test: flag used to print information on convergence
-        printFlagDynamic    = 0        
+        printFlagDynamic    = 0         
+        
+        testTypeDynamic     = 'EnergyIncr'
+        ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
         
         # algorithmTypeDynamic    = 'Broyden'
         # ops.algorithm(algorithmTypeDynamic, 8)
         algorithmTypeDynamic    = 'Newton'
         ops.algorithm(algorithmTypeDynamic)
         
-        # TODO: let's try energy incr norm for CBF
-        if superstructure_system == 'CBF':
-            # Convergence Test: tolerance
-            testTypeDynamic = 'EnergyIncr'
-            tolDynamic = 1e-7
-            
-            # TRBDF2 integrator, best with energy
-            ops.integrator('TRBDF2')
-        else:
-            # Convergence Test: tolerance
-            testTypeDynamic     = 'NormDispIncr'
-            tolDynamic = 1e-5
-            
-            # Newmark-integrator gamma parameter (also HHT)
-            newmarkGamma = 0.5
-            newmarkBeta = 0.25
-            ops.integrator('Newmark', newmarkGamma, newmarkBeta)
-            
-        ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+        # Newmark-integrator gamma parameter (also HHT)
+        newmarkGamma = 0.5
+        newmarkBeta = 0.25
+        ops.integrator('Newmark', newmarkGamma, newmarkBeta)
         ops.analysis('Transient')
         
-        
+        # # TRBDF2 integrator, best with energy
+        # ops.integrator('TRBDF2')
         # ops.analysis('Transient')
 
         #  ---------------------------------    perform Dynamic Ground-Motion Analysis
@@ -2783,7 +2773,6 @@ class Building:
         t0 = time.time()
         
         # TODO: fatal errors in Broyden and BFGS (RAM related?)
-        # changed to normdisp convergence
         ok = ops.analyze(n_steps, dt_transient)   
         if ok != 0:
             ok = 0

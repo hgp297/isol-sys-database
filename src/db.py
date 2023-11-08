@@ -64,6 +64,8 @@ class Database:
         
         self.n_points = n_points
         
+        # TODO: imbalance in frames (roughly 2x more MFs than CBFs)
+        
         # roughly need 7x points to fill desired 
         self.n_generated = n_points*n_buffer
         

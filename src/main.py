@@ -23,8 +23,8 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-# # cbf lrb
-# run = main_obj.retained_designs.loc[113]
+# cbf lrb
+run = main_obj.retained_designs.loc[113]
 
 # # cbf tfp
 # run = main_obj.retained_designs.loc[193]
@@ -35,8 +35,8 @@ main_obj.scale_gms()
 # # mf tfp
 # run = main_obj.retained_designs.loc[68]
 
-# troubleshoot
-run = main_obj.retained_designs.iloc[4]
+# # troubleshoot
+# run = main_obj.retained_designs.iloc[4]
 
 from building import Building
 
@@ -49,9 +49,9 @@ T_1 = bldg.run_eigen()
 bldg.provide_damping(80, method='SP',
                                   zeta=[0.05], modes=[1])
 
-dt = 0.005
+dt = 0.001
 bldg.run_ground_motion(run.gm_selected, 
-                        run.scale_factor*1, 
+                        run.scale_factor*3, 
                         dt)
 
 # from experiment import run_nlth
@@ -87,14 +87,14 @@ plot_spectrum(run)
 
 #%% animation
 
-# from plot_structure import animate_gm
-# fig, animate, n_ani = animate_gm(bldg)
-# import matplotlib.animation as animation
-# animation.FuncAnimation(fig, animate, n_ani, interval=1/4, blit=True)
+from plot_structure import animate_gm
+fig, animate, n_ani = animate_gm(bldg)
+import matplotlib.animation as animation
+animation.FuncAnimation(fig, animate, n_ani, interval=1/4, blit=True)
 
 #%% generate analyze database
 
-# main_obj.analyze_db('structural_db_branch.csv', save_interval=5)
+# main_obj.analyze_db('structural_db_conv.csv', save_interval=5)
 
 #%%
 

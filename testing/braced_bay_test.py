@@ -147,9 +147,11 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
 ############################################################################
 import pandas as pd
 from building import Building
-test_d = {'superstructure_system':'CBF', 'num_bays':1, 'num_stories':1}
+test_d = {'superstructure_system':'CBF', 'isolator_system':'TFP', 
+          'num_bays':1, 'num_stories':1}
 test_design = pd.Series(data=test_d, 
-                          index=['superstructure_system', 'num_bays', 'num_stories'])
+                          index=['superstructure_system', 'isolator_system', 
+                                 'num_bays', 'num_stories'])
 bldg = Building(test_design)
 bldg.number_nodes()
 # import OpenSees and libraries
@@ -456,7 +458,7 @@ vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
 
 # brace geometry 
 brace_top_nodes = bldg.node_tags['brace_top']
-xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10 - 1)
+xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10)
 xyz_j = ops.nodeCoord(brace_top_nodes[0])
 brace_x_axis_L = np.subtract(xyz_j, xyz_i)
 brace_x_axis_L = brace_x_axis_L / np.sqrt(np.sum(brace_x_axis_L**2))
@@ -464,7 +466,7 @@ vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
 vecxz = np.cross(brace_x_axis_L,vecxy_brace) # What OpenSees expects
 vecxz_brace_L = vecxz / np.sqrt(np.sum(vecxz**2))
 
-xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10)
+xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10 + 1)
 xyz_j = ops.nodeCoord(brace_top_nodes[0])
 brace_x_axis_R = np.subtract(xyz_j, xyz_i)
 brace_x_axis_R = brace_x_axis_R / np.sqrt(np.sum(brace_x_axis_R**2))
@@ -638,16 +640,16 @@ for elem_tag in brace_elems:
 # add ghost trusses to the braces to reduce convergence problems
 brace_ghosts = bldg.elem_tags['brace_ghosts']
 for elem_tag in brace_ghosts:
-    # i_nd = (elem_tag - 5) - brace_id
-    i_nd = (elem_tag - 5 - 1) - brace_id
+    i_nd = (elem_tag - 5) - brace_id
+    # i_nd = (elem_tag - 5 - 1) - brace_id
     
     parent_i_nd = i_nd // 100
     if elem_tag%10 == 9:
-        # j_nd = (parent_i_nd + 10)*100 + 16
-        j_nd = (parent_i_nd + 10)*100 + 12
+        j_nd = (parent_i_nd + 10)*100 + 16
+        # j_nd = (parent_i_nd + 10)*100 + 12
     else:
-        # j_nd = (parent_i_nd + 9)*100 + 15
-        j_nd = (parent_i_nd + 9)*100 + 11
+        j_nd = (parent_i_nd + 9)*100 + 15
+        # j_nd = (parent_i_nd + 9)*100 + 11
     ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
     
 ###################### Gusset plates #############################
@@ -896,7 +898,6 @@ ops.loadConst('-time', 0.0)
 
 steps = 1000
 
-
 ops.recorder('Element','-ele',92016,'-file','output/fiber.out',
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
 ops.recorder('Node','-node', 10, 11,'-file', 'output/end_reaction.out', '-dof', 1, 'reaction')
@@ -908,9 +909,9 @@ ops.recorder('Node','-node', 201,'-file',
              'output/top_brace_node.out', '-dof', 1, 3, 'disp')
 
 #%%
-
+'''
 # ------------------------------
-# Loading: axial
+# Loading: cyclic
 # ------------------------------
 ops.wipeAnalysis()
 # create TimeSeries
@@ -951,16 +952,16 @@ for i, pk in enumerate(peaks):
 
 # d_mid = ops.nodeDisp(2018)
 # print(d_mid)
-
+'''
 # # ------------------------------
 # Loading: earthquake
 # ------------------------------
-'''
+
 ops.wipeAnalysis()
 # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
 GMDirection = 1  # ground-motion direction
 gm_name = 'RSN3905_TOTTORI_OKY002EW'
-scale_factor = 30.0
+scale_factor = 60.0
 print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
 ops.constraints('Plain')
@@ -968,7 +969,7 @@ ops.numberer('RCM')
 ops.system('BandGeneral')
 
 # Convergence Test: tolerance
-tolDynamic          = 1e-5
+tolDynamic          = 1e-7
 
 # Convergence Test: maximum number of iterations that will be performed
 maxIterDynamic      = 500
@@ -976,7 +977,8 @@ maxIterDynamic      = 500
 # Convergence Test: flag used to print information on convergence
 printFlagDynamic    = 0         
 
-testTypeDynamic     = 'NormDispIncr'
+testTypeDynamic     = 'EnergyIncr'
+# testTypeDynamic     = 'NormDispIncr'
 ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
 
 # algorithmTypeDynamic    = 'Broyden'
@@ -988,6 +990,10 @@ ops.algorithm(algorithmTypeDynamic)
 newmarkGamma = 0.5
 newmarkBeta = 0.25
 ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+
+# TRBDF2 integrator, best with energy
+ops.integrator('TRBDF2')
+
 ops.analysis('Transient')
 
 #  ---------------------------------    perform Dynamic Ground-Motion Analysis
@@ -1056,8 +1062,9 @@ minutes = tp//60
 seconds = tp - 60*minutes
 print('Ground motion done. End time: %.4f s' % t_final)
 print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
-'''
+
 ops.wipe()
+
 #%%
 ############################################################################
 #              Plot results

@@ -127,7 +127,7 @@ def scale_ground_motion(input_df,
     return(gm_name, sf, target_average)
 
 def get_gm_ST(input_df, T_query):
-    Tn, gm_A, gm_D = generate_spectrum(input_df)
+    Tn, gm_A, gm_D, uddg = generate_spectrum(input_df)
     from numpy import interp
     Sa_query = interp(T_query, Tn, gm_A)
     return(Sa_query)
@@ -200,7 +200,7 @@ def plot_spectrum(input_df,
     # scale factor applied internally, spectrum for damping of zeta_e
     import time
     t0 = time.time()
-    Tn, gm_A, gm_D = generate_spectrum(input_df)
+    Tn, gm_A, gm_D, uddg = generate_spectrum(input_df)
     tp = time.time() - t0
     print("Created spectrum in %.2f s" % tp)
     
@@ -215,6 +215,14 @@ def plot_spectrum(input_df,
     plt.xlabel(r'Period $T_n$ (s)')
     plt.ylabel(r'Spectral acceleration $Sa$ (g)')
     plt.xlim([0, 5])
+    plt.grid(True)
+    
+    plt.figure()
+    t_vec = np.linspace(0, 60.0, len(uddg))
+    plt.plot(t_vec, uddg)
+    plt.title('Ground acceleration '+GM_name)
+    plt.xlabel(r'$t$ (s)')
+    plt.ylabel(r'$\ddot{u}_g$ (g)')
     plt.grid(True)
     
     g = 386.4
@@ -273,7 +281,7 @@ def generate_spectrum(input_df,
                                         spectrum_frequency_domain(row, zeta, uddg, dt),
                                         axis='columns', result_type='expand')
     
-    return spec_df['Tn'], spec_df['A'], spec_df['D']
+    return spec_df['Tn'], spec_df['A'], spec_df['D'], uddg
 
 
 # make function to parallellize spectrum
