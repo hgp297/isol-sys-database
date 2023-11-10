@@ -46,13 +46,15 @@ def plot_dynamic(run, data_dir='./outputs/'):
     isol_disp = pd.read_csv(data_dir+'isolator_displacement.csv', sep=' ', 
                                  header=None, names=isol_columns)
     
+    basic_columns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz']
+    
     if structure_type == 'CBF':
         res_columns = ['stress1', 'strain1', 'stress2', 'strain2', 
                        'stress3', 'strain3', 'stress4', 'strain4']
-        left_brace_res = pd.read_csv(data_dir+'brace_left.csv', sep=' ', 
+        left_brace_res = pd.read_csv(data_dir+'brace_left_str.csv', sep=' ', 
                                      header=None, names=res_columns)
         
-        right_brace_res = pd.read_csv(data_dir+'brace_right.csv', sep=' ', 
+        right_brace_res = pd.read_csv(data_dir+'brace_right_str.csv', sep=' ', 
                                       header=None, names=res_columns)
         
         ghost_columns = ['time', 'axial_strain']
@@ -79,39 +81,6 @@ def plot_dynamic(run, data_dir='./outputs/'):
                               right_brace_res['stress3']*A_web +
                               right_brace_res['stress4']*A_flange)
         
-        '''
-        brace_node_columns = ['time', 'bottom_x', 'bottom_z',
-                              'mid_x', 'mid_z',
-                              'top_x', 'top_z',]
-        brace_disp = pd.read_csv(data_dir+'brace_node_disp.csv', sep=' ', 
-                                     header=None, names=brace_node_columns)
-        
-        brace_disp[['bottom_x', 'mid_x', 'top_x']] = (
-            brace_disp[['bottom_x', 'mid_x', 'top_x']] - isol_disp[['x']].values)
-        
-        brace_disp[['bottom_z', 'mid_z', 'top_z']] = (
-            brace_disp[['bottom_z', 'mid_z', 'top_z']] - isol_disp[['z']].values)
-        
-        brace_force_columns = ['time', 'fx', 'fz']
-        brace_force = pd.read_csv(data_dir+'brace_top_node_force.csv', sep=' ', 
-                                     header=None, names=brace_force_columns)
-        
-        
-        plt.figure()
-        plt.plot(brace_disp['mid_x'], brace_disp['mid_z'])
-        plt.title('Movement of mid brace node')
-        plt.ylabel('z')
-        plt.xlabel('x')
-        plt.grid(True)
-        
-        plt.figure()
-        plt.plot(brace_disp['top_x'], brace_disp['top_z'])
-        plt.title('Movement of top brace node')
-        plt.ylabel('z')
-        plt.xlabel('x')
-        plt.grid(True)
-        '''
-        
         # stress strain
         plt.figure()
         plt.plot(left_brace_res['strain1'], left_brace_res['stress1'])
@@ -120,18 +89,24 @@ def plot_dynamic(run, data_dir='./outputs/'):
         plt.xlabel('Strain (in/in)')
         plt.grid(True)
         
-        # stress strain
+        left_brace_force = pd.read_csv(data_dir+'brace_left_force.csv', sep=' ', 
+                                     header=None, names=basic_columns)
+        
+        right_brace_force = pd.read_csv(data_dir+'brace_right_force.csv', sep=' ', 
+                                     header=None, names=basic_columns)
+        
+        # force displacement
         plt.figure()
-        plt.plot(left_brace_def['axial_strain'], total_axial_force_left)
-        plt.title('Total left brace force? (maybe missing fibers)')
+        plt.plot(left_brace_def['axial_strain'], left_brace_force['iFx'])
+        plt.title('Total left brace force (axial basic in top leg)')
         plt.ylabel('Force (kip)')
         plt.xlabel('Axial deformation (in)')
         plt.grid(True)
         
-        # stress strain
+        # force displacement
         plt.figure()
-        plt.plot(right_brace_def['axial_strain'], total_axial_force_right)
-        plt.title('Total right brace force? (maybe missing fibers)')
+        plt.plot(right_brace_def['axial_strain'], right_brace_force['iFx'])
+        plt.title('Total right brace force (axial basic in top leg)')
         plt.ylabel('Force (kip)')
         plt.xlabel('Axial deformation (in)')
         plt.grid(True)
@@ -152,19 +127,19 @@ def plot_dynamic(run, data_dir='./outputs/'):
     base_rxn = pd.read_csv(data_dir+'base_rxn.csv', sep=' ', 
                                  header=None, names=col_line)
     
-    diaph_rxn = pd.read_csv(data_dir+'diaph_rxn.csv', sep=' ', 
-                                 header=None, names=col_line)
+    
     
     if isol_type == 'LRB':
-        plt.figure()
-        plt.plot(isol_disp['x'], isol_force['jFy'])
-        plt.plot(u_bearing, fs_bearing, linestyle='--')
-        plt.axvline(run.moat_ampli*run.D_m, linestyle=':', color='red')
-        plt.axvline(-run.moat_ampli*run.D_m, linestyle=':', color='red')
-        plt.title('Single isolator hystereses (LRB)')
-        plt.xlabel('Displ (in)')
-        plt.ylabel('Lateral force (kip)')
-        plt.grid(True)
+        
+        # plt.figure()
+        # plt.plot(isol_disp['x'], isol_force['jFy'])
+        # plt.plot(u_bearing, fs_bearing, linestyle='--')
+        # plt.axvline(run.moat_ampli*run.D_m, linestyle=':', color='red')
+        # plt.axvline(-run.moat_ampli*run.D_m, linestyle=':', color='red')
+        # plt.title('Single isolator hystereses (LRB)')
+        # plt.xlabel('Displ (in)')
+        # plt.ylabel('Lateral force (kip)')
+        # plt.grid(True)
         
         col_line = ['column_'+str(col)
                        for col in range(0,num_bays+1)]
@@ -222,20 +197,23 @@ def plot_dynamic(run, data_dir='./outputs/'):
         plt.ylabel('Lateral friction (V/N)')
         plt.grid(True)
         
-    # story level force-displacement
-    story_rxn = pd.read_csv(data_dir+'story_1_rxn.csv', sep=' ', 
-                                 header=None, names=col_line)
+    # # story level force-displacement
+    # diaph_rxn = pd.read_csv(data_dir+'diaph_rxn.csv', sep=' ', 
+    #                               header=None, names=col_line)
     
-    story_1_force = story_rxn[just_cols].sum(axis=1)
-    diaph_force = diaph_rxn[just_cols].sum(axis=1)
-    story_1_shear = story_1_force - diaph_force
-    bldg_disp = (story_disp['story_1'] - story_disp['story_0'])
-    plt.figure()
-    plt.plot(bldg_disp, story_1_shear)
-    plt.title('Story 1 force-displacement')
-    plt.xlabel('Displ (in)')
-    plt.ylabel('Force (kip)')
-    plt.grid(True)
+    # story_rxn = pd.read_csv(data_dir+'story_1_rxn.csv', sep=' ', 
+    #                              header=None, names=col_line)
+    
+    # story_1_force = story_rxn[just_cols].sum(axis=1)
+    # diaph_force = diaph_rxn[just_cols].sum(axis=1)
+    # story_1_shear = story_1_force - diaph_force
+    # bldg_disp = (story_disp['story_1'] - story_disp['story_0'])
+    # plt.figure()
+    # plt.plot(bldg_disp, story_1_shear)
+    # plt.title('Story 1 force-displacement')
+    # plt.xlabel('Displ (in)')
+    # plt.ylabel('Force (kip)')
+    # plt.grid(True)
     
         
     wall_columns = ['time', 'left_x', 'left_z', 'right_x', 'right_z']
@@ -277,12 +255,12 @@ def plot_dynamic(run, data_dir='./outputs/'):
     
     global_drift = (story_disp[story_names[-1]] - story_disp['story_0'])/(run.h_bldg*ft)
     
-    plt.figure()
-    plt.plot(story_disp['time'], story_drift['story_1'])
-    plt.title('Story 1 drift history')
-    plt.xlabel('Time (s)')
-    plt.ylabel('Drift ratio')
-    plt.grid(True)
+    # plt.figure()
+    # plt.plot(story_disp['time'], story_drift['story_1'])
+    # plt.title('Story 1 drift history')
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Drift ratio')
+    # plt.grid(True)
     
     plt.figure()
     plt.plot(story_disp['time'], global_drift)
@@ -291,21 +269,20 @@ def plot_dynamic(run, data_dir='./outputs/'):
     plt.ylabel('Drift ratio')
     plt.grid(True)
     
-    
     PID = story_drift.abs().max().tolist()
     PID.insert(0, 0)
     h_up = [fl/num_stories for fl in range(1, num_stories+1)]
     h_up.insert(0, 0)
     
-    # TODO: fix drift profile
-    plt.figure()
-    plt.plot(PID, h_up)
-    plt.title('Drift profile')
-    plt.xlabel('Peak story drift ratio')
-    plt.ylabel('Building height ratio')
-    plt.xlim([0, 5e-2])
-    plt.ylim([0, 1])
-    plt.grid(True)
+    # # TODO: fix drift profile
+    # plt.figure()
+    # plt.plot(PID, h_up)
+    # plt.title('Drift profile')
+    # plt.xlabel('Peak story drift ratio')
+    # plt.ylabel('Building height ratio')
+    # plt.xlim([0, 5e-2])
+    # plt.ylim([0, 1])
+    # plt.grid(True)
     
 def plot_pushover(run, data_dir='./outputs/pushover/'):
     import pandas as pd

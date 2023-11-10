@@ -24,19 +24,16 @@ main_obj.scale_gms()
 #%% troubleshoot
 
 # cbf lrb
-run = main_obj.retained_designs.loc[113]
+run = main_obj.retained_designs.loc[299]
 
 # # cbf tfp
-# run = main_obj.retained_designs.loc[193]
+# run = main_obj.retained_designs.loc[714]
 
 # # mf lrb
 # run = main_obj.retained_designs.loc[704]
 
 # # mf tfp
 # run = main_obj.retained_designs.loc[68]
-
-# # troubleshoot
-# run = main_obj.retained_designs.iloc[4]
 
 from building import Building
 
@@ -49,7 +46,7 @@ T_1 = bldg.run_eigen()
 bldg.provide_damping(80, method='SP',
                                   zeta=[0.05], modes=[1])
 
-dt = 0.001
+dt = 0.0005
 bldg.run_ground_motion(run.gm_selected, 
                         run.scale_factor*3, 
                         dt)

@@ -64,8 +64,6 @@ class Database:
         
         self.n_points = n_points
         
-        # TODO: imbalance in frames (roughly 2x more MFs than CBFs)
-        
         # roughly need 7x points to fill desired 
         self.n_generated = n_points*n_buffer
         
@@ -307,17 +305,23 @@ class Database:
         all_des = pd.concat([self.mf_designs, self.cbf_designs], 
                                      axis=0)
         # retained designs
-        self.retained_designs = all_des.head(self.n_points)
+        self.retained_designs = all_des.groupby(
+            'superstructure_system', group_keys=False).apply(
+            lambda x: x.sample(n=int(self.n_points/2)))
         self.generated_designs = all_des
         
         print('======================================')
         print('Final database: %d structures.' % len(self.retained_designs))
         print('%d moment frames | %d braced frames' % 
-              (len(self.retained_designs[self.retained_designs['superstructure_system'] == 'MF']),
-               len(self.retained_designs[self.retained_designs['superstructure_system'] == 'CBF'])))
+              (len(self.retained_designs[
+                  self.retained_designs['superstructure_system'] == 'MF']),
+               len(self.retained_designs[
+                   self.retained_designs['superstructure_system'] == 'CBF'])))
         print('%d LRBs | %d TFPs' % 
-              (len(self.retained_designs[self.retained_designs['isolator_system'] == 'LRB']),
-               len(self.retained_designs[self.retained_designs['isolator_system'] == 'TFP'])))
+              (len(self.retained_designs[
+                  self.retained_designs['isolator_system'] == 'LRB']),
+               len(self.retained_designs[
+                   self.retained_designs['isolator_system'] == 'TFP'])))
         print('======================================')
         
     def scale_gms(self):
@@ -363,7 +367,7 @@ class Database:
             bldg_result = run_nlth(design, gm_path)
             
             # TODO: find a way to keep indices
-            # if initial run, start the dataframe with headers from postprocessing.py
+            # if initial run, start the dataframe with headers
             if db_results is None:
                 db_results = pd.DataFrame(bldg_result).T
             else:

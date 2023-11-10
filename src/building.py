@@ -2465,52 +2465,7 @@ class Building:
         minutes = tp//60
         seconds = tp - 60*minutes
         print('Pushover complete. Time elapsed %dm %ds.' % (minutes, seconds))
-        
-        
-        '''
-        # read in the output files
-        dispColumns = ['time', 'isol1', 'isol2', 'isol3', 'isol4', 'isolLC']
-        forceColumns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz', 
-                        'jFx', 'jFy', 'jFz', 'jMx', 'jMy', 'jMz']
-        
-        isol1Force = pd.read_csv(dataDir+'isol1Force.csv', sep = ' ', 
-                                 header=None, names=forceColumns)
-        isol2Force = pd.read_csv(dataDir+'isol2Force.csv', sep = ' ', 
-                                 header=None, names=forceColumns)
-        isol3Force = pd.read_csv(dataDir+'isol3Force.csv', sep = ' ', 
-                                 header=None, names=forceColumns)
-        isol4Force = pd.read_csv(dataDir+'isol4Force.csv', sep = ' ', 
-                                 header=None, names=forceColumns)
-        
-        isolDisp = pd.read_csv(dataDir+'isolDisp.csv', sep=' ', 
-                                 header=None, names=dispColumns)
-        story3Disp = pd.read_csv(dataDir+'story3Disp.csv', sep=' ', 
-                                 header=None, names=dispColumns)
-        
-        col1Force = pd.read_csv(dataDir+'colForce1.csv', sep = ' ', 
-                                header=None, names=forceColumns)
-        col2Force = pd.read_csv(dataDir+'colForce2.csv', sep = ' ', 
-                                header=None, names=forceColumns)
-        col3Force = pd.read_csv(dataDir+'colForce3.csv', sep = ' ', 
-                                header=None, names=forceColumns)
-        col4Force = pd.read_csv(dataDir+'colForce4.csv', sep = ' ', 
-                                header=None, names=forceColumns)
-        
-        sumAxial = (isol1Force['iFx'] + isol2Force['iFx'] +
-                    isol3Force['iFx'] + isol4Force['iFx'])
-       
 
-        baseShear = (col1Force['iFy'] + col2Force['iFy'] + 
-                     col3Force['iFy'] + col4Force['iFy'])
-        baseShearNormalize = baseShear/sumAxial
-        
-        # rewrite the output to pushover
-        pushover_df = pd.DataFrame({'roof_disp': story3Disp['isol1'],
-                                    'isol_disp': isolDisp['isol1'],
-                                    'base_shear_normalized': baseShearNormalize,
-                                    'base_shear': baseShear})
-        pushover_df.to_csv(pushoverStr, index=False)
-        '''
     def run_ground_motion(self, gm_name, scale_factor, dt_transient,
                           gm_dir='../resource/ground_motions/PEERNGARecords_Unscaled/',
                           data_dir='./outputs/'):
@@ -2548,6 +2503,7 @@ class Building:
             outer_col_nds.insert(0, outer_col_nds[0]-10)
             inner_col_nds.insert(0, inner_col_nds[0]-10)
             
+            '''
             # record brace nodes' displacements
             brace_tops = self.node_tags['brace_top']
             brace_bottoms = self.node_tags['brace_bottom']
@@ -2565,6 +2521,7 @@ class Building:
             ops.recorder('Node','-node', top_node,
                          '-file', data_dir+'brace_top_node_force.csv', 
                          '-dof', 1, 3, 'reaction')
+            '''
             
             # first story, leftmost bay, left brace
             brace_ghosts = self.elem_tags['brace_ghosts']
@@ -2587,12 +2544,18 @@ class Building:
             d_brace = selected_brace.iloc[0]['b']
             
             ops.recorder('Element','-ele', bottom_left_brace,
-                         '-file',data_dir+'brace_left.csv', '-time',
+                         '-file',data_dir+'brace_left_str.csv', '-time',
                          'section','fiber', 0.0, -d_brace/2, 'stressStrain')
             
             ops.recorder('Element','-ele', bottom_right_brace,
-                         '-file',data_dir+'brace_right.csv', '-time',
+                         '-file',data_dir+'brace_right_str.csv', '-time',
                          'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+            
+            ops.recorder('Element','-ele', bottom_left_brace, '-time',
+                         '-file',data_dir+'brace_left_force.csv', 'basicForce')
+            
+            ops.recorder('Element','-ele', bottom_right_brace, '-time',
+                         '-file',data_dir+'brace_right_force.csv', 'basicForce')
             
         else:
             floor_nodes = self.node_tags['floor']
@@ -2677,7 +2640,6 @@ class Building:
         # beam force?
         # column force?
         
-        # TODO: verify z force of these elements
         ops.recorder('Element', '-file', data_dir+'impact_forces.csv', 
                      '-time', '-ele', *walls, 'basicForce')
         ops.recorder('Element', '-file', data_dir+'impact_disp.csv', 
@@ -2705,7 +2667,7 @@ class Building:
         
         
         # Convergence Test: maximum number of iterations that will be performed
-        maxIterDynamic      = 100
+        maxIterDynamic      = 1000
         
         # Convergence Test: flag used to print information on convergence
         printFlagDynamic    = 0        
@@ -2799,20 +2761,20 @@ class Building:
                     if ok == 0:
                         print("That worked. Back to Newton")
                     ops.algorithm(algorithmTypeDynamic)
-                # if ok != 0:
-                #     print('Trying Broyden ... ')
-                #     algorithmTypeDynamic = 'Broyden'
-                #     ops.algorithm(algorithmTypeDynamic, 8)
-                #     ok = ops.analyze(1, dt_transient)
-                #     if ok == 0:
-                #         print("That worked. Back to Newton")
-                # if ok != 0:
-                #     print('Trying BFGS ... ')
-                #     algorithmTypeDynamic = 'BFGS'
-                #     ops.algorithm(algorithmTypeDynamic)
-                #     ok = ops.analyze(1, dt_transient)
-                #     if ok == 0:
-                #         print("That worked. Back to Newton")
+                if ok != 0:
+                    print('Trying Broyden ... ')
+                    algorithmTypeDynamic = 'Broyden'
+                    ops.algorithm(algorithmTypeDynamic, 8)
+                    ok = ops.analyze(1, dt_transient)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
+                if ok != 0:
+                    print('Trying BFGS ... ')
+                    algorithmTypeDynamic = 'BFGS'
+                    ops.algorithm(algorithmTypeDynamic)
+                    ok = ops.analyze(1, dt_transient)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
         t_final = ops.getTime()
         tp = time.time() - t0
         minutes = tp//60

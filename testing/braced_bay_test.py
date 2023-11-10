@@ -184,13 +184,13 @@ import numpy as np
 L_beam = L_bay
 L_col = h_story
 
-col_list = ['W12X79']
-beam_list = ['W40X149']
-brace_list = ['HSS9X9X1/4']
+col_list = ['W12X190']
+beam_list = ['W40X199']
+brace_list = ['HSS12X12X5/16']
 # brace_list = ['HSS4X4X1/2']
-selected_col = get_shape('W12X79', 'column')
-selected_beam = get_shape('W40X149', 'beam')
-selected_brace = get_shape('HSS9X9X1/4', 'brace')
+selected_col = get_shape(col_list[0], 'column')
+selected_beam = get_shape(beam_list[0], 'beam')
+selected_brace = get_shape(brace_list[0], 'brace')
 # selected_brace = get_shape('HSS4X4X1/2', 'brace')
 
 (Ag_col, Iz_col, Iy_col,
@@ -901,12 +901,12 @@ steps = 1000
 ops.recorder('Element','-ele',92016,'-file','output/fiber.out',
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
 ops.recorder('Node','-node', 10, 11,'-file', 'output/end_reaction.out', '-dof', 1, 'reaction')
-ops.recorder('Node','-node', 2018,'-file', 
-             'output/mid_brace_node_l.out', '-dof', 1, 3, 'disp')
-ops.recorder('Node','-node', 2017,'-file', 
-             'output/mid_brace_node_r.out', '-dof', 1, 3, 'disp')
-ops.recorder('Node','-node', 201,'-file', 
-             'output/top_brace_node.out', '-dof', 1, 3, 'disp')
+ops.recorder('Node','-node', 2018,'-file',
+             'output/mid_brace_node_l.out', '-time', '-dof', 1, 3, 'disp')
+ops.recorder('Node','-node', 2017,'-file',
+             'output/mid_brace_node_r.out', '-time', '-dof', 1, 3, 'disp')
+ops.recorder('Node','-node', 201,'-file',
+             'output/top_brace_node.out', '-time', '-dof', 1, 3, 'disp')
 
 #%%
 '''
@@ -960,8 +960,8 @@ for i, pk in enumerate(peaks):
 ops.wipeAnalysis()
 # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
 GMDirection = 1  # ground-motion direction
-gm_name = 'RSN3905_TOTTORI_OKY002EW'
-scale_factor = 60.0
+gm_name = 'RSN15_KERN_TAF021'
+scale_factor = 7.92859*15
 print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
 ops.constraints('Plain')
@@ -986,10 +986,10 @@ ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
 algorithmTypeDynamic    = 'Newton'
 ops.algorithm(algorithmTypeDynamic)
 
-# Newmark-integrator gamma parameter (also HHT)
-newmarkGamma = 0.5
-newmarkBeta = 0.25
-ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+# # Newmark-integrator gamma parameter (also HHT)
+# newmarkGamma = 0.5
+# newmarkBeta = 0.25
+# ops.integrator('Newmark', newmarkGamma, newmarkBeta)
 
 # TRBDF2 integrator, best with energy
 ops.integrator('TRBDF2')
@@ -1095,10 +1095,10 @@ forces['force'] = forces['force_left'] + forces['force_right']
 
 x_coord_L, z_coord_L = mid_brace_coord(2018, L_beam, L_col, offset=ofs)
 mid_node_l = pd.read_csv('output/mid_brace_node_l.out', 
-                       sep=' ', header=None, names=['x', 'z'])
+                       sep=' ', header=None, names=['time', 'x', 'z'])
 
 mid_node_r = pd.read_csv('output/mid_brace_node_r.out', 
-                       sep=' ', header=None, names=['x', 'z'])
+                       sep=' ', header=None, names=['time', 'x', 'z'])
 
 x_coord_R, z_coord_R = mid_brace_coord(2017, L_beam, L_col, offset=ofs)
 
@@ -1110,7 +1110,8 @@ plt.ylabel('z')
 plt.xlabel('x')
 plt.grid(True)
 
-top_node = pd.read_csv('output/top_brace_node.out', sep=' ', header=None, names=['x', 'z'])
+top_node = pd.read_csv('output/top_brace_node.out', sep=' ', 
+                       header=None, names=['time', 'x', 'z'])
 
 # buckling movement
 fig = plt.figure()
@@ -1120,12 +1121,20 @@ plt.ylabel('z')
 plt.xlabel('x')
 plt.grid(True)
 
+# # cycles
+# fig = plt.figure()
+# plt.plot(np.arange(1, len(top_node['x'])+1)/steps, top_node['x'])
+# plt.title('Cyclic history')
+# plt.ylabel('Displacement history')
+# plt.xlabel('Cycles')
+# plt.grid(True)
+
 # cycles
 fig = plt.figure()
-plt.plot(np.arange(1, len(top_node['x'])+1)/steps, top_node['x'])
-plt.title('Cyclic history')
-plt.ylabel('Displacement history')
-plt.xlabel('Cycles')
+plt.plot(top_node['time'], top_node['x']/h_story)
+plt.title('Drift history')
+plt.ylabel('Drift ratio')
+plt.xlabel('Time (s)')
 plt.grid(True)
 
 # force disp
