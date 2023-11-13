@@ -2667,7 +2667,7 @@ class Building:
         
         
         # Convergence Test: maximum number of iterations that will be performed
-        maxIterDynamic      = 1000
+        maxIterDynamic      = 500
         
         # Convergence Test: flag used to print information on convergence
         printFlagDynamic    = 0        
@@ -2679,12 +2679,22 @@ class Building:
         
         # TODO: let's try energy incr norm for CBF
         if superstructure_system == 'CBF':
-            # Convergence Test: tolerance
-            testTypeDynamic = 'EnergyIncr'
-            tolDynamic = 1e-7
+            # # Convergence Test: tolerance
+            # testTypeDynamic = 'EnergyIncr'
+            # tolDynamic = 1e-9
             
-            # TRBDF2 integrator, best with energy
-            ops.integrator('TRBDF2')
+            # # TRBDF2 integrator, best with energy
+            # ops.integrator('TRBDF2')
+            
+            # Convergence Test: tolerance
+            testTypeDynamic     = 'NormDispIncr'
+            tolDynamic = 1e-5
+            
+            # Newmark-integrator gamma parameter (also HHT)
+            newmarkGamma = 0.5
+            newmarkBeta = 0.25
+            ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+            
         else:
             # Convergence Test: tolerance
             testTypeDynamic     = 'NormDispIncr'
@@ -2698,8 +2708,9 @@ class Building:
         ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
         ops.analysis('Transient')
         
-        
-        # ops.analysis('Transient')
+        # TODO: promising strategy, use VT, but then only run it until failure
+        # implement with MF as well or just CBF?
+        # ops.analysis('VariableTransient')
 
         #  ---------------------------------    perform Dynamic Ground-Motion Analysis
         # the following commands are unique to the Uniform Earthquake excitation
@@ -2714,7 +2725,6 @@ class Building:
         g = 386.4
         GMfatt = g*scale_factor
 
-        # TODO: something is off with time? peak drift not lining up with peak ground accel
         eq_series_tag = 100
         eq_pattern_tag = 400
         # time series information
@@ -2744,37 +2754,42 @@ class Building:
         import time
         t0 = time.time()
         
-        # TODO: fatal errors in Broyden and BFGS (RAM related?)
-        # changed to normdisp convergence
+        # Convergence loop, careful with Broyden/BFGS with energy
         ok = ops.analyze(n_steps, dt_transient)   
+        # ok = ops.analyze(n_steps, dt_transient, 0.0005, 0.005, 5) 
+        
         if ok != 0:
             ok = 0
+            ops.analysis('Transient')
             curr_time = ops.getTime()
             print("Convergence issues at time: ", curr_time)
             while (curr_time < T_end) and (ok == 0):
                 curr_time     = ops.getTime()
                 ok = ops.analyze(1, dt_transient)
+                # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
                 if ok != 0:
                     print("Trying Newton with line search ...")
                     ops.algorithm('NewtonLineSearch')
                     ok = ops.analyze(1, dt_transient)
+                    # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
                     if ok == 0:
                         print("That worked. Back to Newton")
                     ops.algorithm(algorithmTypeDynamic)
-                if ok != 0:
-                    print('Trying Broyden ... ')
-                    algorithmTypeDynamic = 'Broyden'
-                    ops.algorithm(algorithmTypeDynamic, 8)
-                    ok = ops.analyze(1, dt_transient)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
-                if ok != 0:
-                    print('Trying BFGS ... ')
-                    algorithmTypeDynamic = 'BFGS'
-                    ops.algorithm(algorithmTypeDynamic)
-                    ok = ops.analyze(1, dt_transient)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
+                # if ok != 0:
+                #     print('Trying Broyden ... ')
+                #     algorithmTypeDynamic = 'Broyden'
+                #     ops.algorithm(algorithmTypeDynamic, 8)
+                #     ok = ops.analyze(1, dt_transient)
+                #     if ok == 0:
+                #         print("That worked. Back to Newton")
+                # if ok != 0:
+                #     print('Trying BFGS ... ')
+                #     algorithmTypeDynamic = 'BFGS'
+                #     ops.algorithm(algorithmTypeDynamic)
+                #     ok = ops.analyze(1, dt_transient)
+                #     if ok == 0:
+                #         print("That worked. Back to Newton")
+                
         t_final = ops.getTime()
         tp = time.time() - t0
         minutes = tp//60

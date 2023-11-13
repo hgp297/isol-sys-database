@@ -192,23 +192,25 @@ def run_nlth(design,
                                             0.001,
                                             gm_dir=gm_path,
                                             data_dir=output_path)
-    if run_status != 0:
-        print('Lowering time step last time...')
         
-        bldg = Building(design)
-        bldg.model_frame()
+    # # TODO: integrate this VariableTransient
+    # if run_status != 0:
+    #     print('Lowering time step last time...')
         
-        # apply gravity loads, perform eigenvalue analysis, add damping
-        bldg.apply_grav_load()
-        T_1 = bldg.run_eigen()
-        Tfb = bldg.provide_damping(80, method='SP',
-                                   zeta=[0.05], modes=[1])
+    #     bldg = Building(design)
+    #     bldg.model_frame()
         
-        run_status = bldg.run_ground_motion(design['gm_selected'], 
-                                            design['scale_factor'], 
-                                            0.0005,
-                                            gm_dir=gm_path,
-                                            data_dir=output_path)
+    #     # apply gravity loads, perform eigenvalue analysis, add damping
+    #     bldg.apply_grav_load()
+    #     T_1 = bldg.run_eigen()
+    #     Tfb = bldg.provide_damping(80, method='SP',
+    #                                zeta=[0.05], modes=[1])
+        
+    #     run_status = bldg.run_ground_motion(design['gm_selected'], 
+    #                                         design['scale_factor'], 
+    #                                         0.0005,
+    #                                         gm_dir=gm_path,
+    #                                         data_dir=output_path)
     if run_status != 0:
         print('Recording run and moving on.')
        

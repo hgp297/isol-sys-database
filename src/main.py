@@ -47,7 +47,7 @@ bldg.provide_damping(80, method='SP',
                                   zeta=[0.05], modes=[1])
 
 dt = 0.0005
-bldg.run_ground_motion(run.gm_selected, 
+ok = bldg.run_ground_motion(run.gm_selected, 
                         run.scale_factor*3, 
                         dt)
 
@@ -84,45 +84,15 @@ plot_spectrum(run)
 
 #%% animation
 
-from plot_structure import animate_gm
-fig, animate, n_ani = animate_gm(bldg)
-import matplotlib.animation as animation
-animation.FuncAnimation(fig, animate, n_ani, interval=1/4, blit=True)
+# from plot_structure import animate_gm
+# fig, animate, n_ani = animate_gm(bldg)
+# import matplotlib.animation as animation
+# animation.FuncAnimation(fig, animate, n_ani, interval=1/4, blit=True)
 
 #%% generate analyze database
 
 # main_obj.analyze_db('structural_db_conv.csv', save_interval=5)
 
-#%%
-
-# from building import Building
-
-# from bearing import Bearing
-# tfp_example = Bearing(test_mf_tfp)
-
-# # test build one building (MF, LRB)
-# mf_lrb_bldg = Building(test_mf_lrb)
-# mf_lrb_bldg.model_frame()
-# mf_lrb_bldg.apply_grav_load()
-# mf_lrb_bldg.provide_damping(80, method='SP',
-#                         zeta=[0.05], modes=[1])
-
-# dt = 0.005
-# mf_lrb_bldg.run_ground_motion('RSN3905_TOTTORI_OKY002EW', 1.0, dt)
-
-# # test build CBF
-# cbf_bldg = Building(test_cbf)
-# cbf_bldg.model_frame()
-# cbf_bldg.apply_grav_load()
-# cbf_bldg.provide_damping(80, method='SP',
-#                           zeta=[0.05], modes=[1])
-
-# dt = 0.005
-# cbf_bldg.run_ground_motion('RSN3905_TOTTORI_OKY002EW', 1.0, dt)
-
-# sample_lrb = main_obj.lrb_designs.iloc[0]
-# from design import design_LRB
-# test = design_LRB(sample_lrb)
 
 #%%
 # # plot distribution of parameters
