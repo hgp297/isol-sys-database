@@ -2706,11 +2706,11 @@ class Building:
             ops.integrator('Newmark', newmarkGamma, newmarkBeta)
             
         ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
-        ops.analysis('Transient')
+        # ops.analysis('Transient')
         
         # TODO: promising strategy, use VT, but then only run it until failure
         # implement with MF as well or just CBF?
-        # ops.analysis('VariableTransient')
+        ops.analysis('VariableTransient')
 
         #  ---------------------------------    perform Dynamic Ground-Motion Analysis
         # the following commands are unique to the Uniform Earthquake excitation
@@ -2755,26 +2755,26 @@ class Building:
         t0 = time.time()
         
         # Convergence loop, careful with Broyden/BFGS with energy
-        ok = ops.analyze(n_steps, dt_transient)   
-        # ok = ops.analyze(n_steps, dt_transient, 0.0005, 0.005, 5) 
+        # ok = ops.analyze(n_steps, dt_transient)   
+        ok = ops.analyze(n_steps, dt_transient, 0.0005, 0.005, 5) 
         
-        if ok != 0:
-            ok = 0
-            ops.analysis('Transient')
-            curr_time = ops.getTime()
-            print("Convergence issues at time: ", curr_time)
-            while (curr_time < T_end) and (ok == 0):
-                curr_time     = ops.getTime()
-                ok = ops.analyze(1, dt_transient)
-                # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
-                if ok != 0:
-                    print("Trying Newton with line search ...")
-                    ops.algorithm('NewtonLineSearch')
-                    ok = ops.analyze(1, dt_transient)
-                    # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
-                    ops.algorithm(algorithmTypeDynamic)
+        # if ok != 0:
+        #     ok = 0
+        #     ops.analysis('Transient')
+        #     curr_time = ops.getTime()
+        #     print("Convergence issues at time: ", curr_time)
+        #     while (curr_time < T_end) and (ok == 0):
+        #         curr_time     = ops.getTime()
+        #         ok = ops.analyze(1, dt_transient)
+        #         # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
+        #         if ok != 0:
+        #             print("Trying Newton with line search ...")
+        #             ops.algorithm('NewtonLineSearch')
+        #             ok = ops.analyze(1, dt_transient)
+        #             # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
+        #             if ok == 0:
+        #                 print("That worked. Back to Newton")
+        #             ops.algorithm(algorithmTypeDynamic)
                 # if ok != 0:
                 #     print('Trying Broyden ... ')
                 #     algorithmTypeDynamic = 'Broyden'

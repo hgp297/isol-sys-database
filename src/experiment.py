@@ -166,7 +166,7 @@ def run_nlth(design,
     Tfb = bldg.provide_damping(80, method='SP',
                                zeta=[0.05], modes=[1])
     
-    # TODO: if validating hard run, start at .0005 dt
+    # TODO: if validating hard run, start at .0005 dt (for CBF, e.g.)
     # run ground motion
     run_status = bldg.run_ground_motion(design['gm_selected'], 
                                    design['scale_factor'], 
