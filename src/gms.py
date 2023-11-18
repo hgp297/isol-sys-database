@@ -124,6 +124,7 @@ def scale_ground_motion(input_df,
     gm_name = filename.replace('.AT2', '') # remove extension from file name
     sf = float(final_GM['sf_average_spectral'].iloc[ind])  # scale factor used
     
+    # TODO: 90% scaling. this might need to happen before 20 filter
     # ensure that selected GM does not fall below 90% of target spectrum in range
     import re
     rsn = re.search('(\d+)', gm_name).group(1)
@@ -131,6 +132,16 @@ def scale_ground_motion(input_df,
     gm_spectrum = unscaled_spectra[['Period (sec)', gm_unscaled_name]]
     gm_spectrum.columns  = ['Period', 'Sa']
     gm_spectrum['scaled_Sa'] = gm_spectrum['Sa']*sf
+    spectrum_proportions = gm_spectrum['scaled_Sa']/target_spectrum['Target pSa (g)']
+    range_proportions = spectrum_proportions[
+        target_spectrum['Period (sec)'].between(t_lower,t_upper)]
+    addl_90_sf = 0.9/min(range_proportions)
+    
+    sf_new = sf*addl_90_sf
+    new_proportions = gm_spectrum['scaled_Sa']*addl_90_sf/target_spectrum['Target pSa (g)']
+    new_range = new_proportions[
+        target_spectrum['Period (sec)'].between(t_lower,t_upper)]
+    
     return(gm_name, sf, target_average)
 
 def get_gm_ST(input_df, T_query):
