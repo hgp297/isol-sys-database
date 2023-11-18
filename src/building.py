@@ -1581,14 +1581,14 @@ class Building:
             if parent_i_nd > 100:
                 i_nd = parent_i_nd*10 + 4
                 j_nd = (parent_i_nd//10 + 1)*10 + 5
-                # beam_floor = parent_i_nd // 100
+                beam_floor = parent_i_nd // 100
             else:
                 i_nd = parent_i_nd*10
                 j_nd = (parent_i_nd*10 + 1)*10 + 3
-                # beam_floor = parent_i_nd // 10
+                beam_floor = parent_i_nd // 10
                 
-            # determine which floor's column to use
-            cur_floor_idx = (elem_tag//10)%10 - 2
+            # determine which floor's beam to use
+            cur_floor_idx = beam_floor - 2
             beam_name = beam_list[cur_floor_idx]
             current_beam = get_shape(beam_name, 'beam')
             
@@ -1746,9 +1746,9 @@ class Building:
                       d_brace/2-t_brace, -d_brace/2, d_brace/2, d_brace/2)
             ops.patch('rect', steel_mat_tag, 1, nff, 
                       -d_brace/2, -d_brace/2, -d_brace/2+t_brace, d_brace/2)
-            ops.patch('rect', steel_mat_tag, nfw, 1, 
+            ops.patch('rect', steel_mat_tag, nfw, 2, 
                       -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
-            ops.patch('rect', steel_mat_tag, nfw, 1, 
+            ops.patch('rect', steel_mat_tag, nfw, 2, 
                       -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
             
             brace_int_tag = br_int + fl_br + 1
@@ -1783,7 +1783,7 @@ class Building:
             else:
                 brace_transf_tag = brace_transf_tag_R
             ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
-                        brace_transf_tag, current_brace_int, '-iter', 100, 1e-5)
+                        brace_transf_tag, current_brace_int, '-iter', 100, 1e-7)
             
         # add ghost trusses to the braces to reduce convergence problems
         brace_ghosts = self.elem_tags['brace_ghosts']
@@ -2568,7 +2568,7 @@ class Building:
 
         hsx     = self.hsx
         # Set some parameters
-        dU = 0.005  # Displacement increment
+        dU = 0.001  # Displacement increment
 
         # Change the integration scheme to be displacement control
         #                             node dof init Jd min max
@@ -2633,7 +2633,7 @@ class Building:
         seconds = tp - 60*minutes
         print('Pushover complete. Time elapsed %dm %ds.' % (minutes, seconds))
 
-    def run_ground_motion(self, gm_name, scale_factor, dt_transient,
+    def run_ground_motion(self, gm_name, scale_factor, dt_transient, T_end=60.0,
                           gm_dir='../resource/ground_motions/PEERNGARecords_Unscaled/',
                           data_dir='./outputs/'):
         
@@ -2825,38 +2825,48 @@ class Building:
         ops.numberer('RCM')
         ops.system('BandGeneral')
         
-        
-        # Convergence Test: maximum number of iterations that will be performed
-        maxIterDynamic      = 100
-        
-        # Convergence Test: flag used to print information on convergence
-        printFlagDynamic    = 0  
-        
-        # algorithmTypeDynamic    = 'Broyden'
-        # ops.algorithm(algorithmTypeDynamic, 8)
-        algorithmTypeDynamic    = 'Newton'
-        ops.algorithm(algorithmTypeDynamic)
-        
         # TODO: let's try energy incr norm for CBF
         if superstructure_system == 'CBF':
             
-            # # Convergence Test: tolerance
-            # testTypeDynamic = 'EnergyIncr'
-            # tolDynamic = 1e-5
+            # Convergence Test: maximum number of iterations that will be performed
+            maxIterDynamic      = 1000
             
-            # # TRBDF2 integrator, best with energy
-            # ops.integrator('TRBDF2')
+            # Convergence Test: flag used to print information on convergence
+            printFlagDynamic    = 0  
+            
+            # algorithmTypeDynamic    = 'Broyden'
+            # ops.algorithm(algorithmTypeDynamic, 8)
+            algorithmTypeDynamic    = 'Newton'
+            ops.algorithm(algorithmTypeDynamic)
             
             # Convergence Test: tolerance
-            testTypeDynamic     = 'NormDispIncr'
-            tolDynamic = 1e-5
+            testTypeDynamic = 'EnergyIncr'
+            tolDynamic = 1e-6
             
-            # Newmark-integrator gamma parameter (also HHT)
-            newmarkGamma = 0.5
-            newmarkBeta = 0.25
-            ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+            # TRBDF2 integrator, best with energy
+            ops.integrator('TRBDF2')
+            
+            # # Convergence Test: tolerance
+            # testTypeDynamic     = 'NormDispIncr'
+            # tolDynamic = 1e-5
+            
+            # # Newmark-integrator gamma parameter (also HHT)
+            # newmarkGamma = 0.5
+            # newmarkBeta = 0.25
+            # ops.integrator('Newmark', newmarkGamma, newmarkBeta)
             
         else:
+            # Convergence Test: maximum number of iterations that will be performed
+            maxIterDynamic      = 100
+            
+            # Convergence Test: flag used to print information on convergence
+            printFlagDynamic    = 0  
+            
+            # algorithmTypeDynamic    = 'Broyden'
+            # ops.algorithm(algorithmTypeDynamic, 8)
+            algorithmTypeDynamic    = 'Newton'
+            ops.algorithm(algorithmTypeDynamic)
+            
             # Convergence Test: tolerance
             testTypeDynamic     = 'NormDispIncr'
             tolDynamic = 1e-5
@@ -2902,10 +2912,6 @@ class Building:
         ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv',
                      '-timeSeries', eq_series_tag, '-time',
                      '-node', *inner_col_nds, '-dof', 1, 'accel')
-
-        # set up ground-motion-analysis parameters
-        sec = 1.0                      
-        T_end = 60.0*sec
         
         import numpy as np
         n_steps = np.floor(T_end/dt_transient)
@@ -2919,37 +2925,37 @@ class Building:
         ok = ops.analyze(n_steps, dt_transient)   
         # ok = ops.analyze(n_steps, dt_transient, 0.0005, 0.005, 10) 
         
-        if ok != 0:
-            ok = 0
-            ops.analysis('Transient')
-            curr_time = ops.getTime()
-            print("Convergence issues at time: ", curr_time)
-            while (curr_time < T_end) and (ok == 0):
-                curr_time     = ops.getTime()
-                ok = ops.analyze(1, dt_transient)
-                # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
-                if ok != 0:
-                    print("Trying Newton with line search ...")
-                    ops.algorithm('NewtonLineSearch')
-                    ok = ops.analyze(1, dt_transient)
-                    # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
-                    ops.algorithm(algorithmTypeDynamic)
-                if ok != 0:
-                    print('Trying Broyden ... ')
-                    algorithmTypeDynamic = 'Broyden'
-                    ops.algorithm(algorithmTypeDynamic)
-                    ok = ops.analyze(1, dt_transient)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
-                if ok != 0:
-                    print('Trying BFGS ... ')
-                    algorithmTypeDynamic = 'BFGS'
-                    ops.algorithm(algorithmTypeDynamic)
-                    ok = ops.analyze(1, dt_transient)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
+        # if ok != 0:
+        #     ok = 0
+        #     ops.analysis('Transient')
+        #     curr_time = ops.getTime()
+        #     print("Convergence issues at time: ", curr_time)
+        #     while (curr_time < T_end) and (ok == 0):
+        #         curr_time     = ops.getTime()
+        #         ok = ops.analyze(1, dt_transient)
+        #         # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
+        #         if ok != 0:
+        #             print("Trying Newton with line search ...")
+        #             ops.algorithm('NewtonLineSearch')
+        #             ok = ops.analyze(1, dt_transient)
+        #             # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
+        #             if ok == 0:
+        #                 print("That worked. Back to Newton")
+        #             ops.algorithm(algorithmTypeDynamic)
+                # if ok != 0:
+                #     print('Trying Broyden ... ')
+                #     algorithmTypeDynamic = 'Broyden'
+                #     ops.algorithm(algorithmTypeDynamic)
+                #     ok = ops.analyze(1, dt_transient)
+                #     if ok == 0:
+                #         print("That worked. Back to Newton")
+                # if ok != 0:
+                #     print('Trying BFGS ... ')
+                #     algorithmTypeDynamic = 'BFGS'
+                #     ops.algorithm(algorithmTypeDynamic)
+                #     ok = ops.analyze(1, dt_transient)
+                #     if ok == 0:
+                #         print("That worked. Back to Newton")
                 
         t_final = ops.getTime()
         tp = time.time() - t0

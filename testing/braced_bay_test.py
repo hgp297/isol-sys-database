@@ -40,6 +40,50 @@ def get_properties(shape):
     tw      = float(shape.iloc[0]['tw'])
     return(Ag, Ix, Iy, Zx, Sx, d, bf, tf, tw)
 
+def modified_IK_params(shape, L):
+    # reference Lignos & Krawinkler (2011)
+    Fy = 50 # ksi
+    Es = 29000 # ksi
+
+    Zx = float(shape['Zx'])
+    # Sx = float(shape['Sx'])
+    Iz = float(shape['Ix'])
+    d = float(shape['d'])
+    htw = float(shape['h/tw'])
+    bftf = float(shape['bf/2tf'])
+    ry = float(shape['ry'])
+    c1 = 25.4
+    c2 = 6.895
+
+    # approximate adjustment for isotropic hardening
+    My = Fy * Zx * 1.17
+    thy = My/(6*Es*Iz/L)
+    Ke = My/thy
+    # consider using Lb = 0 for beams bc of slab?
+    Lb = L
+    kappa = 0.4
+
+    if d > 21.0:
+        lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
+            *(Lb/ry)**(-0.130)*(c2*Fy/355)**(-0.291))
+        thp = (0.318*(htw)**(-0.550)*(bftf)**(-0.345)
+            *(Lb/ry)**(-0.0230)*(L/d)**(0.090)*(c1*d/533)**(-0.330)*
+            (c2*Fy/355)**(-0.130))
+        thpc = (7.50*(htw)**(-0.610)*(bftf)**(-0.710)
+            *(Lb/ry)**(-0.110)*(c1*d/533)**(-0.161)*
+            (c2*Fy/355)**(-0.320))
+    else:
+        lam = 495*(htw)**(-1.34)*(bftf)**(-0.595)*(c2*Fy/355)**(-0.360)
+        thp = (0.0865*(htw)**(-0.365)*(bftf)**(-0.140)
+            *(L/d)**(0.340)*(c1*d/533)**(-0.721)*
+            (c2*Fy/355)**(-0.230))
+        thpc = (5.63*(htw)**(-0.565)*(bftf)**(-0.800)
+            *(c1*d/533)**(-0.280)*(c2*Fy/355)**(-0.430))
+        
+    thu = 0.2
+
+    return(Ke, My, lam, thp, thpc, kappa, thu)
+
 def bot_gp_coord(nd, L_bay, h_story, offset=0.25):
     # from node number, get the parent node it's attached to
     bot_nd = nd//100
@@ -186,7 +230,7 @@ L_col = h_story
 
 col_list = ['W12X190']
 beam_list = ['W40X199']
-brace_list = ['HSS12X12X5/16']
+brace_list = ['HSS9X9X1/2']
 # brace_list = ['HSS4X4X1/2']
 selected_col = get_shape(col_list[0], 'column')
 selected_beam = get_shape(beam_list[0], 'beam')
@@ -286,7 +330,7 @@ for nd in spring_nodes:
     # if it's a column spring, the offset should be dbeam/2 if it's below the column node
     # if it's above the column node, there is a GP node attached to it
     # roughly, we put it 1.2x L_gp, where L_gp is the diagonal offset of the gusset plate
-    
+    '''
     if nd in col_brace_bay_node:
         if nd%10 == 6:
             y_offset = d_beam/2
@@ -294,9 +338,9 @@ for nd in spring_nodes:
         else:
             y_offset = 1.2*L_gp
             ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col+y_offset)
-            
+    '''     
     # if it's a beam spring, place it +/- d_col to the right/left of the column node
-    elif nd in beam_brace_bay_node:
+    if nd in beam_brace_bay_node:
         x_offset = d_col/2
         if nd%10 == 7:
             ops.node(nd, bay*L_beam-x_offset, 0.0*ft, fl*L_col) 
@@ -312,7 +356,7 @@ for nd in brace_beam_spr_nodes:
     grandparent_nd = nd//100
     
     # extract their corresponding coordinates from the node numbers
-    x_offset = 1.2*L_gp
+    x_offset = 0.0
     fl = grandparent_nd//10 - 1
     x_coord = (grandparent_nd%10 + 0.5)*L_beam
     z_coord = fl*L_col
@@ -397,7 +441,7 @@ I_rigid = 1e6        # moment of inertia for p-delta columns
 ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
 
 # minimal stiffness elements (ghosts)
-A_ghost = 1.
+A_ghost = 10.
 E_ghost = 100.0
 ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
 
@@ -414,6 +458,9 @@ ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
 
 ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
 ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+
+# ops.uniaxialMaterial('Elastic', steel_mat_tag, Es)
+
 
 # GP section: thin plate
 W_w = (L_gp**2 + L_gp**2)**0.5
@@ -482,41 +529,178 @@ ops.geomTransf('Corotational', brace_transf_tag_R, *vecxz_brace_R) # braces
 
 # outside of concentrated plasticity zones, use elastic beam columns
 
-# Fiber section parameters
-nfw = 4     # number of fibers in web
-nff = 4     # number of fibers in each flange
+################################################################################
+# define spring materials
+################################################################################
 
-n_IP = 4
-###################### columns #############################
+# should note that the parent-spring convention works only if
+# material is symmetric
+def rot_spring_bilin(eleID, matID, nodeI, nodeJ, mem_tag):
+    
+    # Create springs at column and beam ends
+    # Springs follow Modified Ibarra Krawinkler model
+    # have spring local z be global y, then allow rotation around local z
+    column_x = [0, 0, 1]
+    column_y = [1, 0, 0]
+    beam_x = [1, 0, 0]
+    beam_y = [0, 0, 1]
+    
+    # columns
+    if mem_tag == 1:
+        # Create zero length element (spring), rotations allowed about local z axis
+        ops.element('zeroLength', eleID, nodeI, nodeJ,
+            '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
+            torsion_mat_tag, elastic_mat_tag, matID, 
+            '-dir', 1, 2, 3, 4, 5, 6,
+            '-orient', *column_x, *column_y,
+            '-doRayleigh', 1)           
+    # beams
+    if mem_tag == 2:
+        # Create zero length element (spring), rotations allowed about local z axis
+        ops.element('zeroLength', eleID, nodeI, nodeJ,
+            '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
+            torsion_mat_tag, elastic_mat_tag, matID, 
+            '-dir', 1, 2, 3, 4, 5, 6, 
+            '-orient', *beam_x, *beam_y,
+            '-doRayleigh', 1)
+
+cIK = 1.0
+DIK = 1.0
+n_mik = 10.0
+McMy = 1.11 # ratio of capping moment to yield moment, Mc / My
 
 for fl_col, col in enumerate(col_list):
+    
     current_col = get_shape(col, 'column')
     
-    (Ag_col, Iz_col, Iy_col,
-     Zx_col, Sx_col, d_col,
-     bf_col, tf_col, tw_col) = get_properties(current_col)
-    
-    # column section: fiber wide flange section
+    # column section
     # match the tag number with the floor's node number
     # for column, this is the bottom node (col between 10 and 20 has tag 111)
     # e.g. first col bot nodes at 3x -> tag 113 and 153
     
     current_col_sec = col_sec + fl_col + 1
-    ops.section('Fiber', current_col_sec, '-GJ', Gs*J)
-    ops.patch('rect', steel_mat_tag, 
-        1, nff,  d_col/2-tf_col, -bf_col/2, d_col/2, bf_col/2)
-    ops.patch('rect', steel_mat_tag, 
-        1, nff, -d_col/2, -bf_col/2, -d_col/2+tf_col, bf_col/2)
-    ops.patch('rect', steel_mat_tag,
-        nfw, 1, -d_col/2+tf_col, -tw_col/2, d_col/2-tf_col, tw_col/2)
     
+    # Iz is the stronger axis
+    (Ag_col, Iz_col, Iy_col,
+     Zx_col, Sx_col, d_col,
+     bf_col, tf_col, tw_col) = get_properties(current_col)
     
-    current_col_int = col_int + fl_col + 1
-    ops.beamIntegration('Lobatto', current_col_int, 
-                        current_col_sec, n_IP)
+    # Modified IK steel, adjusted for length from PH to PH
+    (Ke_col, My_col, lam_col,
+     thp_col, thpc_col,
+     kappa_col, thu_col) = modified_IK_params(current_col, 0.8*L_col)
+    
+    ops.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
+                          thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
+                          thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
+                          lam_col, lam_col, lam_col,
+                          cIK, cIK, cIK,
+                          DIK, DIK, DIK)
+    
+for fl_beam, beam in enumerate(beam_list):
+    current_beam = get_shape(beam, 'beam')
+    
+    # beam section: fiber wide flange section
+    # match the tag number with the floor's node number
+    # e.g. first beams nodes at 2x -> tag 132 and 172
 
+    current_beam_sec = beam_sec + fl_beam + 2
+    
+    # Iz is the stronger axis
+    (Ag_beam, Iz_beam, Iy_beam,
+     Zx_beam, Sx_beam, d_beam,
+     bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
+    
+    # Modified IK steel, adjusted for length from PH to PH
+    (Ke_beam, My_beam, lam_beam,
+     thp_beam, thpc_beam,
+     kappa_beam, thu_beam) = modified_IK_params(current_beam, 0.8*L_beam)
+    
+    ops.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
+                          thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
+                          thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
+                          lam_beam, lam_beam, lam_beam,
+                          cIK, cIK, cIK,
+                          DIK, DIK, DIK)
+    
+################################################################################
+# define springs
+################################################################################
+
+# spring elements: #5xxx, xxx is the spring node
+spr_id = bldg.elem_ids['spring'] 
+spr_elems = bldg.elem_tags['spring']
+
+brace_spr_id = bldg.elem_ids['brace_spring']
+brace_top_links = bldg.elem_tags['brace_top_springs']
+brace_bot_links = bldg.elem_tags['brace_bot_springs']
+
+# extract where rigid elements are in the entire frame
+# brace_beam_end_joint = [link for link in spr_elems
+#                         if (link-spr_id)//10 in brace_beam_ends
+#                         and (link%10 == 9 or link%10 == 7)]
+
+
+brace_beam_middle_joint = bldg.elem_tags['brace_beam_springs']
+
+col_joint = [link for link in spr_elems
+             if ((link-spr_id)//10 in brace_beam_ends 
+                 or (link-spr_id)//10 in brace_bot_nodes)
+             and (link%10 == 6 or link%10 == 8)]
+
+###################### columns #############################
+
+# make MIK hinges for column joints
+for elem_tag in col_joint:
+    spr_nd = elem_tag - spr_id
+    parent_nd = spr_nd//10
+    
+    # if last digit is 6 or 8, assign column transformations
+    # should be all cases
+    mem_tag = 1
+    
+    # get xXxx digit (floor number), adjust to correctly identify
+    # floor's column
+    if spr_nd%10 == 6:
+        fl_num = (spr_nd//100)%10 - 1
+    else:
+        fl_num = (spr_nd//100)%10
+    
+    # add to match previously defined column tags
+    steel_tag = col_sec + fl_num
+    
+    # make spring with the appropriate material/section
+    rot_spring_bilin(elem_tag, steel_tag, 
+                     parent_nd, spr_nd, mem_tag)
+          
+        
+# make MIK hinges for brace beams near braces
+for link_tag in brace_beam_middle_joint:
+    spr_nd = link_tag - brace_spr_id
+    parent_nd = spr_nd//10
+    
+    mem_tag = 2
+    
+    # get xXxx digit (floor number)
+    fl_num = (spr_nd//1000)%10
+    
+    # beam tags end in 2
+    steel_tag = beam_sec + fl_num
+    
+    # make spring with the appropriate material/section
+    rot_spring_bilin(link_tag, steel_tag, 
+                     parent_nd, spr_nd, mem_tag)
+# Fiber section parameters
+nfw = 4     # number of fibers in web
+nff = 4     # number of fibers in each flange
+
+n_IP = 4
+
+################################################################################
+# define beams and columns - braced bays
+################################################################################
+# outside of concentrated plasticity zones, use elastic beam columns
 # define the columns
-
 col_id = bldg.elem_ids['col']
 col_elems = bldg.elem_tags['col']
 
@@ -525,42 +709,37 @@ col_elems = bldg.elem_tags['col']
 col_br_elems = [col for col in col_elems
                 if col-col_id in brace_bot_nodes]
 
+###################### columns #############################
+
+# elastic beam columns for braced bay columns
 for elem_tag in col_br_elems:
     i_nd = (elem_tag - col_id)*10 + 8
     j_nd = (elem_tag - col_id + 10)*10 + 6
-    col_floor = i_nd // 100
     
-    col_int_tag = col_floor + col_int
-    ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
-                col_transf_tag, col_int_tag)
+    # determine which floor's column to use
+    cur_floor_idx = (elem_tag//10)%10 - 1
+    col_name = col_list[0]
+    current_col = get_shape(col_name, 'column')
+    
+    # Iz is the stronger axis
+    (Ag_col, Iz_col, Iy_col,
+     Zx_col, Sx_col, d_col,
+     bf_col, tf_col, tw_col) = get_properties(current_col)
+    
+    # calculate modified section properties to account for spring stiffness 
+    # being in series with the elastic element stiffness
+    # Ibarra, L. F., and Krawinkler, H. (2005). 
+    # "Global collapse of frame structures under seismic excitations,"
+    
+    Iz_col_mod = Iz_col*(n_mik+1)/n_mik
+    Iy_col_mod = Iy_col*(n_mik+1)/n_mik
+    
+    ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                Ag_col, Es, Gs, J, Iy_col_mod, Iz_col_mod, col_transf_tag)
     
 ###################### beams #############################
-
-for fl_beam, beam in enumerate(beam_list):
-    current_beam = get_shape(beam, 'beam')
     
-    (Ag_beam, Iz_beam, Iy_beam,
-     Zx_beam, Sx_beam, d_beam,
-     bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
-    
-    # beam section: fiber wide flange section
-    # match the tag number with the floor's node number
-    # e.g. first beams nodes at 2x -> tag 132 and 172
-    current_brace_beam_sec = beam_sec + fl_beam + 2
-    
-    ops.section('Fiber', current_brace_beam_sec, '-GJ', Gs*J)
-    ops.patch('rect', steel_mat_tag, 
-        1, nff,  d_beam/2-tf_beam, -bf_beam/2, d_beam/2, bf_beam/2)
-    ops.patch('rect', steel_mat_tag, 
-        1, nff, -d_beam/2, -bf_beam/2, -d_beam/2+tf_beam, bf_beam/2)
-    ops.patch('rect', steel_mat_tag,
-        nfw, 1, -d_beam/2+tf_beam, -tw_beam/2, d_beam/2-tf_beam, tw_beam/2)
-    
-    
-    current_brace_beam_int = beam_int + fl_beam + 2
-    ops.beamIntegration('Lobatto', current_brace_beam_int, 
-                        current_brace_beam_sec, n_IP)
-
+# elastic beam columns for braced bay beams 
 brace_beam_id = bldg.elem_ids['brace_beam']
 brace_beam_elems = bldg.elem_tags['brace_beams']
 
@@ -572,18 +751,36 @@ for elem_tag in brace_beam_elems:
     if parent_i_nd > 100:
         i_nd = parent_i_nd*10 + 4
         j_nd = (parent_i_nd//10 + 1)*10 + 5
-        beam_floor = parent_i_nd // 100
+        # beam_floor = parent_i_nd // 100
     else:
         i_nd = parent_i_nd*10
         j_nd = (parent_i_nd*10 + 1)*10 + 3
-        beam_floor = parent_i_nd // 10
+        # beam_floor = parent_i_nd // 10
         
-    brace_beam_int_tag = beam_floor + beam_int
-    ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
-                brace_beam_transf_tag, brace_beam_int_tag)
+    # determine which floor's column to use
+    cur_floor_idx = (elem_tag//10)%10 - 2
+    beam_name = beam_list[0]
+    current_beam = get_shape(beam_name, 'beam')
+    
+    # Iz is the stronger axis
+    (Ag_beam, Iz_beam, Iy_beam,
+     Zx_beam, Sx_beam, d_beam,
+     bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
+    
+    # calculate modified section properties to account for spring stiffness 
+    # being in series with the elastic element stiffness
+    # Ibarra, L. F., and Krawinkler, H. (2005). 
+    # "Global collapse of frame structures under seismic excitations,"
+    
+    Iz_beam_mod = Iz_beam*(n_mik+1)/n_mik
+    Iy_beam_mod = Iy_beam*(n_mik+1)/n_mik
+    
+    ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+                Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
+                beam_transf_tag)
     
 ###################### Brace #############################
-
+# TODO: braces defined
 # starting from bottom floor, define the brace shape for that floor
 # floor 1's brace at 141 and 161, etc.
 for fl_br, brace in enumerate(brace_list):
@@ -599,9 +796,9 @@ for fl_br, brace in enumerate(brace_list):
               d_brace/2-t_brace, -d_brace/2, d_brace/2, d_brace/2)
     ops.patch('rect', steel_mat_tag, 1, nff, 
               -d_brace/2, -d_brace/2, -d_brace/2+t_brace, d_brace/2)
-    ops.patch('rect', steel_mat_tag, nfw, 1, 
+    ops.patch('rect', steel_mat_tag, nfw, 2, 
               -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
-    ops.patch('rect', steel_mat_tag, nfw, 1, 
+    ops.patch('rect', steel_mat_tag, nfw, 2, 
               -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
     
     brace_int_tag = br_int + fl_br + 1
@@ -650,8 +847,12 @@ for elem_tag in brace_ghosts:
     else:
         j_nd = (parent_i_nd + 9)*100 + 15
         # j_nd = (parent_i_nd + 9)*100 + 11
-    ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
+    # ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
     
+ops.element('corotTruss', 91107, 1102, 2017, A_ghost, ghost_mat_tag)
+ops.element('corotTruss', 91009, 1004, 2018, A_ghost, ghost_mat_tag)
+ops.element('corotTruss', 91117, 2017, 2015, A_ghost, ghost_mat_tag)
+ops.element('corotTruss', 91119, 2018, 2016, A_ghost, ghost_mat_tag)
 ###################### Gusset plates #############################
 
 brace_spr_id = bldg.elem_ids['brace_spring']
@@ -711,51 +912,6 @@ for link_tag in brace_top_gp_spring_link:
 ################################################################################
 # define rigid links in the braced bays
 ################################################################################  
-
-spr_id = bldg.elem_ids['spring']
-spr_elems = bldg.elem_tags['spring']
-
-# extract where rigid elements are in the entire frame
-# brace_beam_end_joint = [link for link in spr_elems
-#                         if (link-spr_id)//10 in brace_beam_ends
-#                         and (link%10 == 9 or link%10 == 7)]
-
-
-brace_beam_middle_joint = bldg.elem_tags['brace_beam_springs']
-
-col_joint = [link for link in spr_elems
-             if ((link-spr_id)//10 in brace_beam_ends 
-                 or (link-spr_id)//10 in brace_bot_nodes)
-             and (link%10 == 6 or link%10 == 8)]
-
-# make link for beam around where the braces connect
-for link_tag in brace_beam_middle_joint:
-    outer_nd = link_tag - brace_spr_id
-    
-    if outer_nd%2 == 0:
-        i_nd = outer_nd // 10
-        j_nd = outer_nd
-    else:
-        i_nd = outer_nd
-        j_nd = outer_nd // 10
-        
-    ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
-                A_rigid, Es, Gs, J, I_rigid, I_rigid, 
-                brace_beam_transf_tag)
-  
-# make link for all column in braced bays
-for link_tag in col_joint:
-    outer_nd = link_tag - spr_id
-    
-    if outer_nd%10 == 8:
-        i_nd = outer_nd // 10
-        j_nd = outer_nd
-    else:
-        i_nd = outer_nd
-        j_nd = outer_nd // 10
-    ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
-                A_rigid, Es, Gs, J, I_rigid, I_rigid, 
-                col_transf_tag)
     
 # make link for the column/beam to gusset plate connection
 brace_top_rigid_links = [link for link in brace_top_links
@@ -881,7 +1037,7 @@ ops.eleLoad('-ele', *brace_beam_elems, '-type', '-beamUniform',
             -w_applied, 0.0)
 
 nStepGravity = 10  # apply gravity in 10 steps
-tol = 1e-5
+tol = 1e-10
 dGravity = 1/nStepGravity
 
 ops.system("BandGeneral")
@@ -899,6 +1055,8 @@ ops.loadConst('-time', 0.0)
 steps = 1000
 
 ops.recorder('Element','-ele',92016,'-file','output/fiber.out',
+             'section','fiber', 0.0, -d_brace/2, 'stressStrain')
+ops.recorder('Element','-ele',91102,'-file','output/fiber_r.out',
              'section','fiber', 0.0, -d_brace/2, 'stressStrain')
 ops.recorder('Node','-node', 10, 11,'-file', 'output/end_reaction.out', '-dof', 1, 'reaction')
 ops.recorder('Node','-node', 2018,'-file',
@@ -969,10 +1127,10 @@ ops.numberer('RCM')
 ops.system('BandGeneral')
 
 # Convergence Test: tolerance
-tolDynamic          = 1e-7
+tolDynamic          = 1e-6
 
 # Convergence Test: maximum number of iterations that will be performed
-maxIterDynamic      = 500
+maxIterDynamic      = 1000
 
 # Convergence Test: flag used to print information on convergence
 printFlagDynamic    = 0         
@@ -1025,7 +1183,7 @@ sec = 1.0
 T_end = 60.0*sec
 
 
-dt_transient = 0.005
+dt_transient = 0.001
 n_steps = int(np.floor(T_end/dt_transient))
 
 # actually perform analysis; returns ok=0 if analysis was successful
@@ -1041,13 +1199,6 @@ if ok != 0:
     while (curr_time < T_end) and (ok == 0):
         curr_time     = ops.getTime()
         ok          = ops.analyze(1, dt_transient)
-        if ok != 0:
-            print("Trying Newton with Initial Tangent...")
-            ops.algorithm('Newton', '-initial')
-            ok = ops.analyze(1, dt_transient)
-            if ok == 0:
-                print("That worked. Back to Newton")
-            ops.algorithm(algorithmTypeDynamic)
         if ok != 0:
             print("Trying Newton with line search ...")
             ops.algorithm('NewtonLineSearch')
@@ -1078,15 +1229,23 @@ plt.close('all')
 res_columns = ['stress1', 'strain1', 'stress2', 'strain2', 'stress3', 'strain3', 'stress4', 'strain4']
 
 brace_res = pd.read_csv('output/fiber.out', sep=' ', header=None, names=res_columns)
+r_brace_res = pd.read_csv('output/fiber_r.out', sep=' ', header=None, names=res_columns)
 
 # stress strain
 fig = plt.figure()
 plt.plot(-brace_res['strain1'], -brace_res['stress1'])
-plt.title('Axial stress-strain brace (midpoint, top fiber)')
+plt.title('Axial stress-strain brace (left, top fiber)')
 plt.ylabel('Stress (ksi)')
 plt.xlabel('Strain (in/in)')
 plt.grid(True)
 
+# stress strain
+fig = plt.figure()
+plt.plot(-r_brace_res['strain1'], -r_brace_res['stress1'])
+plt.title('Axial stress-strain brace (right, top fiber)')
+plt.ylabel('Stress (ksi)')
+plt.xlabel('Strain (in/in)')
+plt.grid(True)
 
 # disp plot
 forces = pd.read_csv('output/end_reaction.out', sep=' ', header=None, 
@@ -1175,6 +1334,7 @@ def animate(i):
 ani = animation.FuncAnimation(
     fig, animate, history_len, interval=1, blit=True)
 plt.show()
+
 
 # ani = animation.FuncAnimation(
 #     fig, animate, history_len, interval=60/1000, blit=True)

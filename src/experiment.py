@@ -26,10 +26,10 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     story_names.insert(0, 'time')
     
     isol_dof_names = ['time', 'horizontal', 'vertical', 'rotation']
-    forceColumns = ['time', 'iAxial', 'iShearX', 'iShearY',
-                    'iMomentX','iMomentY', 'iMomentZ',
-                    'jAxial','jShearX', 'jShearY',
-                    'jMomentX', 'jMomentY', 'jMomentZ']
+    # forceColumns = ['time', 'iAxial', 'iShearX', 'iShearY',
+    #                 'iMomentX','iMomentY', 'iMomentZ',
+    #                 'jAxial','jShearX', 'jShearY',
+    #                 'jMomentX', 'jMomentY', 'jMomentZ']
     
     # displacements
     inner_col_disp = pd.read_csv(output_path+'inner_col_disp.csv', sep=' ',
@@ -73,7 +73,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     if ss_type == 'MF':
         ok_thresh = 0.20
     else:
-        ok_thresh = 0.1
+        ok_thresh = 0.075
     # if run was OK, we collect true max values
     if run_status == 0:
         PID = np.maximum(inner_col_drift.abs().max(), 
@@ -105,9 +105,6 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
         
         # if collapse, just collect PID as residual
         RID = PID
-        
-    # TODO: CBFs may not be stable enough to record high drift even if failure
-    # Find way to record it
     
     impact_cols = ['time', 'dirX_left', 'dirX_right']
     impact_force = pd.read_csv(output_path+'impact_forces.csv',
@@ -166,7 +163,6 @@ def run_nlth(design,
     Tfb = bldg.provide_damping(80, method='SP',
                                zeta=[0.05], modes=[1])
     
-    # TODO: if validating hard run, start at .0005 dt (for CBF, e.g.)
     # run ground motion
     run_status = bldg.run_ground_motion(design['gm_selected'], 
                                    design['scale_factor'], 
@@ -176,41 +172,59 @@ def run_nlth(design,
     
     # lower dt if convergence issues
     if run_status != 0:
-        print('Lowering time step...')
+        if bldg.superstructure_system == 'MF':
+            print('Lowering time step...')
+            
+            bldg = Building(design)
+            bldg.model_frame()
+            
+            # apply gravity loads, perform eigenvalue analysis, add damping
+            bldg.apply_grav_load()
+            T_1 = bldg.run_eigen()
+            Tfb = bldg.provide_damping(80, method='SP',
+                                       zeta=[0.05], modes=[1])
+            
+            run_status = bldg.run_ground_motion(design['gm_selected'], 
+                                                design['scale_factor'], 
+                                                0.001,
+                                                gm_dir=gm_path,
+                                                data_dir=output_path)
+        else:
+            print('Lowering time step...')
+            
+            bldg = Building(design)
+            bldg.model_frame()
+            
+            # apply gravity loads, perform eigenvalue analysis, add damping
+            bldg.apply_grav_load()
+            T_1 = bldg.run_eigen()
+            Tfb = bldg.provide_damping(80, method='SP',
+                                        zeta=[0.05], modes=[1])
+            
+            run_status = bldg.run_ground_motion(design['gm_selected'], 
+                                                design['scale_factor'], 
+                                                0.0002, T_end=30.0,
+                                                gm_dir=gm_path,
+                                                data_dir=output_path)
         
-        bldg = Building(design)
-        bldg.model_frame()
-        
-        # apply gravity loads, perform eigenvalue analysis, add damping
-        bldg.apply_grav_load()
-        T_1 = bldg.run_eigen()
-        Tfb = bldg.provide_damping(80, method='SP',
-                                   zeta=[0.05], modes=[1])
-        
-        run_status = bldg.run_ground_motion(design['gm_selected'], 
-                                            design['scale_factor'], 
-                                            0.001,
-                                            gm_dir=gm_path,
-                                            data_dir=output_path)
-        
-    # # TODO: integrate this VariableTransient
-    # if run_status != 0:
-    #     print('Lowering time step last time...')
-        
-    #     bldg = Building(design)
-    #     bldg.model_frame()
-        
-    #     # apply gravity loads, perform eigenvalue analysis, add damping
-    #     bldg.apply_grav_load()
-    #     T_1 = bldg.run_eigen()
-    #     Tfb = bldg.provide_damping(80, method='SP',
-    #                                zeta=[0.05], modes=[1])
-        
-    #     run_status = bldg.run_ground_motion(design['gm_selected'], 
-    #                                         design['scale_factor'], 
-    #                                         0.0005,
-    #                                         gm_dir=gm_path,
-    #                                         data_dir=output_path)
+    if run_status != 0:
+        if bldg.superstructure_system == 'MF':
+            print('Lowering time step one last time...')
+            
+            bldg = Building(design)
+            bldg.model_frame()
+            
+            # apply gravity loads, perform eigenvalue analysis, add damping
+            bldg.apply_grav_load()
+            T_1 = bldg.run_eigen()
+            Tfb = bldg.provide_damping(80, method='SP',
+                                       zeta=[0.05], modes=[1])
+            
+            run_status = bldg.run_ground_motion(design['gm_selected'], 
+                                                design['scale_factor'], 
+                                                0.0005,
+                                                gm_dir=gm_path,
+                                                data_dir=output_path)
     if run_status != 0:
         print('Recording run and moving on.')
        

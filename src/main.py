@@ -23,8 +23,8 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-# cbf lrb
-run = main_obj.retained_designs.loc[299]
+# # cbf lrb
+# run = main_obj.retained_designs.loc[299]
 
 # # cbf tfp
 # run = main_obj.retained_designs.loc[714]
@@ -35,21 +35,23 @@ run = main_obj.retained_designs.loc[299]
 # # mf tfp
 # run = main_obj.retained_designs.loc[68]
 
-from building import Building
+# # troubleshoot building
+# run = main_obj.retained_designs.iloc[0]
+# from building import Building
 
-bldg = Building(run)
-bldg.model_frame()
-bldg.apply_grav_load()
+# bldg = Building(run)
+# bldg.model_frame()
+# bldg.apply_grav_load()
 
-T_1 = bldg.run_eigen()
+# T_1 = bldg.run_eigen()
 
-bldg.provide_damping(80, method='SP',
-                                  zeta=[0.05], modes=[1])
+# bldg.provide_damping(80, method='SP',
+#                                   zeta=[0.05], modes=[1])
 
-dt = 0.0005
-ok = bldg.run_ground_motion(run.gm_selected, 
-                        run.scale_factor*1.5, 
-                        dt)
+# dt = 0.005
+# ok = bldg.run_ground_motion(run.gm_selected, 
+#                         run.scale_factor, 
+#                         dt, T_end=60.0)
 
 # from experiment import run_nlth
 # res = run_nlth(troubleshoot_run)
@@ -73,13 +75,13 @@ ok = bldg.run_ground_motion(run.gm_selected,
 
 #%% dynamic run
 
-from plot_structure import plot_dynamic
-plot_dynamic(run)
+# from plot_structure import plot_dynamic
+# plot_dynamic(run)
 
 #%% ground motion spectrum
 
-from gms import plot_spectrum
-plot_spectrum(run)
+# from gms import plot_spectrum
+# plot_spectrum(run)
 
 
 #%% animation
@@ -91,7 +93,7 @@ plot_spectrum(run)
 
 #%% generate analyze database
 
-# main_obj.analyze_db('structural_db_conv.csv', save_interval=5)
+main_obj.analyze_db('structural_db_conv.csv', save_interval=5)
 
 
 #%%
