@@ -72,6 +72,21 @@ def scale_ground_motion(input_df,
         scale_factor, 
         on=' Record Sequence Number').drop(columns=['full_RSN'])
     
+    # get scaled values and check that all Sa at least 90% of target in range
+    
+    # multiply unscaled by sf
+    scaled_range = us_range.mul(scale_factor.set_index(['full_RSN']).iloc[:,0], 
+                                axis='columns')
+    # divide sf by target and get smallest value
+    scale_factor['smallest_target_proportion'] = scaled_range.div(
+        target_range, axis=0).min().values
+    # find scaling needed to reach 90%
+    scale_factor['addl_90_sf'] = 0.9/scale_factor['smallest_target_proportion']
+    
+    # scale the sf by addl scaling
+    scale_factor['sf_average_spectral'] = scale_factor[
+        'sf_average_spectral']*scale_factor['addl_90_sf']
+    
     # grab only relevant columns
     db_cols = [' Record Sequence Number',
                'sf_average_spectral',
@@ -123,24 +138,6 @@ def scale_ground_motion(input_df,
     filename = str(final_GM['filename'].iloc[ind]) # ground motion name
     gm_name = filename.replace('.AT2', '') # remove extension from file name
     sf = float(final_GM['sf_average_spectral'].iloc[ind])  # scale factor used
-    
-    # TODO: 90% scaling. this might need to happen before 20 filter
-    # ensure that selected GM does not fall below 90% of target spectrum in range
-    import re
-    rsn = re.search('(\d+)', gm_name).group(1)
-    gm_unscaled_name = 'RSN-' + str(rsn) + ' Horizontal-1 pSa (g)'
-    gm_spectrum = unscaled_spectra[['Period (sec)', gm_unscaled_name]]
-    gm_spectrum.columns  = ['Period', 'Sa']
-    gm_spectrum['scaled_Sa'] = gm_spectrum['Sa']*sf
-    spectrum_proportions = gm_spectrum['scaled_Sa']/target_spectrum['Target pSa (g)']
-    range_proportions = spectrum_proportions[
-        target_spectrum['Period (sec)'].between(t_lower,t_upper)]
-    addl_90_sf = 0.9/min(range_proportions)
-    
-    sf_new = sf*addl_90_sf
-    new_proportions = gm_spectrum['scaled_Sa']*addl_90_sf/target_spectrum['Target pSa (g)']
-    new_range = new_proportions[
-        target_spectrum['Period (sec)'].between(t_lower,t_upper)]
     
     return(gm_name, sf, target_average)
 

@@ -2925,6 +2925,7 @@ class Building:
         ok = ops.analyze(n_steps, dt_transient)   
         # ok = ops.analyze(n_steps, dt_transient, 0.0005, 0.005, 10) 
         
+        # TODO: try recursive iff MF
         # if ok != 0:
         #     ok = 0
         #     ops.analysis('Transient')
