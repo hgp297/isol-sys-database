@@ -81,7 +81,9 @@ def scale_ground_motion(input_df,
     scale_factor['smallest_target_proportion'] = scaled_range.div(
         target_range, axis=0).min().values
     # find scaling needed to reach 90%
-    scale_factor['addl_90_sf'] = 0.9/scale_factor['smallest_target_proportion']
+    import numpy as np
+    scale_factor['addl_90_sf'] = np.maximum(1.0, 
+                                     0.9/scale_factor['smallest_target_proportion'])
     
     # scale the sf by addl scaling
     scale_factor['sf_average_spectral'] = scale_factor[

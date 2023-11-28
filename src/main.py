@@ -50,7 +50,7 @@ bldg.provide_damping(80, method='SP',
 
 dt = 0.005
 ok = bldg.run_ground_motion(run.gm_selected, 
-                        run.scale_factor*1.5, 
+                        run.scale_factor, 
                         dt, T_end=60.0)
 
 # from experiment import run_nlth
@@ -86,10 +86,10 @@ plot_dynamic(run)
 
 #%% animation
 
-# from plot_structure import animate_gm
-# fig, animate, n_ani = animate_gm(bldg)
-# import matplotlib.animation as animation
-# animation.FuncAnimation(fig, animate, n_ani, interval=1/4, blit=True)
+from plot_structure import animate_gm
+fig, animate, n_ani = animate_gm(bldg)
+import matplotlib.animation as animation
+animation.FuncAnimation(fig, animate, n_ani, interval=1/4, blit=True)
 
 #%% generate analyze database
 

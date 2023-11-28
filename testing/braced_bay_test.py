@@ -441,7 +441,7 @@ I_rigid = 1e6        # moment of inertia for p-delta columns
 ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
 
 # minimal stiffness elements (ghosts)
-A_ghost = 10.
+A_ghost = 0.5
 E_ghost = 100.0
 ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
 
@@ -454,10 +454,10 @@ cR1 = 0.925
 cR2 = 0.15
 ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
 
-# ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
 
-ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
-ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+# ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
+# ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
 
 # ops.uniaxialMaterial('Elastic', steel_mat_tag, Es)
 
@@ -1119,7 +1119,7 @@ ops.wipeAnalysis()
 # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
 GMDirection = 1  # ground-motion direction
 gm_name = 'RSN15_KERN_TAF021'
-scale_factor = 7.92859*15
+scale_factor = 7.92859*30
 print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
 ops.constraints('Plain')

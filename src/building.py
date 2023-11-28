@@ -226,6 +226,7 @@ class Building:
         # brace springs, springs 50000, actual brace 900
         # braces are numbered by 9xxxx, where xxxx is the support node belonging
         # to the top/bottom nodes of the brace
+        # TODO: add ghosts that run to midpoint
         if frame_type == 'CBF':
             brace_spr_id = 50000
             brace_top_elems = [brace_spr_id+nd for nd in br_top_spr]
@@ -239,7 +240,11 @@ class Building:
             brace_bot_end_nodes = (br_bot_w_outer + br_bot_e_outer)
             
             brace_elems = [brace_id + nd for nd in brace_end_nodes]
-            brace_ghost_elems = [brace_id + nd + 5 for nd in brace_bot_end_nodes]
+            brace_ghost_top = [brace_id + nd + 5 for nd in brace_bot_end_nodes]
+            brace_ghost_bot = [brace_id + nd + 15 for nd in brace_bot_end_nodes]
+            brace_ghost_elems = (brace_ghost_top + brace_ghost_bot)
+            
+            # brace_ghost_elems = [brace_id + nd + 5 for nd in brace_bot_end_nodes]
             
             # brace beams are 2xxx, where xxx is either 0xy for the left parent xy
             # or xy1 for the mid-bay parent xy1
@@ -1151,7 +1156,7 @@ class Building:
             # if it's above the column node, there is a GP node attached to it
             # roughly, we put it 1.2x L_gp, where L_gp is the diagonal offset of the gusset plate
             
-            # TODO: to accommodate MIK hinges, we no longer have offset
+            # to accommodate MIK hinges, we no longer have offset
             
             # if nd in col_brace_bay_node:
             #     if nd%10 == 6:
@@ -1187,7 +1192,7 @@ class Building:
             grandparent_nd = nd//100
             
             # extract their corresponding coordinates from the node numbers
-            # TODO: no more offset for MIK hinges
+            # no more offset for MIK hinges
             x_offset = 0.0
             # x_offset = 1.2*L_gp
             fl = grandparent_nd//10 - 1
@@ -1279,7 +1284,7 @@ class Building:
         ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
         
         # minimal stiffness elements (ghosts)
-        A_ghost = 0.05
+        A_ghost = 1.0
         E_ghost = 100.0
         ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
         
@@ -1292,11 +1297,11 @@ class Building:
         cR2 = 0.15
         ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
         
-        # ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
         
-        ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
-                              R0, cR1, cR2)
-        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+        # ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
+        #                       R0, cR1, cR2)
+        # ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
@@ -1788,13 +1793,21 @@ class Building:
         # add ghost trusses to the braces to reduce convergence problems
         brace_ghosts = self.elem_tags['brace_ghosts']
         for elem_tag in brace_ghosts:
-            i_nd = (elem_tag - 5) - brace_id
-            
-            parent_i_nd = i_nd // 100
-            if elem_tag%10 == 9:
-                j_nd = (parent_i_nd + 10)*100 + 16
+            if (elem_tag//10)%10 == 0:
+                i_nd = (elem_tag - 5) - brace_id
+                
+                parent_i_nd = i_nd // 100
+                if elem_tag%10 == 9:
+                    j_nd = (parent_i_nd + 10)*100 + 18
+                else:
+                    j_nd = (parent_i_nd + 9)*100 + 17
             else:
-                j_nd = (parent_i_nd + 9)*100 + 15
+                parent_i_nd = (elem_tag - brace_id - 15)//100
+                if elem_tag%10 == 7:
+                    i_nd = (parent_i_nd + 9)*100 + 17
+                else:
+                    i_nd = (parent_i_nd + 10)*100 + 18
+                j_nd = i_nd - 2
             ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
             
         ###################### Gusset plates #############################
@@ -2925,24 +2938,23 @@ class Building:
         ok = ops.analyze(n_steps, dt_transient)   
         # ok = ops.analyze(n_steps, dt_transient, 0.0005, 0.005, 10) 
         
-        # TODO: try recursive iff MF
-        # if ok != 0:
-        #     ok = 0
-        #     ops.analysis('Transient')
-        #     curr_time = ops.getTime()
-        #     print("Convergence issues at time: ", curr_time)
-        #     while (curr_time < T_end) and (ok == 0):
-        #         curr_time     = ops.getTime()
-        #         ok = ops.analyze(1, dt_transient)
-        #         # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
-        #         if ok != 0:
-        #             print("Trying Newton with line search ...")
-        #             ops.algorithm('NewtonLineSearch')
-        #             ok = ops.analyze(1, dt_transient)
-        #             # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
-        #             if ok == 0:
-        #                 print("That worked. Back to Newton")
-        #             ops.algorithm(algorithmTypeDynamic)
+        if ok != 0:
+            ok = 0
+            ops.analysis('Transient')
+            curr_time = ops.getTime()
+            print("Convergence issues at time: ", curr_time)
+            while (curr_time < T_end) and (ok == 0):
+                curr_time     = ops.getTime()
+                ok = ops.analyze(1, dt_transient)
+                # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
+                if ok != 0:
+                    print("Trying Newton with line search ...")
+                    ops.algorithm('NewtonLineSearch')
+                    ok = ops.analyze(1, dt_transient)
+                    # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
+                    if ok == 0:
+                        print("That worked. Back to Newton")
+                    ops.algorithm(algorithmTypeDynamic)
                 # if ok != 0:
                 #     print('Trying Broyden ... ')
                 #     algorithmTypeDynamic = 'Broyden'
