@@ -64,6 +64,8 @@ class Building:
             
         # for braced frames, additional nodes are needed
         if frame_type == 'CBF':
+            # number of brace mid nodes
+            num_br_nds = 7
             n_braced = int(round(n_bays/2.25))
             n_braced = max(n_braced, 1)
             
@@ -87,13 +89,23 @@ class Building:
             
             brace_beam_ends = [nd+10 for nd in brace_bottoms]
             
+            # TODO: numbering scheme, brace mids are xxab, where
+            # xx is the parent node of the top node (i.e. 311 -> 31)
+            # a is 2 for left brace, 3 for right brace
+            # b is the number of subdivision (0-9)
             
-            # create two mid-brace nodes for each top brace nodes
-            # these are extensions of the support springs (below)
-            r_brace_id = 7
-            r_brace_nodes = [nd*10+r_brace_id for nd in brace_tops]
-            l_brace_id = 8
-            l_brace_nodes = [nd*10+l_brace_id for nd in brace_tops]
+            r_brace_nodes = [(nd+2)*10+el+1 for nd in brace_tops 
+                             for el in range(num_br_nds)]
+            l_brace_nodes = [(nd+1)*10+el+1 for nd in brace_tops 
+                             for el in range(num_br_nds)]
+            
+            # # create two mid-brace nodes for each top brace nodes
+            # # these are extensions of the support springs (below)
+            # r_brace_id = 7
+            # r_brace_nodes = [nd*10+r_brace_id for nd in brace_tops]
+            # l_brace_id = 8
+            # l_brace_nodes = [nd*10+l_brace_id for nd in brace_tops]
+            
             brace_mids = l_brace_nodes + r_brace_nodes
             
         
@@ -226,7 +238,6 @@ class Building:
         # brace springs, springs 50000, actual brace 900
         # braces are numbered by 9xxxx, where xxxx is the support node belonging
         # to the top/bottom nodes of the brace
-        # TODO: add ghosts that run to midpoint
         if frame_type == 'CBF':
             brace_spr_id = 50000
             brace_top_elems = [brace_spr_id+nd for nd in br_top_spr]
@@ -234,17 +245,23 @@ class Building:
             br_beam_spr_elems = [brace_spr_id+nd for nd in br_beam_spr]
             
             brace_id = 90000
-            brace_end_nodes = (br_top_w_outer + br_top_e_outer + 
-                               br_bot_w_outer + br_bot_e_outer)
+            
+            # brace_end_nodes = (br_top_w_outer + br_top_e_outer + 
+            #                    br_bot_w_outer + br_bot_e_outer)
             
             brace_bot_end_nodes = (br_bot_w_outer + br_bot_e_outer)
             
-            brace_elems = [brace_id + nd for nd in brace_end_nodes]
-            brace_ghost_top = [brace_id + nd + 5 for nd in brace_bot_end_nodes]
-            brace_ghost_bot = [brace_id + nd + 15 for nd in brace_bot_end_nodes]
-            brace_ghost_elems = (brace_ghost_top + brace_ghost_bot)
+            # brace_elems = [brace_id + nd for nd in brace_end_nodes]
             
-            # brace_ghost_elems = [brace_id + nd + 5 for nd in brace_bot_end_nodes]
+            # TODO: new brace scheme
+            last_brace = [nd+1 for nd in brace_mids if nd%10==(num_br_nds)]
+            brace_elems = [brace_id + nd for nd in (brace_mids+last_brace)]
+            
+            # brace_ghost_top = [brace_id + nd + 5 for nd in brace_bot_end_nodes]
+            # brace_ghost_bot = [brace_id + nd + 15 for nd in brace_bot_end_nodes]
+            # brace_ghost_elems = (brace_ghost_top + brace_ghost_bot)
+            
+            brace_ghost_elems = [brace_id + nd + 5 for nd in brace_bot_end_nodes]
             
             # brace beams are 2xxx, where xxx is either 0xy for the left parent xy
             # or xy1 for the mid-bay parent xy1
@@ -1116,8 +1133,12 @@ class Building:
         brace_mid_nodes = self.node_tags['brace_mid']
         for nd in brace_mid_nodes:
             
-            # values returned are already in inches
-            x_coord, z_coord = mid_brace_coord(nd, L_beam, L_col, offset=ofs)
+            # TODO: new quadratic coordinates
+            x_coord, z_coord = quad_brace_coord(nd, L_beam, L_col, offset=ofs)
+            
+            # # values returned are already in inches
+            # x_coord, z_coord = mid_brace_coord(nd, L_beam, L_col, offset=ofs)
+            
             ops.node(nd, x_coord, 0.0*ft, z_coord)
         
         
@@ -1762,7 +1783,44 @@ class Building:
         
         brace_id = self.elem_ids['brace']
         brace_elems = self.elem_tags['brace']
+        num_br_elems = max([el%10 for el in brace_elems])
         
+        for elem_tag in brace_elems:
+            
+            parent_top = (elem_tag - brace_id)//100
+            
+            # if 9xxXx is 2, brace is left brace
+            if (elem_tag//10)%10 == 2:
+                brace_transf_tag = brace_transf_tag_L
+                parent_bot = parent_top - 10
+                bot_mod = 4
+                top_mod = 6
+            else:
+                brace_transf_tag = brace_transf_tag_R
+                parent_bot = parent_top - 9
+                bot_mod = 2
+                top_mod = 5
+            
+            # check if element is first or last
+            if elem_tag%10 == 1:
+                i_nd = parent_bot*100 + bot_mod
+                j_nd = elem_tag - brace_id
+            elif elem_tag%10 == num_br_elems:
+                i_nd = elem_tag - brace_id - 1
+                j_nd = (parent_top*10 + 1) * 10 + top_mod
+            else:
+                i_nd = elem_tag - brace_id - 1
+                j_nd = elem_tag - brace_id
+                
+            # ending node is always numbered with parent as floor j_floor
+            j_floor = j_nd//1000
+            
+            current_brace_int = j_floor - 1 + br_int
+            
+            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+                        brace_transf_tag, current_brace_int, '-iter', 100, 1e-7)
+        
+        '''
         goes_ne = [4,8]
         for elem_tag in brace_elems:
             
@@ -1789,7 +1847,9 @@ class Building:
                 brace_transf_tag = brace_transf_tag_R
             ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_transf_tag, current_brace_int, '-iter', 100, 1e-7)
+        '''
             
+        '''
         # add ghost trusses to the braces to reduce convergence problems
         brace_ghosts = self.elem_tags['brace_ghosts']
         for elem_tag in brace_ghosts:
@@ -1808,6 +1868,20 @@ class Building:
                 else:
                     i_nd = (parent_i_nd + 10)*100 + 18
                 j_nd = i_nd - 2
+            ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
+        '''
+        
+        # TODO: back to old ghosts for subdivided brace
+        # add ghost trusses to the braces to reduce convergence problems
+        brace_ghosts = self.elem_tags['brace_ghosts']
+        for elem_tag in brace_ghosts:
+            i_nd = (elem_tag - 5) - brace_id
+            
+            parent_i_nd = i_nd // 100
+            if elem_tag%10 == 9:
+                j_nd = (parent_i_nd + 10)*100 + 16
+            else:
+                j_nd = (parent_i_nd + 9)*100 + 15
             ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
             
         ###################### Gusset plates #############################
@@ -2709,8 +2783,8 @@ class Building:
             # first story, leftmost bay, left brace
             braces = self.elem_tags['brace']
             bottom_left_brace = min(braces)
-            # corresponding right brace (100 to shift bay, -2 for 9-7 difference)
-            bottom_right_brace = bottom_left_brace + (100 - 2)
+            # corresponding right brace 
+            bottom_right_brace = bottom_left_brace + 10
             
             selected_brace = get_shape(self.brace[0],'brace')
             d_brace = selected_brace.iloc[0]['b']
@@ -2891,10 +2965,6 @@ class Building:
             
         ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
         ops.analysis('Transient')
-        
-        # TODO: promising strategy, use VT, but then only run it until failure
-        # implement with MF as well or just CBF?
-        # ops.analysis('VariableTransient')
 
         #  ---------------------------------    perform Dynamic Ground-Motion Analysis
         # the following commands are unique to the Uniform Earthquake excitation
@@ -2936,7 +3006,6 @@ class Building:
         
         # Convergence loop, careful with Broyden/BFGS with energy
         ok = ops.analyze(n_steps, dt_transient)   
-        # ok = ops.analyze(n_steps, dt_transient, 0.0005, 0.005, 10) 
         
         if ok != 0:
             ok = 0
@@ -2946,12 +3015,10 @@ class Building:
             while (curr_time < T_end) and (ok == 0):
                 curr_time     = ops.getTime()
                 ok = ops.analyze(1, dt_transient)
-                # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
                 if ok != 0:
                     print("Trying Newton with line search ...")
                     ops.algorithm('NewtonLineSearch')
                     ok = ops.analyze(1, dt_transient)
-                    # ok = ops.analyze(1, dt_transient, 0.0005, 0.005, 10)
                     if ok == 0:
                         print("That worked. Back to Newton")
                     ops.algorithm(algorithmTypeDynamic)
@@ -3108,8 +3175,72 @@ def top_gp_coord(nd, L_bay, h_story, offset=0.25):
     gp_y_coord = top_y_coord + y_offset
     
     return(gp_x_coord, gp_y_coord)
-    
 
+# TODO: quadratic brace coordinates
+def quad_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
+    # from mid brace number, get the corresponding top and bottom node numbers
+    top_node = nd//100
+    
+    # extract their corresponding coordinates from the node numbers
+    top_x_coord = (top_node%10 + 0.5)*L_bay
+    top_y_coord = (top_node//10 - 1)*h_story
+    
+    # if the xxXx number is 2, the brace connects sw
+    # if the xxXx number is 3, the brace connects se
+    
+    if (nd//10)%2 == 0:
+        bot_node = top_node - 10
+        x_offset = offset/2 * L_bay/2
+    else:
+        bot_node = top_node - 9
+        x_offset = - offset/2 * L_bay/2
+        
+    # get the bottom node's coordinates
+    bot_x_coord = (bot_node%10)*L_bay
+    bot_y_coord = (bot_node//10 - 1)*h_story
+    
+    # effective length is 90% of the diagonal (gusset plate offset)
+    br_x = abs(top_x_coord - bot_x_coord)
+    br_y = abs(top_y_coord - bot_y_coord)
+    L_eff = (1-offset)*(br_x**2 + br_y**2)**0.5
+    
+    # angle from horizontal up to brace vector
+    from math import atan, asin, sin, cos
+    theta = atan(h_story/(L_bay/2))
+    
+    num_br_elem = 8
+    ele_L = L_eff/num_br_elem
+    
+    # local coords
+    nd_sub = nd%10
+    xm = ele_L*nd_sub
+    # p = camber*L_eff
+    # zm = 4*p/L_eff*xm*(1- xm/L_eff)
+    zm = 4*camber/L_eff*xm*(L_eff - xm)
+    
+    # origin is bottom node, adjusted for gusset plate
+    # offset is the shift (+/-) of the bottom gusset plate
+    # terminus is top node, adjusted for gusset plate (gusset placed opposite direction)
+    x_origin = bot_x_coord + x_offset
+    y_offset = offset/2 * h_story
+    y_origin = bot_y_coord + y_offset
+    
+    # angle from the brace vector up to camber
+    beta = asin(zm/xm)
+    
+    # angle from horizontal up to camber
+    gamma  = theta + beta
+    
+    # if the xxXx number is 2, the brace connects sw
+    # if the xxXx number is 3, the brace connects se
+    if (nd//10)%2 == 0:
+        mid_x_coord = x_origin + xm * cos(gamma)
+    else:
+        mid_x_coord = x_origin - xm * cos(gamma)
+    mid_y_coord = y_origin + xm * sin(gamma)
+    
+    return(mid_x_coord, mid_y_coord)
+    
 def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     # from mid brace number, get the corresponding top and bottom node numbers
     top_node = nd//100
