@@ -1312,17 +1312,17 @@ class Building:
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
         Fy  = 50*ksi        # yield strength
-        b   = 0.003           # hardening ratio
+        b   = 0.003           # hardening ratio (Hsiao et al., 2012)
         R0 = 15
         cR1 = 0.925
         cR2 = 0.15
         ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
         
-        ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        # ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
         
-        # ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
-        #                       R0, cR1, cR2)
-        # ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+        ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
+                              R0, cR1, cR2)
+        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
@@ -1756,7 +1756,7 @@ class Building:
         
         ###################### Brace #############################
         brace_list = self.brace
-        n_IP = 4
+        n_IP = 5
         # starting from bottom floor, define the brace shape for that floor
         # floor 1's brace at 141 and 161, etc.
         for fl_br, brace in enumerate(brace_list):
@@ -1768,13 +1768,13 @@ class Building:
             brace_sec_tag = br_sec + fl_br + 1
             
             ops.section('Fiber', brace_sec_tag, '-GJ', Gs*J)
-            ops.patch('rect', steel_mat_tag, 1, nff,  
+            ops.patch('rect', steel_mat_tag, nfw, nff,  
                       d_brace/2-t_brace, -d_brace/2, d_brace/2, d_brace/2)
-            ops.patch('rect', steel_mat_tag, 1, nff, 
+            ops.patch('rect', steel_mat_tag, nfw, nff, 
                       -d_brace/2, -d_brace/2, -d_brace/2+t_brace, d_brace/2)
-            ops.patch('rect', steel_mat_tag, nfw, 2, 
+            ops.patch('rect', steel_mat_tag, nfw, nff, 
                       -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
-            ops.patch('rect', steel_mat_tag, nfw, 2, 
+            ops.patch('rect', steel_mat_tag, nfw, nff, 
                       -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
             
             brace_int_tag = br_int + fl_br + 1
@@ -1817,7 +1817,7 @@ class Building:
             
             current_brace_int = j_floor - 1 + br_int
             
-            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+            ops.element('dispBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_transf_tag, current_brace_int, '-iter', 100, 1e-7)
         
         '''
@@ -2912,11 +2912,10 @@ class Building:
         ops.numberer('RCM')
         ops.system('BandGeneral')
         
-        # TODO: let's try energy incr norm for CBF
         if superstructure_system == 'CBF':
             
             # Convergence Test: maximum number of iterations that will be performed
-            maxIterDynamic      = 1000
+            maxIterDynamic      = 100
             
             # Convergence Test: flag used to print information on convergence
             printFlagDynamic    = 0  
@@ -2926,21 +2925,21 @@ class Building:
             algorithmTypeDynamic    = 'Newton'
             ops.algorithm(algorithmTypeDynamic)
             
+            # # Convergence Test: tolerance
+            # testTypeDynamic = 'EnergyIncr'
+            # tolDynamic = 1e-6
+            
+            # # TRBDF2 integrator, best with energy
+            # ops.integrator('TRBDF2')
+            
             # Convergence Test: tolerance
-            testTypeDynamic = 'EnergyIncr'
+            testTypeDynamic     = 'NormDispIncr'
             tolDynamic = 1e-6
             
-            # TRBDF2 integrator, best with energy
-            ops.integrator('TRBDF2')
-            
-            # # Convergence Test: tolerance
-            # testTypeDynamic     = 'NormDispIncr'
-            # tolDynamic = 1e-5
-            
-            # # Newmark-integrator gamma parameter (also HHT)
-            # newmarkGamma = 0.5
-            # newmarkBeta = 0.25
-            # ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+            # Newmark-integrator gamma parameter (also HHT)
+            newmarkGamma = 0.5
+            newmarkBeta = 0.25
+            ops.integrator('Newmark', newmarkGamma, newmarkBeta)
             
         else:
             # Convergence Test: maximum number of iterations that will be performed
@@ -2962,8 +2961,9 @@ class Building:
             newmarkGamma = 0.5
             newmarkBeta = 0.25
             ops.integrator('Newmark', newmarkGamma, newmarkBeta)
-            
+        
         ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+            
         ops.analysis('Transient')
 
         #  ---------------------------------    perform Dynamic Ground-Motion Analysis

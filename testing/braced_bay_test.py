@@ -831,7 +831,7 @@ for elem_tag in brace_elems:
         brace_transf_tag = brace_transf_tag_L
     elif (i_nd%10==2) or (i_nd%10==7):
         brace_transf_tag = brace_transf_tag_R
-    ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+    ops.element('dispBeamColumn', elem_tag, i_nd, j_nd, 
                 brace_transf_tag, current_brace_int)
     
 # add ghost trusses to the braces to reduce convergence problems
@@ -1119,7 +1119,7 @@ ops.wipeAnalysis()
 # Uniform Earthquake ground motion (uniform acceleration input at all support nodes)
 GMDirection = 1  # ground-motion direction
 gm_name = 'RSN15_KERN_TAF021'
-scale_factor = 7.92859*30
+scale_factor = 7.92859*10
 print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
 ops.constraints('Plain')
@@ -1135,22 +1135,23 @@ maxIterDynamic      = 1000
 # Convergence Test: flag used to print information on convergence
 printFlagDynamic    = 0         
 
-testTypeDynamic     = 'EnergyIncr'
-# testTypeDynamic     = 'NormDispIncr'
+# testTypeDynamic     = 'EnergyIncr'
+testTypeDynamic     = 'NormDispIncr'
 ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+# ops.test('FixedNumIter', 100)
 
 # algorithmTypeDynamic    = 'Broyden'
 # ops.algorithm(algorithmTypeDynamic, 8)
 algorithmTypeDynamic    = 'Newton'
 ops.algorithm(algorithmTypeDynamic)
 
-# # Newmark-integrator gamma parameter (also HHT)
-# newmarkGamma = 0.5
-# newmarkBeta = 0.25
-# ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+# Newmark-integrator gamma parameter (also HHT)
+newmarkGamma = 0.5
+newmarkBeta = 0.25
+ops.integrator('Newmark', newmarkGamma, newmarkBeta)
 
-# TRBDF2 integrator, best with energy
-ops.integrator('TRBDF2')
+# # TRBDF2 integrator, best with energy
+# ops.integrator('TRBDF2')
 
 ops.analysis('Transient')
 
@@ -1183,7 +1184,7 @@ sec = 1.0
 T_end = 60.0*sec
 
 
-dt_transient = 0.001
+dt_transient = 0.005
 n_steps = int(np.floor(T_end/dt_transient))
 
 # actually perform analysis; returns ok=0 if analysis was successful
