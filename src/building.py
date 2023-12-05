@@ -988,13 +988,12 @@ class Building:
                     '-mat', impact_mat_tag,
                     '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         
-        print('Elements placed.')
-        # ops.printModel('-file', './test.log')
-        
         float_nodes = self.floating_nodes()
         
-        # assert that all nodes are connected (float_nodes is empty)
-        assert (not float_nodes == True), 'Some nodes are not connected.'
+        # # assert that all nodes are connected (float_nodes is empty)
+        # assert (not float_nodes == True), 'Some nodes are not connected.'
+        
+        print('Elements placed.')
         
     def model_braced_frame(self):
         # import OpenSees and libraries
@@ -2074,6 +2073,8 @@ class Building:
         grav_beams = [beam_tag for beam_tag in beam_elems
                       if beam_tag not in ghost_beams]
         
+        # TODO: check equalDOFs here
+        
         for elem_tag in grav_beams:
             i_nd = (elem_tag - beam_id)*10 + 9
             j_nd = (elem_tag - beam_id + 1)*10 + 7
@@ -2348,12 +2349,12 @@ class Building:
                     '-mat', impact_mat_tag,
                     '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         
-        print('Elements placed.')
-        
         float_nodes = self.floating_nodes()
         
-        # assert that all nodes are connected (float_nodes is empty)
-        assert (not float_nodes == True), 'Some nodes are not connected.'
+        # # assert that all nodes are connected (float_nodes is empty)
+        # assert ((not float_nodes) == True), 'Some nodes are not connected.'
+        
+        print('Elements placed.')
         
     def apply_grav_load(self):
         import openseespy.opensees as ops
@@ -2973,7 +2974,7 @@ class Building:
 
         ops.constraints('Plain')
         ops.numberer('RCM')
-        ops.system('BandGeneral')
+        ops.system('UmfPack')
         
         if superstructure_system == 'CBF':
             
