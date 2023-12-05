@@ -21,6 +21,19 @@ class Building:
     def __init__(self, design):
         for key, value in design.items():
             setattr(self, key, value)
+            
+    def floating_nodes(self):
+        import openseespy.opensees as ops
+        
+        connected_nodes = []
+        for ele in ops.getEleTags():
+            for nd in ops.eleNodes(ele):
+                connected_nodes.append(nd)
+        
+        defined_nodes = ops.getNodeTags()
+     
+        # Use XOR operator, ^
+        return list(set(connected_nodes) ^ set(defined_nodes))
         
     # number nodes
     def number_nodes(self):
@@ -119,7 +132,7 @@ class Building:
         #       xy13    xy1     xy14
         #           xy12    xy11
         #       xy16            xy15
-        #   (xy18)                  (xy17)  <- further down midspan
+        #   (xy2z)                  (xy3z)  <- further down midspan
         ################################
         
         if frame_type == 'CBF':
@@ -978,6 +991,11 @@ class Building:
         print('Elements placed.')
         # ops.printModel('-file', './test.log')
         
+        float_nodes = self.floating_nodes()
+        
+        # assert that all nodes are connected (float_nodes is empty)
+        assert (not float_nodes == True), 'Some nodes are not connected.'
+        
     def model_braced_frame(self):
         # import OpenSees and libraries
         import openseespy.opensees as ops
@@ -1322,7 +1340,8 @@ class Building:
         
         ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
                               R0, cR1, cR2)
-        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
+                             '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
@@ -1999,12 +2018,49 @@ class Building:
         # use constraint (fix translation, allow rotation) rather than spring
         shear_tab_pins = self.node_tags['brace_beam_tab']
         
+        # for nd in shear_tab_pins:
+        #     if nd%10 == 0:
+        #         parent_nd = (nd//10)*10 + 9
+        #     else:
+        #         parent_nd = (nd//10)*10 + 7
+        #     ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+            
+        # TODO: consider pinching material for shear tab to beam
+        # ops.uniaxialMaterial('IMKBilin', 333, Ke_beam,
+        #                       0.055, 0.18, thu_beam, My_beam, 1.1, 0.0,
+        #                       0.055, 0.18, thu_beam, My_beam, 1.1, 0.0,
+        #                       0.9, 0.9, 0.9,
+        #                       cIK, cIK, cIK,
+        #                       DIK, DIK, DIK)
+
+        thp_st = 0.055
+        thpc_st = 0.18
+        lam_st = 0.9
+        Fpp_st = 0.75
+        Fpn_st = 0.75
+        a_st = 0.75
+        kappa_res_st = 0.0
+        ops.uniaxialMaterial('ModIMKPinching', 333, Ke_beam, b, b, 
+                              0.75*My_beam, -0.75*My_beam, Fpp_st, Fpn_st, a_st, 
+                              lam_st, lam_st, lam_st, lam_st,
+                              1.0, 1.0, 1.0, 1.0, 
+                              thp_st, thp_st, 
+                              thpc_st, thpc_st, 
+                              kappa_res_st, kappa_res_st, thu_beam, thu_beam, 
+                              DIK, DIK)
+
         for nd in shear_tab_pins:
+            elem_tag = nd + spr_id
             if nd%10 == 0:
                 parent_nd = (nd//10)*10 + 9
+                i_nd = parent_nd
+                j_nd = nd
             else:
                 parent_nd = (nd//10)*10 + 7
-            ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+                i_nd = nd
+                j_nd = parent_nd
+                
+            rot_spring_bilin(elem_tag, 333, i_nd, j_nd, 2)
             
 ################################################################################
 # define gravity frame
@@ -2291,6 +2347,13 @@ class Building:
         ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
                     '-mat', impact_mat_tag,
                     '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
+        
+        print('Elements placed.')
+        
+        float_nodes = self.floating_nodes()
+        
+        # assert that all nodes are connected (float_nodes is empty)
+        assert (not float_nodes == True), 'Some nodes are not connected.'
         
     def apply_grav_load(self):
         import openseespy.opensees as ops
@@ -2961,6 +3024,7 @@ class Building:
             newmarkGamma = 0.5
             newmarkBeta = 0.25
             ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+            # ops.integrator('CentralDifference')
         
         ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
             

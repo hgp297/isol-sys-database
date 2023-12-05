@@ -847,12 +847,12 @@ for elem_tag in brace_ghosts:
     else:
         j_nd = (parent_i_nd + 9)*100 + 15
         # j_nd = (parent_i_nd + 9)*100 + 11
-    # ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
+    ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
     
-ops.element('corotTruss', 91107, 1102, 2017, A_ghost, ghost_mat_tag)
-ops.element('corotTruss', 91009, 1004, 2018, A_ghost, ghost_mat_tag)
-ops.element('corotTruss', 91117, 2017, 2015, A_ghost, ghost_mat_tag)
-ops.element('corotTruss', 91119, 2018, 2016, A_ghost, ghost_mat_tag)
+# ops.element('corotTruss', 91107, 1102, 2017, A_ghost, ghost_mat_tag)
+# ops.element('corotTruss', 91009, 1004, 2018, A_ghost, ghost_mat_tag)
+# ops.element('corotTruss', 91117, 2017, 2015, A_ghost, ghost_mat_tag)
+# ops.element('corotTruss', 91119, 2018, 2016, A_ghost, ghost_mat_tag)
 ###################### Gusset plates #############################
 
 brace_spr_id = bldg.elem_ids['brace_spring']
@@ -968,12 +968,41 @@ for link_tag in beam_brace_rigid_joints:
 # use constraint (fix translation, allow rotation) rather than spring
 shear_tab_pins = bldg.node_tags['brace_beam_tab']
 
+# ops.uniaxialMaterial('IMKBilin', 333, Ke_beam,
+#                       0.055, 0.18, thu_beam, 0.5*My_beam, 1.1, 0.0,
+#                       0.055, 0.18, thu_beam, 0.5*My_beam, 1.1, 0.0,
+#                       0.9, 0.9, 0.9,
+#                       cIK, cIK, cIK,
+#                       DIK, DIK, DIK)
+
+ops.uniaxialMaterial('ModIMKPinching', 333, Ke_beam, 0.03, 0.03, 
+                      0.75*My_beam, -0.75*My_beam, 0.75, 0.75, 0.75, 
+                      0.9, 0.9, 0.9, 0.9, 
+                      1.0, 1.0, 1.0, 1.0, 
+                      0.055, 0.055, 
+                      0.18, 0.18, 
+                      0.0, 0.0, thu_beam, thu_beam, 1.0, 1.0)
+
 for nd in shear_tab_pins:
+    elem_tag = nd + spr_id
     if nd%10 == 0:
         parent_nd = (nd//10)*10 + 9
+        i_nd = parent_nd
+        j_nd = nd
     else:
         parent_nd = (nd//10)*10 + 7
-    ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+        i_nd = nd
+        j_nd = parent_nd
+        
+    rot_spring_bilin(elem_tag, 333, i_nd, j_nd, 2)
+    
+# for nd in shear_tab_pins:
+#     if nd%10 == 0:
+#         parent_nd = (nd//10)*10 + 9
+#     else:
+#         parent_nd = (nd//10)*10 + 7
+#     ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+    
     
 ghost_beams = [beam_tag//10 for beam_tag in brace_beam_elems
                if (beam_tag%brace_beam_id in brace_top_nodes)]
