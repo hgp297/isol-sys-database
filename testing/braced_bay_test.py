@@ -474,11 +474,11 @@ cR1 = 0.925
 cR2 = 0.25
 ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
 
-# ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
 
-ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
-ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
-                      '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
+# ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
+# ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
+#                       '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
 
 # ops.uniaxialMaterial('Elastic', steel_mat_tag, Es)
 
@@ -871,12 +871,12 @@ for elem_tag in brace_ghosts:
     else:
         j_nd = (parent_i_nd + 9)*100 + 15
         # j_nd = (parent_i_nd + 9)*100 + 11
-    ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
+    # ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
     
-# ops.element('corotTruss', 91107, 1102, 2017, A_ghost, ghost_mat_tag)
-# ops.element('corotTruss', 91009, 1004, 2018, A_ghost, ghost_mat_tag)
-# ops.element('corotTruss', 91117, 2017, 2015, A_ghost, ghost_mat_tag)
-# ops.element('corotTruss', 91119, 2018, 2016, A_ghost, ghost_mat_tag)
+ops.element('corotTruss', 91107, 1102, 2017, A_ghost, ghost_mat_tag)
+ops.element('corotTruss', 91009, 1004, 2018, A_ghost, ghost_mat_tag)
+ops.element('corotTruss', 91117, 2017, 2015, A_ghost, ghost_mat_tag)
+ops.element('corotTruss', 91119, 2018, 2016, A_ghost, ghost_mat_tag)
 ###################### Gusset plates #############################
 
 brace_spr_id = bldg.elem_ids['brace_spring']
@@ -1262,8 +1262,8 @@ if ok != 0:
     ok = 0
     curr_time = ops.getTime()
     print("Convergence issues at time: ", curr_time)
-    for nd in ops.getNodeTags():
-        print(f'Node {nd}: {ops.nodeDOFs(nd)}')
+    # for nd in ops.getNodeTags():
+    #     print(f'Node {nd}: {ops.nodeDOFs(nd)}')
     while (curr_time < T_end) and (ok == 0):
         curr_time     = ops.getTime()
         ok          = ops.analyze(1, dt_transient)

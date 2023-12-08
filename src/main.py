@@ -48,7 +48,7 @@ T_1 = bldg.run_eigen()
 bldg.provide_damping(80, method='SP',
                                   zeta=[0.05], modes=[1])
 
-dt = 0.005
+dt = 0.001
 ok = bldg.run_ground_motion(run.gm_selected, 
                         run.scale_factor*1.5, 
                         dt, T_end=60.0)

@@ -171,6 +171,7 @@ def run_nlth(design,
                                    data_dir=output_path)
     
     # TODO: implement CBF convergence loop
+    # idea: if convergence, reduce dt to 0.001, maybe increase ghost strength
     # lower dt if convergence issues
     if run_status != 0:
         if bldg.superstructure_system == 'MF':

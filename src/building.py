@@ -1944,7 +1944,7 @@ class Building:
                 
             # global z-rotation is restrained
             # TODO: removed DOF 6 here
-            ops.equalDOF(i_nd, j_nd, 1, 2, 3)
+            ops.equalDOF(i_nd, j_nd, 1, 3)
             
         # at top, outer (GP non rigid nodes are 5 and 6)
         brace_top_gp_spring_link = [link for link in brace_top_links
@@ -1969,7 +1969,7 @@ class Building:
                 
             # global z-rotation is restrained
             # TODO: removed DOF 6 here
-            ops.equalDOF(j_nd, i_nd, 1, 2, 3)
+            ops.equalDOF(j_nd, i_nd, 1, 3)
             
 ################################################################################
 # define rigid links in the braced bays
@@ -2106,7 +2106,7 @@ class Building:
         # place pin joints for all gravity beams
         for nd in grav_beam_spring_nodes:
             parent_nd = nd // 10
-            ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+            ops.equalDOF(parent_nd, nd, 1, 3)
             
         # place ghost trusses along braced frame beams to ensure horizontal movement
         # TODO: run this truss to midway
@@ -2140,9 +2140,9 @@ class Building:
         for nd in grav_col_spring_nodes:
             parent_nd = nd // 10
             if (parent_nd//10 == 1):
-                ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+                ops.equalDOF(parent_nd, nd, 1, 3)
             else:
-                ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 5, 6)
+                ops.equalDOF(parent_nd, nd, 1, 3, 5)
             
 ################################################################################
 # define leaning column
@@ -3003,7 +3003,7 @@ class Building:
         if superstructure_system == 'CBF':
             
             # Convergence Test: maximum number of iterations that will be performed
-            maxIterDynamic      = 100
+            maxIterDynamic      = 1000
             
             # Convergence Test: flag used to print information on convergence
             printFlagDynamic    = 0  
@@ -3101,8 +3101,8 @@ class Building:
             ops.analysis('Transient')
             curr_time = ops.getTime()
             print("Convergence issues at time: ", curr_time)
-            for nd in ops.getNodeTags():
-                print(f'Node {nd}: {ops.nodeDOFs(nd)}')
+            # for nd in ops.getNodeTags():
+            #     print(f'Node {nd}: {ops.nodeDOFs(nd)}')
             while (curr_time < T_end) and (ok == 0):
                 curr_time     = ops.getTime()
                 ok = ops.analyze(1, dt_transient)
