@@ -1083,6 +1083,9 @@ class Building:
         floor_nodes = self.node_tags['floor']
         brace_bot_nodes = self.node_tags['brace_bottom']
         brace_top_nodes = self.node_tags['brace_top']
+        
+        # TODO: assigned no mass to oop directions
+        
         for nd in floor_nodes:
             
             # get multiplier for location from node number
@@ -1103,12 +1106,15 @@ class Building:
             else:
                 m_nd = m_grav_inner[fl]
             negligible = 1e-15
-            ops.mass(nd, m_nd, m_nd, m_nd,
+            ops.mass(nd, m_nd, negligible, m_nd,
                      negligible, negligible, negligible)
             
             # restrain out of plane motion
             ops.fix(nd, 0, 1, 0, 1, 0, 1)
             
+        # TODO: fix out-of-plane translations, we do this for every node
+        # no torsion, no twisting, no oop translation
+        
         # leaning column nodes
         leaning_nodes = self.node_tags['leaning']
         for nd in leaning_nodes:
@@ -1117,7 +1123,7 @@ class Building:
             floor = (nd//10)%10 - 1
             ops.node(nd, (n_bays+1)*L_beam, 0.0*ft, floor*L_col)
             m_nd = m_lc[floor]
-            ops.mass(nd, m_nd, m_nd, m_nd,
+            ops.mass(nd, m_nd, negligible, m_nd,
                      negligible, negligible, negligible)
             
             # bottom is roller, otherwise, restrict OOP motion
@@ -1142,8 +1148,9 @@ class Building:
             
             m_nd = m_grav_brace[fl]
             ops.node(nd, x_coord, 0.0*ft, z_coord)
-            ops.mass(nd, m_nd, m_nd, m_nd,
+            ops.mass(nd, m_nd, negligible, m_nd,
                      negligible, negligible, negligible)
+            ops.fix(nd, 0, 1, 0, 1, 0, 1)
             
         # mid brace node adjusted to have camber of 0.1% L_eff
         # L_eff is defined as L_diag - offset
@@ -1157,7 +1164,7 @@ class Building:
             # x_coord, z_coord = mid_brace_coord(nd, L_beam, L_col, offset=ofs)
             
             ops.node(nd, x_coord, 0.0*ft, z_coord)
-        
+            ops.fix(nd, 0, 1, 0, 1, 0, 1)
         
         # spring nodes
         spring_nodes = self.node_tags['spring']
@@ -1215,6 +1222,9 @@ class Building:
             # otherwise, it is a gravity frame node and can just overlap the main node
             else:
                 ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+                
+            
+            ops.fix(nd, 0, 1, 0, 1, 0, 1)
             
         lc_spr_nodes = self.node_tags['lc_spring']
         for nd in lc_spr_nodes:
@@ -1224,6 +1234,7 @@ class Building:
             bay = parent_nd%10
             fl = parent_nd//10 - 1
             ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            ops.fix(nd, 0, 1, 0, 1, 0, 1)
             
         brace_beam_spr_nodes = self.node_tags['brace_beam_spring']
         for nd in brace_beam_spr_nodes:
@@ -1242,6 +1253,7 @@ class Building:
                 ops.node(nd, x_coord-x_offset, 0.0*ft, z_coord)
             else:
                 ops.node(nd, x_coord+x_offset, 0.0*ft, z_coord)
+            ops.fix(nd, 0, 1, 0, 1, 0, 1)
             
         for nd in brace_beam_tab_nodes:
             parent_nd = nd//10
@@ -1255,21 +1267,24 @@ class Building:
                 ops.node(nd, bay*L_beam-x_offset, 0.0*ft, fl*L_col) 
             else:
                 ops.node(nd, bay*L_beam+x_offset, 0.0*ft, fl*L_col)
-        
+            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            
         # each end has offset/2*L_diagonal assigned to gusset plate offset
         brace_bot_gp_nodes = self.node_tags['brace_bottom_spring']
+        
         for nd in brace_bot_gp_nodes:
             
             # values returned are already in inches
             x_coord, z_coord = bot_gp_coord(nd, L_beam, L_col, offset=ofs)
             ops.node(nd, x_coord, 0.0*ft, z_coord)
-        
+            ops.fix(nd, 0, 1, 0, 1, 0, 1)
         brace_top_gp_nodes = self.node_tags['brace_top_spring']
+        
         for nd in brace_top_gp_nodes:
             # values returned are already in inches
             x_coord, z_coord = top_gp_coord(nd, L_beam, L_col, offset=ofs)
             ops.node(nd, x_coord, 0.0*ft, z_coord)
-        
+            ops.fix(nd, 0, 1, 0, 1, 0, 1)
         print('Nodes placed.')
         
 ################################################################################
@@ -1322,25 +1337,25 @@ class Building:
         ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
         
         # minimal stiffness elements (ghosts)
-        A_ghost = 1.0
-        E_ghost = 100.0
+        A_ghost = 1.
+        E_ghost = 100.
         ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
         
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
         Fy  = 50*ksi        # yield strength
-        b   = 0.003           # hardening ratio (Hsiao et al., 2012)
-        R0 = 15
+        b   = 0.001           # hardening ratio
+        R0 = 22
         cR1 = 0.925
-        cR2 = 0.15
+        cR2 = 0.25
         ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
         
-        # ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
         
-        ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
-                              R0, cR1, cR2)
-        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
-                             '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
+        # ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
+        #                       R0, cR1, cR2)
+        # ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
+        #                      '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
@@ -1774,7 +1789,7 @@ class Building:
         
         ###################### Brace #############################
         brace_list = self.brace
-        n_IP = 5
+        n_IP = 7
         # starting from bottom floor, define the brace shape for that floor
         # floor 1's brace at 141 and 161, etc.
         for fl_br, brace in enumerate(brace_list):
@@ -1889,7 +1904,6 @@ class Building:
             ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
         '''
         
-        # TODO: back to old ghosts for subdivided brace
         # add ghost trusses to the braces to reduce convergence problems
         brace_ghosts = self.elem_tags['brace_ghosts']
         for elem_tag in brace_ghosts:
@@ -1928,7 +1942,8 @@ class Building:
                     '-orient', *brace_x_axis_R, *vecxy_brace)
                 
             # global z-rotation is restrained
-            ops.equalDOF(i_nd, j_nd, 1, 2, 3, 6)
+            # TODO: removed DOF 2, 6 here
+            ops.equalDOF(i_nd, j_nd, 1, 3)
             
         # at top, outer (GP non rigid nodes are 5 and 6)
         brace_top_gp_spring_link = [link for link in brace_top_links
@@ -1952,7 +1967,8 @@ class Building:
                     '-orient', *brace_x_axis_R, *vecxy_brace)
                 
             # global z-rotation is restrained
-            ops.equalDOF(j_nd, i_nd, 1, 2, 3, 6)
+            # TODO: removed DOF 6 here
+            ops.equalDOF(j_nd, i_nd, 1, 3)
             
 ################################################################################
 # define rigid links in the braced bays
@@ -2024,7 +2040,7 @@ class Building:
         #         parent_nd = (nd//10)*10 + 7
         #     ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
             
-        # TODO: consider pinching material for shear tab to beam
+        # TODO: consider pinching material for shear tab to beam (IMKPinching)
         # ops.uniaxialMaterial('IMKBilin', 333, Ke_beam,
         #                       0.055, 0.18, thu_beam, My_beam, 1.1, 0.0,
         #                       0.055, 0.18, thu_beam, My_beam, 1.1, 0.0,
@@ -2073,7 +2089,7 @@ class Building:
         grav_beams = [beam_tag for beam_tag in beam_elems
                       if beam_tag not in ghost_beams]
         
-        # TODO: check equalDOFs here
+        # TODO: check equalDOFs here, removed 2, 4, 6
         
         for elem_tag in grav_beams:
             i_nd = (elem_tag - beam_id)*10 + 9
@@ -2089,13 +2105,20 @@ class Building:
         # place pin joints for all gravity beams
         for nd in grav_beam_spring_nodes:
             parent_nd = nd // 10
-            ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+            ops.equalDOF(parent_nd, nd, 1, 3)
             
         # place ghost trusses along braced frame beams to ensure horizontal movement
+        # TODO: run this truss to midway
         for elem_tag in ghost_beams:
             i_nd = elem_tag - beam_id
-            j_nd = i_nd + 1
+            # j_nd = i_nd + 1
+            j_nd = i_nd*10 + 1
             ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
+            
+            tag_2 = elem_tag + 985
+            i_nd = j_nd
+            j_nd = (i_nd//10) + 1
+            ops.element('Truss', tag_2, i_nd, j_nd, A_rigid, elastic_mat_tag)
             
        
         # place gravity columns:
@@ -2116,9 +2139,9 @@ class Building:
         for nd in grav_col_spring_nodes:
             parent_nd = nd // 10
             if (parent_nd//10 == 1):
-                ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+                ops.equalDOF(parent_nd, nd, 1, 3)
             else:
-                ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 5, 6)
+                ops.equalDOF(parent_nd, nd, 1, 3, 5)
             
 ################################################################################
 # define leaning column
@@ -2974,7 +2997,7 @@ class Building:
 
         ops.constraints('Plain')
         ops.numberer('RCM')
-        ops.system('UmfPack')
+        ops.system('BandGeneral')
         
         if superstructure_system == 'CBF':
             
@@ -3077,6 +3100,8 @@ class Building:
             ops.analysis('Transient')
             curr_time = ops.getTime()
             print("Convergence issues at time: ", curr_time)
+            # for nd in ops.getNodeTags():
+            #     print(f'Node {nd}: {ops.nodeDOFs(nd)}')
             while (curr_time < T_end) and (ok == 0):
                 curr_time     = ops.getTime()
                 ok = ops.analyze(1, dt_transient)
@@ -3241,7 +3266,6 @@ def top_gp_coord(nd, L_bay, h_story, offset=0.25):
     
     return(gp_x_coord, gp_y_coord)
 
-# TODO: quadratic brace coordinates
 def quad_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     # from mid brace number, get the corresponding top and bottom node numbers
     top_node = nd//100

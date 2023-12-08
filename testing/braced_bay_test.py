@@ -40,6 +40,19 @@ def get_properties(shape):
     tw      = float(shape.iloc[0]['tw'])
     return(Ag, Ix, Iy, Zx, Sx, d, bf, tf, tw)
 
+def floating_nodes():
+    import openseespy.opensees as ops
+    
+    connected_nodes = []
+    for ele in ops.getEleTags():
+        for nd in ops.eleNodes(ele):
+            connected_nodes.append(nd)
+    
+    defined_nodes = ops.getNodeTags()
+ 
+    # Use XOR operator, ^
+    return list(set(connected_nodes) ^ set(defined_nodes))
+
 def modified_IK_params(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi
@@ -267,7 +280,7 @@ for nd in floor_nodes:
     # DOF list: X, Y, Z, rotX, rotY, rotZ
     m_nd = m_grav_outer
     negligible = 1e-15
-    ops.mass(nd, m_nd, m_nd, m_nd,
+    ops.mass(nd, m_nd, negligible, m_nd,
              negligible, negligible, negligible)
     
     # restrain out of plane motion
@@ -288,8 +301,9 @@ for nd in brace_top_nodes:
     
     m_nd = m_grav_brace
     ops.node(nd, x_coord, 0.0*ft, z_coord)
-    ops.mass(nd, m_nd, m_nd, m_nd,
+    ops.mass(nd, m_nd, negligible, m_nd,
              negligible, negligible, negligible)
+    ops.fix(nd, 0, 1, 0, 1, 0, 1)
 
 # brace nodes
 ofs = 0.25
@@ -304,6 +318,7 @@ for nd in brace_mid_nodes:
     # values returned are already in inches
     x_coord, z_coord = mid_brace_coord(nd, L_beam, L_col, offset=ofs)
     ops.node(nd, x_coord, 0.0*ft, z_coord)
+    ops.fix(nd, 0, 1, 0, 1, 0, 1)
     
 # spring nodes
 spring_nodes = bldg.node_tags['spring']
@@ -350,6 +365,7 @@ for nd in spring_nodes:
     # otherwise, it is a gravity frame node and can just overlap the main node
     else:
         ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+    ops.fix(nd, 0, 1, 0, 1, 0, 1)
 
 brace_beam_spr_nodes = bldg.node_tags['brace_beam_spring']
 for nd in brace_beam_spr_nodes:
@@ -366,6 +382,7 @@ for nd in brace_beam_spr_nodes:
         ops.node(nd, x_coord-x_offset, 0.0*ft, z_coord)
     else:
         ops.node(nd, x_coord+x_offset, 0.0*ft, z_coord)
+    ops.fix(nd, 0, 1, 0, 1, 0, 1)
     
 for nd in brace_beam_tab_nodes:
     parent_nd = nd//10
@@ -379,6 +396,7 @@ for nd in brace_beam_tab_nodes:
         ops.node(nd, bay*L_beam-x_offset, 0.0*ft, fl*L_col) 
     else:
         ops.node(nd, bay*L_beam+x_offset, 0.0*ft, fl*L_col)
+    ops.fix(nd, 0, 1, 0, 1, 0, 1)
 
 # each end has offset/2*L_diagonal assigned to gusset plate offset
 brace_bot_gp_nodes = bldg.node_tags['brace_bottom_spring']
@@ -387,12 +405,14 @@ for nd in brace_bot_gp_nodes:
     # values returned are already in inches
     x_coord, z_coord = bot_gp_coord(nd, L_beam, L_col, offset=ofs)
     ops.node(nd, x_coord, 0.0*ft, z_coord)
+    ops.fix(nd, 0, 1, 0, 1, 0, 1)
 
 brace_top_gp_nodes = bldg.node_tags['brace_top_spring']
 for nd in brace_top_gp_nodes:
     # values returned are already in inches
     x_coord, z_coord = top_gp_coord(nd, L_beam, L_col, offset=ofs)
     ops.node(nd, x_coord, 0.0*ft, z_coord)
+    ops.fix(nd, 0, 1, 0, 1, 0, 1)
 
 print('Nodes placed.')
 ############################################################################
@@ -441,23 +461,24 @@ I_rigid = 1e6        # moment of inertia for p-delta columns
 ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
 
 # minimal stiffness elements (ghosts)
-A_ghost = 0.5
-E_ghost = 100.0
+A_ghost = 0.1
+E_ghost = 0.01
 ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
 
 # define material: Steel02
 # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
 Fy  = 50*ksi        # yield strength
-b   = 0.003           # hardening ratio
-R0 = 15
+b   = 0.001           # hardening ratio
+R0 = 22
 cR1 = 0.925
-cR2 = 0.15
+cR2 = 0.25
 ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
 
-ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+# ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
 
-# ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
-# ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
+ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
+                      '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
 
 # ops.uniaxialMaterial('Elastic', steel_mat_tag, Es)
 
@@ -468,7 +489,7 @@ L_avg = 0.75* L_gp
 t_gp = 1.375*inch
 Fy_gp = 50*ksi
 
-My_GP = (W_w*t_gp**2/6)*Fy_gp
+My_GP = (W_w*t_gp**2/6)*Fy_gp*1e-6
 K_rot_GP = Es/L_avg * (W_w*t_gp**3/12)
 b_GP = 0.01
 ops.uniaxialMaterial('Steel02', gp_mat_tag, My_GP, K_rot_GP, b_GP, R0, cR1, cR2)
@@ -524,6 +545,9 @@ vecxz_brace_R = vecxz / np.sqrt(np.sum(vecxz**2))
 ops.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
 ops.geomTransf('PDelta', beam_transf_tag, *vecxz_beam) # beams
 ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
+# ops.geomTransf('Linear', brace_beam_transf_tag, *vecxz_beam) # beams
+# ops.geomTransf('Linear', beam_transf_tag, *vecxz_beam) # beams
+# ops.geomTransf('Linear', col_transf_tag, *vecxz_col) # columns
 ops.geomTransf('Corotational', brace_transf_tag_L, *vecxz_brace_L) # braces
 ops.geomTransf('Corotational', brace_transf_tag_R, *vecxz_brace_R) # braces
 
@@ -694,7 +718,7 @@ for link_tag in brace_beam_middle_joint:
 nfw = 4     # number of fibers in web
 nff = 4     # number of fibers in each flange
 
-n_IP = 4
+n_IP = 5
 
 ################################################################################
 # define beams and columns - braced bays
@@ -873,17 +897,17 @@ for link_tag in brace_bot_gp_spring_link:
     # pin around y to enable buckling
     if link_tag%10 == 4:
         ops.element('zeroLength', link_tag, i_nd, j_nd,
-            '-mat', torsion_mat_tag, gp_mat_tag, 
-            '-dir', 4, 5, 
+            '-mat', torsion_mat_tag, gp_mat_tag, torsion_mat_tag,
+            '-dir', 4, 5, 6,
             '-orient', *brace_x_axis_L, *vecxy_brace)
     else:
         ops.element('zeroLength', link_tag, i_nd, j_nd,
-            '-mat', torsion_mat_tag, gp_mat_tag, 
-            '-dir', 4, 5, 
+            '-mat', torsion_mat_tag, gp_mat_tag, torsion_mat_tag,
+            '-dir', 4, 5, 6,
             '-orient', *brace_x_axis_R, *vecxy_brace)
         
     # global z-rotation is restrained
-    ops.equalDOF(i_nd, j_nd, 1, 2, 3, 6)
+    ops.equalDOF(i_nd, j_nd, 1, 3)
     
 # at top, outer (GP non rigid nodes are 5 and 6)
 brace_top_gp_spring_link = [link for link in brace_top_links
@@ -907,7 +931,7 @@ for link_tag in brace_top_gp_spring_link:
             '-orient', *brace_x_axis_R, *vecxy_brace)
         
     # global z-rotation is restrained
-    ops.equalDOF(j_nd, i_nd, 1, 2, 3, 6)
+    ops.equalDOF(j_nd, i_nd, 1, 3)
     
 ################################################################################
 # define rigid links in the braced bays
@@ -1007,13 +1031,21 @@ for nd in shear_tab_pins:
 ghost_beams = [beam_tag//10 for beam_tag in brace_beam_elems
                if (beam_tag%brace_beam_id in brace_top_nodes)]
 
-# place ghost trusses along braced frame beams to ensure horizontal movement
-beam_id = 200
-for elem_tag in ghost_beams:
-    i_nd = elem_tag - beam_id
-    j_nd = i_nd + 1
-    ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
+# # place ghost trusses along braced frame beams to ensure horizontal movement
+# beam_id = 200
+# for elem_tag in ghost_beams:
+#     i_nd = elem_tag - beam_id
+#     j_nd = i_nd + 1
+#     ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
     
+ops.element('Truss', 298, 20, 201, A_rigid, elastic_mat_tag)
+ops.element('Truss', 299, 201, 21, A_rigid, elastic_mat_tag)
+    
+# ops.equalDOF(20, 201, 1)
+# ops.equalDOF(201, 21, 1)
+
+float_nodes = floating_nodes()
+
 print('Elements placed.')
 open('./output/model.out', 'w').close()
 ops.printModel('-file', './output/model.out')
@@ -1179,6 +1211,10 @@ newmarkGamma = 0.5
 newmarkBeta = 0.25
 ops.integrator('Newmark', newmarkGamma, newmarkBeta)
 
+# alphaM = 1
+# alphaF = 1
+# ops.integrator('GeneralizedAlpha', alphaM, alphaF, 0.5+alphaM-alphaF, (1+alphaM-alphaF)**2/4)
+
 # # TRBDF2 integrator, best with energy
 # ops.integrator('TRBDF2')
 
@@ -1213,7 +1249,7 @@ sec = 1.0
 T_end = 60.0*sec
 
 
-dt_transient = 0.005
+dt_transient = 0.001
 n_steps = int(np.floor(T_end/dt_transient))
 
 # actually perform analysis; returns ok=0 if analysis was successful
@@ -1226,6 +1262,8 @@ if ok != 0:
     ok = 0
     curr_time = ops.getTime()
     print("Convergence issues at time: ", curr_time)
+    for nd in ops.getNodeTags():
+        print(f'Node {nd}: {ops.nodeDOFs(nd)}')
     while (curr_time < T_end) and (ok == 0):
         curr_time     = ops.getTime()
         ok          = ops.analyze(1, dt_transient)

@@ -252,16 +252,17 @@ ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
 # define material: Steel02
 # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
 Fy  = 50*ksi        # yield strength
-b   = 0.003           # hardening ratio
-R0 = 15
+b   = 0.001           # hardening ratio
+R0 = 22
 cR1 = 0.925
-cR2 = 0.15
+cR2 = 0.25
 
 E0 = 0.095
 m = 0.95
 ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
 ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, R0, cR1, cR2)
-ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
+ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
+                     '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
 
 
 # GP section: thin plate
