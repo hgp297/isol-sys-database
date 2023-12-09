@@ -171,7 +171,7 @@ def run_nlth(design,
                                    data_dir=output_path)
     
     # TODO: implement CBF convergence loop
-    # idea: if convergence, reduce dt to 0.001, maybe increase ghost strength
+    # idea: if convergence, reduce dt to 0.001, maybe without fatigue
     # lower dt if convergence issues
     if run_status != 0:
         if bldg.superstructure_system == 'MF':
@@ -191,24 +191,25 @@ def run_nlth(design,
                                                 0.001,
                                                 gm_dir=gm_path,
                                                 data_dir=output_path)
-        # else:
-        #     print('Lowering time step...')
+        else:
+            print('Lowering time step ...')
             
-        #     bldg = Building(design)
-        #     bldg.model_frame()
+            bldg = Building(design)
+            bldg.model_frame()
             
-        #     # apply gravity loads, perform eigenvalue analysis, add damping
-        #     bldg.apply_grav_load()
-        #     T_1 = bldg.run_eigen()
-        #     Tfb = bldg.provide_damping(80, method='SP',
-        #                                 zeta=[0.05], modes=[1])
+            # apply gravity loads, perform eigenvalue analysis, add damping
+            bldg.apply_grav_load()
+            T_1 = bldg.run_eigen()
+            Tfb = bldg.provide_damping(80, method='SP',
+                                        zeta=[0.05], modes=[1])
             
-        #     run_status = bldg.run_ground_motion(design['gm_selected'], 
-        #                                         design['scale_factor'], 
-        #                                         0.0002, T_end=30.0,
-        #                                         gm_dir=gm_path,
-        #                                         data_dir=output_path)
+            run_status = bldg.run_ground_motion(design['gm_selected'], 
+                                                design['scale_factor'], 
+                                                0.001,
+                                                gm_dir=gm_path,
+                                                data_dir=output_path)
         
+    # CBF if still no converge, try no brace fracture
     if run_status != 0:
         if bldg.superstructure_system == 'MF':
             print('Lowering time step one last time...')
@@ -225,6 +226,23 @@ def run_nlth(design,
             run_status = bldg.run_ground_motion(design['gm_selected'], 
                                                 design['scale_factor'], 
                                                 0.0005,
+                                                gm_dir=gm_path,
+                                                data_dir=output_path)
+        else:
+            print('Lowered time step and removing brace fracture ...')
+            
+            bldg = Building(design)
+            bldg.model_frame(convergence_mode=True)
+            
+            # apply gravity loads, perform eigenvalue analysis, add damping
+            bldg.apply_grav_load()
+            T_1 = bldg.run_eigen()
+            Tfb = bldg.provide_damping(80, method='SP',
+                                        zeta=[0.05], modes=[1])
+            
+            run_status = bldg.run_ground_motion(design['gm_selected'], 
+                                                design['scale_factor'], 
+                                                0.001,
                                                 gm_dir=gm_path,
                                                 data_dir=output_path)
     if run_status != 0:

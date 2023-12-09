@@ -344,7 +344,7 @@ class Building:
             self.elem_ids['brace_beam'] = brace_beams_id
             
 
-    def model_frame(self):
+    def model_frame(self, convergence_mode=False):
         print('=========== Constructing model ===========')
         print('Frame type:', self.superstructure_system, '|', 
               'Isolator type:', self.isolator_system)
@@ -358,7 +358,10 @@ class Building:
         if self.superstructure_system == 'MF':
             self.model_moment_frame()
         else:
-            self.model_braced_frame()
+            if convergence_mode:
+                self.model_braced_frame(convergence_mode=True)
+            else:
+                self.model_braced_frame()
     
 ###############################################################################
 #              MOMENT FRAME OPENSEES MODELING
@@ -995,7 +998,7 @@ class Building:
         
         print('Elements placed.')
         
-    def model_braced_frame(self):
+    def model_braced_frame(self, convergence_mode=False):
         # import OpenSees and libraries
         import openseespy.opensees as ops
         
@@ -1352,10 +1355,13 @@ class Building:
         
         # ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
         
-        ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
-                              R0, cR1, cR2)
-        ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
-                             '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
+        if convergence_mode==True:
+            ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        else:
+            ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
+                                  R0, cR1, cR2)
+            ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
+                                 '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
         
         # GP section: thin plate
         W_w = (L_gp**2 + L_gp**2)**0.5
@@ -1801,10 +1807,12 @@ class Building:
             brace_sec_tag = br_sec + fl_br + 1
             
             ops.section('Fiber', brace_sec_tag, '-GJ', Gs*J)
+            # web
             ops.patch('rect', steel_mat_tag, nfw, nff,  
                       d_brace/2-t_brace, -d_brace/2, d_brace/2, d_brace/2)
             ops.patch('rect', steel_mat_tag, nfw, nff, 
                       -d_brace/2, -d_brace/2, -d_brace/2+t_brace, d_brace/2)
+            # flange
             ops.patch('rect', steel_mat_tag, nfw, nff, 
                       -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
             ops.patch('rect', steel_mat_tag, nfw, nff, 
@@ -2116,7 +2124,7 @@ class Building:
             j_nd = i_nd*10 + 1
             ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
             
-            tag_2 = elem_tag + 985
+            tag_2 = elem_tag*10
             i_nd = j_nd
             j_nd = (i_nd//10) + 1
             ops.element('Truss', tag_2, i_nd, j_nd, A_rigid, elastic_mat_tag)
