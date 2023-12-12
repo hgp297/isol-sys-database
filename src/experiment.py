@@ -242,7 +242,7 @@ def run_nlth(design,
             
             run_status = bldg.run_ground_motion(design['gm_selected'], 
                                                 design['scale_factor'], 
-                                                0.001,
+                                                0.0005,
                                                 gm_dir=gm_path,
                                                 data_dir=output_path)
     if run_status != 0:

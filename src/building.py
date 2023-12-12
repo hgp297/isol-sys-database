@@ -1340,7 +1340,12 @@ class Building:
         ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
         
         # minimal stiffness elements (ghosts)
-        A_ghost = 1.0
+        if convergence_mode==True:
+            A_ghost = 10.0
+        else:
+            A_ghost = 1.0
+        
+        # A_ghost = 1.0
         E_ghost = 100.0
         ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
         
