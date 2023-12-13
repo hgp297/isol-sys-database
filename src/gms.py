@@ -72,7 +72,8 @@ def scale_ground_motion(input_df,
         scale_factor, 
         on=' Record Sequence Number').drop(columns=['full_RSN'])
     
-    # TODO: reconsider this
+    '''
+    # section on scaling to match 90% range
     # get scaled values and check that all Sa at least 90% of target in range
     
     # multiply unscaled by sf
@@ -89,6 +90,7 @@ def scale_ground_motion(input_df,
     # scale the sf by addl scaling
     scale_factor['sf_average_spectral'] = scale_factor[
         'sf_average_spectral']*scale_factor['addl_90_sf']
+    '''
     
     # grab only relevant columns
     db_cols = [' Record Sequence Number',

@@ -102,7 +102,7 @@ class Building:
             
             brace_beam_ends = [nd+10 for nd in brace_bottoms]
             
-            # TODO: numbering scheme, brace mids are xxab, where
+            # numbering scheme, brace mids are xxab, where
             # xx is the parent node of the top node (i.e. 311 -> 31)
             # a is 2 for left brace, 3 for right brace
             # b is the number of subdivision (0-9)
@@ -266,7 +266,7 @@ class Building:
             
             # brace_elems = [brace_id + nd for nd in brace_end_nodes]
             
-            # TODO: new brace scheme
+            # new brace scheme
             last_brace = [nd+1 for nd in brace_mids if nd%10==(num_br_nds)]
             brace_elems = [brace_id + nd for nd in (brace_mids+last_brace)]
             
@@ -1087,8 +1087,7 @@ class Building:
         brace_bot_nodes = self.node_tags['brace_bottom']
         brace_top_nodes = self.node_tags['brace_top']
         
-        # TODO: assigned no mass to oop directions
-        
+        # assigned no mass to oop directions
         for nd in floor_nodes:
             
             # get multiplier for location from node number
@@ -1115,7 +1114,7 @@ class Building:
             # restrain out of plane motion
             ops.fix(nd, 0, 1, 0, 1, 0, 1)
             
-        # TODO: fix out-of-plane translations, we do this for every node
+        # fix out-of-plane translations, we do this for every node
         # no torsion, no twisting, no oop translation
         
         # leaning column nodes
@@ -1160,7 +1159,7 @@ class Building:
         brace_mid_nodes = self.node_tags['brace_mid']
         for nd in brace_mid_nodes:
             
-            # TODO: new quadratic coordinates
+            # new quadratic coordinates
             x_coord, z_coord = quad_brace_coord(nd, L_beam, L_col, offset=ofs)
             
             # # values returned are already in inches
@@ -1866,58 +1865,7 @@ class Building:
             ops.element('dispBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_transf_tag, current_brace_int, '-iter', 100, 1e-7)
         
-        '''
-        goes_ne = [4,8]
-        for elem_tag in brace_elems:
-            
-            # if tag is 02 or 04, it extends from the bottom up
-            if elem_tag%10 == 4:
-                i_nd = (elem_tag - brace_id)
-                parent_i_nd = i_nd // 100 
-                j_nd = (parent_i_nd + 10)*100 + 18
-            elif elem_tag%10 == 2:
-                i_nd = (elem_tag - brace_id)
-                parent_i_nd = i_nd // 100 
-                j_nd = (parent_i_nd + 9)*100 + 17
-            else:
-                i_nd = (elem_tag - brace_id) + 2
-                j_nd = elem_tag - brace_id
-                
-            # ending node is always numbered with parent as floor j_floor
-            j_floor = j_nd//1000
-            
-            current_brace_int = j_floor - 1 + br_int
-            if (i_nd%10 in goes_ne):
-                brace_transf_tag = brace_transf_tag_L
-            else:
-                brace_transf_tag = brace_transf_tag_R
-            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
-                        brace_transf_tag, current_brace_int, '-iter', 100, 1e-7)
-        '''
-            
-        '''
-        # add ghost trusses to the braces to reduce convergence problems
-        brace_ghosts = self.elem_tags['brace_ghosts']
-        for elem_tag in brace_ghosts:
-            if (elem_tag//10)%10 == 0:
-                i_nd = (elem_tag - 5) - brace_id
-                
-                parent_i_nd = i_nd // 100
-                if elem_tag%10 == 9:
-                    j_nd = (parent_i_nd + 10)*100 + 18
-                else:
-                    j_nd = (parent_i_nd + 9)*100 + 17
-            else:
-                parent_i_nd = (elem_tag - brace_id - 15)//100
-                if elem_tag%10 == 7:
-                    i_nd = (parent_i_nd + 9)*100 + 17
-                else:
-                    i_nd = (parent_i_nd + 10)*100 + 18
-                j_nd = i_nd - 2
-            ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
-        '''
         
-        # TODO: back to old ghosts for subdivided brace
         # add ghost trusses to the braces to reduce convergence problems
         brace_ghosts = self.elem_tags['brace_ghosts']
         for elem_tag in brace_ghosts:
@@ -1956,7 +1904,7 @@ class Building:
                     '-orient', *brace_x_axis_R, *vecxy_brace)
                 
             # global z-rotation is restrained
-            # TODO: removed DOF 6 here
+            # removed DOF 6 here
             ops.equalDOF(i_nd, j_nd, 1, 3)
             
         # at top, outer (GP non rigid nodes are 5 and 6)
@@ -1981,7 +1929,7 @@ class Building:
                     '-orient', *brace_x_axis_R, *vecxy_brace)
                 
             # global z-rotation is restrained
-            # TODO: removed DOF 6 here
+            # removed DOF 6 here
             ops.equalDOF(j_nd, i_nd, 1, 3)
             
 ################################################################################
@@ -2103,8 +2051,7 @@ class Building:
         grav_beams = [beam_tag for beam_tag in beam_elems
                       if beam_tag not in ghost_beams]
         
-        # TODO: check equalDOFs here
-        
+        # check equalDOFs here
         for elem_tag in grav_beams:
             i_nd = (elem_tag - beam_id)*10 + 9
             j_nd = (elem_tag - beam_id + 1)*10 + 7
@@ -2122,7 +2069,7 @@ class Building:
             ops.equalDOF(parent_nd, nd, 1, 3)
             
         # place ghost trusses along braced frame beams to ensure horizontal movement
-        # TODO: run this truss to midway
+        # run this truss to midway
         for elem_tag in ghost_beams:
             i_nd = elem_tag - beam_id
             # j_nd = i_nd + 1
@@ -2890,7 +2837,6 @@ class Building:
             selected_brace = get_shape(self.brace[0],'brace')
             d_brace = selected_brace.iloc[0]['b']
             
-            # TODO: careful recording force on just one leg
             ops.recorder('Element','-ele', bottom_left_brace,
                          '-file',data_dir+'brace_left_str.csv', '-time',
                          'section','fiber', 0.0, -d_brace/2, 'stressStrain')
@@ -3280,7 +3226,7 @@ def top_gp_coord(nd, L_bay, h_story, offset=0.25):
     
     return(gp_x_coord, gp_y_coord)
 
-# TODO: quadratic brace coordinates
+# quadratic brace coordinates
 def quad_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     # from mid brace number, get the corresponding top and bottom node numbers
     top_node = nd//100

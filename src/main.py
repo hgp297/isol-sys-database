@@ -38,10 +38,12 @@ main_obj.scale_gms()
 # failed CBFs in 100 set: 10, 22, 38
 # 10 solved with smaller time step
 # 22 did not solve with smaller time step, considering strong ghost
-# 38 is attempting with smaller time step, without convergence adds
+# 38 solved with smaller time step, without convergence adds
+
+# 10 is attempting force bc
 
 # troubleshoot building
-run = main_obj.retained_designs.iloc[38]
+run = main_obj.retained_designs.iloc[10]
 from building import Building
 
 bldg = Building(run)
