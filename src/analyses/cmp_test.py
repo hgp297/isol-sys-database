@@ -45,9 +45,15 @@ P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
 nqe_data = pd.read_csv('../../resource/loss/fema_nqe_cmp.csv')
 nqe_data = nqe_data.replace({'All Zero': np.nan}, regex=True)
 nqe_data = nqe_data.replace({'2 Points = 0': 0}, regex=True)
+nqe_data = nqe_data.replace({'p90 low': 0}, regex=True)
 nqe_data['directional'] = nqe_data['directional'].replace(
     {'YES': True, 'NO': False})
 
+ta = nqe_data[['lab_std', 'health_std', 'edu_std', 'res_std',
+         'office_std', 'retail_std', 'warehouse_std', 'hotel_std']].apply(
+             pd.to_numeric, errors='coerce')
+nqe_data[['lab_std', 'health_std', 'edu_std', 'res_std',
+         'office_std', 'retail_std', 'warehouse_std', 'hotel_std']] = ta
 #%%
 # p90 low situations
 from scipy.stats import lognorm
