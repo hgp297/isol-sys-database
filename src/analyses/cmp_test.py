@@ -41,28 +41,43 @@ PAL = Assessment({
 # generate structural components and join with NSCs
 P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
 
-#%% nqe master data
+#%% nqe main data
 nqe_data = pd.read_csv('../../resource/loss/fema_nqe_cmp.csv')
-nqe_data = nqe_data.replace({'All Zero': np.nan}, regex=True)
+nqe_data = nqe_data.replace({'All Zero': 0}, regex=True)
 nqe_data = nqe_data.replace({'2 Points = 0': 0}, regex=True)
-nqe_data = nqe_data.replace({'p90 low': 0}, regex=True)
+nqe_data = nqe_data.replace({np.nan: 0})
 nqe_data['directional'] = nqe_data['directional'].replace(
     {'YES': True, 'NO': False})
 
 ta = nqe_data[['lab_std', 'health_std', 'edu_std', 'res_std',
-         'office_std', 'retail_std', 'warehouse_std', 'hotel_std']].apply(
-             pd.to_numeric, errors='coerce')
+          'office_std', 'retail_std', 'warehouse_std', 'hotel_std']].apply(
+              pd.to_numeric, errors='coerce')
 nqe_data[['lab_std', 'health_std', 'edu_std', 'res_std',
-         'office_std', 'retail_std', 'warehouse_std', 'hotel_std']] = ta
+          'office_std', 'retail_std', 'warehouse_std', 'hotel_std']] = ta
+
 #%%
-# p90 low situations
-from scipy.stats import lognorm
+# p90 low situations - calculator (values replaced in sheet)
+'''
+from scipy.stats import lognorm, norm
 from scipy.optimize import curve_fit
 f = lambda x,mu,sigma: lognorm(sigma,mu).cdf(x)
+fn = lambda x, mu, sigma: norm(mu, sigma).cdf(x)
 
-theta, beta = curve_fit(f, [.09, 0.29, 1.05], [0.1, 0.5, 0.9])
-print(theta)
-print(beta)
+quantile_data = [6, 16.2, 27]
+theta_n, beta_n = curve_fit(fn, np.log(quantile_data), [0.1, 0.5, 0.9])[0]
+print(theta_n)
+print(beta_n)
+xx_pr = np.arange(0.001, 1.5, 0.001)
+xx_pr_log = np.log(xx_pr)
+p = fn(xx_pr_log, theta_n, beta_n)
+
+import matplotlib.pyplot as plt
+plt.close('all')
+
+fig = plt.figure(figsize=(13, 10))
+plt.plot(xx_pr, p)
+plt.grid(True)
+'''
 
 # modular office needs definition
 
