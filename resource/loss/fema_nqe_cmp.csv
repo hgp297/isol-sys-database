@@ -9,7 +9,6 @@ C.30.32.003a,"C3032.003a    Suspended Ceiling, SDC D,E (Ip=1.0), Area (A): A < 2
 C.30.32.003a,"C3032.003a    Suspended Ceiling, SDC D,E (Ip=1.0), Area (A): A < 250, Vert & Lat support",Ceilings - Gypsum board,SF,1,SF 250,NO,0.05,0.08,0.03,0.95,0.05,0.03,0.05,0.7,0,0,0,0,0,0,0,0
 C.30.32.003a,"C3032.003a    Suspended Ceiling, SDC D,E (Ip=1.0), Area (A): A < 250, Vert & Lat support",Ceilings - Other,SF,1,SF 250,NO,0.08,0.08,0.02,0.05,0.03,0.02,0.9,0.08,0,0,0,0,0,0,0,0
 C.30.32.003a,"C3032.003a    Suspended Ceiling, SDC D,E (Ip=1.0), Area (A): A < 250, Vert & Lat support",Ceilings - Other (high end),SF,1,SF 250,NO,0.02,0.04,0,0,0.02,0.05,0,0.07,0,0,All Zero,All Zero,0,0,All Zero,0
-E.20.22.001,E2022.001    Modular office work stations.,Modular Offices - if present,,,EA 1,NO,,,,,0.007,,,,All Zero,All Zero,All Zero,All Zero,0.2,All Zero,All Zero,All Zero
 E.20.22.114a,"E2022.114a    Vertical Filing Cabinet, 4 drawer, unanchored laterally","Filing Cabinets, lateral 4 drawer",EA,1,EA 1,NO,0.0003,0.0004,,,0.0008,,,,0.3,0.4,All Zero,All Zero,0.6,All Zero,All Zero,All Zero
 E.20.22.106a,"E2022.106a    Bookcase, 6 shelves, unanchored laterally","Bookcases, 6-7 shelf, 3' wide",EA,1,EA 1,NO,0.003,0.001,,,0.002,,,,0.5,0.9,All Zero,All Zero,0.6,All Zero,All Zero,All Zero
 F.10.12.001,"F1012.001    Storage racks designed and installed before 2007, big box retail (12' to 15' tall)",Storage Racks,LF,1,LF 50,NO,,,,,,,0.1,,All Zero,All Zero,All Zero,All Zero,All Zero,All Zero,0.4,All Zero

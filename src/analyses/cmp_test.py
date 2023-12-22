@@ -43,17 +43,22 @@ P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
 
 #%% nqe main data
 nqe_data = pd.read_csv('../../resource/loss/fema_nqe_cmp.csv')
+nqe_data.set_index('cmp', inplace=True)
 nqe_data = nqe_data.replace({'All Zero': 0}, regex=True)
 nqe_data = nqe_data.replace({'2 Points = 0': 0}, regex=True)
 nqe_data = nqe_data.replace({np.nan: 0})
 nqe_data['directional'] = nqe_data['directional'].replace(
     {'YES': True, 'NO': False})
 
-ta = nqe_data[['lab_std', 'health_std', 'edu_std', 'res_std',
-          'office_std', 'retail_std', 'warehouse_std', 'hotel_std']].apply(
-              pd.to_numeric, errors='coerce')
-nqe_data[['lab_std', 'health_std', 'edu_std', 'res_std',
-          'office_std', 'retail_std', 'warehouse_std', 'hotel_std']] = ta
+nqe_meta = nqe_data[[c for c in nqe_data if not (
+    c.endswith('mean') or c.endswith('std'))]]
+nqe_mean = nqe_data[[c for c in nqe_data if c.endswith('mean')]]
+nqe_std = nqe_data[[c for c in nqe_data if c.endswith('std')]].apply(
+    pd.to_numeric, errors='coerce')
+
+# divide WT row by 1000 to convert to kVA
+nqe_mean[nqe_meta['unit'] == 'WT'] = nqe_mean[nqe_meta['unit'] == 'WT']/1000
+nqe_meta = nqe_meta.replace({'WT': 'KV'})
 
 #%%
 # p90 low situations - calculator (values replaced in sheet)
@@ -88,16 +93,51 @@ plt.grid(True)
 #%% nqe function
 
 cbf_floors = cbf_run.num_stories
-# commercial, ed, health, hospitality, res, research, retail, warehouse
+cbf_area = cbf_run.L_bldg**2 # sq ft
+# lab, health, ed, res, office, retail, warehouse, hotel
 fl_usage = [0.8, 0, 0, 0, 0, 0, 0.2, 0]
 bldg_usage = [fl_usage]*cbf_floors
+
+area_usage = np.array(fl_usage)*cbf_area
+
+# estimate mean qty for floor area
+def floor_mean(area_usage, mean_data):
+    return mean_data * area_usage
+
+# get std for floor (sum of lognormals)
+def floor_std(area_usage, std_data, floor_mean):
+    # get boolean if things are present, then multiply with stdev
+    import numpy as np
+    has_stuff = floor_mean.copy()
+    has_stuff[has_stuff != 0] = 1
+    
+    # variance per floor
+    var_present = np.square(std_data.values * has_stuff.values)
+    
+    # var_xy = var_x + var_y; std = sqrt(var)
+    std_cmp = np.sqrt(np.sum(var_present, axis=1))
+    
+    return pd.Series(std_cmp, index=std_data.index)
+    
+def floor_qty_estimate(area_usage, mean_data, std_data):
+    fl_mean = floor_mean(area_usage, mean_data)
+    fl_std = floor_std(area_usage, std_data, fl_mean)
+    fl_cmp_qty = fl_mean.sum(axis=1)
+    
+fl_mean = floor_mean(area_usage, nqe_mean)
+fl_std = floor_std(area_usage, nqe_std, fl_mean)
+fl_cmp_qty = fl_mean.sum(axis=1)
 
 def normative_quantity_estimation(run_info, usage, database):
     superstructure_system = run_info.superstructure_system
     
+    # perform floor estimation
     
-def commercial(run_info, scale):
-    cmp = pd.DataFrame()
+    # floor function
+    
+    # assign locations
+    
+
 # inputs
 # floors, floor usage, system
 
