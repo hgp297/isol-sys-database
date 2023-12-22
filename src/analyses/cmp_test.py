@@ -95,12 +95,13 @@ plt.grid(True)
 cbf_floors = cbf_run.num_stories
 cbf_area = cbf_run.L_bldg**2 # sq ft
 # lab, health, ed, res, office, retail, warehouse, hotel
-fl_usage = [0.8, 0, 0, 0, 0, 0, 0.2, 0]
+fl_usage = [0., 0., 0., 0., 0.7, 0.3, 0., 0.]
 bldg_usage = [fl_usage]*cbf_floors
 
 area_usage = np.array(fl_usage)*cbf_area
 
 # estimate mean qty for floor area
+# has not adjusted for 'quantity' column
 def floor_mean(area_usage, mean_data):
     return mean_data * area_usage
 
@@ -119,23 +120,58 @@ def floor_std(area_usage, std_data, floor_mean):
     
     return pd.Series(std_cmp, index=std_data.index)
     
-def floor_qty_estimate(area_usage, mean_data, std_data):
-    fl_mean = floor_mean(area_usage, mean_data)
-    fl_std = floor_std(area_usage, std_data, fl_mean)
-    fl_cmp_qty = fl_mean.sum(axis=1)
+def floor_qty_estimate(area_usage, mean_data, std_data, meta_data):
+    fl_cmp_by_usage = floor_mean(area_usage, mean_data)
+    fl_std = floor_std(area_usage, std_data, fl_cmp_by_usage)
+    
+    # sum across all usage and adjust for base quantity
+    fl_cmp_qty = fl_cmp_by_usage.sum(axis=1) * meta_data['quantity']
+    return(fl_cmp_by_usage, fl_cmp_qty, fl_std)
     
 fl_mean = floor_mean(area_usage, nqe_mean)
 fl_std = floor_std(area_usage, nqe_std, fl_mean)
-fl_cmp_qty = fl_mean.sum(axis=1)
+fl_cmp_qty = fl_mean.sum(axis=1)*nqe_meta['quantity']
+cmp_df = pd.concat([fl_cmp_qty, fl_std], axis=1)
+def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
+    floor_area = run_info.L_bldg**2 # sq ft
 
-def normative_quantity_estimation(run_info, usage, database):
-    superstructure_system = run_info.superstructure_system
     
+    
+    cmp_marginal = pd.DataFrame(columns=['Units', 'Location',
+                                         'Direction','Theta_0', 'Theta_1',
+                                         'Family', 'Blocks', 'Comment'])
+    fema_units = nqe_meta['unit']
+    nqe_meta[['pact_unit', 'pact_block_qty']] = nqe_meta['PACT_block'].str.split(
+        ' ', n=1, expand=True)
+    nqe_meta['pact_block_qty'] = pd.to_numeric(nqe_meta['pact_block_qty'])
+    pact_units = fema_units.replace({'SF': 'ft2',
+                                     'LF': 'ft'})
     # perform floor estimation
+    for fl, fl_usage in enumerate(bldg_usage):
+        area_usage = np.array(fl_usage)*floor_area
+        
+        fl_cmp_by_cat, fl_cmp_total, fl_cmp_std = floor_qty_estimate(
+            area_usage, nqe_mean, nqe_std)
+        
+        loc_series = np.repeat(fl+1, len(fl_cmp_total))
+        
+        dir_map = {True:'1,2', False:'0'}
+        dir_series = nqe_meta.directional.map(dir_map)
+        
+        has_stdev = fl_cmp_std != 0
+        family_map = {True:'lognormal', False:''}
+        family_series = has_stdev.map(family_map)
+        
+        # TODO: convert from FEMA units to PACT units to PBEE units
+        # TODO: handle blocks
+        fl_cmp_df = pd.concat([pact_units, loc_series, 
+                               dir_series, fl_cmp_total, fl_cmp_std,
+                               family_series, nqe_meta.PACT_name], axis=1)
+        
+        # TODO: concatenate
     
-    # floor function
-    
-    # assign locations
+    # TODO: rounding
+    # TODO: special components (bldg-wide and roof-only)
     
 
 # inputs
