@@ -56,9 +56,6 @@ nqe_mean = nqe_data[[c for c in nqe_data if c.endswith('mean')]]
 nqe_std = nqe_data[[c for c in nqe_data if c.endswith('std')]].apply(
     pd.to_numeric, errors='coerce')
 
-# divide WT row by 1000 to convert to kVA
-nqe_mean[nqe_meta['unit'] == 'WT'] = nqe_mean[nqe_meta['unit'] == 'WT']/1000
-nqe_meta = nqe_meta.replace({'WT': 'KV'})
 
 #%%
 # p90 low situations - calculator (values replaced in sheet)
@@ -89,7 +86,45 @@ plt.grid(True)
 
 # rounding
 
+#%% unit conversion
 
+# goal: convert nqe sheet from FEMA units to PBEE units
+# also change PACT block division from FEMA to PBEE
+
+# convert chillers to single units (assumes small 75 ton chillers)
+# also assumes chillers only components using TN
+nqe_mean[nqe_meta['unit'] == 'TN'] = nqe_mean[nqe_meta['unit'] == 'TN']/75
+nqe_meta['PACT_block'][nqe_meta['unit'] == 'TN'] = 'EA 1'
+nqe_meta = nqe_meta.replace({'TN': 'EA'})
+
+# convert AHUs to single units (assumes small 4000 cfm AHUs)
+# also assumes AHUs only components using CF
+nqe_mean[nqe_meta['unit'] == 'CF'] = nqe_mean[nqe_meta['unit'] == 'CF']/4000
+nqe_meta['PACT_block'][nqe_meta['unit'] == 'CF'] = 'EA 1'
+nqe_meta = nqe_meta.replace({'CF': 'EA'})
+
+# convert large transformers from WT to EA (assumes 250e3 W = 250 kV = 1 EA)
+nqe_mean[nqe_meta['unit'] == 'WT'] = nqe_mean[nqe_meta['unit'] == 'WT']/250e3
+nqe_meta['PACT_block'][nqe_meta['unit'] == 'WT'] = 'EA 1'
+nqe_meta = nqe_meta.replace({'WT': 'EA'})
+
+# small transformers already in EA, but block division needs to change
+nqe_meta['PACT_block'][nqe_meta.index == 'D.50.11.011a'] = 'EA 1'
+
+# distribution panels already in EA, but block division needs to change
+nqe_meta['PACT_block'][nqe_meta.index == 'D.50.12.031a'] = 'EA 1'
+
+# convert low voltage switchgear to single units (assumes 225 AP per unit)
+# also assumes switchgear only components using AP
+nqe_mean[nqe_meta['unit'] == 'AP'] = nqe_mean[nqe_meta['unit'] == 'AP']/225
+nqe_meta['PACT_block'][nqe_meta['unit'] == 'AP'] = 'EA 1'
+nqe_meta = nqe_meta.replace({'AP': 'EA'})
+
+# convert diesel generator to single units (assumes 250 kV per unit)
+nqe_mean[nqe_meta.index == 'D.50.92.031a'] = nqe_mean[
+    nqe_meta.index == 'D.50.92.031a']/250
+nqe_meta['PACT_block'][nqe_meta.index == 'D.50.92.031a'] = 'EA 1'
+nqe_meta['unit'][nqe_meta.index == 'D.50.92.031a'] = 'EA'
 #%% nqe function
 
 cbf_floors = cbf_run.num_stories
@@ -143,9 +178,14 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
     fema_units = nqe_meta['unit']
     nqe_meta[['pact_unit', 'pact_block_qty']] = nqe_meta['PACT_block'].str.split(
         ' ', n=1, expand=True)
+    
+    if not nqe_meta['pact_unit'].equals(fema_units):
+        print('units not equal, check before block division')
+    
     nqe_meta['pact_block_qty'] = pd.to_numeric(nqe_meta['pact_block_qty'])
     pact_units = fema_units.replace({'SF': 'ft2',
-                                     'LF': 'ft'})
+                                     'LF': 'ft',
+                                     'EA': 'ea'})
     # perform floor estimation
     for fl, fl_usage in enumerate(bldg_usage):
         area_usage = np.array(fl_usage)*floor_area
@@ -162,7 +202,6 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
         family_map = {True:'lognormal', False:''}
         family_series = has_stdev.map(family_map)
         
-        # TODO: convert from FEMA units to PACT units to PBEE units
         # TODO: handle blocks
         fl_cmp_df = pd.concat([pact_units, loc_series, 
                                dir_series, fl_cmp_total, fl_cmp_std,
