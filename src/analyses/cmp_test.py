@@ -83,9 +83,6 @@ plt.grid(True)
 
 # modular office needs definition
 
-
-# rounding
-
 #%% unit conversion
 
 # goal: convert nqe sheet from FEMA units to PBEE units
@@ -125,10 +122,12 @@ nqe_mean[nqe_meta.index == 'D.50.92.031a'] = nqe_mean[
     nqe_meta.index == 'D.50.92.031a']/250
 nqe_meta['PACT_block'][nqe_meta.index == 'D.50.92.031a'] = 'EA 1'
 nqe_meta['unit'][nqe_meta.index == 'D.50.92.031a'] = 'EA'
+
 #%% nqe function
 
 cbf_floors = cbf_run.num_stories
 cbf_area = cbf_run.L_bldg**2 # sq ft
+
 # lab, health, ed, res, office, retail, warehouse, hotel
 fl_usage = [0., 0., 0., 0., 0.7, 0.3, 0., 0.]
 bldg_usage = [fl_usage]*cbf_floors
@@ -159,22 +158,36 @@ def floor_qty_estimate(area_usage, mean_data, std_data, meta_data):
     fl_cmp_by_usage = floor_mean(area_usage, mean_data)
     fl_std = floor_std(area_usage, std_data, fl_cmp_by_usage)
     
-    # sum across all usage and adjust for base quantity
+    # sum across all usage and adjust for base quantity, then round up
     fl_cmp_qty = fl_cmp_by_usage.sum(axis=1) * meta_data['quantity']
     return(fl_cmp_by_usage, fl_cmp_qty, fl_std)
+
+# function to remove (cmp, dir, loc) duplicates. assumes that only
+# theta_0 and theta_1 changes
+def remove_dupes(dupe_df):
+    dupe_cmps = dupe_df.cmp.unique()
     
-fl_mean = floor_mean(area_usage, nqe_mean)
-fl_std = floor_std(area_usage, nqe_std, fl_mean)
-fl_cmp_qty = fl_mean.sum(axis=1)*nqe_meta['quantity']
-cmp_df = pd.concat([fl_cmp_qty, fl_std], axis=1)
+    clean_df = pd.DataFrame()
+    import numpy as np
+    for cmp in dupe_cmps:
+        cmp_df = dupe_df[dupe_df.cmp == cmp]
+        sum_means = cmp_df.Theta_0.sum()
+        sum_blocks = cmp_df.Blocks.sum()
+        srss_std = np.sqrt(np.square(cmp_df.Theta_1).sum())
+        
+        new_row = cmp_df.iloc[[0]].copy()
+        new_row.Theta_0 = sum_means
+        new_row.Blocks = sum_blocks
+        new_row.Theta_1 = srss_std
+        
+        clean_df = pd.concat([clean_df, new_row], axis=0)
+    return(clean_df)
+
 def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
     floor_area = run_info.L_bldg**2 # sq ft
-
     
+    cmp_marginal = pd.DataFrame()
     
-    cmp_marginal = pd.DataFrame(columns=['Units', 'Location',
-                                         'Direction','Theta_0', 'Theta_1',
-                                         'Family', 'Blocks', 'Comment'])
     fema_units = nqe_meta['unit']
     nqe_meta[['pact_unit', 'pact_block_qty']] = nqe_meta['PACT_block'].str.split(
         ' ', n=1, expand=True)
@@ -191,30 +204,51 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
         area_usage = np.array(fl_usage)*floor_area
         
         fl_cmp_by_cat, fl_cmp_total, fl_cmp_std = floor_qty_estimate(
-            area_usage, nqe_mean, nqe_std)
+            area_usage, nqe_mean, nqe_std, nqe_meta)
         
-        loc_series = np.repeat(fl+1, len(fl_cmp_total))
+        fl_cmp_total.name = 'Theta_0'
+        fl_cmp_std.name = 'Theta_1'
+        
+        loc_series = pd.Series([fl+1]).repeat(
+            len(fl_cmp_total)).set_axis(fl_cmp_total.index)
         
         dir_map = {True:'1,2', False:'0'}
         dir_series = nqe_meta.directional.map(dir_map)
         
         has_stdev = fl_cmp_std != 0
+        has_stdev.name = 'Family'
         family_map = {True:'lognormal', False:''}
         family_series = has_stdev.map(family_map)
         
-        # TODO: handle blocks
+        block_series = fl_cmp_total // nqe_meta['pact_block_qty'] + 1
+        block_series.name = 'Blocks'
+        
         fl_cmp_df = pd.concat([pact_units, loc_series, 
                                dir_series, fl_cmp_total, fl_cmp_std,
-                               family_series, nqe_meta.PACT_name], axis=1)
+                               family_series, block_series, nqe_meta.PACT_name], 
+                              axis=1)
+        
+        fl_cmp_df = fl_cmp_df[fl_cmp_df.Theta_0 != 0]
+        
+        fl_cmp_df = fl_cmp_df.reset_index()
+        
+        # combine duplicates, then remove duplicates from floor's list
+        dupes = fl_cmp_df[fl_cmp_df.duplicated(
+            'cmp', keep=False)].sort_values('cmp')
+        combined_dupe_rows = remove_dupes(dupes)
+        fl_cmp_df = fl_cmp_df[~fl_cmp_df['cmp'].isin(combined_dupe_rows['cmp'])]
         
         # TODO: concatenate
+        cmp_marginal = pd.concat([cmp_marginal, fl_cmp_df, combined_dupe_rows], 
+                                 axis=0, ignore_index=True)
     
-    # TODO: rounding
-    # TODO: special components (bldg-wide and roof-only)
+    cmp_marginal.columns = ['Component', 'Units', 'Location',
+                            'Direction','Theta_0', 'Theta_1',
+                            'Family', 'Blocks', 'Comment']
     
+    return(cmp_marginal)
+    # TODO: special components (bldg-wide and roof-only), deterministic cmps
+    
+total_cmp = normative_quantity_estimation(cbf_run, bldg_usage, 
+                                          nqe_mean, nqe_std, nqe_meta)
 
-# inputs
-# floors, floor usage, system
-
-# need
-# cmp, units, location, direction, mean, stdev, distr, blocks, description
