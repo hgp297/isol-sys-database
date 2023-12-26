@@ -183,6 +183,8 @@ def remove_dupes(dupe_df):
         clean_df = pd.concat([clean_df, new_row], axis=0)
     return(clean_df)
 
+# TODO: function to sum up building-wide cmps located on roof
+
 def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
     floor_area = run_info.L_bldg**2 # sq ft
     
@@ -238,7 +240,6 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
         combined_dupe_rows = remove_dupes(dupes)
         fl_cmp_df = fl_cmp_df[~fl_cmp_df['cmp'].isin(combined_dupe_rows['cmp'])]
         
-        # TODO: concatenate
         cmp_marginal = pd.concat([cmp_marginal, fl_cmp_df, combined_dupe_rows], 
                                  axis=0, ignore_index=True)
     
@@ -246,8 +247,19 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
                             'Direction','Theta_0', 'Theta_1',
                             'Family', 'Blocks', 'Comment']
     
+    # total loss cmps
+    replace_df = pd.DataFrame([['excessiveRID', 'ea' , 'all', '1,2', 
+                                '1', '', '', '', 'Excessive residual drift'],
+                               ['irreparable', 'ea', 0, '1', 
+                                '1', '', '', '', 'Irreparable building'],
+                               ['collapse', 'ea', 0, '1',
+                                '1', '', '', '', 'Collapsed building']
+                               ], columns=cmp_marginal.columns)
+    
+    cmp_marginal = pd.concat([cmp_marginal, replace_df])
+
+    
     return(cmp_marginal)
-    # TODO: special components (bldg-wide and roof-only), deterministic cmps
     
 total_cmp = normative_quantity_estimation(cbf_run, bldg_usage, 
                                           nqe_mean, nqe_std, nqe_meta)
