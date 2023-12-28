@@ -42,6 +42,9 @@ PAL = Assessment({
 P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
 
 #%% nqe main data
+
+# TODO: SDC functions and switch sheets
+
 nqe_data = pd.read_csv('../../resource/loss/fema_nqe_cmp.csv')
 nqe_data.set_index('cmp', inplace=True)
 nqe_data = nqe_data.replace({'All Zero': 0}, regex=True)
@@ -183,7 +186,29 @@ def remove_dupes(dupe_df):
         clean_df = pd.concat([clean_df, new_row], axis=0)
     return(clean_df)
 
-# TODO: function to sum up building-wide cmps located on roof
+def bldg_wide_cmp(roof_df):
+    roof_cmps = roof_df.Component.unique()
+    clean_df = pd.DataFrame()
+    import numpy as np
+    for cmp in roof_cmps:
+        cmp_df = roof_df[roof_df.Component == cmp]
+        sum_means = cmp_df.Theta_0.sum()
+        sum_blocks = cmp_df.Blocks.sum()
+        srss_std = np.sqrt(np.square(cmp_df.Theta_1).sum())
+        
+        new_row = cmp_df.iloc[[0]].copy()
+        if (new_row['Comment'].str.contains('Elevator').any()):
+            new_row.Location = 1
+        else:
+            new_row.Location = 'roof'
+        new_row.Theta_0 = sum_means
+        
+        # blocks may be over-rounded here
+        new_row.Blocks = sum_blocks
+        new_row.Theta_1 = srss_std
+        
+        clean_df = pd.concat([clean_df, new_row], axis=0)
+    return(clean_df)
 
 def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
     floor_area = run_info.L_bldg**2 # sq ft
@@ -247,6 +272,20 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
                             'Direction','Theta_0', 'Theta_1',
                             'Family', 'Blocks', 'Comment']
     
+    # hardcoded AC list
+    roof_stuff = ['Chiller', 'Air Handling Unit', 'Cooling Tower', 'HVAC Fan',
+               'Elevator', 'Distribution Panel', 'Diesel generator', 
+               'Motor Control', 'Transformer']
+    roof_cmp = cmp_marginal[
+        cmp_marginal['Comment'].str.contains('|'.join(roof_stuff))]
+    
+    combined_roof_rows = bldg_wide_cmp(roof_cmp)
+    cmp_marginal = cmp_marginal[
+        ~cmp_marginal['Component'].isin(combined_roof_rows['Component'])]
+    
+    cmp_marginal = pd.concat([cmp_marginal, combined_roof_rows], 
+                             axis=0, ignore_index=True)
+    
     # total loss cmps
     replace_df = pd.DataFrame([['excessiveRID', 'ea' , 'all', '1,2', 
                                 '1', '', '', '', 'Excessive residual drift'],
@@ -258,9 +297,17 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
     
     cmp_marginal = pd.concat([cmp_marginal, replace_df])
 
-    
     return(cmp_marginal)
     
-total_cmp = normative_quantity_estimation(cbf_run, bldg_usage, 
+cmp_1 = normative_quantity_estimation(cbf_run, bldg_usage, 
+                                          nqe_mean, nqe_std, nqe_meta)
+
+mf_floors = mf_run.num_stories
+
+# lab, health, ed, res, office, retail, warehouse, hotel
+fl_usage = [0.1, 0.1, 0.1, 0.2, 0.2, 0.1, 0.1, 0.1]
+bldg_usage = [fl_usage]*mf_floors
+
+cmp_2 = normative_quantity_estimation(mf_run, bldg_usage, 
                                           nqe_mean, nqe_std, nqe_meta)
 
