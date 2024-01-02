@@ -3056,36 +3056,42 @@ class Building:
         ok = ops.analyze(n_steps, dt_transient)   
         
         if ok != 0:
-            ok = 0
             ops.analysis('Transient')
             curr_time = ops.getTime()
             print("Convergence issues at time: ", curr_time)
-            # for nd in ops.getNodeTags():
-            #     print(f'Node {nd}: {ops.nodeDOFs(nd)}')
-            while (curr_time < T_end) and (ok == 0):
-                curr_time     = ops.getTime()
-                ok = ops.analyze(1, dt_transient)
-                if ok != 0:
-                    print("Trying Newton with line search ...")
-                    ops.algorithm('NewtonLineSearch')
+            for nd in ops.getNodeTags():
+                print(f'Node {nd}: {ops.nodeDOFs(nd)}')
+                
+            if superstructure_system == 'MF':
+                ok = 0
+                while (curr_time < T_end) and (ok == 0):
+                    curr_time     = ops.getTime()
                     ok = ops.analyze(1, dt_transient)
-                    if ok == 0:
-                        print("That worked. Back to Newton")
-                    ops.algorithm(algorithmTypeDynamic)
-                # if ok != 0:
-                #     print('Trying Broyden ... ')
-                #     algorithmTypeDynamic = 'Broyden'
-                #     ops.algorithm(algorithmTypeDynamic)
-                #     ok = ops.analyze(1, dt_transient)
-                #     if ok == 0:
-                #         print("That worked. Back to Newton")
-                # if ok != 0:
-                #     print('Trying BFGS ... ')
-                #     algorithmTypeDynamic = 'BFGS'
-                #     ops.algorithm(algorithmTypeDynamic)
-                #     ok = ops.analyze(1, dt_transient)
-                #     if ok == 0:
-                #         print("That worked. Back to Newton")
+                    if ok != 0:
+                        print("Trying Newton with line search ...")
+                        ops.algorithm('NewtonLineSearch')
+                        ok = ops.analyze(1, dt_transient)
+                        if ok == 0:
+                            print("That worked. Back to Newton")
+                            ops.algorithm(algorithmTypeDynamic)
+                    if ok != 0:
+                        print('Trying Broyden ... ')
+                        algorithmTypeDynamic = 'Broyden'
+                        ops.algorithm(algorithmTypeDynamic)
+                        ok = ops.analyze(1, dt_transient)
+                        if ok == 0:
+                            print("That worked. Back to Newton")
+                    if ok != 0:
+                        print('Trying BFGS ... ')
+                        algorithmTypeDynamic = 'BFGS'
+                        ops.algorithm(algorithmTypeDynamic)
+                        ok = ops.analyze(1, dt_transient)
+                        if ok == 0:
+                            print("That worked. Back to Newton")
+            else:
+                print('CBF convergence loop not activated. Ending run...')
+                
+                
                 
         t_final = ops.getTime()
         tp = time.time() - t0
