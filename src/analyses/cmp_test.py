@@ -18,11 +18,10 @@ idx = pd.IndexSlice
 pd.options.display.max_rows = 30
 
 # and import pelicun classes and methods
-from pelicun.base import convert_to_MultiIndex
 from pelicun.assessment import Assessment
 
-import warnings
-warnings.filterwarnings('ignore')
+# import warnings
+# warnings.filterwarnings('ignore')
 
 #%% run info
 data = pd.read_csv('../../data/structural_db_conv.csv')
@@ -90,6 +89,8 @@ plt.grid(True)
 
 # goal: convert nqe sheet from FEMA units to PBEE units
 # also change PACT block division from FEMA to PBEE
+
+# TODO: this section should not be set on a slice
 
 # convert chillers to single units (assumes small 75 ton chillers)
 # also assumes chillers only components using TN
