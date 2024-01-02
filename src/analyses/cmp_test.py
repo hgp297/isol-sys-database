@@ -40,11 +40,26 @@ PAL = Assessment({
 # generate structural components and join with NSCs
 P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
 
+#%% SDC function
+
+def get_SDC(run_data):
+    Sm1 = run_data.S_1
+    Sd1 = Sm1*2/3
+    if Sd1 < 0.135:
+        cmp_name = 'fema_nqe_cmp_cat_ab.csv'
+    elif Sd1 < 0.2:
+        cmp_name = 'fema_nqe_cmp_cat_c.csv'
+    else:
+        cmp_name = 'fema_nqe_cmp_cat_def.csv'
+    return(cmp_name)
+
 #%% nqe main data
 
-# TODO: SDC functions and switch sheets
+# TODO: function to prepare sheets into dataframes
 
-nqe_data = pd.read_csv('../../resource/loss/fema_nqe_cmp.csv')
+sheet_name = 'fema_nqe_cmp_cat_c.csv'
+
+nqe_data = pd.read_csv('../../resource/loss/' + sheet_name)
 nqe_data.set_index('cmp', inplace=True)
 nqe_data = nqe_data.replace({'All Zero': 0}, regex=True)
 nqe_data = nqe_data.replace({'2 Points = 0': 0}, regex=True)
@@ -91,41 +106,49 @@ plt.grid(True)
 # also change PACT block division from FEMA to PBEE
 
 # TODO: this section should not be set on a slice
+# i will ignore
+pd.options.mode.chained_assignment = None  # default='warn'
 
 # convert chillers to single units (assumes small 75 ton chillers)
 # also assumes chillers only components using TN
-nqe_mean[nqe_meta['unit'] == 'TN'] = nqe_mean[nqe_meta['unit'] == 'TN']/75
-nqe_meta['PACT_block'][nqe_meta['unit'] == 'TN'] = 'EA 1'
+mask = nqe_meta['unit'].str.contains('TN')
+nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(75)
+nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
 nqe_meta = nqe_meta.replace({'TN': 'EA'})
 
 # convert AHUs to single units (assumes small 4000 cfm AHUs)
 # also assumes AHUs only components using CF
-nqe_mean[nqe_meta['unit'] == 'CF'] = nqe_mean[nqe_meta['unit'] == 'CF']/4000
-nqe_meta['PACT_block'][nqe_meta['unit'] == 'CF'] = 'EA 1'
+mask = nqe_meta['unit'].str.contains('CF')
+nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(4000)
+nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
 nqe_meta = nqe_meta.replace({'CF': 'EA'})
 
 # convert large transformers from WT to EA (assumes 250e3 W = 250 kV = 1 EA)
-nqe_mean[nqe_meta['unit'] == 'WT'] = nqe_mean[nqe_meta['unit'] == 'WT']/250e3
-nqe_meta['PACT_block'][nqe_meta['unit'] == 'WT'] = 'EA 1'
+mask = nqe_meta['unit'].str.contains('WT')
+nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(250e3)
+
+# change all transformers block division to EA
+mask = nqe_meta['PACT_name'].str.contains('Transformer')
+nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
 nqe_meta = nqe_meta.replace({'WT': 'EA'})
 
-# small transformers already in EA, but block division needs to change
-nqe_meta['PACT_block'][nqe_meta.index == 'D.50.11.011a'] = 'EA 1'
 
 # distribution panels already in EA, but block division needs to change
-nqe_meta['PACT_block'][nqe_meta.index == 'D.50.12.031a'] = 'EA 1'
+mask = nqe_meta['PACT_name'].str.contains('Distribution Panel')
+nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
 
 # convert low voltage switchgear to single units (assumes 225 AP per unit)
 # also assumes switchgear only components using AP
-nqe_mean[nqe_meta['unit'] == 'AP'] = nqe_mean[nqe_meta['unit'] == 'AP']/225
-nqe_meta['PACT_block'][nqe_meta['unit'] == 'AP'] = 'EA 1'
+mask = nqe_meta['unit'].str.contains('AP')
+nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(225)
+nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
 nqe_meta = nqe_meta.replace({'AP': 'EA'})
 
 # convert diesel generator to single units (assumes 250 kV per unit)
-nqe_mean[nqe_meta.index == 'D.50.92.031a'] = nqe_mean[
-    nqe_meta.index == 'D.50.92.031a']/250
-nqe_meta['PACT_block'][nqe_meta.index == 'D.50.92.031a'] = 'EA 1'
-nqe_meta['unit'][nqe_meta.index == 'D.50.92.031a'] = 'EA'
+mask = nqe_meta['PACT_name'].str.contains('Diesel generator')
+nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(250)
+nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
+nqe_meta.loc[mask, 'unit'] = 'EA'
 
 #%% nqe function
 
@@ -300,6 +323,7 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
 
     return(cmp_marginal)
     
+cbf_cmp_list_name = get_SDC(cbf_run)
 cmp_1 = normative_quantity_estimation(cbf_run, bldg_usage, 
                                           nqe_mean, nqe_std, nqe_meta)
 
@@ -308,7 +332,7 @@ mf_floors = mf_run.num_stories
 # lab, health, ed, res, office, retail, warehouse, hotel
 fl_usage = [0.1, 0.1, 0.1, 0.2, 0.2, 0.1, 0.1, 0.1]
 bldg_usage = [fl_usage]*mf_floors
-
+mf_cmp_list_name = get_SDC(cbf_run)
 cmp_2 = normative_quantity_estimation(mf_run, bldg_usage, 
                                           nqe_mean, nqe_std, nqe_meta)
 
