@@ -57,7 +57,7 @@ def get_SDC(run_data):
 
 # TODO: function to prepare sheets into dataframes
 
-sheet_name = 'fema_nqe_cmp_cat_c.csv'
+sheet_name = 'fema_nqe_cmp_cat_def.csv'
 
 nqe_data = pd.read_csv('../../resource/loss/' + sheet_name)
 nqe_data.set_index('cmp', inplace=True)
@@ -152,14 +152,6 @@ nqe_meta.loc[mask, 'unit'] = 'EA'
 
 #%% nqe function
 
-cbf_floors = cbf_run.num_stories
-cbf_area = cbf_run.L_bldg**2 # sq ft
-
-# lab, health, ed, res, office, retail, warehouse, hotel
-fl_usage = [0., 0., 0., 0., 0.7, 0.3, 0., 0.]
-bldg_usage = [fl_usage]*cbf_floors
-
-area_usage = np.array(fl_usage)*cbf_area
 
 # estimate mean qty for floor area
 # has not adjusted for 'quantity' column
@@ -271,7 +263,7 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
         family_map = {True:'lognormal', False:''}
         family_series = has_stdev.map(family_map)
         
-        block_series = fl_cmp_total // nqe_meta['pact_block_qty'] + 1
+        block_series = fl_cmp_total // nqe_meta['pact_block_qty']
         block_series.name = 'Blocks'
         
         fl_cmp_df = pd.concat([pact_units, loc_series, 
@@ -296,10 +288,10 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
                             'Direction','Theta_0', 'Theta_1',
                             'Family', 'Blocks', 'Comment']
     
-    # hardcoded AC list
+    # hardcoded roof list
     roof_stuff = ['Chiller', 'Air Handling Unit', 'Cooling Tower', 'HVAC Fan',
                'Elevator', 'Distribution Panel', 'Diesel generator', 
-               'Motor Control', 'Transformer']
+               'Motor Control', 'Transformer', 'roof']
     roof_cmp = cmp_marginal[
         cmp_marginal['Comment'].str.contains('|'.join(roof_stuff))]
     
@@ -309,6 +301,12 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
     
     cmp_marginal = pd.concat([cmp_marginal, combined_roof_rows], 
                              axis=0, ignore_index=True)
+    
+    # hardcoded no-block list
+    no_block_stuff = ['Chiller', 'Cooling Tower', 'Motor Control', 'stair',
+                      'Elevator', 'Raised Access Floor', 'Switchgear']
+    mask = cmp_marginal['Comment'].str.contains('|'.join(no_block_stuff))
+    cmp_marginal.loc[mask, 'Blocks'] = ''
     
     # total loss cmps
     replace_df = pd.DataFrame([['excessiveRID', 'ea' , 'all', '1,2', 
@@ -322,7 +320,17 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
     cmp_marginal = pd.concat([cmp_marginal, replace_df])
 
     return(cmp_marginal)
-    
+
+#%% main
+
+cbf_floors = cbf_run.num_stories
+cbf_area = cbf_run.L_bldg**2 # sq ft
+
+# lab, health, ed, res, office, retail, warehouse, hotel
+fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
+bldg_usage = [fl_usage]*cbf_floors
+
+area_usage = np.array(fl_usage)*cbf_area
 cbf_cmp_list_name = get_SDC(cbf_run)
 cmp_1 = normative_quantity_estimation(cbf_run, bldg_usage, 
                                           nqe_mean, nqe_std, nqe_meta)
@@ -330,9 +338,10 @@ cmp_1 = normative_quantity_estimation(cbf_run, bldg_usage,
 mf_floors = mf_run.num_stories
 
 # lab, health, ed, res, office, retail, warehouse, hotel
-fl_usage = [0.1, 0.1, 0.1, 0.2, 0.2, 0.1, 0.1, 0.1]
+fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
 bldg_usage = [fl_usage]*mf_floors
 mf_cmp_list_name = get_SDC(cbf_run)
 cmp_2 = normative_quantity_estimation(mf_run, bldg_usage, 
                                           nqe_mean, nqe_std, nqe_meta)
 
+# TODO: keep record of total cmp (groupby?)

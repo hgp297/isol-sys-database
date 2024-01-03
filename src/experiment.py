@@ -147,6 +147,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     
     
 # run the experiment, GM name and scale factor must be baked into design
+# TODO: trigger re-run if small drift AND convergence failure
 def run_nlth(design, 
              gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/',
              output_path='./outputs/'):
@@ -207,7 +208,7 @@ def run_nlth(design,
                                                 gm_dir=gm_path,
                                                 data_dir=output_path)
         
-    # CBF if still no converge, try no brace fracture
+    # CBF if still no converge, give up
     if run_status != 0:
         if bldg.superstructure_system == 'MF':
             print('Lowering time step one last time...')
@@ -227,22 +228,22 @@ def run_nlth(design,
                                                 gm_dir=gm_path,
                                                 data_dir=output_path)
         else:
-            print('Lowered time step and removing brace fracture ...')
+            print('CBF did not converge ...')
             
-            bldg = Building(design)
-            bldg.model_frame(convergence_mode=True)
+            # bldg = Building(design)
+            # bldg.model_frame(convergence_mode=True)
             
-            # apply gravity loads, perform eigenvalue analysis, add damping
-            bldg.apply_grav_load()
-            T_1 = bldg.run_eigen()
-            Tfb = bldg.provide_damping(80, method='SP',
-                                        zeta=[0.05], modes=[1])
+            # # apply gravity loads, perform eigenvalue analysis, add damping
+            # bldg.apply_grav_load()
+            # T_1 = bldg.run_eigen()
+            # Tfb = bldg.provide_damping(80, method='SP',
+            #                             zeta=[0.05], modes=[1])
             
-            run_status = bldg.run_ground_motion(design['gm_selected'], 
-                                                design['scale_factor'], 
-                                                0.0005,
-                                                gm_dir=gm_path,
-                                                data_dir=output_path)
+            # run_status = bldg.run_ground_motion(design['gm_selected'], 
+            #                                     design['scale_factor'], 
+            #                                     0.0005,
+            #                                     gm_dir=gm_path,
+            #                                     data_dir=output_path)
     if run_status != 0:
         print('Recording run and moving on.')
        
