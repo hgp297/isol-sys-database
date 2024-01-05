@@ -53,26 +53,6 @@ def get_SDC(run_data):
         cmp_name = 'fema_nqe_cmp_cat_def.csv'
     return(cmp_name)
 
-#%% nqe main data
-
-# TODO: function to prepare sheets into dataframes
-
-sheet_name = 'fema_nqe_cmp_cat_def.csv'
-
-nqe_data = pd.read_csv('../../resource/loss/' + sheet_name)
-nqe_data.set_index('cmp', inplace=True)
-nqe_data = nqe_data.replace({'All Zero': 0}, regex=True)
-nqe_data = nqe_data.replace({'2 Points = 0': 0}, regex=True)
-nqe_data = nqe_data.replace({np.nan: 0})
-nqe_data['directional'] = nqe_data['directional'].replace(
-    {'YES': True, 'NO': False})
-
-nqe_meta = nqe_data[[c for c in nqe_data if not (
-    c.endswith('mean') or c.endswith('std'))]]
-nqe_mean = nqe_data[[c for c in nqe_data if c.endswith('mean')]]
-nqe_std = nqe_data[[c for c in nqe_data if c.endswith('std')]].apply(
-    pd.to_numeric, errors='coerce')
-
 
 #%%
 # p90 low situations - calculator (values replaced in sheet)
@@ -98,60 +78,81 @@ plt.plot(xx_pr, p)
 plt.grid(True)
 '''
 
-# modular office needs definition
+#%% data prep function
 
-#%% unit conversion
+# returns SDC-custom mean, std, and metadata of components
+def nqe_sheets(run_data, nqe_dir='../../resource/loss/'):
+    import pandas as pd
+    sheet_name = get_SDC(run_data)
+    
+    nqe_data = pd.read_csv(nqe_dir + sheet_name)
+    nqe_data.set_index('cmp', inplace=True)
+    nqe_data = nqe_data.replace({'All Zero': 0}, regex=True)
+    nqe_data = nqe_data.replace({'2 Points = 0': 0}, regex=True)
+    nqe_data = nqe_data.replace({np.nan: 0})
+    nqe_data['directional'] = nqe_data['directional'].replace(
+        {'YES': True, 'NO': False})
 
-# goal: convert nqe sheet from FEMA units to PBEE units
-# also change PACT block division from FEMA to PBEE
+    nqe_meta = nqe_data[[c for c in nqe_data if not (
+        c.endswith('mean') or c.endswith('std'))]]
+    nqe_mean = nqe_data[[c for c in nqe_data if c.endswith('mean')]]
+    nqe_std = nqe_data[[c for c in nqe_data if c.endswith('std')]].apply(
+        pd.to_numeric, errors='coerce')
+    
+    # unit conversion
 
-# TODO: this section should not be set on a slice
-# i will ignore
-pd.options.mode.chained_assignment = None  # default='warn'
+    # goal: convert nqe sheet from FEMA units to PBEE units
+    # also change PACT block division from FEMA to PBEE
 
-# convert chillers to single units (assumes small 75 ton chillers)
-# also assumes chillers only components using TN
-mask = nqe_meta['unit'].str.contains('TN')
-nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(75)
-nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
-nqe_meta = nqe_meta.replace({'TN': 'EA'})
+    # this section should not be set on a slice
+    # i will ignore
+    pd.options.mode.chained_assignment = None  # default='warn'
 
-# convert AHUs to single units (assumes small 4000 cfm AHUs)
-# also assumes AHUs only components using CF
-mask = nqe_meta['unit'].str.contains('CF')
-nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(4000)
-nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
-nqe_meta = nqe_meta.replace({'CF': 'EA'})
+    # convert chillers to single units (assumes small 75 ton chillers)
+    # also assumes chillers only components using TN
+    mask = nqe_meta['unit'].str.contains('TN')
+    nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(75)
+    nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
+    nqe_meta = nqe_meta.replace({'TN': 'EA'})
 
-# convert large transformers from WT to EA (assumes 250e3 W = 250 kV = 1 EA)
-mask = nqe_meta['unit'].str.contains('WT')
-nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(250e3)
+    # convert AHUs to single units (assumes small 4000 cfm AHUs)
+    # also assumes AHUs only components using CF
+    mask = nqe_meta['unit'].str.contains('CF')
+    nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(4000)
+    nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
+    nqe_meta = nqe_meta.replace({'CF': 'EA'})
 
-# change all transformers block division to EA
-mask = nqe_meta['PACT_name'].str.contains('Transformer')
-nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
-nqe_meta = nqe_meta.replace({'WT': 'EA'})
+    # convert large transformers from WT to EA (assumes 250e3 W = 250 kV = 1 EA)
+    mask = nqe_meta['unit'].str.contains('WT')
+    nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(250e3)
+
+    # change all transformers block division to EA
+    mask = nqe_meta['PACT_name'].str.contains('Transformer')
+    nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
+    nqe_meta = nqe_meta.replace({'WT': 'EA'})
 
 
-# distribution panels already in EA, but block division needs to change
-mask = nqe_meta['PACT_name'].str.contains('Distribution Panel')
-nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
+    # distribution panels already in EA, but block division needs to change
+    mask = nqe_meta['PACT_name'].str.contains('Distribution Panel')
+    nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
 
-# convert low voltage switchgear to single units (assumes 225 AP per unit)
-# also assumes switchgear only components using AP
-mask = nqe_meta['unit'].str.contains('AP')
-nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(225)
-nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
-nqe_meta = nqe_meta.replace({'AP': 'EA'})
+    # convert low voltage switchgear to single units (assumes 225 AP per unit)
+    # also assumes switchgear only components using AP
+    mask = nqe_meta['unit'].str.contains('AP')
+    nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(225)
+    nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
+    nqe_meta = nqe_meta.replace({'AP': 'EA'})
 
-# convert diesel generator to single units (assumes 250 kV per unit)
-mask = nqe_meta['PACT_name'].str.contains('Diesel generator')
-nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(250)
-nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
-nqe_meta.loc[mask, 'unit'] = 'EA'
+    # convert diesel generator to single units (assumes 250 kV per unit)
+    mask = nqe_meta['PACT_name'].str.contains('Diesel generator')
+    nqe_mean.loc[mask,:] = nqe_mean.loc[mask,:].div(250)
+    nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
+    nqe_meta.loc[mask, 'unit'] = 'EA'
+    
+    return nqe_meta, nqe_mean, nqe_std
+    
 
 #%% nqe function
-
 
 # estimate mean qty for floor area
 # has not adjusted for 'quantity' column
@@ -321,6 +322,110 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
 
     return(cmp_marginal)
 
+#%% structural components
+
+def get_structural_cmp_MF(run_info, metadata):
+    cmp_strct = pd.DataFrame(columns=['Component', 'Units', 'Location', 'Direction',
+                              'Theta_0', 'Theta_1', 'Family', 
+                              'Blocks', 'Comment'])
+    
+    n_bays = run_info['num_bays']
+    n_stories = run_info['num_stories']
+    
+    # ft
+    L_bay = run_info['L_bay']
+    
+    n_col_base = (n_bays+1)**2
+    
+    # TODO: store data as pickle to avoid this having to convert str to datatype
+    from ast import literal_eval
+    all_beams = literal_eval(run_info['beam'])
+    all_cols = literal_eval(run_info['column'])
+    
+    # column base plates
+    n_col_base = (n_bays+1)**2
+    base_col_wt = float(all_cols[0].split('X',1)[1])
+    if base_col_wt < 150.0:
+        cur_cmp = 'B.10.31.011a'
+    elif base_col_wt > 300.0:
+        cur_cmp = 'B.10.31.011c'
+    else:
+        cur_cmp = 'B.10.31.011b'
+        
+    cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', '1', '1,2',
+                         n_col_base, np.nan, np.nan,
+                         n_col_base, metadata[cur_cmp]['Description']]], 
+                                        columns=cmp_strct.columns), cmp_strct])
+                                           
+    # bolted shear tab gravity, assume 1 per every 10 ft span in one direction
+    cur_cmp = 'B.10.31.001'
+    num_grav_tabs_per_frame = (L_bay//10 - 1) * n_bays
+    # assumes square building, frame = interior frames
+    num_frames = (n_bays+1)*2
+    num_grav_tabs = num_grav_tabs_per_frame * num_frames
+    cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', 'all', '0',
+                             num_grav_tabs, np.nan, np.nan,
+                             num_grav_tabs, metadata[cur_cmp][
+                                 'Description']]], 
+                                        columns=cmp_strct.columns), cmp_strct])
+    
+    # assume one splice after every 3 floors
+    n_splice = n_stories // (3+1)
+    
+    if n_splice > 0:
+        for splice in range(n_splice):
+            splice_floor_ind = (splice+1)*3
+            splice_col_wt = float(all_cols[splice_floor_ind].split('X',1)[1])
+            
+            if splice_col_wt < 150.0:
+                cur_cmp = 'B.10.31.021a'
+            elif splice_col_wt > 300.0:
+                cur_cmp = 'B.10.31.021c'
+            else:
+                cur_cmp = 'B.10.31.021b'
+                
+            cmp_strct = pd.concat(
+                [pd.DataFrame([[cur_cmp, 'ea', splice_floor_ind+1, '1,2',
+                                n_col_base, np.nan, np.nan, 
+                                n_col_base, metadata[cur_cmp]['Description']]], 
+                              columns=cmp_strct.columns), cmp_strct])                         
+    
+    for fl_ind, beam_str in enumerate(all_beams):
+        
+        beam_depth = float(beam_str.split('X',1)[0].split('W',1)[1])
+        
+        # beam-one-side connections
+        if beam_depth <= 27.0:
+            cur_cmp = 'B.10.35.021'
+        else:
+            cur_cmp = 'B.10.35.022'
+            
+        # quantity is always 8 because 4 corner columns, 2 directions 
+        cmp_strct = pd.concat(
+            [pd.DataFrame([[cur_cmp, 'ea', fl_ind+1, '1,2',
+                            8, np.nan, np.nan,
+                            8, metadata[cur_cmp]['Description']]], 
+                          columns=cmp_strct.columns), cmp_strct])
+                                               
+        # beam-both-side connections
+        if beam_depth <= 27.0:
+            cur_cmp = 'B.10.35.031'
+        else:
+            cur_cmp = 'B.10.35.032'
+        
+        # assumes 2 frames x 2 directions = 4
+        n_cxn_interior = (n_bays-1)*4
+        cmp_strct = pd.concat(
+            [pd.DataFrame([[cur_cmp, 'ea', fl_ind+1, '1,2',
+                            n_cxn_interior, np.nan, np.nan,
+                            n_cxn_interior, metadata[cur_cmp]['Description']]], 
+                          columns=cmp_strct.columns), cmp_strct])
+    return(cmp_strct)
+
+# TODO: structural component for CBF
+def get_structural_cmp_CBF(run_data, metadata):
+    pass
+
 #%% main
 
 cbf_floors = cbf_run.num_stories
@@ -331,7 +436,8 @@ fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
 bldg_usage = [fl_usage]*cbf_floors
 
 area_usage = np.array(fl_usage)*cbf_area
-cbf_cmp_list_name = get_SDC(cbf_run)
+
+nqe_meta, nqe_mean, nqe_std = nqe_sheets(cbf_run)
 cmp_1 = normative_quantity_estimation(cbf_run, bldg_usage, 
                                           nqe_mean, nqe_std, nqe_meta)
 
@@ -340,8 +446,9 @@ mf_floors = mf_run.num_stories
 # lab, health, ed, res, office, retail, warehouse, hotel
 fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
 bldg_usage = [fl_usage]*mf_floors
-mf_cmp_list_name = get_SDC(cbf_run)
+nqe_meta, nqe_mean, nqe_std = nqe_sheets(mf_run)
 cmp_2 = normative_quantity_estimation(mf_run, bldg_usage, 
                                           nqe_mean, nqe_std, nqe_meta)
 
+mf_struct = get_structural_cmp_MF(mf_run, P58_metadata)
 # TODO: keep record of total cmp (groupby?)
