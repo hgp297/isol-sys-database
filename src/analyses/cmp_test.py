@@ -23,22 +23,6 @@ from pelicun.assessment import Assessment
 # import warnings
 # warnings.filterwarnings('ignore')
 
-#%% run info
-data = pd.read_csv('../../data/structural_db_conv.csv')
-cbf_run = data.iloc[0]
-mf_run = data.iloc[-1]
-
-#%% get database
-# initialize, no printing outputs, offset fixed with current components
-PAL = Assessment({
-    "PrintLog": False, 
-    "Seed": 985,
-    "Verbose": False,
-    "DemandOffset": {"PFA": 0, "PFV": 0}
-})
-
-# generate structural components and join with NSCs
-P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
 
 #%% SDC function
 
@@ -151,7 +135,215 @@ def nqe_sheets(run_data, nqe_dir='../../resource/loss/'):
     
     return nqe_meta, nqe_mean, nqe_std
     
+#%% structural components
 
+def get_structural_cmp_MF(run_info, metadata):
+    import pandas as pd
+    
+    cmp_strct = pd.DataFrame(columns=['Component', 'Units', 'Location', 'Direction',
+                              'Theta_0', 'Theta_1', 'Family', 
+                              'Blocks', 'Comment'])
+    
+    n_bays = run_info['num_bays']
+    n_stories = run_info['num_stories']
+    
+    # ft
+    L_bay = run_info['L_bay']
+    
+    n_col_base = (n_bays+1)**2
+    
+    # TODO: store data as pickle to avoid this having to convert str to datatype
+    from ast import literal_eval
+    all_beams = literal_eval(run_info['beam'])
+    all_cols = literal_eval(run_info['column'])
+    
+    # column base plates
+    n_col_base = (n_bays+1)**2
+    base_col_wt = float(all_cols[0].split('X',1)[1])
+    if base_col_wt < 150.0:
+        cur_cmp = 'B.10.31.011a'
+    elif base_col_wt > 300.0:
+        cur_cmp = 'B.10.31.011c'
+    else:
+        cur_cmp = 'B.10.31.011b'
+        
+    cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', '1', '1,2',
+                         n_col_base, np.nan, np.nan,
+                         n_col_base, metadata[cur_cmp]['Description']]], 
+                                        columns=cmp_strct.columns), cmp_strct])
+                                           
+    # bolted shear tab gravity, assume 1 per every 10 ft span in one direction
+    cur_cmp = 'B.10.31.001'
+    num_grav_tabs_per_frame = (L_bay//10 - 1) * n_bays # girders
+    num_frames = (n_bays+1)*2
+    
+    # non-MF connections
+    n_cxn_per_reg_frame = (n_bays-1)*2
+    n_reg_frames = (n_bays-1)*2
+    
+    # gravity girders + shear tabs from non-MF connections
+    num_grav_tabs = ((num_grav_tabs_per_frame * num_frames) + 
+                     (n_cxn_per_reg_frame * n_reg_frames))
+    
+    cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', 'all', '0',
+                             num_grav_tabs, np.nan, np.nan,
+                             num_grav_tabs, metadata[cur_cmp][
+                                 'Description']]], 
+                                        columns=cmp_strct.columns), cmp_strct])
+    
+    # assume one splice after every 3 floors
+    n_splice = n_stories // (3+1)
+    
+    if n_splice > 0:
+        for splice in range(n_splice):
+            splice_floor_ind = (splice+1)*3
+            splice_col_wt = float(all_cols[splice_floor_ind].split('X',1)[1])
+            
+            if splice_col_wt < 150.0:
+                cur_cmp = 'B.10.31.021a'
+            elif splice_col_wt > 300.0:
+                cur_cmp = 'B.10.31.021c'
+            else:
+                cur_cmp = 'B.10.31.021b'
+                
+            cmp_strct = pd.concat(
+                [pd.DataFrame([[cur_cmp, 'ea', splice_floor_ind+1, '1,2',
+                                n_col_base, np.nan, np.nan, 
+                                n_col_base, metadata[cur_cmp]['Description']]], 
+                              columns=cmp_strct.columns), cmp_strct])               
+    
+    for fl_ind, beam_str in enumerate(all_beams):
+        
+        beam_depth = float(beam_str.split('X',1)[0].split('W',1)[1])
+        
+        # beam-one-side connections
+        if beam_depth <= 27.0:
+            cur_cmp = 'B.10.35.021'
+        else:
+            cur_cmp = 'B.10.35.022'
+            
+        # quantity is always 8 because 4 corner columns, 2 directions 
+        cmp_strct = pd.concat(
+            [pd.DataFrame([[cur_cmp, 'ea', fl_ind+1, '1,2',
+                            8, np.nan, np.nan,
+                            8, metadata[cur_cmp]['Description']]], 
+                          columns=cmp_strct.columns), cmp_strct])
+                                               
+        # beam-both-side connections
+        if beam_depth <= 27.0:
+            cur_cmp = 'B.10.35.031'
+        else:
+            cur_cmp = 'B.10.35.032'
+        
+        # assumes 2 frames x 2 directions = 4
+        n_cxn_interior = (n_bays-1)*4
+        cmp_strct = pd.concat(
+            [pd.DataFrame([[cur_cmp, 'ea', fl_ind+1, '1,2',
+                            n_cxn_interior, np.nan, np.nan,
+                            n_cxn_interior, metadata[cur_cmp]['Description']]], 
+                          columns=cmp_strct.columns), cmp_strct])
+    return(cmp_strct)
+
+def get_structural_cmp_CBF(run_info, metadata, 
+                           brace_dir='../../resource/'):
+    
+    import pandas as pd
+    cmp_strct = pd.DataFrame(columns=['Component', 'Units', 'Location', 'Direction',
+                              'Theta_0', 'Theta_1', 'Family', 
+                              'Blocks', 'Comment'])
+    
+    brace_db = pd.read_csv(brace_dir+'braceShapes.csv',
+                           index_col=None, header=0) 
+    
+    n_bays = run_info['num_bays']
+    n_stories = run_info['num_stories']
+    n_braced = max(int(round(n_bays/2.25)), 1)
+    
+    # ft
+    L_bay = run_info['L_bay']
+    
+    n_col_base = (n_bays+1)**2
+    
+    from ast import literal_eval
+    all_cols = literal_eval(run_info['column'])
+    all_braces = literal_eval(run_info['brace'])
+    
+    # column base plates
+    n_col_base = (n_bays+1)**2
+    base_col_wt = float(all_cols[0].split('X',1)[1])
+    if base_col_wt < 150.0:
+        cur_cmp = 'B.10.31.011a'
+    elif base_col_wt > 300.0:
+        cur_cmp = 'B.10.31.011c'
+    else:
+        cur_cmp = 'B.10.31.011b'
+        
+    cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', '1', '1,2',
+                         n_col_base, np.nan, np.nan,
+                         n_col_base, metadata[cur_cmp]['Description']]], 
+                                        columns=cmp_strct.columns), cmp_strct])
+                                           
+    # bolted shear tab gravity, assume 1 per every 10 ft span in one direction
+    cur_cmp = 'B.10.31.001'
+    num_grav_tabs_per_frame = (L_bay//10 - 1) * n_bays # girders
+    num_frames = (n_bays+1)*2
+    
+    # shear tab at every column joints
+    n_cxn_per_reg_frame = (n_bays)*2
+    
+    # gravity girders + shear tabs from non-MF connections
+    num_grav_tabs = ((num_grav_tabs_per_frame * num_frames) + 
+                     (n_cxn_per_reg_frame * num_frames))
+    
+    cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', 'all', '0',
+                             num_grav_tabs, np.nan, np.nan,
+                             num_grav_tabs, metadata[cur_cmp][
+                                 'Description']]], 
+                                        columns=cmp_strct.columns), cmp_strct])
+    
+    
+    # assume one splice after every 3 floors
+    n_splice = n_stories // (3+1)
+    
+    if n_splice > 0:
+        for splice in range(n_splice):
+            splice_floor_ind = (splice+1)*3
+            splice_col_wt = float(all_cols[splice_floor_ind].split('X',1)[1])
+            
+            if splice_col_wt < 150.0:
+                cur_cmp = 'B.10.31.021a'
+            elif splice_col_wt > 300.0:
+                cur_cmp = 'B.10.31.021c'
+            else:
+                cur_cmp = 'B.10.31.021b'
+                
+            cmp_strct = pd.concat(
+                [pd.DataFrame([[cur_cmp, 'ea', splice_floor_ind+1, '1,2',
+                                n_col_base, np.nan, np.nan, 
+                                n_col_base, metadata[cur_cmp]['Description']]], 
+                              columns=cmp_strct.columns), cmp_strct])
+            
+    for fl_ind, brace_str in enumerate(all_braces):
+        
+        cur_brace = brace_db.loc[brace_db['AISC_Manual_Label'] == brace_str]
+        brace_wt = float(cur_brace['W'])
+        
+        if brace_wt < 40.0:
+            cur_cmp = 'B.10.33.011a'
+        elif brace_wt > 100.0:
+            cur_cmp = 'B.10.33.011c'
+        else:
+            cur_cmp = 'B.10.33.011b'
+        
+        # n_bay_braced, two frames, two directions
+        n_brace_cmp_bays = n_braced*2*2
+        cmp_strct = pd.concat(
+            [pd.DataFrame([[cur_cmp, 'ea', fl_ind+1, '1,2',
+                            n_brace_cmp_bays, np.nan, np.nan,
+                            n_brace_cmp_bays, metadata[cur_cmp]['Description']]], 
+                          columns=cmp_strct.columns), cmp_strct])
+        
+    return(cmp_strct)
 #%% nqe function
 
 # estimate mean qty for floor area
@@ -227,7 +419,8 @@ def bldg_wide_cmp(roof_df):
         clean_df = pd.concat([clean_df, new_row], axis=0)
     return(clean_df)
 
-def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
+def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta,
+                                  P58_metadata):
     floor_area = run_info.L_bldg**2 # sq ft
     
     cmp_marginal = pd.DataFrame()
@@ -318,115 +511,39 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta):
                                 '1', '', '', '', 'Collapsed building']
                                ], columns=cmp_marginal.columns)
     
-    cmp_marginal = pd.concat([cmp_marginal, replace_df])
-
-    return(cmp_marginal)
-
-#%% structural components
-
-def get_structural_cmp_MF(run_info, metadata):
-    cmp_strct = pd.DataFrame(columns=['Component', 'Units', 'Location', 'Direction',
-                              'Theta_0', 'Theta_1', 'Family', 
-                              'Blocks', 'Comment'])
+    nsc_cmp = pd.concat([cmp_marginal, replace_df])
     
-    n_bays = run_info['num_bays']
-    n_stories = run_info['num_stories']
-    
-    # ft
-    L_bay = run_info['L_bay']
-    
-    n_col_base = (n_bays+1)**2
-    
-    # TODO: store data as pickle to avoid this having to convert str to datatype
-    from ast import literal_eval
-    all_beams = literal_eval(run_info['beam'])
-    all_cols = literal_eval(run_info['column'])
-    
-    # column base plates
-    n_col_base = (n_bays+1)**2
-    base_col_wt = float(all_cols[0].split('X',1)[1])
-    if base_col_wt < 150.0:
-        cur_cmp = 'B.10.31.011a'
-    elif base_col_wt > 300.0:
-        cur_cmp = 'B.10.31.011c'
+    # structural components
+    superstructure = run_info['superstructure_system']
+    if superstructure == 'MF':
+        structural_cmp = get_structural_cmp_MF(run_info, P58_metadata)
     else:
-        cur_cmp = 'B.10.31.011b'
+        structural_cmp = get_structural_cmp_CBF(run_info, P58_metadata)
         
-    cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', '1', '1,2',
-                         n_col_base, np.nan, np.nan,
-                         n_col_base, metadata[cur_cmp]['Description']]], 
-                                        columns=cmp_strct.columns), cmp_strct])
-                                           
-    # bolted shear tab gravity, assume 1 per every 10 ft span in one direction
-    cur_cmp = 'B.10.31.001'
-    num_grav_tabs_per_frame = (L_bay//10 - 1) * n_bays
-    # assumes square building, frame = interior frames
-    num_frames = (n_bays+1)*2
-    num_grav_tabs = num_grav_tabs_per_frame * num_frames
-    cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', 'all', '0',
-                             num_grav_tabs, np.nan, np.nan,
-                             num_grav_tabs, metadata[cur_cmp][
-                                 'Description']]], 
-                                        columns=cmp_strct.columns), cmp_strct])
-    
-    # assume one splice after every 3 floors
-    n_splice = n_stories // (3+1)
-    
-    if n_splice > 0:
-        for splice in range(n_splice):
-            splice_floor_ind = (splice+1)*3
-            splice_col_wt = float(all_cols[splice_floor_ind].split('X',1)[1])
-            
-            if splice_col_wt < 150.0:
-                cur_cmp = 'B.10.31.021a'
-            elif splice_col_wt > 300.0:
-                cur_cmp = 'B.10.31.021c'
-            else:
-                cur_cmp = 'B.10.31.021b'
-                
-            cmp_strct = pd.concat(
-                [pd.DataFrame([[cur_cmp, 'ea', splice_floor_ind+1, '1,2',
-                                n_col_base, np.nan, np.nan, 
-                                n_col_base, metadata[cur_cmp]['Description']]], 
-                              columns=cmp_strct.columns), cmp_strct])                         
-    
-    for fl_ind, beam_str in enumerate(all_beams):
-        
-        beam_depth = float(beam_str.split('X',1)[0].split('W',1)[1])
-        
-        # beam-one-side connections
-        if beam_depth <= 27.0:
-            cur_cmp = 'B.10.35.021'
-        else:
-            cur_cmp = 'B.10.35.022'
-            
-        # quantity is always 8 because 4 corner columns, 2 directions 
-        cmp_strct = pd.concat(
-            [pd.DataFrame([[cur_cmp, 'ea', fl_ind+1, '1,2',
-                            8, np.nan, np.nan,
-                            8, metadata[cur_cmp]['Description']]], 
-                          columns=cmp_strct.columns), cmp_strct])
-                                               
-        # beam-both-side connections
-        if beam_depth <= 27.0:
-            cur_cmp = 'B.10.35.031'
-        else:
-            cur_cmp = 'B.10.35.032'
-        
-        # assumes 2 frames x 2 directions = 4
-        n_cxn_interior = (n_bays-1)*4
-        cmp_strct = pd.concat(
-            [pd.DataFrame([[cur_cmp, 'ea', fl_ind+1, '1,2',
-                            n_cxn_interior, np.nan, np.nan,
-                            n_cxn_interior, metadata[cur_cmp]['Description']]], 
-                          columns=cmp_strct.columns), cmp_strct])
-    return(cmp_strct)
+    total_cmps = pd.concat([structural_cmp, nsc_cmp], ignore_index=True)
 
-# TODO: structural component for CBF
-def get_structural_cmp_CBF(run_data, metadata):
-    pass
+    return(total_cmps)
+
+
 
 #%% main
+
+# run info
+data = pd.read_csv('../../data/structural_db_conv.csv')
+cbf_run = data.iloc[0]
+mf_run = data.iloc[-1]
+
+# get database
+# initialize, no printing outputs, offset fixed with current components
+PAL = Assessment({
+    "PrintLog": False, 
+    "Seed": 985,
+    "Verbose": False,
+    "DemandOffset": {"PFA": 0, "PFV": 0}
+})
+
+# generate structural components and join with NSCs
+P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
 
 cbf_floors = cbf_run.num_stories
 cbf_area = cbf_run.L_bldg**2 # sq ft
@@ -438,8 +555,8 @@ bldg_usage = [fl_usage]*cbf_floors
 area_usage = np.array(fl_usage)*cbf_area
 
 nqe_meta, nqe_mean, nqe_std = nqe_sheets(cbf_run)
-cmp_1 = normative_quantity_estimation(cbf_run, bldg_usage, 
-                                          nqe_mean, nqe_std, nqe_meta)
+cmp_1 = normative_quantity_estimation(cbf_run, bldg_usage, nqe_mean, nqe_std, 
+                                      nqe_meta, P58_metadata)
 
 mf_floors = mf_run.num_stories
 
@@ -447,8 +564,6 @@ mf_floors = mf_run.num_stories
 fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
 bldg_usage = [fl_usage]*mf_floors
 nqe_meta, nqe_mean, nqe_std = nqe_sheets(mf_run)
-cmp_2 = normative_quantity_estimation(mf_run, bldg_usage, 
-                                          nqe_mean, nqe_std, nqe_meta)
-
-mf_struct = get_structural_cmp_MF(mf_run, P58_metadata)
+cmp_2 = normative_quantity_estimation(mf_run, bldg_usage, nqe_mean, nqe_std, 
+                                      nqe_meta, P58_metadata)
 # TODO: keep record of total cmp (groupby?)
