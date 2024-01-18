@@ -251,6 +251,7 @@ def run_nlth(design,
     import time
     time.sleep(3)
     
+    # TODO: pickling
     results_series = prepare_results(output_path, design, T_1, Tfb, run_status)
     return(results_series)
     
