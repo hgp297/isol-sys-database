@@ -42,12 +42,14 @@ main_obj.scale_gms()
 
 # 10 is attempting force bc
 
+# solution ideas for 22: run through time-stepping loops, increase time-step
+
 # troubleshoot building
 run = main_obj.retained_designs.iloc[22]
 from building import Building
 
 bldg = Building(run)
-bldg.model_frame()
+bldg.model_frame(convergence_mode=True)
 bldg.apply_grav_load()
 
 T_1 = bldg.run_eigen()
@@ -100,8 +102,13 @@ plot_dynamic(run)
 
 #%% generate analyze database
 
+# import pickle
+
 # main_obj.analyze_db('structural_db_uncalibrated_sheartab.csv', save_interval=5)
 
+# # Pickle the main object
+# with open('structural_db.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%%
 # # plot distribution of parameters

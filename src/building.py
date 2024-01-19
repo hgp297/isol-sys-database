@@ -3059,8 +3059,10 @@ class Building:
             ops.analysis('Transient')
             curr_time = ops.getTime()
             print("Convergence issues at time: ", curr_time)
-            for nd in ops.getNodeTags():
-                print(f'Node {nd}: {ops.nodeDOFs(nd)}')
+            
+            # # print nodes to see constraints
+            # for nd in ops.getNodeTags():
+            #     print(f'Node {nd}: {ops.nodeDOFs(nd)}')
                 
             if superstructure_system == 'MF':
                 ok = 0

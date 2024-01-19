@@ -344,6 +344,7 @@ def get_structural_cmp_CBF(run_info, metadata,
                           columns=cmp_strct.columns), cmp_strct])
         
     return(cmp_strct)
+
 #%% nqe function
 
 # estimate mean qty for floor area
