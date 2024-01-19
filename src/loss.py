@@ -316,26 +316,6 @@ class Loss_Analysis:
         return(cmp_strct)
         
     # nqe function
-
-    # # estimate mean qty for floor area
-    # # has not adjusted for 'quantity' column
-    # def floor_mean(area_usage, mean_data):
-    #     return mean_data * area_usage
-
-    # # get std for floor (sum of lognormals)
-    # def floor_std(area_usage, std_data, floor_mean):
-    #     # get boolean if things are present, then multiply with stdev
-    #     import numpy as np
-    #     has_stuff = floor_mean.copy()
-    #     has_stuff[has_stuff != 0] = 1
-        
-    #     # variance per floor
-    #     var_present = np.square(std_data.values * has_stuff.values)
-        
-    #     # var_xy = var_x + var_y; std = sqrt(var)
-    #     std_cmp = np.sqrt(np.sum(var_present, axis=1))
-        
-    #     return pd.Series(std_cmp, index=std_data.index)
         
     def floor_qty_estimate(self, area_usage, mean_data, std_data, meta_data):
         
@@ -549,3 +529,7 @@ area_usage = np.array(fl_usage)*cbf_area
 loss = Loss_Analysis(cbf_run)
 loss.nqe_sheets()
 loss.normative_quantity_estimation(bldg_usage, P58_metadata)
+
+# TODO: keep record of total cmp (groupby?)
+
+# TODO: edp

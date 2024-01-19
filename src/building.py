@@ -1298,6 +1298,7 @@ class Building:
         elastic_mat_tag = 52
         torsion_mat_tag = 53
         ghost_mat_tag = 54
+        gravity_spring_mat_tag = 55
     
         # Steel material tag
         steel_mat_tag = 31
@@ -2063,10 +2064,27 @@ class Building:
             # ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
             #             beam_transf_tag, grav_beam_int_tag)
         
-        # place pin joints for all gravity beams
+        # TODO: trying some strength in gravity frame connections
+        
+        # Rotational hinge at leaning column joints via zeroLength elements
+        k_grav = 1*kip/inch
+    
+        # Create the material (spring)
+        ops.uniaxialMaterial('Elastic', gravity_spring_mat_tag, k_grav)
+        
+        # # place pin joints for all gravity beams
+        # for nd in grav_beam_spring_nodes:
+        #     parent_nd = nd // 10
+        #     ops.equalDOF(parent_nd, nd, 1, 3)
+            
         for nd in grav_beam_spring_nodes:
             parent_nd = nd // 10
-            ops.equalDOF(parent_nd, nd, 1, 3)
+            elem_tag = nd + spr_id
+            # create zero length element (spring), rotations allowed about local Z axis
+            ops.element('zeroLength', elem_tag, parent_nd, nd,
+                '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
+                torsion_mat_tag, elastic_mat_tag, gravity_spring_mat_tag, 
+                '-dir', 1, 2, 3, 4, 5, 6, '-orient', *beam_x_axis, *vecxy_beam)
             
         # place ghost trusses along braced frame beams to ensure horizontal movement
         # run this truss to midway

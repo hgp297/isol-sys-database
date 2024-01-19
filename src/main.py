@@ -40,9 +40,8 @@ main_obj.scale_gms()
 # 22 did not solve with smaller time step, considering strong ghost
 # 38 solved with smaller time step, without convergence adds
 
-# 10 is attempting force bc
-
 # solution ideas for 22: run through time-stepping loops, increase time-step
+# attempting a non-zero gravity spring for 22
 
 # troubleshoot building
 run = main_obj.retained_designs.iloc[22]
