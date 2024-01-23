@@ -1298,7 +1298,6 @@ class Building:
         elastic_mat_tag = 52
         torsion_mat_tag = 53
         ghost_mat_tag = 54
-        gravity_spring_mat_tag = 55
     
         # Steel material tag
         steel_mat_tag = 31
@@ -2064,27 +2063,10 @@ class Building:
             # ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
             #             beam_transf_tag, grav_beam_int_tag)
         
-        # TODO: trying some strength in gravity frame connections
-        
-        # Rotational hinge at leaning column joints via zeroLength elements
-        k_grav = 1*kip/inch
-    
-        # Create the material (spring)
-        ops.uniaxialMaterial('Elastic', gravity_spring_mat_tag, k_grav)
-        
-        # # place pin joints for all gravity beams
-        # for nd in grav_beam_spring_nodes:
-        #     parent_nd = nd // 10
-        #     ops.equalDOF(parent_nd, nd, 1, 3)
-            
+        # place pin joints for all gravity beams
         for nd in grav_beam_spring_nodes:
             parent_nd = nd // 10
-            elem_tag = nd + spr_id
-            # create zero length element (spring), rotations allowed about local Z axis
-            ops.element('zeroLength', elem_tag, parent_nd, nd,
-                '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
-                torsion_mat_tag, elastic_mat_tag, gravity_spring_mat_tag, 
-                '-dir', 1, 2, 3, 4, 5, 6, '-orient', *beam_x_axis, *vecxy_beam)
+            ops.equalDOF(parent_nd, nd, 1, 3)
             
         # place ghost trusses along braced frame beams to ensure horizontal movement
         # run this truss to midway
@@ -3109,7 +3091,25 @@ class Building:
                         if ok == 0:
                             print("That worked. Back to Newton")
             else:
-                print('CBF convergence loop not activated. Ending run...')
+                ok = 0
+                while (curr_time < T_end) and (ok == 0):
+                    curr_time     = ops.getTime()
+                    ok = ops.analyze(1, dt_transient)
+                    if ok != 0:
+                        print("Trying Newton with line search ...")
+                        ops.algorithm('NewtonLineSearch')
+                        ok = ops.analyze(1, dt_transient)
+                        if ok == 0:
+                            print("That worked. Back to Newton")
+                            ops.algorithm(algorithmTypeDynamic)
+                    if ok != 0:
+                        print('Trying Broyden ... ')
+                        algorithmTypeDynamic = 'Broyden'
+                        ops.algorithm(algorithmTypeDynamic)
+                        ok = ops.analyze(1, dt_transient)
+                        if ok == 0:
+                            print("That worked. Back to Newton")
+                print('CBF convergence loop exhausted. Ending run...')
                 
                 
                 

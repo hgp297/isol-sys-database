@@ -191,10 +191,10 @@ def run_nlth(design,
                                                 gm_dir=gm_path,
                                                 data_dir=output_path)
         else:
-            print('Lowering time step ...')
+            print('Lowering time step and convergence mode CBF...')
             
             bldg = Building(design)
-            bldg.model_frame()
+            bldg.model_frame(convergence_mode=True)
             
             # apply gravity loads, perform eigenvalue analysis, add damping
             bldg.apply_grav_load()
