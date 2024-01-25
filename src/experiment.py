@@ -165,9 +165,13 @@ def run_nlth(design,
                                zeta=[0.05], modes=[1])
     
     # run ground motion
+    if bldg.superstructure_system == 'MF':
+        dt_default = 0.005
+    else:
+        dt_default = 0.001
     run_status = bldg.run_ground_motion(design['gm_selected'], 
                                    design['scale_factor'], 
-                                   0.005,
+                                   dt_default,
                                    gm_dir=gm_path,
                                    data_dir=output_path)
     

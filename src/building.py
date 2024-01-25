@@ -3075,7 +3075,7 @@ class Building:
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
-                            ops.algorithm(algorithmTypeDynamic)
+                            ops.algorithm('Newton')
                     if ok != 0:
                         print('Trying Broyden ... ')
                         algorithmTypeDynamic = 'Broyden'
@@ -3083,6 +3083,7 @@ class Building:
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
+                            ops.algorithm('Newton')
                     if ok != 0:
                         print('Trying BFGS ... ')
                         algorithmTypeDynamic = 'BFGS'
@@ -3090,6 +3091,7 @@ class Building:
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
+                            ops.algorithm('Newton')
             else:
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):
@@ -3101,7 +3103,7 @@ class Building:
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
-                            ops.algorithm(algorithmTypeDynamic)
+                            ops.algorithm('Newton')
                     if ok != 0:
                         print('Trying Broyden ... ')
                         algorithmTypeDynamic = 'Broyden'
@@ -3109,6 +3111,7 @@ class Building:
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
+                            ops.algorithm('Newton')
                 print('CBF convergence loop exhausted. Ending run...')
                 
                 
