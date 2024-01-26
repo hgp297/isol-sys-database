@@ -11,6 +11,9 @@
 # Open issues:  (1) 
 
 ############################################################################
+## temporary spyder debugger error hack
+import collections
+collections.Callable = collections.abc.Callable
 
 class Loss_Analysis:
         
@@ -489,6 +492,41 @@ class Loss_Analysis:
         total_cmps = pd.concat([structural_cmp, nsc_cmp], ignore_index=True)
         
         self.components = total_cmps
+        
+    def process_EDP(self):
+
+        # TODO: store data as pickle to avoid this having to convert str to datatype
+        from ast import literal_eval
+        PID = literal_eval(self.PID)
+        PFV = literal_eval(self.PFV)
+        PFA = literal_eval(self.PFA)
+        # max_isol_disp = self.max_isol_disp
+        
+        PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
+        PID_names_2 = ['PID-'+str(fl+1)+'-2' for fl in range(len(PID))]
+        
+        PFA_names_1 = ['PFA-'+str(fl+1)+'-1' for fl in range(len(PFA))]
+        PFA_names_2 = ['PFA-'+str(fl+1)+'-2' for fl in range(len(PFA))]
+        
+        PFV_names_1 = ['PFV-'+str(fl+1)+'-1' for fl in range(len(PFV))]
+        PFV_names_2 = ['PFV-'+str(fl+1)+'-2' for fl in range(len(PFV))]
+        
+        import pandas as pd
+        all_edps = PFA + PFV + PID + PFA + PFV + PID
+        all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
+                     PFA_names_2 + PFV_names_2 + PID_names_2)
+        edp_df = pd.DataFrame([all_edps], columns = all_names)
+        
+        
+        edp_df.loc['Units'] = ['g' if edp.startswith('PFA') else
+                               'inps' if edp.startswith('PFV') else
+                               'rad' for edp in all_names]
+
+        edp_df["new"] = range(1,len(edp_df)+1)
+        edp_df.loc[edp_df.index=='Units', 'new'] = 0
+        edp_df = edp_df.sort_values("new").drop('new', axis=1)
+
+        self.edp = edp_df
     
 #%% test
 # run info
@@ -532,4 +570,4 @@ loss.normative_quantity_estimation(bldg_usage, P58_metadata)
 
 # TODO: keep record of total cmp (groupby?)
 
-# TODO: edp
+loss.process_EDP()
