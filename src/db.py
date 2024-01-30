@@ -15,8 +15,14 @@
 class Database:
     
     # sets up the problem by generating building specifications
+    # n_points: points to generate
+    # n_buffer: generate n_buffer*n_points designs to account for discards
+    # struct_sys_list: systems list
+    # isol_wts: currently hardcoded for ['TFP', 'LRB'], sample 1:3 TFP:LRB ratio
+    # to account for harder LRB designs being discarded
     
-    def __init__(self, n_points=5000, seed=985, n_buffer=15):
+    def __init__(self, n_points=400, seed=985, n_buffer=15,
+                 struct_sys_list=['MF', 'CBF'], isol_wts=[1,3]):
         
         from scipy.stats import qmc
         import numpy as np
@@ -102,11 +108,10 @@ class Database:
         
         import random
         random.seed(seed)
-        struct_sys_list = ['MF', 'CBF']
         
         # upweigh LRBs to ensure fair split
         isol_sys_list = ['TFP', 'LRB']
-        isol_wts = [1, 3]
+        # isol_wts = [1, 3]
         
         structs = random.choices(struct_sys_list, k=self.n_generated)
         isols = random.choices(isol_sys_list, k=self.n_generated, weights=isol_wts)
@@ -165,71 +170,78 @@ class Database:
         
         
         # attempt to design all TFPs
-        t0 = time.time()
-        all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP(row),
-                                       axis='columns', result_type='expand')
+        if df_tfp.shape[0] > 0:
+            t0 = time.time()
+            all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP(row),
+                                           axis='columns', result_type='expand')
+            
+            all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
+                                       'T_e', 'k_e', 'zeta_e', 'D_m']
+            
+            if filter_designs == False:
+                tfp_designs = all_tfp_designs
+            else:
+                # keep the designs that look sensible
+                tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
+                                                  (all_tfp_designs['R_1'] <= 50.0) &
+                                                  (all_tfp_designs['R_2'] <= 180.0) &
+                                                  (all_tfp_designs['zeta_e'] <= 0.25)]
+            
+            tp = time.time() - t0
+            
+            print("Designs completed for %d TFPs in %.2f s" %
+                  (tfp_designs.shape[0], tp))
+            
+            # get the design params of those bearings
+            a = df_tfp[df_tfp.index.isin(tfp_designs.index)]
         
-        all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
-                                   'T_e', 'k_e', 'zeta_e', 'D_m']
-        
-        if filter_designs == False:
-            tfp_designs = all_tfp_designs
+            self.tfp_designs = pd.concat([a, tfp_designs], axis=1)
         else:
-            # keep the designs that look sensible
-            tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
-                                              (all_tfp_designs['R_1'] <= 50.0) &
-                                              (all_tfp_designs['R_2'] <= 180.0) &
-                                              (all_tfp_designs['zeta_e'] <= 0.25)]
-        
-        tp = time.time() - t0
-        
-        print("Designs completed for %d TFPs in %.2f s" %
-              (tfp_designs.shape[0], tp))
-        
-        # get the design params of those bearings
-        a = df_tfp[df_tfp.index.isin(tfp_designs.index)]
-        
-        self.tfp_designs = pd.concat([a, tfp_designs], axis=1)
+            self.tfp_designs = None
         
         df_lrb = df_raw[df_raw['isolator_system'] == 'LRB']
+            
         
         # attempt to design all LRBs
-        t0 = time.time()
-        all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row),
-                                       axis='columns', result_type='expand')
-        
-        
-        all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
-                                   'N_lb', 'S_pad', 'S_2',
-                                   'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
-        
-        if filter_designs == False:
-            lrb_designs = all_lrb_designs
+        if df_lrb.shape[0] > 0:
+            t0 = time.time()
+            all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row),
+                                           axis='columns', result_type='expand')
+            
+            
+            all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
+                                       'N_lb', 'S_pad', 'S_2',
+                                       'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
+            
+            if filter_designs == False:
+                lrb_designs = all_lrb_designs
+            else:
+                # keep the designs that look sensible
+                # limits from design example CE 223
+                lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
+                                                   3*all_lrb_designs['d_lead']) &
+                                                  (all_lrb_designs['d_bearing'] <=
+                                                   6*all_lrb_designs['d_lead']) &
+                                                  (all_lrb_designs['d_lead'] <= 
+                                                    all_lrb_designs['t_r']) &
+                                                  (all_lrb_designs['t_r'] > 4.0) &
+                                                  (all_lrb_designs['t_r'] < 35.0) &
+                                                  (all_lrb_designs['buckling_fail'] == 0) &
+                                                  (all_lrb_designs['zeta_e'] <= 0.25)]
+                
+                lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
+                
+            tp = time.time() - t0
+            
+            print("Designs completed for %d LRBs in %.2f s" %
+                  (lrb_designs.shape[0], tp))
+            
+            b = df_lrb[df_lrb.index.isin(lrb_designs.index)]
+            
+            self.lrb_designs = pd.concat([b, lrb_designs], axis=1)
         else:
-            # keep the designs that look sensible
-            # limits from design example CE 223
-            lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
-                                               3*all_lrb_designs['d_lead']) &
-                                              (all_lrb_designs['d_bearing'] <=
-                                               6*all_lrb_designs['d_lead']) &
-                                              (all_lrb_designs['d_lead'] <= 
-                                                all_lrb_designs['t_r']) &
-                                              (all_lrb_designs['t_r'] > 4.0) &
-                                              (all_lrb_designs['t_r'] < 35.0) &
-                                              (all_lrb_designs['buckling_fail'] == 0) &
-                                              (all_lrb_designs['zeta_e'] <= 0.25)]
+            self.lrb_designs = None
             
-            lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
-            
-        tp = time.time() - t0
-        
-        print("Designs completed for %d LRBs in %.2f s" %
-              (lrb_designs.shape[0], tp))
-        
-        b = df_lrb[df_lrb.index.isin(lrb_designs.index)]
-        
-        self.lrb_designs = pd.concat([b, lrb_designs], axis=1)
-        
     def design_structure(self, filter_designs=True):
         import pandas as pd
         import time
@@ -239,6 +251,7 @@ class Database:
         
         from loads import define_lateral_forces
         
+        # assumes that there is at least one design
         df_in[['wx', 
                'hx', 
                'h_col', 
@@ -253,61 +266,70 @@ class Database:
         cbf_df = df_in[df_in['superstructure_system'] == 'CBF']
         
         # attempt to design all moment frames
-        t0 = time.time()
-        import design as ds
-        
-        all_mf_designs = smrf_df.apply(lambda row: ds.design_MF(row),
-                                       axis='columns', 
-                                       result_type='expand')
-        
-        all_mf_designs.columns = ['beam', 'column', 'flag']
-        
-        if filter_designs == False:
-            mf_designs = all_mf_designs
-        else:
-            # keep the designs that look sensible
-            mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
-            mf_designs = mf_designs.dropna(subset=['beam','column'])
-         
-        mf_designs = mf_designs.drop(['flag'], axis=1)
-        tp = time.time() - t0
-      
-        # get the design params of those bearings
-        a = smrf_df[smrf_df.index.isin(mf_designs.index)]
-        
-        self.mf_designs = pd.concat([a, mf_designs], axis=1)
-        
-        print("Designs completed for %d moment frames in %.2f s" %
-              (smrf_df.shape[0], tp))
-        
-        t0 = time.time()
-        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
-                                        axis='columns', 
-                                        result_type='expand')
-        all_cbf_designs.columns = ['brace', 'beam', 'column']
-        if filter_designs == False:
-            cbf_designs = all_cbf_designs
-        else:
-            # keep the designs that look sensible
-            cbf_designs = all_cbf_designs.dropna(subset=['beam','column','brace'])
+        if smrf_df.shape[0] > 0:
+            t0 = time.time()
+            import design as ds
             
+            all_mf_designs = smrf_df.apply(lambda row: ds.design_MF(row),
+                                           axis='columns', 
+                                           result_type='expand')
+            
+            all_mf_designs.columns = ['beam', 'column', 'flag']
+            
+            if filter_designs == False:
+                mf_designs = all_mf_designs
+            else:
+                # keep the designs that look sensible
+                mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
+                mf_designs = mf_designs.dropna(subset=['beam','column'])
+             
+            mf_designs = mf_designs.drop(['flag'], axis=1)
+            tp = time.time() - t0
+          
+            # get the design params of those bearings
+            a = smrf_df[smrf_df.index.isin(mf_designs.index)]
+            
+            self.mf_designs = pd.concat([a, mf_designs], axis=1)
+            
+            print("Designs completed for %d moment frames in %.2f s" %
+                  (smrf_df.shape[0], tp))
+        else:
+            self.mf_designs = None
+            
+        # attempt to design all CBFs
+        if cbf_df.shape[0] > 0:
+            t0 = time.time()
+            all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
+                                            axis='columns', 
+                                            result_type='expand')
+            all_cbf_designs.columns = ['brace', 'beam', 'column']
+            if filter_designs == False:
+                cbf_designs = all_cbf_designs
+            else:
+                # keep the designs that look sensible
+                cbf_designs = all_cbf_designs.dropna(subset=['beam','column','brace'])
+                
+            
+            tp = time.time() - t0
+            
+            # get the design params of those bearings
+            a = cbf_df[cbf_df.index.isin(cbf_designs.index)]
+            self.cbf_designs = pd.concat([a, cbf_designs], axis=1)
+            
+            print("Designs completed for %d braced frames in %.2f s" %
+                  (cbf_df.shape[0], tp))
+        else:
+            self.cbf_designs = None
         
-        tp = time.time() - t0
-        
-        # get the design params of those bearings
-        a = cbf_df[cbf_df.index.isin(cbf_designs.index)]
-        self.cbf_designs = pd.concat([a, cbf_designs], axis=1)
-        
-        print("Designs completed for %d braced frames in %.2f s" %
-              (cbf_df.shape[0], tp))
-        
-        # join both systems
+        # join both systems (assumes that there's at least one design)
         all_des = pd.concat([self.mf_designs, self.cbf_designs], 
                                      axis=0)
         # retained designs
+        # ensure even distribution between number of systems
+        n_systems = len(pd.unique(df_in['superstructure_system']))
         self.retained_designs = all_des.groupby(
             'superstructure_system', group_keys=False).apply(
-            lambda x: x.sample(n=int(self.n_points/2)))
+            lambda x: x.sample(n=int(self.n_points/n_systems)))
         self.generated_designs = all_des
         
         print('======================================')
