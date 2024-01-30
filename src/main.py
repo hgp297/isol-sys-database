@@ -67,29 +67,32 @@ main_obj.scale_gms()
 
 #%%
 
-# failed CBFs in 200 set: 7? 9?
+# failed CBFs in 200 set: 7? 25
 # fatal condition: dt = 0.005, convergence_mode=False, Broyden in algo
 # ran in loop
 
 # fatal crash ONLY happens in loop
+# crashes after Broyden works and loop returns to Newton for single step
 
-# # troubleshoot building
-# run = main_obj.retained_designs.iloc[7]
-# from building import Building
+# all runs seem to solve with dt really small, but we don't want this
 
-# bldg = Building(run)
-# bldg.model_frame(convergence_mode=False)
-# bldg.apply_grav_load()
+# troubleshoot building
+run = main_obj.retained_designs.iloc[25]
+from building import Building
 
-# T_1 = bldg.run_eigen()
+bldg = Building(run)
+bldg.model_frame(convergence_mode=False)
+bldg.apply_grav_load()
 
-# bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
+T_1 = bldg.run_eigen()
 
-# dt = 0.001
-# ok = bldg.run_ground_motion(run.gm_selected, 
-#                         run.scale_factor*1.0, 
-#                         dt, T_end=60.0)
+bldg.provide_damping(80, method='SP',
+                                  zeta=[0.05], modes=[1])
+
+dt = 0.0005
+ok = bldg.run_ground_motion(run.gm_selected, 
+                        run.scale_factor*1.0, 
+                        dt, T_end=60.0)
 
 
 #%% pushover
@@ -110,8 +113,8 @@ main_obj.scale_gms()
 
 #%% dynamic run
 
-# from plot_structure import plot_dynamic
-# plot_dynamic(run)
+from plot_structure import plot_dynamic
+plot_dynamic(run)
 
 #%% ground motion spectrum
 
@@ -128,12 +131,12 @@ main_obj.scale_gms()
 
 #%% generate analyze database
 
-main_obj.analyze_db('structural_db_uncalibrated_sheartab.csv', save_interval=5)
+# main_obj.analyze_db('structural_db_uncalibrated_sheartab.csv', save_interval=5)
 
-# Pickle the main object
-import pickle
-with open('../data/structural_db.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# # Pickle the main object
+# import pickle
+# with open('../data/structural_db.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%%
 # # plot distribution of parameters

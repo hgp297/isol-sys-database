@@ -3061,6 +3061,11 @@ class Building:
             print("Convergence issues at time: ", curr_time)
             
             # # print nodes to see constraints
+            node_log = ops.getNodeTags()
+                
+            with open('../data/logs/nodes.log', 'w') as f:
+                for nd in node_log:
+                    f.write(f'Node {nd}: {ops.nodeDOFs(nd)}\n')
             # for nd in ops.getNodeTags():
             #     print(f'Node {nd}: {ops.nodeDOFs(nd)}')
                 
