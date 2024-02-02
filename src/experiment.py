@@ -168,7 +168,7 @@ def run_nlth(design,
     if bldg.superstructure_system == 'MF':
         dt_default = 0.005
     else:
-        dt_default = 0.001
+        dt_default = 0.005
     run_status = bldg.run_ground_motion(design['gm_selected'], 
                                    design['scale_factor'], 
                                    dt_default,
@@ -228,7 +228,7 @@ def run_nlth(design,
             
             run_status = bldg.run_ground_motion(design['gm_selected'], 
                                                 design['scale_factor'], 
-                                                0.0005,
+                                                0.001,
                                                 gm_dir=gm_path,
                                                 data_dir=output_path)
         else:

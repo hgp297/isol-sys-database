@@ -600,12 +600,14 @@ class Building:
              thp_col, thpc_col,
              kappa_col, thu_col) = modified_IK_params(current_col, 0.8*L_col)
             
+
             ops.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
                                   thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
                                   thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
                                   lam_col, lam_col, lam_col,
                                   cIK, cIK, cIK,
                                   DIK, DIK, DIK)
+
             
         for fl_beam, beam in enumerate(beam_list):
             current_beam = get_shape(beam, 'beam')
@@ -626,6 +628,7 @@ class Building:
              thp_beam, thpc_beam,
              kappa_beam, thu_beam) = modified_IK_params(current_beam, 0.8*L_beam)
             
+
             ops.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
                                   thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
                                   thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
@@ -1494,12 +1497,14 @@ class Building:
              thp_col, thpc_col,
              kappa_col, thu_col) = modified_IK_params(current_col, 0.8*L_col)
             
+            
             ops.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
                                   thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
                                   thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
                                   lam_col, lam_col, lam_col,
                                   cIK, cIK, cIK,
                                   DIK, DIK, DIK)
+            
             
         for fl_beam, beam in enumerate(beam_list):
             current_beam = get_shape(beam, 'beam')
@@ -1520,13 +1525,14 @@ class Building:
              thp_beam, thpc_beam,
              kappa_beam, thu_beam) = modified_IK_params(current_beam, 0.8*L_beam)
             
+
             ops.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
                                   thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
                                   thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
                                   lam_beam, lam_beam, lam_beam,
                                   cIK, cIK, cIK,
                                   DIK, DIK, DIK)
-            
+
 ################################################################################
 # define springs
 ################################################################################
@@ -2783,6 +2789,9 @@ class Building:
         isol_id = self.elem_ids['isolator']
         base_id = self.elem_ids['base']
         
+        # print all warnings to log file
+        ops.logFile(data_dir+'run.log', '-noEcho')
+        
         if superstructure_system == 'CBF':
             # extract nodes that belong to the braced portion
             brace_beam_ends = self.node_tags['brace_beam_end']
@@ -2874,8 +2883,8 @@ class Building:
         # isol nodes are diaphragm nodes
         isol_nodes_all = self.node_tags['diaphragm']
         
-        open(data_dir+'model.out', 'w').close()
-        ops.printModel('-file', data_dir+'model.out')
+        # open(data_dir+'model.out', 'w').close()
+        # ops.printModel('-file', data_dir+'model.out')
         
         # lateral frame story displacement
         ops.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
@@ -2946,7 +2955,6 @@ class Building:
         
         # leaning column?
         
-        ops.printModel('-file', data_dir+'model.out')
 
         ops.wipeAnalysis()
 
@@ -3097,6 +3105,7 @@ class Building:
                         if ok == 0:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
+            # TODO: change time step for one step
             else:
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):
@@ -3382,3 +3391,5 @@ def mid_brace_coord(nd, L_bay, h_story, camber=0.001, offset=0.25):
     
     return(mid_x_coord, mid_y_coord)
     
+
+

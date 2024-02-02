@@ -76,23 +76,23 @@ main_obj.scale_gms()
 
 # all runs seem to solve with dt really small, but we don't want this
 
-# troubleshoot building
-run = main_obj.retained_designs.iloc[25]
-from building import Building
+# # troubleshoot building
+# run = main_obj.retained_designs.iloc[25]
+# from building import Building
 
-bldg = Building(run)
-bldg.model_frame(convergence_mode=False)
-bldg.apply_grav_load()
+# bldg = Building(run)
+# bldg.model_frame(convergence_mode=False)
+# bldg.apply_grav_load()
 
-T_1 = bldg.run_eigen()
+# T_1 = bldg.run_eigen()
 
-bldg.provide_damping(80, method='SP',
-                                  zeta=[0.05], modes=[1])
+# bldg.provide_damping(80, method='SP',
+#                                   zeta=[0.05], modes=[1])
 
-dt = 0.0005
-ok = bldg.run_ground_motion(run.gm_selected, 
-                        run.scale_factor*1.0, 
-                        dt, T_end=60.0)
+# dt = 0.005
+# ok = bldg.run_ground_motion(run.gm_selected, 
+#                         run.scale_factor*1.0, 
+#                         dt, T_end=60.0)
 
 
 #%% pushover
@@ -113,8 +113,8 @@ ok = bldg.run_ground_motion(run.gm_selected,
 
 #%% dynamic run
 
-from plot_structure import plot_dynamic
-plot_dynamic(run)
+# from plot_structure import plot_dynamic
+# plot_dynamic(run)
 
 #%% ground motion spectrum
 
@@ -131,12 +131,12 @@ plot_dynamic(run)
 
 #%% generate analyze database
 
-# main_obj.analyze_db('structural_db_uncalibrated_sheartab.csv', save_interval=5)
+main_obj.analyze_db('structural_db_uncalibrated_sheartab.csv', save_interval=5)
 
-# # Pickle the main object
-# import pickle
-# with open('../data/structural_db.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+# Pickle the main object
+import pickle
+with open('../data/structural_db.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 #%%
 # # plot distribution of parameters
