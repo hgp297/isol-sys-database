@@ -2965,7 +2965,12 @@ class Building:
 
         ops.constraints('Plain')
         ops.numberer('RCM')
-        ops.system('BandGeneral')
+        
+        # TODO: bandgeneral for mf, umfpack for cbf?
+        if superstructure_system == 'CBF':
+            ops.system('UmfPack')
+        else:
+            ops.system('BandGeneral')
         
         if superstructure_system == 'CBF':
             
@@ -3105,7 +3110,8 @@ class Building:
                         if ok == 0:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
-            # TODO: change time step for one step
+                          
+            # TODO: refine CBF convergence loop
             else:
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):
@@ -3120,13 +3126,36 @@ class Building:
                             ops.algorithm('Newton')
                     if ok != 0:
                         print('Trying Broyden ... ')
-                        algorithmTypeDynamic = 'Broyden'
-                        ops.algorithm(algorithmTypeDynamic)
+                        ops.algorithm('Broyden')
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
-                print('CBF convergence loop exhausted. Ending run...')
+                    if ok != 0:
+                        print('Trying BFGS ... ')
+                        ops.algorithm('BFGS')
+                        ok = ops.analyze(1, dt_transient)
+                        if ok == 0:
+                            print("That worked. Back to Newton")
+                            ops.algorithm('Newton')
+                    if ok != 0:
+                        print('CBF convergence loop exhausted. Ending run...')
+                 
+            # # cutting time convergence loop
+            # else:
+            #     ok = 0
+            #     while (curr_time < T_end) and (ok == 0):
+            #         curr_time     = ops.getTime()
+            #         ok = ops.analyze(1, dt_transient)
+            #         if ok != 0:
+            #             print("Cutting time step for ten step...")
+            #             ops.algorithm('NewtonLineSearch')
+            #             ok = ops.analyze(10, dt_transient/10)
+            #             if ok == 0:
+            #                 print("That worked. Back to Newton")
+            #                 ops.algorithm('Newton')
+            #         if ok != 0:
+            #             print('CBF convergence loop exhausted. Ending run...')
                 
                 
                 

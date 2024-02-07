@@ -13,6 +13,13 @@
 
 ############################################################################
 
+
+## temporary spyder debugger error hack
+import pandas as pd
+import collections
+collections.Callable = collections.abc.Callable
+
+
 def run_pelicun(database_path, results_path, 
                 database_file='run_data.csv', mode='generate'):
 
@@ -192,30 +199,25 @@ def run_pelicun(database_path, results_path,
 
 #%% main run (analyze training set)
 
-## temporary spyder debugger error hack
-import pandas as pd
-import collections
-collections.Callable = collections.abc.Callable
-
-# data_path = './data/tfp_mf_doe/'
-# res_path = './results/tfp_mf_doe/'
-# training_data = run_pelicun(data_path, res_path, 
-#                             database_file='run_data.csv', mode='generate')
+data_path = './data/tfp_mf_doe/'
+res_path = './results/tfp_mf_doe/'
+training_data = run_pelicun(data_path, res_path, 
+                            database_file='run_data.csv', mode='generate')
 
 #%% inverse design validation 
 
-data_path = './data/tfp_mf_val/inverse_2/mce/'
-res_path = './results/tfp_mf_val/inverse_2/mce/'
-db_file = 'ida_ialcce_cost.csv'
-validation_input = pd.read_csv(data_path+db_file)
-validation_data = run_pelicun(data_path, res_path, 
-                              database_file=db_file, 
-                              mode='generate')
+# data_path = './data/tfp_mf_val/inverse_2/mce/'
+# res_path = './results/tfp_mf_val/inverse_2/mce/'
+# db_file = 'ida_ialcce_cost.csv'
+# validation_input = pd.read_csv(data_path+db_file)
+# validation_data = run_pelicun(data_path, res_path, 
+#                               database_file=db_file, 
+#                               mode='generate')
 
-# below is taking the mean of median results (over 59 runs)
-validation_data = validation_data.astype('float')
-val_summary = validation_data.describe([0.1, 0.5, 0.9])
-val_input_summary = validation_input.describe([0.5])
+# # below is taking the mean of median results (over 59 runs)
+# validation_data = validation_data.astype('float')
+# val_summary = validation_data.describe([0.1, 0.5, 0.9])
+# val_input_summary = validation_input.describe([0.5])
 
 #%% baseline validation
 
@@ -233,18 +235,18 @@ val_input_summary = validation_input.describe([0.5])
 
 #%% inverse design validation run (full fragility)
 
-data_path = './data/tfp_mf_val/inverse_2/full/'
-res_path = './results/tfp_mf_val/inverse_2/full/'
-db_file = 'ida_ialcce_cost.csv'
-validation_input = pd.read_csv(data_path+db_file)
-validation_data = run_pelicun(data_path, res_path, 
-                              database_file=db_file, 
-                              mode='validation')
+# data_path = './data/tfp_mf_val/inverse_2/full/'
+# res_path = './results/tfp_mf_val/inverse_2/full/'
+# db_file = 'ida_ialcce_cost.csv'
+# validation_input = pd.read_csv(data_path+db_file)
+# validation_data = run_pelicun(data_path, res_path, 
+#                               database_file=db_file, 
+#                               mode='validation')
 
-# below is taking the mean of median results (over 59 runs)
-validation_data = validation_data.astype('float')
-val_summary = validation_data.describe([0.1, 0.5, 0.9])
-val_input_summary = validation_input.describe([0.5])
+# # below is taking the mean of median results (over 59 runs)
+# validation_data = validation_data.astype('float')
+# val_summary = validation_data.describe([0.1, 0.5, 0.9])
+# val_input_summary = validation_input.describe([0.5])
 
 #%% baseline validation (full fragility)
 

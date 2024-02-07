@@ -195,22 +195,23 @@ def run_nlth(design,
                                                 gm_dir=gm_path,
                                                 data_dir=output_path)
         else:
-            print('Lowering time step and convergence mode CBF...')
+            print('Cutting time did not work.')
+            # print('Lowering time step and convergence mode CBF...')
             
-            bldg = Building(design)
-            bldg.model_frame(convergence_mode=True)
+            # bldg = Building(design)
+            # bldg.model_frame(convergence_mode=True)
             
-            # apply gravity loads, perform eigenvalue analysis, add damping
-            bldg.apply_grav_load()
-            T_1 = bldg.run_eigen()
-            Tfb = bldg.provide_damping(80, method='SP',
-                                        zeta=[0.05], modes=[1])
+            # # apply gravity loads, perform eigenvalue analysis, add damping
+            # bldg.apply_grav_load()
+            # T_1 = bldg.run_eigen()
+            # Tfb = bldg.provide_damping(80, method='SP',
+            #                             zeta=[0.05], modes=[1])
             
-            run_status = bldg.run_ground_motion(design['gm_selected'], 
-                                                design['scale_factor'], 
-                                                0.0005,
-                                                gm_dir=gm_path,
-                                                data_dir=output_path)
+            # run_status = bldg.run_ground_motion(design['gm_selected'], 
+            #                                     design['scale_factor'], 
+            #                                     0.0005,
+            #                                     gm_dir=gm_path,
+            #                                     data_dir=output_path)
         
     # CBF if still no converge, give up
     if run_status != 0:
