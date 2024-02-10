@@ -12,40 +12,40 @@
 
 ############################################################################
 
-from db import Database
+# from db import Database
 
-main_obj = Database(400, n_buffer=8, seed=130, 
-                    struct_sys_list=['MF'], isol_wts=[1, 0])
+# main_obj = Database(400, n_buffer=8, seed=130, 
+#                     struct_sys_list=['MF'], isol_wts=[1, 0])
 
-main_obj.design_bearings(filter_designs=True)
-main_obj.design_structure(filter_designs=True)
+# main_obj.design_bearings(filter_designs=True)
+# main_obj.design_structure(filter_designs=True)
 
-main_obj.scale_gms()
+# main_obj.scale_gms()
 
 #%% troubleshoot fatal case
 
-# run 110/400
-# run 364/400
-# troubleshoot building
-run = main_obj.retained_designs.iloc[364]
-from building import Building
+# # run 110/400
+# # run 364/400
+# # troubleshoot building
+# run = main_obj.retained_designs.iloc[364]
+# from building import Building
 
-bldg = Building(run)
-bldg.model_frame()
-bldg.apply_grav_load()
+# bldg = Building(run)
+# bldg.model_frame()
+# bldg.apply_grav_load()
 
-T_1 = bldg.run_eigen()
+# T_1 = bldg.run_eigen()
 
-bldg.provide_damping(80, method='SP',
-                                  zeta=[0.05], modes=[1])
+# bldg.provide_damping(80, method='SP',
+#                                   zeta=[0.05], modes=[1])
 
-dt = 0.005
-ok = bldg.run_ground_motion(run.gm_selected, 
-                        run.scale_factor*1.0, 
-                        dt, T_end=60.0)
+# dt = 0.005
+# ok = bldg.run_ground_motion(run.gm_selected, 
+#                         run.scale_factor*1.0, 
+#                         dt, T_end=60.0)
 
-from plot_structure import plot_dynamic
-plot_dynamic(run)
+# from plot_structure import plot_dynamic
+# plot_dynamic(run)
 
 #%% analyze database
 
@@ -55,3 +55,18 @@ plot_dynamic(run)
 # import pickle
 # with open('../data/tfp_mf_db.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
+
+#%% DoE
+
+# you could either read the csv or unpickle
+# or chain this straight from the analyzed main_obj
+
+path = '../data/'
+
+import pickle
+
+with open(path+"tfp_mf_db.pickle", 'rb') as picklefile:
+    main_obj = pickle.load(picklefile)
+    
+main_obj.calculate_collapse()
+main_obj.perform_doe(n_set=400)

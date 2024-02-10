@@ -401,4 +401,38 @@ class Database:
         
         db_results.to_csv(data_path+output_str, index=False)
         self.ops_analysis = db_results
+        
+        
+    def calculate_collapse(self):
+        df = self.ops_analysis
+        
+        from experiment import collapse_fragility
+        df[['collapse_prob']] = df.apply(lambda row: collapse_fragility(row),
+                                                axis='columns', result_type='expand')
+        
+        self.ops_analysis = df
                 
+    def perform_doe(self, n_set=200):
+        
+        try:
+            whole_set = self.ops_analysis
+        except:
+            print('Cannot perform DoE without analysis results')
+            
+        # TODO: temporary assign variable here, also need to calculate gap ratio
+        whole_set['T_ratio'] = whole_set['T_m'] / whole_set['T_fb']
+        
+        # n_set is both test_train split
+        ml_set = whole_set.sample(n=n_set, replace=False, random_state=985)
+        
+        # split 50/50 for 
+        df_train = ml_set.head(int(n_set/2))
+        df_test = ml_set.tail(int(n_set/2))
+        
+        from experiment import run_doe
+        
+        run_doe(0.10, df_train, df_test, 
+                batch_size=10, error_tol=0.15, maxIter=600, conv_tol=1e-2)
+        
+        print('here')
+        pass

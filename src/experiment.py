@@ -145,9 +145,34 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     final_series = design.append(result_series)
     return(final_series)
     
+def collapse_fragility(run):
+    system = run.superstructure_system
+    peak_drift = max(run.PID)
+    
+    # collapse as a probability
+    from math import log, exp
+    from scipy.stats import lognorm
+    from scipy.stats import norm
+    
+    # MF: set 84% collapse at 0.10 drift, 0.25 beta
+    if system == 'MF':
+        inv_norm = norm.ppf(0.84)
+        beta_drift = 0.25
+        mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
+        
+    # CBF: set 90% collapse at 0.05 drift, 0.55 beta
+    else:
+        inv_norm = norm.ppf(0.90)
+        beta_drift = 0.55
+        mean_log_drift = exp(log(0.05) - beta_drift*inv_norm) 
+        
+    ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+    collapse_prob = ln_dist.cdf(peak_drift)
+    
+    return(collapse_prob)
     
 # run the experiment, GM name and scale factor must be baked into design
-# TODO: trigger re-run if small drift AND convergence failure
+
 def run_nlth(design, 
              gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/',
              output_path='./outputs/'):
@@ -256,7 +281,41 @@ def run_nlth(design,
     import time
     time.sleep(3)
     
-    # TODO: pickling
     results_series = prepare_results(output_path, design, T_1, Tfb, run_status)
     return(results_series)
+    
+
+def run_doe(prob_target, df_train, df_test, 
+            batch_size=10, error_tol=0.15, maxIter=600, conv_tol=1e-2):
+    
+    import random
+    import numpy as np
+    
+    
+    np.random.seed(986)
+    random.seed(986)
+    from doe import GP
+    
+    test_set = GP(df_test)
+    test_set.set_covariates(['moat_ampli', 'RI', 'T_ratio', 'k_ratio'])
+    test_set.set_outcome('collapse_prob')
+    
+    mdl = GP(df_train)
+    mdl.set_outcome('collapse_prob')
+    mdl.set_covariates(['moat_ampli', 'RI', 'T_ratio', 'k_ratio'])
+    mdl.fit_gpr(kernel_name='rbf_iso')
+    
+    y_hat = mdl.gpr.predict(test_set.X)
+    
+    print('===== Training model size:', mdl.X.shape[0], '=====')
+    from sklearn.metrics import mean_squared_error, mean_absolute_error
+    import numpy as np
+    mse = mean_squared_error(test_set.y, y_hat)
+    rmse = mse**0.5
+    print('Test set RMSE: %.3f' % rmse)
+
+    mae = mean_absolute_error(test_set.y, y_hat)
+    print('Test set MAE: %.3f' % mae)
+    
+    pass
     

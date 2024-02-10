@@ -20,7 +20,9 @@ class GP:
     def __init__(self, data):
         self._raw_data = data
         self.k = len(data)
-        self.X = data[['gapRatio', 'RI', 'Tm', 'zetaM']]
+        
+    def set_covariates(self, var_list):
+        self.X = self._raw_data[var_list]
         
     # sets up prediction variable
     def set_outcome(self, outcome_var):
@@ -33,8 +35,11 @@ class GP:
         from sklearn.gaussian_process import GaussianProcessClassifier
         import sklearn.gaussian_process.kernels as krn
         
+        import numpy as np
+        n_vars = self.X.shape[1]
+        
         if kernel_name=='rbf_ard':
-            kernel = 1.0 * krn.RBF([1.0, 1.0, 1.0, 1.0])
+            kernel = 1.0 * krn.RBF(np.ones(n_vars))
         elif kernel_name=='rbf_iso':
             kernel = 1.0 * krn.RBF(1.0)
         elif kernel_name=='rq':
@@ -46,7 +51,7 @@ class GP:
                     nu=1.5)
         elif kernel_name == 'matern_ard':
             kernel = 1.0 * krn.Matern(
-                    length_scale=[1.0, 1.0, 1.0, 1.0], 
+                    length_scale=np.ones(n_vars), 
                     nu=1.5)
 
         if noisy==True:
@@ -74,8 +79,11 @@ class GP:
         from sklearn.gaussian_process import GaussianProcessRegressor
         import sklearn.gaussian_process.kernels as krn
         
+        import numpy as np
+        n_vars = self.X.shape[1]
+        
         if kernel_name=='rbf_ard':
-            kernel = 1.0 * krn.RBF([1.0, 1.0, 1.0, 1.0])
+            kernel = 1.0 * krn.RBF(np.ones(n_vars))
         elif kernel_name=='rbf_iso':
             kernel = 1.0 * krn.RBF(1.0)
         elif kernel_name=='rq':
@@ -87,7 +95,7 @@ class GP:
                     nu=1.5)
         elif kernel_name == 'matern_ard':
             kernel = 1.0 * krn.Matern(
-                    length_scale=[1.0, 1.0, 1.0, 1.0], 
+                    length_scale=np.ones(n_vars), 
                     nu=1.5)
             
         kernel = kernel + krn.WhiteKernel(noise_level=1, noise_level_bounds=(1e-5, 1e1))
@@ -144,6 +152,7 @@ class GP:
         import numpy as np
         n_max = 10000
         
+        # TODO: currently hardcoded
         # start with a sample of x's from a uniform distribution
         x_var = np.array([np.random.uniform(0.3, 2.0, n_max),
                        np.random.uniform(0.5, 2.0, n_max),
