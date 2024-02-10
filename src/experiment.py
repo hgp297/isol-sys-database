@@ -295,10 +295,17 @@ def run_doe(prob_target, df_train, df_test,
     np.random.seed(986)
     random.seed(986)
     from doe import GP
+    from db import Database
     
     test_set = GP(df_test)
     test_set.set_covariates(['moat_ampli', 'RI', 'T_ratio', 'k_ratio'])
     test_set.set_outcome('collapse_prob')
+    
+    # TODO: prepare non-covariate input for DoE
+    doe_reserve_db = Database(maxIter, n_buffer=8, seed=131, 
+                        struct_sys_list=['MF'], isol_wts=[1, 0])
+    
+    # drop covariates 
     
     mdl = GP(df_train)
     mdl.set_outcome('collapse_prob')
