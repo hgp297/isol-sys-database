@@ -432,7 +432,7 @@ class Database:
         from experiment import run_doe
         
         run_doe(0.10, df_train, df_test, 
-                batch_size=10, error_tol=0.15, maxIter=600, conv_tol=1e-2)
+                batch_size=10, error_tol=1e-2, maxIter=600, conv_tol=1e-2)
         
         print('here')
         pass

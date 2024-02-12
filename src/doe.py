@@ -148,30 +148,43 @@ class GP:
         
         return(f_star, var_f_star)
     
-    def doe_rejection_sampler(self, n_pts, pr):
+    def doe_rejection_sampler(self, n_pts, pr, bound_df):
         import numpy as np
         n_max = 10000
+        n_var = bound_df.shape[1]
         
-        # TODO: currently hardcoded
+        min_list = [val for val in bound_df.loc['min']]
+        max_list = [val for val in bound_df.loc['max']]
+        
         # start with a sample of x's from a uniform distribution
-        x_var = np.array([np.random.uniform(0.3, 2.0, n_max),
-                       np.random.uniform(0.5, 2.0, n_max),
-                       np.random.uniform(2.5, 4.0, n_max),
-                       np.random.uniform(0.1, 0.2, n_max)]).T
+        x_var = np.array([np.random.uniform(min_list[i], max_list[i], n_max)
+                          for i in range(n_var)]).T
         
-        # TODO: parameterize the function
+        
+        # x_var = np.array([np.random.uniform(0.3, 2.0, n_max),
+        #                np.random.uniform(0.5, 2.0, n_max),
+        #                np.random.uniform(2.5, 4.0, n_max),
+        #                np.random.uniform(0.1, 0.2, n_max)]).T
+        
+        
         # find the maximum that the function will be in the domain
-        # bounds for design space
         from scipy.optimize import basinhopping
-        bnds = ((0.3, 2.0), (0.5, 2.0), (2.5, 4.0), (0.1, 0.2))
         
-        x0 = np.array([[np.random.uniform(0.3, 2.0),
-                       np.random.uniform(0.5, 2.0),
-                       np.random.uniform(2.5, 4.0),
-                       np.random.uniform(0.1, 0.2)]])
+        # bounds for design space
+        bnds = tuple((min_list[i], max_list[i]) for i in range(n_var))
+        
+        x0 = np.array([np.random.uniform(min_list[i], max_list[i])
+                          for i in range(n_var)])
+        
+        # bnds = ((0.3, 2.0), (0.5, 2.0), (2.5, 4.0), (0.1, 0.2))
+        
+        # x0 = np.array([[np.random.uniform(0.3, 2.0),
+        #                np.random.uniform(0.5, 2.0),
+        #                np.random.uniform(2.5, 4.0),
+        #                np.random.uniform(0.1, 0.2)]])
         
         # use basin hopping to avoid local minima
-        minimizer_kwargs={'args':(pr),'bounds':bnds}
+        minimizer_kwargs={'args':(pr, bound_df),'bounds':bnds}
         res = basinhopping(self.fn_tmse, x0, minimizer_kwargs=minimizer_kwargs,
                            niter=100, seed=985)
         
@@ -186,7 +199,7 @@ class GP:
         u_var = np.array([np.random.uniform(0.0, c_max, n_max)]).T
         
         # evaluate the function at x
-        fx = -self.fn_tmse(x_var, pr).T
+        fx = -self.fn_tmse(x_var, pr, bound_df).T
         x_keep = x_var[u_var.ravel() < fx,:]
         
         # import matplotlib.pyplot as plt
@@ -201,7 +214,7 @@ class GP:
         return x_keep[np.random.choice(x_keep.shape[0], n_pts, replace=False),:]
         
   
-    def doe_tmse(self, pr):
+    def doe_tmse(self, pr, bound_df):
         """Return point that maximizes tMSE criterion (Lyu et al 2021)
         Latent variance is evaluated at the point according to current model 
         with n data points. No hyperparameter optimization is done.
@@ -219,14 +232,26 @@ class GP:
         import numpy as np
         import pandas as pd
         
+        n_var = bound_df.shape[1]
+        
+        min_list = [val for val in bound_df.loc['min']]
+        max_list = [val for val in bound_df.loc['max']]
+        
         # initialize a guess
-        x0 = np.array([[random.uniform(0.3, 2.0),
-                       random.uniform(0.5, 2.0),
-                       random.uniform(2.5, 4.0),
-                       random.uniform(0.1, 0.2)]])
+        x0 = np.array([[random.uniform(min_list[i], max_list[i])
+                          for i in range(n_var)]])
         
         # bounds for design space
-        bnds = ((0.3, 2.0), (0.5, 2.0), (2.5, 4.0), (0.1, 0.2))
+        bnds = tuple((min_list[i], max_list[i]) for i in range(n_var))
+        
+        # # initialize a guess
+        # x0 = np.array([[random.uniform(0.3, 2.0),
+        #                random.uniform(0.5, 2.0),
+        #                random.uniform(2.5, 4.0),
+        #                random.uniform(0.1, 0.2)]])
+        
+        # # bounds for design space
+        # bnds = ((0.3, 2.0), (0.5, 2.0), (2.5, 4.0), (0.1, 0.2))
         
         # find argmax tmse criterion
         res = minimize(self.fn_tmse, x0, 
@@ -234,10 +259,7 @@ class GP:
                        method='Nelder-Mead', tol=1e-6,
                        bounds=bnds)
         
-        x_next = pd.DataFrame(res.x.reshape(1,-1), columns=['gapRatio',
-                                                            'RI',
-                                                            'Tm',
-                                                            'zetaM'])
+        x_next = pd.DataFrame(res.x.reshape(1,-1), columns=bound_df.columns)
         return x_next
         
     def fn_W(self, X_cand, pr):
@@ -276,17 +298,14 @@ class GP:
         return(-Wx)
     
     # returns single-point (myopic) tmse condition, Lyu 2021
-    def fn_tmse(self, X_cand, pr):
+    def fn_tmse(self, X_cand, pr, bound_df):
         
         import pandas as pd
         import numpy as np
         if X_cand.ndim == 1:
             X_cand = np.array([X_cand])
             
-        X_cand = pd.DataFrame(X_cand, columns=['gapRatio',
-                                               'RI',
-                                               'Tm',
-                                               'zetaM'])
+        X_cand = pd.DataFrame(X_cand, columns=bound_df.columns)
         
         # try GPC
         try:

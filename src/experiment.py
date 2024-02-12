@@ -301,28 +301,80 @@ def run_doe(prob_target, df_train, df_test,
     test_set.set_covariates(['moat_ampli', 'RI', 'T_ratio', 'k_ratio'])
     test_set.set_outcome('collapse_prob')
     
+    sample_bounds = test_set.X.agg(['min', 'max'])
+    
     # TODO: prepare non-covariate input for DoE
     doe_reserve_db = Database(maxIter, n_buffer=8, seed=131, 
                         struct_sys_list=['MF'], isol_wts=[1, 0])
     
     # drop covariates 
     
-    mdl = GP(df_train)
-    mdl.set_outcome('collapse_prob')
-    mdl.set_covariates(['moat_ampli', 'RI', 'T_ratio', 'k_ratio'])
-    mdl.fit_gpr(kernel_name='rbf_iso')
+    rmse = 1.0
+    batch_idx = 0
+    batch_no = 0
     
-    y_hat = mdl.gpr.predict(test_set.X)
+    rmse_list = []
+    mae_list = []
     
-    print('===== Training model size:', mdl.X.shape[0], '=====')
-    from sklearn.metrics import mean_squared_error, mean_absolute_error
-    import numpy as np
-    mse = mean_squared_error(test_set.y, y_hat)
-    rmse = mse**0.5
-    print('Test set RMSE: %.3f' % rmse)
+    for index, design in doe_reserve_db.raw_input.iterrows():
+        
+        i_run = doe_reserve_db.raw_input.index.get_loc(index)
+        print('========= Run %d of batch %d ==========' % 
+              (index, batch_idx))
+        
+        if (batch_idx % (batch_size) == 0):
+            
+            # TODO: ensure that incoming df_train matches existing df_train
+            # i.e. calculate covariates, calculate probabilities
+            
+            mdl = GP(df_train)
+            mdl.set_outcome('collapse_prob')
+            mdl.set_covariates(['moat_ampli', 'RI', 'T_ratio', 'k_ratio'])
+            mdl.fit_gpr(kernel_name='rbf_iso')
+            
+            y_hat = mdl.gpr.predict(test_set.X)
+            
+            print('===== Training model size:', mdl.X.shape[0], '=====')
+            from sklearn.metrics import mean_squared_error, mean_absolute_error
+            import numpy as np
+            mse = mean_squared_error(test_set.y, y_hat)
+            rmse = mse**0.5
+            print('Test set RMSE: %.3f' % rmse)
 
-    mae = mean_absolute_error(test_set.y, y_hat)
-    print('Test set MAE: %.3f' % mae)
+            mae = mean_absolute_error(test_set.y, y_hat)
+            print('Test set MAE: %.3f' % mae)
+            
+            if len(rmse_list) == 0:
+                conv = rmse
+            else:
+                conv = abs(rmse - rmse_list[-1])/rmse_list[-1]
+            
+            if rmse < error_tol:
+                print('Stopping criterion reached. Ending DoE...')
+                print('Number of added points: ' + str((batch_idx)*(batch_no)))
+                
+                rmse_list.append(rmse)
+                
+                mae_list.append(mae)
+                
+                return (df_train)
+            elif conv < conv_tol:
+                print('RMSE did not improve beyond convergence tolerance. Ending DoE...')
+                print('Number of added points: ' + str((batch_idx)*(batch_no)))
+                
+                rmse_list.append(rmse)
+                
+                mae_list.append(mae)
+                
+                return (df_train)
+            else:
+                pass
+            batch_idx = 0
+            x_next = mdl.doe_rejection_sampler(batch_size, prob_target, sample_bounds)
+            print('Convergence not reached yet. Resetting batch index to 0...')
     
+        # TODO: join x_next (covariates) with pregenerated from doe_reserve_db
+        # design bearing -> design structure -> scale gm
+        
     pass
     
