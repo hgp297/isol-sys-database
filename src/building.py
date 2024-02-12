@@ -2965,13 +2965,10 @@ class Building:
 
         ops.constraints('Plain')
         ops.numberer('RCM')
-        
-        # TODO: bandgeneral for mf, umfpack for cbf?
-        if superstructure_system == 'CBF':
-            ops.system('UmfPack')
-        else:
-            ops.system('BandGeneral')
-        
+
+        # TODO: UmfPack for both?
+        ops.system('UmfPack')
+
         if superstructure_system == 'CBF':
             
             # Convergence Test: maximum number of iterations that will be performed
