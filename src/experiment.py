@@ -290,7 +290,9 @@ def run_doe(prob_target, df_train, df_test,
     
     import random
     import numpy as np
+    import pandas as pd
     
+    gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'
     
     np.random.seed(986)
     random.seed(986)
@@ -298,16 +300,19 @@ def run_doe(prob_target, df_train, df_test,
     from db import Database
     
     test_set = GP(df_test)
-    test_set.set_covariates(['moat_ampli', 'RI', 'T_ratio', 'k_ratio'])
+    covariate_columns = ['moat_ampli', 'RI', 'T_m', 'k_ratio']
+    test_set.set_covariates(covariate_columns)
     test_set.set_outcome('collapse_prob')
     
     sample_bounds = test_set.X.agg(['min', 'max'])
     
-    # TODO: prepare non-covariate input for DoE
-    doe_reserve_db = Database(maxIter, n_buffer=8, seed=131, 
+    buffer = 20
+    doe_reserve_db = Database(maxIter, n_buffer=buffer, seed=131, 
                         struct_sys_list=['MF'], isol_wts=[1, 0])
     
     # drop covariates 
+    pregen_designs = doe_reserve_db.raw_input.drop(
+        columns=covariate_columns)
     
     rmse = 1.0
     batch_idx = 0
@@ -316,11 +321,13 @@ def run_doe(prob_target, df_train, df_test,
     rmse_list = []
     mae_list = []
     
-    for index, design in doe_reserve_db.raw_input.iterrows():
+    doe_idx = True
+    
+    # TODO: check the indices
+    while doe_idx:
         
-        i_run = doe_reserve_db.raw_input.index.get_loc(index)
         print('========= Run %d of batch %d ==========' % 
-              (index, batch_idx))
+              (batch_idx+1, batch_no+1))
         
         if (batch_idx % (batch_size) == 0):
             
@@ -329,7 +336,7 @@ def run_doe(prob_target, df_train, df_test,
             
             mdl = GP(df_train)
             mdl.set_outcome('collapse_prob')
-            mdl.set_covariates(['moat_ampli', 'RI', 'T_ratio', 'k_ratio'])
+            mdl.set_covariates(covariate_columns)
             mdl.fit_gpr(kernel_name='rbf_iso')
             
             y_hat = mdl.gpr.predict(test_set.X)
@@ -373,8 +380,121 @@ def run_doe(prob_target, df_train, df_test,
             x_next = mdl.doe_rejection_sampler(batch_size, prob_target, sample_bounds)
             print('Convergence not reached yet. Resetting batch index to 0...')
     
-        # TODO: join x_next (covariates) with pregenerated from doe_reserve_db
-        # design bearing -> design structure -> scale gm
+        ######################## DESIGN FOR DOE SET ###########################
+        #
+        # Currently somewhat hardcoded for TFP-MF, 
+        #
+        # TODO: retry this for one x_next point at a time
+    
+        # get first set of randomly generated params and merge with a buffer
+        # amount of DoE found points (to account for failed designs)
         
+        batch_df = pregen_designs.head(batch_size*buffer)
+        next_df = pd.DataFrame(np.repeat(x_next, buffer, axis=0), columns=covariate_columns)
+        pregen_designs.drop(pregen_designs.head(batch_size*buffer).index, inplace=True)
+        
+        batch_df = pd.concat([batch_df, next_df], axis=1)
+        
+        # # ensure that batch_df has columns needed for design (T_m)
+        # # approximate fixed based fundamental period
+        # Ct = get_Ct(struct_type)
+        # x_Tfb = get_x_Tfb(struct_type)
+        # h_n = np.sum(hsx)/12.0
+        # T_fb = Ct*(h_n**x_Tfb)
+        
+        # design
+        import design as ds
+        from loads import define_gravity_loads
+        batch_df[['W', 
+               'W_s', 
+               'w_fl', 
+               'P_lc',
+               'all_w_cases',
+               'all_Plc_cases']] = batch_df.apply(lambda row: define_gravity_loads(row),
+                                                axis='columns', result_type='expand')
+                                                  
+        all_tfp_designs = batch_df.apply(lambda row: ds.design_TFP(row),
+                                       axis='columns', result_type='expand')
+        
+        all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
+                                   'T_e', 'k_e', 'zeta_e', 'D_m']
+        
+        tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
+                                          (all_tfp_designs['R_1'] <= 50.0) &
+                                          (all_tfp_designs['R_2'] <= 180.0) &
+                                          (all_tfp_designs['zeta_e'] <= 0.25)]
+        
+        batch_df = batch_df.join(tfp_designs, how='inner')
+        
+        from loads import define_lateral_forces
+        
+        # assumes that there is at least one design
+        batch_df[['wx', 
+               'hx', 
+               'h_col', 
+               'hsx', 
+               'Fx', 
+               'Vs',
+               'T_fbe']] = batch_df.apply(lambda row: define_lateral_forces(row),
+                                    axis='columns', result_type='expand')
+                                          
+        all_mf_designs = batch_df.apply(lambda row: ds.design_MF(row),
+                                         axis='columns', 
+                                         result_type='expand')
+          
+        all_mf_designs.columns = ['beam', 'column', 'flag']
+        
+        # keep the designs that look sensible
+        mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
+        mf_designs = mf_designs.dropna(subset=['beam','column'])
+         
+        mf_designs = mf_designs.drop(['flag'], axis=1)
+      
+        # get the design params of those bearings
+        batch_df = batch_df.join(mf_designs, how='inner')
+        
+        from gms import scale_ground_motion
+        
+        batch_df[['gm_selected',
+                 'scale_factor',
+                 'sa_avg']] = batch_df.apply(lambda row: scale_ground_motion(row),
+                                            axis='columns', result_type='expand')
+        
+        # TODO: ensure that this has >batch_size points
+        # select a unique batch
+        selected = batch_df['moat_ampli'].drop_duplicates()
+        batch_df = batch_df[batch_df.index.isin(selected.index)]
+        assert len(batch_df) >= batch_size
+        batch_df = batch_df.head(batch_size)
+        
+        
+        # do stuff on batch_df
+        batch_results = None
+        
+        for index, design in batch_df.iterrows():
+            i_run = batch_df.index.get_loc(index)
+            print('========= Run %d of %d ==========' % 
+                  (i_run+1, len(batch_df)))
+            bldg_result = run_nlth(design, gm_path)
+            
+            # if initial run, start the dataframe with headers
+            if batch_results is None:
+                batch_results = pd.DataFrame(bldg_result).T
+            else:
+                batch_results = pd.concat([batch_results,bldg_result.to_frame().T], 
+                                       sort=False)
+                
+            # if run is successful and is batch marker, record error metric
+            if (batch_idx % (batch_size) == 0):
+                
+                rmse_list.append(rmse)
+                mae_list.append(mae)
+            
+            batch_idx += 1
+            
+        doe_idx = False
+
+        # attach to existing data
+        df_train = df_train.join(batch_results, how='inner')
     pass
     
