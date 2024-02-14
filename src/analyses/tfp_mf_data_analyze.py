@@ -91,3 +91,277 @@ ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
 ax.grid()
 # ax.legend(fontsize=label_size, loc='upper center')
 plt.show()
+
+#%% prepare covariates and outcomes
+
+
+main_obj.calculate_collapse()
+df_raw = main_obj.ops_analysis
+
+# remove the singular outlier point
+from scipy import stats
+df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 10].copy()
+
+# df = df_whole.head(100).copy()
+
+df['max_drift'] = df.PID.apply(max)
+df['log_drift'] = np.log(df['max_drift'])
+
+df['T_ratio'] = df['T_m'] / df['T_fb']
+pi = 3.14159
+g = 386.4
+
+zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+df['Bm'] = np.interp(df['zeta_e'], zetaRef, BmRef)
+
+df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
+    (g*(df['sa_tm']/df['Bm'])*df['T_m']**2)
+
+#%%  dumb scatters
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+y_var = 'max_drift'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+
+ax1.scatter(df['gap_ratio'], df[y_var])
+ax1.set_ylabel('Peak story drift', fontsize=axis_font)
+ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_title('Gap', fontsize=title_font)
+ax1.grid(True)
+
+ax2=fig.add_subplot(2, 2, 2)
+
+ax2.scatter(df['RI'], df[y_var])
+ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title('Superstructure strength', fontsize=title_font)
+ax2.grid(True)
+
+ax3=fig.add_subplot(2, 2, 3)
+
+ax3.scatter(df['T_ratio'], df[y_var])
+ax3.set_ylabel('Peak story drift', fontsize=axis_font)
+ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax3.set_title('Bearing period ratio', fontsize=title_font)
+ax3.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+
+ax4.scatter(df['k_ratio'], df[y_var])
+ax4.set_xlabel(r'$k_1/  k_2$', fontsize=axis_font)
+ax4.set_title('Bearing initial stiffness', fontsize=title_font)
+ax4.grid(True)
+
+fig.tight_layout()
+
+#%%  dumb scatters, log edition
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+y_var = 'log_drift'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+
+ax1.scatter(df['gap_ratio'], df[y_var])
+ax1.set_ylabel('Log peak story drift', fontsize=axis_font)
+ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_title('Gap', fontsize=title_font)
+ax1.grid(True)
+
+ax2=fig.add_subplot(2, 2, 2)
+
+ax2.scatter(df['RI'], df[y_var])
+ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title('Superstructure strength', fontsize=title_font)
+ax2.grid(True)
+
+ax3=fig.add_subplot(2, 2, 3)
+
+ax3.scatter(df['T_ratio'], df[y_var])
+ax3.set_ylabel('Log peak story drift', fontsize=axis_font)
+ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax3.set_title('Bearing period ratio', fontsize=title_font)
+ax3.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+
+ax4.scatter(df['k_ratio'], df[y_var])
+ax4.set_xlabel(r'$k_1/  k_2$', fontsize=axis_font)
+ax4.set_title('Bearing initial stiffness', fontsize=title_font)
+ax4.grid(True)
+
+fig.tight_layout()
+
+#%%  a demonstration of Ry - Tfb relationships
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+y_var = 'T_ratio'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+
+ax1.scatter(df['RI'], df[y_var])
+ax1.set_ylabel('$T_M / T_{fb}$', fontsize=axis_font)
+ax1.set_xlabel(r'RI', fontsize=axis_font)
+ax1.grid(True)
+
+#%%  dumb scatters
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+y_var = 'collapse_prob'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+
+ax1.scatter(df['gap_ratio'], df[y_var])
+ax1.set_ylabel('Log % collapse', fontsize=axis_font)
+ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_title('Gap', fontsize=title_font)
+ax1.set_yscale('log')
+ax1.grid(True)
+
+ax2=fig.add_subplot(2, 2, 2)
+
+ax2.scatter(df['RI'], df[y_var])
+ax2.set_yscale('log')
+ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title('Superstructure strength', fontsize=title_font)
+ax2.grid(True)
+
+ax3=fig.add_subplot(2, 2, 3)
+
+ax3.scatter(df['T_ratio'], df[y_var])
+ax3.set_yscale('log')
+ax3.set_ylabel('Log % collapse', fontsize=axis_font)
+ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax3.set_title('Bearing period ratio', fontsize=title_font)
+ax3.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+
+ax4.scatter(df['k_ratio'], df[y_var])
+ax4.set_yscale('log')
+ax4.set_xlabel(r'$k_1/  k_2$', fontsize=axis_font)
+ax4.set_title('Bearing initial stiffness', fontsize=title_font)
+ax4.grid(True)
+
+fig.tight_layout()
+
+#%% train a model
+
+mdl = GP(df)
+covariate_list = ['gap_ratio', 'T_ratio', 'k_ratio', 'RI']
+mdl.set_covariates(covariate_list)
+mdl.set_outcome('collapse_prob')
+mdl.fit_gpr(kernel_name='rbf_iso')
+
+#%%
+
+data_bounds = mdl.X.agg(['min', 'max'])
+
+n_var = data_bounds.shape[1]
+
+min_list = [val for val in data_bounds.loc['min']]
+max_list = [val for val in data_bounds.loc['max']]
+
+import time
+res = 75
+
+xx, yy, uu = np.meshgrid(np.linspace(0.7, 2.0,
+                                      res),
+                          np.linspace(0.5, 2.5,
+                                      res),
+                          np.linspace(0.9, 4.5,
+                                      res))
+                             
+X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
+                      'T_ratio':uu.ravel(),
+                      'k_ratio':np.repeat(10.0,res**3),
+                      'RI':yy.ravel()})
+
+
+
+t0 = time.time()
+
+fmu_train, fs1_train = mdl.gpr.predict(X_space, return_std=True)
+fs2_train = fs1_train**2
+
+tp = time.time() - t0
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
+#%% plots
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+X_subset = X_space[X_space['T_ratio']==2.7]
+fs2_subset = fs2_train[X_space['T_ratio']==2.7]
+fmu_subset = fmu_train[X_space['T_ratio']==2.7]
+Z = fmu_subset.reshape(xx_pl.shape)
+
+plt.figure()
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
+plt.clabel(cs, fontsize=clabel_size)
+plt.scatter(df['gap_ratio'], df['RI'], 
+            c=df['collapse_prob'],
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+plt.xlim([0.7, 2.0])
+plt.ylim([0.5, 2.5])
+plt.title('Collapse risk, pre-DoE', fontsize=axis_font)
+plt.show()
