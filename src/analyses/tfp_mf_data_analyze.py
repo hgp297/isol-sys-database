@@ -365,3 +365,46 @@ plt.xlim([0.7, 2.0])
 plt.ylim([0.5, 2.5])
 plt.title('Collapse risk, pre-DoE', fontsize=axis_font)
 plt.show()
+
+#%%  a demonstration of k_ratio - Tm relationships
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+y_var = 'Q'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(1, 1, 1)
+
+
+ax1.scatter(df['k_ratio'], df[y_var])
+ax1.set_ylabel(y_var, fontsize=axis_font)
+ax1.set_xlabel(r'k_ratio', fontsize=axis_font)
+ax1.grid(True)
+# %% layout effects
+
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+x_var = 'h_bldg'
+y_var = 'T_fb'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(1, 1, 1)
+
+
+ax1.scatter(df[x_var], df[y_var])
+ax1.set_ylabel(y_var, fontsize=axis_font)
+ax1.set_xlabel(x_var, fontsize=axis_font)
+ax1.grid(True)
