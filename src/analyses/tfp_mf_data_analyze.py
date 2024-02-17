@@ -376,7 +376,7 @@ subt_font = 18
 label_size = 16
 title_font=20
 
-y_var = 'Q'
+y_var = 'T_m'
 fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(1, 1, 1)
