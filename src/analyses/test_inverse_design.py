@@ -15,6 +15,7 @@ import sys
 sys.path.insert(1, '../')
 
 # TODO: T_ratio will need to be conditioned away from RI
+# TODO: T_ratio will need to be constrained to be > const*k_ratio/(Tfbe)
 
 import pandas as pd
 
@@ -46,6 +47,8 @@ test_design['T_fbe'] = 0.05*test_design['h_bldg']**(0.75)
 test_design['T_m'] = test_design['T_ratio'] * test_design['T_fbe']
 
 # TODO: either iterate on Q or sample based on T_m/k_ratio density
+# Q very sensitive to k_ratio
+# T_m very sensitive to k_ratio
 test_design['Q'] = 0.07
 design_df = test_design.to_frame().T
 
@@ -61,3 +64,18 @@ tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
                                   (all_tfp_designs['R_2'] <= 180.0) &
                                   (all_tfp_designs['zeta_e'] <= 0.25)]
             
+
+a = design_df[design_df.index.isin(tfp_designs.index)]
+
+tfp_designs = pd.concat([a, tfp_designs], axis=1)
+
+# TODO: lateral forces
+all_mf_designs = tfp_designs.apply(lambda row: ds.design_MF(row),
+                               axis='columns', 
+                               result_type='expand')
+
+all_mf_designs.columns = ['beam', 'column', 'flag']
+
+mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
+mf_designs = mf_designs.dropna(subset=['beam','column'])
+mf_designs = mf_designs.drop(['flag'], axis=1)

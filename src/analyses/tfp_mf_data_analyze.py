@@ -376,15 +376,16 @@ subt_font = 18
 label_size = 16
 title_font=20
 
+x_var = 'Q'
 y_var = 'T_m'
 fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(1, 1, 1)
 
 
-ax1.scatter(df['k_ratio'], df[y_var])
+ax1.scatter(df[x_var], df[y_var])
 ax1.set_ylabel(y_var, fontsize=axis_font)
-ax1.set_xlabel(r'k_ratio', fontsize=axis_font)
+ax1.set_xlabel(x_var, fontsize=axis_font)
 ax1.grid(True)
 # %% layout effects
 
