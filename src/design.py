@@ -797,7 +797,7 @@ def select_beam(fl, Ib, Zb, sorted_beams, w_load, q_load, M_load, L_bay):
     
 # SCWB design
 def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list, 
-                  Ic, Ib):
+                  Ic, Ib, db_string='../resource/'):
 
     import numpy as np
     from building import get_shape
@@ -818,12 +818,12 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
     # find axial demands
     Pr              = np.empty(nFloor)
     roof_beam_name = all_beams[-1]
-    roof_beam = get_shape(roof_beam_name, 'beam', csv_dir='../resource/')
+    roof_beam = get_shape(roof_beam_name, 'beam', csv_dir=db_string)
     (M_n_roof, M_pr_roof, V_pr_roof) = calculate_strength(roof_beam, L_bay)
     Pr[-1]          = V_pr_roof + V_grav[-1]
     for i in range(nFloor-2, -1, -1):
         beam_name = all_beams[i]
-        current_beam = get_shape(beam_name, 'beam', csv_dir='../resource/')
+        current_beam = get_shape(beam_name, 'beam', csv_dir=db_string)
         (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
         Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
     
@@ -841,7 +841,7 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
 
     # find required Zx for SCWB to be true
     beam_name = all_beams[fl]
-    current_beam = get_shape(beam_name, 'beam', csv_dir='../resource/')
+    current_beam = get_shape(beam_name, 'beam', csv_dir=db_string)
     (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
     
     scwb_Z_req = (M_pr_beam/(Fy - Pr[fl]/A_g))
@@ -885,7 +885,7 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
 
     return(selected_col, shear_list)
 
-def scwb_check(all_columns, all_beams, w_load, L_bay):
+def scwb_check(all_columns, all_beams, w_load, L_bay, db_string='../resource/'):
     import pandas as pd
     import numpy as np
     from building import get_shape
@@ -898,14 +898,14 @@ def scwb_check(all_columns, all_beams, w_load, L_bay):
     # find axial demands
     Pr = np.empty(nFloor)
     roof_beam_name = all_beams[-1]
-    roof_beam = get_shape(roof_beam_name, 'beam', csv_dir='../resource/')
+    roof_beam = get_shape(roof_beam_name, 'beam', csv_dir=db_string)
     (M_n_roof, M_pr_roof, V_pr_roof) = calculate_strength(roof_beam, L_bay)
     Pr[-1]          = V_pr_roof + V_grav[-1]
     Mpr_beams = []
     Mpr_beams.append(M_pr_roof)
     for i in range(nFloor-2, -1, -1):
         beam_name = all_beams[i]
-        current_beam = get_shape(beam_name, 'beam', csv_dir='../resource/')
+        current_beam = get_shape(beam_name, 'beam', csv_dir=db_string)
         (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
         Mpr_beams.append(M_pr_beam)
         Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
@@ -919,7 +919,7 @@ def scwb_check(all_columns, all_beams, w_load, L_bay):
     
     for i in range(len(all_columns)):
         col_name = all_columns[i]
-        selected_col = get_shape(col_name, 'column', csv_dir='../resource/')
+        selected_col = get_shape(col_name, 'column', csv_dir=db_string)
         if isinstance(selected_col, pd.DataFrame):
             (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
             
@@ -1006,7 +1006,8 @@ def design_MF(input_df, db_string='../resource/'):
                                                                h_col, 
                                                                all_beams, 
                                                                sorted_cols, 
-                                                               Ic, Ib)
+                                                               Ic, Ib,
+                                                               db_string=db_string)
             if selected_column is not np.nan:
                 all_columns.append(selected_column.iloc[0]['AISC_Manual_Label'])
             else:
@@ -1018,7 +1019,8 @@ def design_MF(input_df, db_string='../resource/'):
         
     # strong column weak beam check
     if (all_columns is not np.nan) and (all_beams is not np.nan):
-        scwb_flag = scwb_check(all_columns, all_beams, w_load, L_bay)
+        scwb_flag = scwb_check(all_columns, all_beams, w_load, L_bay, 
+                               db_string=db_string)
     else:
         scwb_flag = True
     

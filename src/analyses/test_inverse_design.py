@@ -15,16 +15,15 @@ import sys
 sys.path.insert(1, '../')
 
 # TODO: T_ratio will need to be conditioned away from RI
-# TODO: T_ratio will need to be constrained to be > const*k_ratio/(Tfbe)
-
 import pandas as pd
 
 test_design = pd.Series({
     'S_1' : 1.0,
-    'T_ratio' : 3.0,
+    'T_ratio' : 2.0,
     'gap_ratio' : 1.1,
     'k_ratio' : 8.0,
     'RI' : 0.9,
+    'Q' : 0.07,
     'L_bldg' : 150.0,
     'h_bldg': 60.0,
     'superstructure_system' : 'MF',
@@ -43,13 +42,10 @@ test_design['h_story'] = (test_design['h_bldg'] /
 test_design['S_s'] = 2.2815
 
 # TODO: Tfbe needs good regression
-test_design['T_fbe'] = 0.05*test_design['h_bldg']**(0.75)
-test_design['T_m'] = test_design['T_ratio'] * test_design['T_fbe']
+test_design['T_fbe_r'] = 0.078*test_design['h_bldg']**(0.75)
+test_design['T_m'] = test_design['T_ratio'] * test_design['T_fbe_r']
+test_design['Q'] = -0.0132*test_design['T_m'] + 0.0002*test_design['k_ratio'] + 0.1106
 
-# TODO: either iterate on Q or sample based on T_m/k_ratio density
-# Q very sensitive to k_ratio
-# T_m very sensitive to k_ratio
-test_design['Q'] = 0.07
 design_df = test_design.to_frame().T
 
 import design as ds
@@ -63,19 +59,39 @@ tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
                                   (all_tfp_designs['R_1'] <= 50.0) &
                                   (all_tfp_designs['R_2'] <= 180.0) &
                                   (all_tfp_designs['zeta_e'] <= 0.25)]
-            
 
-a = design_df[design_df.index.isin(tfp_designs.index)]
+design_df = pd.concat([design_df, tfp_designs], axis=1)
 
-tfp_designs = pd.concat([a, tfp_designs], axis=1)
+from loads import define_lateral_forces, define_gravity_loads
 
-# TODO: lateral forces
-all_mf_designs = tfp_designs.apply(lambda row: ds.design_MF(row),
+design_df[['W', 
+       'W_s', 
+       'w_fl', 
+       'P_lc',
+       'all_w_cases',
+       'all_Plc_cases']] = design_df.apply(lambda row: define_gravity_loads(row),
+                                           axis='columns', result_type='expand')
+
+# assumes that there is at least one design
+design_df[['wx', 
+       'hx', 
+       'h_col', 
+       'hsx', 
+       'Fx', 
+       'Vs',
+       'T_fbe']] = design_df.apply(lambda row: define_lateral_forces(row),
+                                   axis='columns', result_type='expand')
+                                   
+all_mf_designs = design_df.apply(lambda row: ds.design_MF(row, db_string='../../resource/'),
                                axis='columns', 
                                result_type='expand')
 
 all_mf_designs.columns = ['beam', 'column', 'flag']
 
+
+# keep the designs that look sensible
 mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
 mf_designs = mf_designs.dropna(subset=['beam','column'])
+ 
 mf_designs = mf_designs.drop(['flag'], axis=1)
+            

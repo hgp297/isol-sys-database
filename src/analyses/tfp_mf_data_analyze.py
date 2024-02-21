@@ -223,7 +223,7 @@ title_font=20
 y_var = 'T_ratio'
 fig = plt.figure(figsize=(13, 10))
 
-ax1=fig.add_subplot(2, 2, 1)
+ax1=fig.add_subplot(1, 1, 1)
 
 
 ax1.scatter(df['RI'], df[y_var])
@@ -376,14 +376,14 @@ subt_font = 18
 label_size = 16
 title_font=20
 
-x_var = 'Q'
-y_var = 'T_m'
+x_var = 'k_ratio'
+y_var = 'Q'
 fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(1, 1, 1)
 
 
-ax1.scatter(df[x_var], df[y_var])
+ax1.scatter(df[x_var]*df['T_m'], df[y_var])
 ax1.set_ylabel(y_var, fontsize=axis_font)
 ax1.set_xlabel(x_var, fontsize=axis_font)
 ax1.grid(True)
@@ -409,3 +409,61 @@ ax1.scatter(df[x_var], df[y_var])
 ax1.set_ylabel(y_var, fontsize=axis_font)
 ax1.set_xlabel(x_var, fontsize=axis_font)
 ax1.grid(True)
+
+#%% regression for Tfb
+
+from sklearn.linear_model import LinearRegression
+X = df_raw[['h_bldg']]**0.75
+y = df_raw[['T_fb']]
+reg = LinearRegression(fit_intercept=False).fit(X, y)
+print('Linear regression for Tfb based on h_bldg^(3/4)')
+print('score: ', reg.score(X,y))
+print('coef: ', reg.coef_)
+
+X_test = df[['h_bldg']]**0.75
+y_test = df[['T_fb']]
+y_pred = reg.predict(X_test)
+
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(1, 1, 1)
+
+
+ax1.scatter(X_test, y_test)
+ax1.plot(X_test, y_pred, color="blue", linewidth=3)
+ax1.set_ylabel(r'T_fb', fontsize=axis_font)
+ax1.set_xlabel(r'$h^{0.75}$', fontsize=axis_font)
+ax1.grid(True)
+
+# %% T_ratio and k_ratio/Tfb
+
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(1, 1, 1)
+
+
+ax1.scatter(df['T_ratio']*(0.078*df['h_bldg']**0.75), df['k_ratio'] )
+ax1.set_xlabel(r'$\alpha_T$', fontsize=axis_font)
+ax1.set_ylabel(r'$\alpha_k / T_{fbe}$', fontsize=axis_font)
+ax1.grid(True)
+
+
+#%% regression for Q
+
+from sklearn.linear_model import LinearRegression
+X = df_raw[['k_ratio', 'T_m']]
+y = df_raw[['Q']]
+reg = LinearRegression(fit_intercept=True).fit(X, y)
+print('Linear regression for Q based on k_ratio and T_m')
+print('score: ', reg.score(X,y))
+print('coef: ', reg.coef_)
+print('intercept: ', reg.intercept_)
