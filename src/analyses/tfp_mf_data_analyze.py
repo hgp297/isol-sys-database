@@ -118,6 +118,7 @@ df['Bm'] = np.interp(df['zeta_e'], zetaRef, BmRef)
 df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
     (g*(df['sa_tm']/df['Bm'])*df['T_m']**2)
 
+
 #%%  dumb scatters
 import matplotlib.pyplot as plt
 
@@ -467,3 +468,57 @@ print('Linear regression for Q based on k_ratio and T_m')
 print('score: ', reg.score(X,y))
 print('coef: ', reg.coef_)
 print('intercept: ', reg.intercept_)
+
+#%%  a demonstration of Q - Tm relationships
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+x_var = 'T_m'
+y_var = 'Q'
+z_var = 'k_ratio'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(1, 1, 1)
+
+line_vals = (df['S_1'] * df['T_m'])/df['Bm'] * (1/df['T_m']**2 - 1/(4*pi**2))
+
+
+sns.scatterplot(data=df,
+                     x=x_var, y=y_var,
+                     hue=z_var, 
+                     ax=ax1, legend='brief')
+
+# ax1.scatter(df[x_var], df[y_var])
+ax1.scatter(df[x_var], line_vals)
+ax1.set_ylabel(y_var, fontsize=axis_font)
+ax1.set_xlabel(x_var, fontsize=axis_font)
+ax1.grid(True)
+
+#%%  a demonstration of k_ratio - Tm relationships
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+x_var = 'k_ratio'
+y_var = 'Q'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(1, 1, 1)
+
+
+ax1.scatter(df['Q'], 1/(df['T_m']*df['k_ratio']))
+ax1.set_ylabel(y_var, fontsize=axis_font)
+ax1.set_xlabel(x_var, fontsize=axis_font)
+ax1.grid(True)
