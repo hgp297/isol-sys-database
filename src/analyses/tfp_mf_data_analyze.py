@@ -378,13 +378,13 @@ label_size = 16
 title_font=20
 
 x_var = 'k_ratio'
-y_var = 'Q'
+y_var = 'T_m'
 fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(1, 1, 1)
 
 
-ax1.scatter(df[x_var]*df['T_m'], df[y_var])
+ax1.scatter(df[x_var], df[y_var])
 ax1.set_ylabel(y_var, fontsize=axis_font)
 ax1.set_xlabel(x_var, fontsize=axis_font)
 ax1.grid(True)
@@ -487,16 +487,26 @@ fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(1, 1, 1)
 
-line_vals = (df['S_1'] * df['T_m'])/df['Bm'] * (1/df['T_m']**2 - 1/(4*pi**2))
+line_vals = (1/8*1.05/1.48* pi/df['T_m'])
 
+# alpha = (10*2*(df['mu_2'] - df['mu_1']))*df['Bm']*(df['k_ratio'] - 1)*4*pi**2/g/df['S_1']
+# beta = (10*2*(df['mu_2'] - df['mu_1']))*4*pi**2*(df['k_ratio'] - 1)/g
+
+
+alpha = (0.4)*1.48*(10- 1)*4*pi**2/g/1.05
+beta = (0.4)*4*pi**2*(10 - 1)/g
+
+
+line_vals_2 = np.maximum(beta/(df['T_m']*(df['T_m'] + alpha)), 
+                         np.repeat(0.05, len(line_vals)))
 
 sns.scatterplot(data=df,
                      x=x_var, y=y_var,
-                     hue=z_var, 
                      ax=ax1, legend='brief')
 
 # ax1.scatter(df[x_var], df[y_var])
 ax1.scatter(df[x_var], line_vals)
+ax1.scatter(df[x_var], line_vals_2)
 ax1.set_ylabel(y_var, fontsize=axis_font)
 ax1.set_xlabel(x_var, fontsize=axis_font)
 ax1.grid(True)
@@ -518,7 +528,10 @@ fig = plt.figure(figsize=(13, 10))
 ax1=fig.add_subplot(1, 1, 1)
 
 
-ax1.scatter(df['Q'], 1/(df['T_m']*df['k_ratio']))
+sns.scatterplot(data=df,
+                     x=x_var, y=y_var,
+                     ax=ax1, legend='brief')
+
 ax1.set_ylabel(y_var, fontsize=axis_font)
 ax1.set_xlabel(x_var, fontsize=axis_font)
 ax1.grid(True)

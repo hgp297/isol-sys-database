@@ -545,6 +545,7 @@ def get_properties(shape):
 def calculate_strength(shape, L_bay):
     # returns critical moments and shears given shape
     Zx      = float(shape.iloc[0]['Zx'])
+    db = float(shape.iloc[0]['d'])
 
     ksi = 1.0
     Fy = 50.0*ksi
@@ -555,7 +556,7 @@ def calculate_strength(shape, L_bay):
 
     Mn          = Zx*Fy
     Mpr         = Mn*Ry_ph*Cpr
-    Vpr         = 2*Mpr/L_bay
+    Vpr         = 2*Mpr/db
     return(Mn, Mpr, Vpr)
 
 def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
