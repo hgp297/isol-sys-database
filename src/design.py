@@ -556,7 +556,7 @@ def calculate_strength(shape, L_bay):
 
     Mn          = Zx*Fy
     Mpr         = Mn*Ry_ph*Cpr
-    Vpr         = 2*Mpr/db
+    Vpr         = 2*Mpr/(L_bay)
     return(Mn, Mpr, Vpr)
 
 def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
