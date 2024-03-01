@@ -479,13 +479,17 @@ def design_TFP(param_df):
     mu_Q_coef = random.uniform(0.3, 0.6)
     mu_1 = mu_Q_coef*Q
     
-    # converge design on damping
-    # design will achieve T_m, Q, rho_k as specified
-    from scipy.optimize import minimize_scalar
-    res = minimize_scalar(iterate_TFP, args=(mu_1, S_1, T_m, Q, rho_k),
-                             bounds=(0.01, 0.35), method='bounded')
-
-    zeta_m = res.x
+    # if zeta_m is specified, use zeta_m. if not, converge on it from others
+    try: 
+        zeta_m = param_df['zeta_m']
+    except:
+        # converge design on damping
+        # design will achieve T_m, Q, rho_k as specified
+        from scipy.optimize import minimize_scalar
+        res = minimize_scalar(iterate_TFP, args=(mu_1, S_1, T_m, Q, rho_k),
+                                 bounds=(0.01, 0.35), method='bounded')
+    
+        zeta_m = res.x
     
     # finish design on converged damping
     from numpy import interp
@@ -908,7 +912,11 @@ def scwb_check(all_columns, all_beams, w_load, L_bay, db_string='../resource/'):
         beam_name = all_beams[i]
         current_beam = get_shape(beam_name, 'beam', csv_dir=db_string)
         (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
+        
+        # TODO: add M_v from shear projection?
         Mpr_beams.append(M_pr_beam)
+        
+        # TODO: remove V_pr_beam bc balanced if interior?
         Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
         
     Mpr_beams.reverse()
