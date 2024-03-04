@@ -19,17 +19,17 @@ import pandas as pd
 
 test_design = pd.Series({
     'S_1' : 1.0,
-    'T_ratio' : 2.0,
+    'T_ratio' : 3.3,
     'gap_ratio' : 1.1,
-    'k_ratio' : 8.0,
     'RI' : 0.9,
-    'Q' : 0.07,
+    'zeta_m' : 0.25,
     'L_bldg' : 150.0,
     'h_bldg': 60.0,
     'superstructure_system' : 'MF',
     'isolator_system' : 'TFP',
     'num_frames': 2
 })
+
 
 test_design['num_bays'] = round(test_design['L_bldg']/ 30.0)
 test_design['num_stories'] = round(test_design['h_bldg'] / 14.0)
@@ -42,9 +42,22 @@ test_design['h_story'] = (test_design['h_bldg'] /
 test_design['S_s'] = 2.2815
 
 # TODO: Tfbe needs good regression
-test_design['T_fbe_r'] = 0.078*test_design['h_bldg']**(0.75)
+# Cu Ta
+test_design['T_fbe_r'] = 1.4*0.028*test_design['h_bldg']**(0.8)
+# test_design['T_fbe_r'] = 0.078*test_design['h_bldg']**(0.75)
 test_design['T_m'] = test_design['T_ratio'] * test_design['T_fbe_r']
-test_design['Q'] = -0.0132*test_design['T_m'] + 0.0002*test_design['k_ratio'] + 0.1106
+
+pi = 3.14159
+
+# from ASCE Ch. 17, get damping multiplier
+zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+from numpy import interp
+B_m = interp(test_design['zeta_m'], zetaRef, BmRef)
+
+lim = (1/8*test_design['S_1']/B_m*pi/test_design['T_m'])
+
+test_design['Q'] = lim-0.01
 
 design_df = test_design.to_frame().T
 

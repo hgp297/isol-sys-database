@@ -566,5 +566,18 @@ model = sm.OLS(y, X_scaled)
 results = model.fit()
 print(results.summary())
 
-#%%
-# TODO: 3d scatter
+#%% 3d scatter
+
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+
+x_var = 'T_m'
+y_var = 'Q'
+z_var = 'zeta_e'
+ax.scatter(df[x_var], df[y_var], df[z_var], c=df['k_ratio'])
+
+ax.set_xlabel(x_var)
+ax.set_ylabel(y_var)
+ax.set_zlabel(z_var)
+
+plt.show()
