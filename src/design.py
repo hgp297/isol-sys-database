@@ -915,6 +915,7 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
         Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
     
     # initial guess: use columns that has similar Ix to beam
+    # TODO: maybe this is too harsh
     qualified_Ix = col_list[col_list['Ix'] > I_beam_req]
     from numpy import nan
     if len(qualified_Ix) < 1:
