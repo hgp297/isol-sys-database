@@ -871,7 +871,7 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
     
     A_web = A_g - 2*(t_f*b_f)
     V_n  = 0.9*A_web*0.6*Fy
-    V_pr = M_pr[fl]/h_col[fl]
+    V_pr = (2*M_pr_beam)/h_col[fl]
     col_shear_fail   = V_n < V_pr
 
     if col_shear_fail:
