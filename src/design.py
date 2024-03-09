@@ -1206,7 +1206,7 @@ def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
     # assuming col-brace-col is simply supported beam
     C_1 = w_1*(L_bay/2)/(2*sin(theta))
     C_2 = w_2*(L_bay/2)/(2*sin(theta))
-    C_E = q/(2*cos(theta))
+    C_E = q/(2*cos(theta)) # 2 brace per frame
     
     C_max = C_1 + C_E
     T_max = C_2 - C_E
@@ -1251,12 +1251,12 @@ def select_compression_member(mem_list, Lc, C_design):
  
 # return inverted in order to facilitate selection by larger values
 def interaction_equation(Zx, Pu, Pn, Mu):
-    Mnx = 50.0*Zx*0.9
+    Mnx = 50.0*Zx
     if Pu/Pn > 0.2:
         # H1-1a/b
         combined_forces_coef = Pu/Pn + 8/9*(Mu/Mnx)
     else:
-        combined_forces_coef = Pu/(2*Pn) + 8/9*(Mu/Mnx)
+        combined_forces_coef = Pu/(2*Pn) + (Mu/Mnx)
         
     return(1.0/combined_forces_coef)
 
