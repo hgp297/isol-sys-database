@@ -1204,9 +1204,9 @@ def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
     
     # assuming frame is inner bay of edge frame
     # assuming col-brace-col is simply supported beam
-    C_1 = w_1*(L_bay/2)/sin(theta)
-    C_2 = w_2*(L_bay/2)/sin(theta)
-    C_E = q/cos(theta)
+    C_1 = w_1*(L_bay/2)/(2*sin(theta))
+    C_2 = w_2*(L_bay/2)/(2*sin(theta))
+    C_E = q/(2*cos(theta))
     
     C_max = C_1 + C_E
     T_max = C_2 - C_E
