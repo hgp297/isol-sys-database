@@ -470,14 +470,13 @@ def design_TFP(param_df):
     # read in parameters
     T_m = param_df['T_m']
     S_1 = param_df['S_1']
-    Q = param_df['Q']
     
     # guess
     import random
     # random.seed(985)
     
     # if zeta_m is specified, use zeta_m. if not, converge on it from others
-    # does design contain zeta_m?
+    # inverse design is performed from 2-variables: T_m and zeta
     if 'zeta_m' in param_df.index: 
         zeta_m = param_df['zeta_m']
         import cmath
@@ -502,22 +501,28 @@ def design_TFP(param_df):
         
         # W_m = zeta_M*(2*pi*k_M*D_m**2)
         
+        # bounds for Q
+        Q_lower_bound = max(D_m*(k_M - 1/80), 0.05)
+        Q_upper_bound = D_m*(k_M - 1/360)
+            
         u_y = 0.01
-        
-        # from Q and D_m
-        k_2 = (k_M*D_m - Q)/D_m
-        
-        assert k_2 > 1/360, 'k_2 not in bound'
-        
-        R_2 = 1/(2*k_2) + h_2
         
         # guess R1
         mu_bad = True
         tries = 0
         while mu_bad:
-            if tries > 1000:
+            if tries > 10000:
                 print('did not find design.')
                 break
+            
+            Q = random.uniform(Q_lower_bound, Q_upper_bound)
+        
+            # from Q and D_m
+            k_2 = (k_M*D_m - Q)/D_m
+            
+            assert k_2 > 1/360, 'k_2 not in bound'
+            
+            R_2 = 1/(2*k_2) + h_2
             
             mu_Q_coef = random.uniform(0.3, 0.6)
             mu_1 = mu_Q_coef*Q
@@ -525,14 +530,24 @@ def design_TFP(param_df):
         
             k_0 = mu_1/u_y
         
+            # make R_1 a fraction of R_2 
             R_1 = random.uniform(10, 50)
+            if R_1 > R_2:
+                continue
+            
             k_1 = 1/(2*(R_1 - h_1))
             # fully design based on zeta
             E_loop = 2 * zeta_m * pi * k_M * D_m**2
             
             
+            # # full loop with missing corners
             u_a = (k_1 - k_2)**(-1/2)*cmath.sqrt(
                 -E_loop/4 + (k_M - k_2)*D_m**2 - (k_0 - k_1)*u_y**2)
+            
+            # u_a = -(E_loop - 4*Q*D_m)/(4*(Q - mu_1))
+            
+            # # good variables but do not satisfy E_loop/zeta
+            # u_a = (Q - mu_1)/(k_1 - k_2)
             mu_2     = k_M*D_m - k_2*(D_m-u_a)
             mu_1     = -u_a/(2*R_1) + mu_2
     
@@ -543,6 +558,8 @@ def design_TFP(param_df):
             T_e      = 2*pi/((k_e/(1/g))**(1/2))
             
             k_a = mu_2 / u_a
+            
+            # TODO: store k_ratio_e and Q somehow
             k_ratio_e = k_a/k_2
             
             mu_bad = any(coeff < 0.01 for coeff in [mu_1, mu_2]) or any(iscomplex([mu_1, mu_2]))
@@ -556,8 +573,6 @@ def design_TFP(param_df):
             mu_2 = mu_2.real
             u_a = u_a.real
             zeta_E = zeta_E.real
-            
-        print('k_ratio', k_ratio_e)
         
     else:
         rho_k = param_df['k_ratio']
@@ -996,11 +1011,10 @@ def scwb_check(all_columns, all_beams, w_load, L_bay, db_string='../resource/'):
         current_beam = get_shape(beam_name, 'beam', csv_dir=db_string)
         (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
         
-        # TODO: add M_v from shear projection?
-        Mpr_beams.append(M_pr_beam)
+        Mv = V_grav[i]*(0.1*L_bay)
+        Mpr_beams.append(M_pr_beam + Mv)
         
-        # TODO: remove V_pr_beam bc balanced if interior?
-        Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
+        Pr[i] = V_grav[i] + Pr[i + 1]
         
     Mpr_beams.reverse()
     
