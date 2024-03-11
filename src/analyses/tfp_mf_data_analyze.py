@@ -95,7 +95,6 @@ plt.show()
 #%% prepare covariates and outcomes
 
 
-main_obj.calculate_collapse()
 df_raw = main_obj.ops_analysis
 
 # remove the singular outlier point
@@ -106,6 +105,9 @@ df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 10].copy()
 
 df['max_drift'] = df.PID.apply(max)
 df['log_drift'] = np.log(df['max_drift'])
+
+df['max_velo'] = df.PFV.apply(max)
+df['max_accel'] = df.PFA.apply(max)
 
 df['T_ratio'] = df['T_m'] / df['T_fb']
 pi = 3.14159
@@ -535,3 +537,47 @@ sns.scatterplot(data=df,
 ax1.set_ylabel(y_var, fontsize=axis_font)
 ax1.set_xlabel(x_var, fontsize=axis_font)
 ax1.grid(True)
+
+#%%  variable testing
+from sklearn import preprocessing
+
+X = df[['k_ratio', 'T_m', 'zeta_e', 'Q']]
+y = df['max_accel'].ravel()
+
+scaler = preprocessing.StandardScaler().fit(X)
+X_scaled = scaler.transform(X)
+
+from sklearn.feature_selection import r_regression,f_regression
+
+r_results = r_regression(X_scaled,y)
+print("Pearson's R test: k_ratio, T_m, zeta, Q")
+print(r_results)
+
+
+f_statistic, p_values = f_regression(X_scaled, y)
+f_results = r_regression(X,y)
+print("F test: k_ratio, T_m, zeta, Q")
+print("F-statistics:", f_statistic)
+print("P-values:", p_values)
+
+
+import statsmodels.api as sm
+model = sm.OLS(y, X_scaled)
+results = model.fit()
+print(results.summary())
+
+#%% 3d scatter
+
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+
+x_var = 'T_m'
+y_var = 'Q'
+z_var = 'zeta_e'
+ax.scatter(df[x_var], df[y_var], df[z_var], c=df['k_ratio'])
+
+ax.set_xlabel(x_var)
+ax.set_ylabel(y_var)
+ax.set_zlabel(z_var)
+
+plt.show()

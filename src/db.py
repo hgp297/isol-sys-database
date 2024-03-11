@@ -407,7 +407,7 @@ class Database:
         df = self.ops_analysis
         
         from experiment import collapse_fragility
-        df[['collapse_prob']] = df.apply(lambda row: collapse_fragility(row),
+        df['collapse_prob'] = df.apply(lambda row: collapse_fragility(row),
                                                 axis='columns', result_type='expand')
         
         self.ops_analysis = df
