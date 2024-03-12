@@ -300,7 +300,7 @@ def run_doe(prob_target, df_train, df_test,
     from db import Database
     
     test_set = GP(df_test)
-    covariate_columns = ['moat_ampli', 'RI', 'T_m', 'k_ratio']
+    covariate_columns = ['moat_ampli', 'RI', 'T_m', 'zeta_e']
     test_set.set_covariates(covariate_columns)
     test_set.set_outcome('collapse_prob')
     

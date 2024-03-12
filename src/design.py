@@ -464,7 +464,8 @@ def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
     err = (zeta_E - zeta_guess)**2
     
     return(err)
-    
+
+# TODO: split this method into generate vs. inverse design
 def design_TFP(param_df):
     
     # read in parameters
@@ -576,7 +577,7 @@ def design_TFP(param_df):
         
     else:
         rho_k = param_df['k_ratio']
-        
+        Q = param_df['Q']
         mu_Q_coef = random.uniform(0.3, 0.6)
         mu_1 = mu_Q_coef*Q
         
@@ -927,10 +928,9 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
         beam_name = all_beams[i]
         current_beam = get_shape(beam_name, 'beam', csv_dir=db_string)
         (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
-        Pr[i] = V_grav[i] + V_pr_beam + Pr[i + 1]
+        Pr[i] = V_grav[i] + Pr[i + 1]
     
     # initial guess: use columns that has similar Ix to beam
-    # TODO: maybe this is too harsh
     qualified_Ix = col_list[col_list['Ix'] > I_beam_req]
     from numpy import nan
     if len(qualified_Ix) < 1:
@@ -940,14 +940,14 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
                                        I_beam_req).abs().idxmin()]] 
     
     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
-    M_pr = Z_x*(Fy - Pr/A_g)
+    # M_pr = Z_x*(Fy - Pr/A_g)
 
     # find required Zx for SCWB to be true
     beam_name = all_beams[fl]
     current_beam = get_shape(beam_name, 'beam', csv_dir=db_string)
     (M_n_beam, M_pr_beam, V_pr_beam) = calculate_strength(current_beam, L_bay)
-    
-    scwb_Z_req = (M_pr_beam/(Fy - Pr[fl]/A_g))
+    Mv = V_grav[fl]*(0.1*L_bay) # add projected gravity shear
+    scwb_Z_req = ((M_pr_beam + Mv)/(Fy - Pr[fl]/A_g))
 
     # select column based on SCWB
     selected_col, passed_axial_beams = axial_check(selected_col, 
@@ -969,7 +969,7 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
         return(np.nan, np.nan)
 
     (A_g, b_f, t_f, I_x, Z_x) = get_properties(selected_col)
-    M_pr = Z_x*(Fy - Pr/A_g)
+    # M_pr = Z_x*(Fy - Pr/A_g)
     
     A_web = A_g - 2*(t_f*b_f)
     V_n  = 0.9*A_web*0.6*Fy

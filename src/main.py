@@ -131,12 +131,12 @@ main_obj.scale_gms()
 
 #%% generate analyze database
 
-main_obj.analyze_db('structural_db_uncalibrated_sheartab.csv', save_interval=5)
+# main_obj.analyze_db('structural_db_uncalibrated_sheartab.csv', save_interval=5)
 
-# Pickle the main object
-import pickle
-with open('../data/structural_db.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# # Pickle the main object
+# import pickle
+# with open('../data/structural_db.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%%
 # # plot distribution of parameters

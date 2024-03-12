@@ -19,10 +19,10 @@ import pandas as pd
 
 test_design = pd.Series({
     'S_1' : 1.0,
-    'T_ratio' : 4,
+    'T_ratio' : 3,
     'gap_ratio' : 1.1,
     'RI' : 0.9,
-    'zeta_m' : 0.25,
+    'zeta_m' : 0.1,
     'L_bldg' : 150.0,
     'h_bldg': 60.0,
     'superstructure_system' : 'MF',
@@ -115,4 +115,5 @@ mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
 mf_designs = mf_designs.dropna(subset=['beam','column'])
  
 mf_designs = mf_designs.drop(['flag'], axis=1)
-            
+
+print(all_tfp_designs)
