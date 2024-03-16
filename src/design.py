@@ -1293,7 +1293,7 @@ def capacity_CBF_beam(selected_brace, current_floor,
     Ag = selected_brace['A'].iloc[0]
     Lc_r = Lc / rad_gy
     
-    Ry_hss = 1.4
+    Ry_hss = 1.3
     Fy = 50.0 #ksi
     
     # probable capacities for compr, tension, buckled compr 
@@ -1432,7 +1432,7 @@ def capacity_CBF_column(selected_brace, current_floor,
     Ag = selected_brace['A'].iloc[0]
     Lc_r = Lc / rad_gy
 
-    Ry_hss = 1.4
+    Ry_hss = 1.3
     Fy = 50.0 #ksi
     
     # probable capacities for compr, tension, buckled compr 

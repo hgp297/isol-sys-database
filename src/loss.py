@@ -667,6 +667,27 @@ class Loss_Analysis:
             "Theta_0", "Theta_1", "Blocks"]].apply(pd.to_numeric)
         cmp_marginals['Location'] = cmp_marginals['Location'].astype(str)
         
+        
+        
+        # review the damage model - in this example: fragility functions
+        P58_data = PAL.get_default_data('fragility_DB_FEMA_P58_2nd')
+
+        # note that we drop the last three components here (excessiveRID, irreparable, and collapse) 
+        # because they are not part of P58
+        cmp_list = cmp_marginals.index.unique().values[:-3]
+
+        P58_data_for_this_assessment = P58_data.loc[cmp_list,:].sort_values('Incomplete', ascending=False)
+        
+        '''
+        incomplete_fragility_db = P58_data_for_this_assessment.loc[
+            P58_data_for_this_assessment['Incomplete'] == 1].sort_index()
+        inc_names = incomplete_fragility_db.index.tolist()
+        
+        # TEMP HACK: remove incomplete from cmp_marginals
+        inc_df = cmp_marginals.index.isin(inc_names)
+        cmp_marginals = cmp_marginals[~inc_df]
+        '''
+        
         # to make the convenience keywords work in the model, 
         # we need to specify the number of stories
         PAL.stories = len(PID_all)
@@ -679,22 +700,11 @@ class Loss_Analysis:
 
         # get the component quantity sample - again, use the save function to convert units
         cmp_sample = PAL.asset.save_cmp_sample()
-        
-        # review the damage model - in this example: fragility functions
-        P58_data = PAL.get_default_data('fragility_DB_FEMA_P58_2nd')
-
-        # note that we drop the last three components here (excessiveRID, irreparable, and collapse) 
-        # because they are not part of P58
-        cmp_list = cmp_marginals.index.unique().values[:-3]
-
-        P58_data_for_this_assessment = P58_data.loc[cmp_list,:].sort_values('Incomplete', ascending=False)
 
         # TODO: we have problems stemming from incomplete db
         additional_fragility_db = P58_data_for_this_assessment.loc[
             P58_data_for_this_assessment['Incomplete'] == 1].sort_index() 
         
-        incomplete_fragility_db = P58_data_for_this_assessment.loc[
-            P58_data_for_this_assessment['Incomplete'] == 1].sort_index()
         # TODO: change this section to the system-dependent drift values
         
         # add demand for the replacement criteria
