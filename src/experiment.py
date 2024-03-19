@@ -169,7 +169,7 @@ def collapse_fragility(run):
     ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
     collapse_prob = ln_dist.cdf(peak_drift)
     
-    return(collapse_prob)
+    return(peak_drift, collapse_prob)
     
 # run the experiment, GM name and scale factor must be baked into design
 
@@ -299,10 +299,14 @@ def run_doe(prob_target, df_train, df_test,
     from doe import GP
     from db import Database
     
+    # TODO: incorporate T_ratio
+    
     test_set = GP(df_test)
     covariate_columns = ['moat_ampli', 'RI', 'T_m', 'zeta_e']
     test_set.set_covariates(covariate_columns)
-    test_set.set_outcome('collapse_prob')
+    
+    # TODO: temporary change to outcome
+    test_set.set_outcome('log_collapse_prob')
     
     sample_bounds = test_set.X.agg(['min', 'max'])
     
@@ -311,8 +315,9 @@ def run_doe(prob_target, df_train, df_test,
                         struct_sys_list=['MF'], isol_wts=[1, 0])
     
     # drop covariates 
-    pregen_designs = doe_reserve_db.raw_input.drop(
-        columns=covariate_columns)
+    reserve_df = doe_reserve_db.raw_input
+    pregen_designs = reserve_df.drop(columns=[col for col in reserve_df 
+                                              if col in covariate_columns])
     
     rmse = 1.0
     batch_idx = 0
@@ -336,11 +341,11 @@ def run_doe(prob_target, df_train, df_test,
         
         if (batch_idx % (batch_size) == 0):
             
-            # TODO: ensure that incoming df_train matches existing df_train
-            # i.e. calculate covariates, calculate probabilities
-            
             mdl = GP(df_train)
-            mdl.set_outcome('collapse_prob')
+            
+            # TODO: temporary change to outcome
+            mdl.set_outcome('log_collapse_prob')
+            
             mdl.set_covariates(covariate_columns)
             mdl.fit_gpr(kernel_name='rbf_iso')
             
@@ -429,14 +434,15 @@ def run_doe(prob_target, df_train, df_test,
             
             tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
                                               (all_tfp_designs['R_1'] <= 50.0) &
-                                              (all_tfp_designs['R_2'] <= 180.0) &
-                                              (all_tfp_designs['zeta_e'] <= 0.25)]
+                                              (all_tfp_designs['R_2'] <= 190.0) &
+                                              (all_tfp_designs['zeta_e'] <= 0.27)]
             
             # retry if design didn't work
             if tfp_designs.shape[0] == 0:
                 continue
             
-            batch_df = batch_df.join(tfp_designs, how='inner')
+            tfp_designs = tfp_designs.drop(columns=['zeta_e'])
+            batch_df = pd.concat([batch_df, tfp_designs], axis=1)
             
             # get lateral force and design structures
             batch_df[['wx', 
@@ -464,7 +470,7 @@ def run_doe(prob_target, df_train, df_test,
                 continue
           
             # get the design params of those bearings
-            batch_df = batch_df.join(mf_designs, how='inner')
+            batch_df = pd.concat([batch_df, mf_designs], axis=1)
             
             
             batch_df[['gm_selected',
@@ -478,6 +484,15 @@ def run_doe(prob_target, df_train, df_test,
         bldg_result = run_nlth(batch_df.iloc[0], gm_path)
         result_df = pd.DataFrame(bldg_result).T
         
+        
+        result_df[['max_drift',
+           'collapse_prob']] = result_df.apply(lambda row: collapse_fragility(row),
+                                                axis='columns', result_type='expand')
+                               
+        from numpy import log
+        result_df['log_collapse_prob'] = log(result_df['collapse_prob'])
+        result_df['T_ratio'] = result_df['T_m'] / result_df['T_fb']
+        
         # if run is successful and is batch marker, record error metric
         if (batch_idx % (batch_size) == 0):
             rmse_list.append(rmse)
@@ -487,7 +502,7 @@ def run_doe(prob_target, df_train, df_test,
         doe_idx += 1
 
         # attach to existing data
-        df_train = df_train.join(result_df, how='inner')
+        df_train = pd.concat([df_train, result_df], axis=0)
         
     print('DoE did not converge within maximum iteration specified.')
     return df_train, rmse_list, mae_list

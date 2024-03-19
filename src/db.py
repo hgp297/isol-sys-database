@@ -407,8 +407,12 @@ class Database:
         df = self.ops_analysis
         
         from experiment import collapse_fragility
-        df['collapse_prob'] = df.apply(lambda row: collapse_fragility(row),
+        df[['max_drift',
+           'collapse_prob']] = df.apply(lambda row: collapse_fragility(row),
                                                 axis='columns', result_type='expand')
+                               
+        from numpy import log
+        df['log_collapse_prob'] = log(df['collapse_prob'])
         
         self.ops_analysis = df
                 

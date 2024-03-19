@@ -161,12 +161,6 @@ class GP:
                           for i in range(n_var)]).T
         
         
-        # x_var = np.array([np.random.uniform(0.3, 2.0, n_max),
-        #                np.random.uniform(0.5, 2.0, n_max),
-        #                np.random.uniform(2.5, 4.0, n_max),
-        #                np.random.uniform(0.1, 0.2, n_max)]).T
-        
-        
         # find the maximum that the function will be in the domain
         from scipy.optimize import basinhopping
         
@@ -175,13 +169,6 @@ class GP:
         
         x0 = np.array([np.random.uniform(min_list[i], max_list[i])
                           for i in range(n_var)])
-        
-        # bnds = ((0.3, 2.0), (0.5, 2.0), (2.5, 4.0), (0.1, 0.2))
-        
-        # x0 = np.array([[np.random.uniform(0.3, 2.0),
-        #                np.random.uniform(0.5, 2.0),
-        #                np.random.uniform(2.5, 4.0),
-        #                np.random.uniform(0.1, 0.2)]])
         
         # use basin hopping to avoid local minima
         minimizer_kwargs={'args':(pr, bound_df),'bounds':bnds}
@@ -243,15 +230,6 @@ class GP:
         
         # bounds for design space
         bnds = tuple((min_list[i], max_list[i]) for i in range(n_var))
-        
-        # # initialize a guess
-        # x0 = np.array([[random.uniform(0.3, 2.0),
-        #                random.uniform(0.5, 2.0),
-        #                random.uniform(2.5, 4.0),
-        #                random.uniform(0.1, 0.2)]])
-        
-        # # bounds for design space
-        # bnds = ((0.3, 2.0), (0.5, 2.0), (2.5, 4.0), (0.1, 0.2))
         
         # find argmax tmse criterion
         res = minimize(self.fn_tmse, x0, 
@@ -325,9 +303,10 @@ class GP:
             T = pr
         
         # weight is from Lyu / Picheny
-        from numpy import exp
+        from numpy import exp, log
         pi = 3.14159
         Wx = 1/((2*pi*(fs2))**0.5) * exp((-1/2)*((fmu - T)**2/(fs2)))
+        log_Wx = -log((2*pi*(fs2))**0.5) * (-1/2)*((fmu - T)**2/(fs2))
         
         return(-fs2 * Wx)
     

@@ -22,7 +22,7 @@ test_design = pd.Series({
     'T_ratio' : 3,
     'gap_ratio' : 1.1,
     'RI' : 0.9,
-    'zeta_m' : 0.25,
+    'zeta_m' : 0.13,
     'L_bldg' : 150.0,
     'h_bldg': 60.0,
     'superstructure_system' : 'MF',

@@ -478,8 +478,8 @@ def design_TFP(param_df):
     
     # if zeta_m is specified, use zeta_m. if not, converge on it from others
     # inverse design is performed from 2-variables: T_m and zeta
-    if 'zeta_m' in param_df.index: 
-        zeta_m = param_df['zeta_m']
+    if 'zeta_e' in param_df.index: 
+        zeta_m = param_df['zeta_e']
         import cmath
         
         from numpy import interp, iscomplex

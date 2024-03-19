@@ -287,7 +287,7 @@ fig.tight_layout()
 #%% train a model
 
 mdl = GP(df)
-covariate_list = ['gap_ratio', 'T_ratio', 'k_ratio', 'RI']
+covariate_list = ['gap_ratio', 'RI', 'T_m', 'zeta_e']
 mdl.set_covariates(covariate_list)
 mdl.set_outcome('collapse_prob')
 mdl.fit_gpr(kernel_name='rbf_iso')
@@ -312,9 +312,9 @@ xx, yy, uu = np.meshgrid(np.linspace(0.7, 2.0,
                                       res))
                              
 X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
-                      'T_ratio':uu.ravel(),
-                      'k_ratio':np.repeat(10.0,res**3),
-                      'RI':yy.ravel()})
+                      'RI':yy.ravel(),
+                      'T_m':uu.ravel(),
+                      'zeta_e':np.repeat(0.2,res**3)})
 
 
 
@@ -343,9 +343,9 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_space[X_space['T_ratio']==2.7]
-fs2_subset = fs2_train[X_space['T_ratio']==2.7]
-fmu_subset = fmu_train[X_space['T_ratio']==2.7]
+X_subset = X_space[X_space['T_m']==2.7]
+fs2_subset = fs2_train[X_space['T_m']==2.7]
+fmu_subset = fmu_train[X_space['T_m']==2.7]
 Z = fmu_subset.reshape(xx_pl.shape)
 
 plt.figure()
@@ -367,6 +367,33 @@ plt.scatter(df['gap_ratio'], df['RI'],
 plt.xlim([0.7, 2.0])
 plt.ylim([0.5, 2.5])
 plt.title('Collapse risk, pre-DoE', fontsize=axis_font)
+plt.show()
+
+#%%
+
+# tMSE criterion
+from numpy import exp
+pi = 3.14159
+T = 0.5
+Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
+
+criterion = np.multiply(Wx, fs2_subset)
+Z = criterion.reshape(xx_pl.shape)
+plt.figure()
+plt.imshow(
+    Z,
+    interpolation="nearest",
+    extent=(xx_pl.min(), xx_pl.max(),
+            yy_pl.min(), yy_pl.max()),
+    aspect="auto",
+    origin="lower",
+    cmap=plt.cm.Blues,
+) 
+plt.colorbar()
+plt.xlabel('Gap ratio', fontsize=axis_font)
+plt.ylabel(r'$R_y$', fontsize=axis_font)
+plt.title('Weighted variance, first iteration', fontsize=axis_font)
+
 plt.show()
 
 #%%  a demonstration of k_ratio - Tm relationships
