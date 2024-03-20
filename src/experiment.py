@@ -333,7 +333,6 @@ def run_doe(prob_target, df_train, df_test,
     from loads import define_lateral_forces, define_gravity_loads
     from gms import scale_ground_motion
     
-    # TODO: check the indices
     while doe_idx < maxIter:
         
         print('========= Run %d of batch %d ==========' % 
@@ -387,123 +386,131 @@ def run_doe(prob_target, df_train, df_test,
             else:
                 pass
             batch_idx = 0
-            x_next = mdl.doe_rejection_sampler(batch_size, prob_target, sample_bounds)
+            x_next = mdl.doe_rejection_sampler(batch_size, prob_target, 
+                                               sample_bounds, design_filter=True)
             next_df = pd.DataFrame(x_next, columns=covariate_columns)
             print('Convergence not reached yet. Resetting batch index to 0...')
     
         ######################## DESIGN FOR DOE SET ###########################
         #
-        # Currently somewhat hardcoded for TFP-MF, 
-        #
-        # TODO: retry this for one x_next point at a time
+        # Currently somewhat hardcoded for TFP-MF
     
         # get first set of randomly generated params and merge with a buffer
         # amount of DoE found points (to account for failed designs)
         
-        while pregen_designs.shape[0] > 0:
-            
-            # pop off a pregen design and try to design with it
-            batch_df = pregen_designs.head(1)
-            pregen_designs.drop(pregen_designs.head(1).index, inplace=True)
-            
-            next_row = next_df.iloc[[batch_idx]].set_index(batch_df.index)
+        for idx, next_row in next_df.iterrows():
         
-            batch_df = pd.concat([batch_df, next_row], axis=1)
-        
-            # # ensure that batch_df has columns needed for design (T_m)
-            # # approximate fixed based fundamental period
-            # Ct = get_Ct(struct_type)
-            # x_Tfb = get_x_Tfb(struct_type)
-            # h_n = np.sum(hsx)/12.0
-            # T_fb = Ct*(h_n**x_Tfb)
+            while pregen_designs.shape[0] > 0:
+                
+                # pop off a pregen design and try to design with it
+                work_df = pregen_designs.head(1)
+                pregen_designs.drop(pregen_designs.head(1).index, inplace=True)
+                
+                # next_row = next_df.iloc[[batch_idx]].set_index(work_df.index)
+                row_df = pd.DataFrame(next_row).T
+                work_df = pd.concat([work_df, row_df.set_index(work_df.index)], 
+                                    axis=1)
             
-            # design
-            batch_df[['W', 
-                   'W_s', 
-                   'w_fl', 
-                   'P_lc',
-                   'all_w_cases',
-                   'all_Plc_cases']] = batch_df.apply(lambda row: define_gravity_loads(row),
-                                                    axis='columns', result_type='expand')
+                # # ensure that work_df has columns needed for design (T_m)
+                # # approximate fixed based fundamental period
+                # Ct = get_Ct(struct_type)
+                # x_Tfb = get_x_Tfb(struct_type)
+                # h_n = np.sum(hsx)/12.0
+                # T_fb = Ct*(h_n**x_Tfb)
+                
+                # design
+                work_df[['W', 
+                       'W_s', 
+                       'w_fl', 
+                       'P_lc',
+                       'all_w_cases',
+                       'all_Plc_cases']] = work_df.apply(lambda row: define_gravity_loads(row),
+                                                        axis='columns', result_type='expand')
+                                     
+                try:
+                    all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),
+                                                   axis='columns', result_type='expand')
+                except:
+                    continue
+                
+                all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
+                                           'T_e', 'k_e', 'zeta_e', 'D_m']
+                
+                tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
+                                                  (all_tfp_designs['R_1'] <= 50.0) &
+                                                  (all_tfp_designs['R_2'] <= 190.0) &
+                                                  (all_tfp_designs['zeta_e'] <= 0.27)]
+                
+                # retry if design didn't work
+                if tfp_designs.shape[0] == 0:
+                    continue
+                
+                tfp_designs = tfp_designs.drop(columns=['zeta_e'])
+                work_df = pd.concat([work_df, tfp_designs.set_index(work_df.index)], 
+                                    axis=1)
+                
+                # get lateral force and design structures
+                work_df[['wx', 
+                       'hx', 
+                       'h_col', 
+                       'hsx', 
+                       'Fx', 
+                       'Vs',
+                       'T_fbe']] = work_df.apply(lambda row: define_lateral_forces(row),
+                                            axis='columns', result_type='expand')
                                                   
-            all_tfp_designs = batch_df.apply(lambda row: ds.design_TFP(row),
-                                           axis='columns', result_type='expand')
-            
-            all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
-                                       'T_e', 'k_e', 'zeta_e', 'D_m']
-            
-            tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
-                                              (all_tfp_designs['R_1'] <= 50.0) &
-                                              (all_tfp_designs['R_2'] <= 190.0) &
-                                              (all_tfp_designs['zeta_e'] <= 0.27)]
-            
-            # retry if design didn't work
-            if tfp_designs.shape[0] == 0:
-                continue
-            
-            tfp_designs = tfp_designs.drop(columns=['zeta_e'])
-            batch_df = pd.concat([batch_df, tfp_designs], axis=1)
-            
-            # get lateral force and design structures
-            batch_df[['wx', 
-                   'hx', 
-                   'h_col', 
-                   'hsx', 
-                   'Fx', 
-                   'Vs',
-                   'T_fbe']] = batch_df.apply(lambda row: define_lateral_forces(row),
-                                        axis='columns', result_type='expand')
-                                              
-            all_mf_designs = batch_df.apply(lambda row: ds.design_MF(row),
-                                             axis='columns', 
-                                             result_type='expand')
+                all_mf_designs = work_df.apply(lambda row: ds.design_MF(row),
+                                                 axis='columns', 
+                                                 result_type='expand')
+                  
+                all_mf_designs.columns = ['beam', 'column', 'flag']
+                
+                # keep the designs that look sensible
+                mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
+                mf_designs = mf_designs.dropna(subset=['beam','column'])
+                 
+                mf_designs = mf_designs.drop(['flag'], axis=1)
+                
+                if mf_designs.shape[0] == 0:
+                    continue
               
-            all_mf_designs.columns = ['beam', 'column', 'flag']
-            
-            # keep the designs that look sensible
-            mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
-            mf_designs = mf_designs.dropna(subset=['beam','column'])
-             
-            mf_designs = mf_designs.drop(['flag'], axis=1)
-            
-            if mf_designs.shape[0] == 0:
-                continue
-          
-            # get the design params of those bearings
-            batch_df = pd.concat([batch_df, mf_designs], axis=1)
+                # get the design params of those bearings
+                work_df = pd.concat([work_df, mf_designs.set_index(work_df.index)], 
+                                    axis=1)
+                
+                
+                work_df[['gm_selected',
+                         'scale_factor',
+                         'sa_avg']] = work_df.apply(lambda row: scale_ground_motion(row),
+                                                    axis='columns', result_type='expand')
+                   
+                break
             
             
-            batch_df[['gm_selected',
-                     'scale_factor',
-                     'sa_avg']] = batch_df.apply(lambda row: scale_ground_motion(row),
-                                                axis='columns', result_type='expand')
-               
-            break
+            bldg_result = run_nlth(work_df.iloc[0], gm_path)
+            result_df = pd.DataFrame(bldg_result).T
+            
+            
+            result_df[['max_drift',
+               'collapse_prob']] = result_df.apply(lambda row: collapse_fragility(row),
+                                                    axis='columns', result_type='expand')
+                                   
+            from numpy import log
+            result_df['log_collapse_prob'] = log(result_df['collapse_prob'])
+            result_df['T_ratio'] = result_df['T_m'] / result_df['T_fb']
+            
+            # if run is successful and is batch marker, record error metric
+            if (batch_idx % (batch_size) == 0):
+                rmse_list.append(rmse)
+                mae_list.append(mae)
+            
+            batch_idx += 1
+            doe_idx += 1
+    
+            # attach to existing data
+            df_train = pd.concat([df_train, result_df], axis=0)
         
-        
-        bldg_result = run_nlth(batch_df.iloc[0], gm_path)
-        result_df = pd.DataFrame(bldg_result).T
-        
-        
-        result_df[['max_drift',
-           'collapse_prob']] = result_df.apply(lambda row: collapse_fragility(row),
-                                                axis='columns', result_type='expand')
-                               
-        from numpy import log
-        result_df['log_collapse_prob'] = log(result_df['collapse_prob'])
-        result_df['T_ratio'] = result_df['T_m'] / result_df['T_fb']
-        
-        # if run is successful and is batch marker, record error metric
-        if (batch_idx % (batch_size) == 0):
-            rmse_list.append(rmse)
-            mae_list.append(mae)
-        
-        batch_idx += 1
-        doe_idx += 1
-
-        # attach to existing data
-        df_train = pd.concat([df_train, result_df], axis=0)
-        
+        batch_no += 1
     print('DoE did not converge within maximum iteration specified.')
     return df_train, rmse_list, mae_list
     

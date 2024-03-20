@@ -416,7 +416,7 @@ class Database:
         
         self.ops_analysis = df
                 
-    def perform_doe(self, target_prob=0.5, n_set=200):
+    def perform_doe(self, target_prob=0.5, n_set=200, batch_size=10):
         
         try:
             whole_set = self.ops_analysis
@@ -436,8 +436,8 @@ class Database:
         from experiment import run_doe
         
         df_doe, rmse_hist, mae_hist = run_doe(target_prob, df_train, df_test, 
-                                             batch_size=10, error_tol=1e-2, 
-                                             maxIter=600, conv_tol=1e-2)
+                                             batch_size=batch_size, error_tol=1e-3, 
+                                             maxIter=600, conv_tol=1e-3)
         
         self.doe_analysis = df_doe
         self.rmse_hist = rmse_hist

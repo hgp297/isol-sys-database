@@ -69,4 +69,8 @@ with open(path+"tfp_mf_db.pickle", 'rb') as picklefile:
     main_obj = pickle.load(picklefile)
     
 main_obj.calculate_collapse()
-main_obj.perform_doe(n_set=400)
+main_obj.perform_doe(n_set=200,batch_size=10)
+
+import pickle
+with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
