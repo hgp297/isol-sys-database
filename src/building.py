@@ -2966,7 +2966,6 @@ class Building:
         ops.constraints('Plain')
         ops.numberer('RCM')
 
-        # TODO: UmfPack for both?
         ops.system('UmfPack')
 
         if superstructure_system == 'CBF':
@@ -3108,7 +3107,6 @@ class Building:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
                           
-            # TODO: refine CBF convergence loop
             else:
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):

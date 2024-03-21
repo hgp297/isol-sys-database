@@ -335,8 +335,8 @@ def run_doe(prob_target, df_train, df_test,
     
     while doe_idx < maxIter:
         
-        print('========= Run %d of batch %d ==========' % 
-              (batch_idx+1, batch_no+1))
+        print('========= DoE batch %d ==========' % 
+              (batch_no+1))
         
         if (batch_idx % (batch_size) == 0):
             
@@ -399,7 +399,10 @@ def run_doe(prob_target, df_train, df_test,
         # amount of DoE found points (to account for failed designs)
         
         for idx, next_row in next_df.iterrows():
-        
+            
+            print('========= Run %d of batch %d ==========' % 
+                  (batch_idx+1, batch_no+1))
+            
             while pregen_designs.shape[0] > 0:
                 
                 # pop off a pregen design and try to design with it
@@ -426,7 +429,8 @@ def run_doe(prob_target, df_train, df_test,
                        'all_w_cases',
                        'all_Plc_cases']] = work_df.apply(lambda row: define_gravity_loads(row),
                                                         axis='columns', result_type='expand')
-                                     
+                                
+                # TODO: gracefully handle cases where design not found
                 try:
                     all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),
                                                    axis='columns', result_type='expand')

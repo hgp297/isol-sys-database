@@ -474,7 +474,7 @@ def design_TFP(param_df):
     
     # guess
     import random
-    # random.seed(985)
+    random.seed(985)
     
     # if zeta_m is specified, use zeta_m. if not, converge on it from others
     # inverse design is performed from 2-variables: T_m and zeta

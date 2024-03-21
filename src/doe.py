@@ -98,7 +98,7 @@ class GP:
                     length_scale=np.ones(n_vars), 
                     nu=1.5)
             
-        kernel = kernel + krn.WhiteKernel(noise_level=1, noise_level_bounds=(1e-5, 1e1))
+        kernel = kernel + krn.WhiteKernel(noise_level=1, noise_level_bounds=(1e-5, 1e3))
             
         # pipeline to scale -> GPR
         gp_pipe = Pipeline([
@@ -198,7 +198,7 @@ class GP:
             
             # remove designs that have high period but low damping
             x_keep = x_keep[~((x_keep[:,Tm_idx] > 4) & 
-                              (x_keep[:,zeta_idx] < 0.15))]
+                              (x_keep[:,zeta_idx] < 0.18))]
         
         # import matplotlib.pyplot as plt
         # plt.rcParams["font.family"] = "serif"

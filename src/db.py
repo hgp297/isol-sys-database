@@ -54,7 +54,7 @@ class Database:
             'T_m' : [2.0, 5.0],
             'k_ratio' :[5.0, 18.0],
             'Q': [0.05, 0.12],
-            'moat_ampli' : [0.6, 1.6],
+            'moat_ampli' : [0.5, 1.2],
             'RI' : [0.5, 2.25],
             'L_bldg': [75.0, 250.0],
             'h_bldg': [30.0, 100.0]
@@ -436,8 +436,8 @@ class Database:
         from experiment import run_doe
         
         df_doe, rmse_hist, mae_hist = run_doe(target_prob, df_train, df_test, 
-                                             batch_size=batch_size, error_tol=1e-3, 
-                                             maxIter=600, conv_tol=1e-3)
+                                             batch_size=batch_size, error_tol=1e-2, 
+                                             maxIter=600, conv_tol=1e-5)
         
         self.doe_analysis = df_doe
         self.rmse_hist = rmse_hist
