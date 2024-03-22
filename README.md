@@ -15,24 +15,24 @@ An analysis folder is available with some scripts performing data visualization 
 The database is utilized to generate inverse design targeting specific structural performance.
 
 ### Dependencies
-*Structural software:
-	*OpenSeesPy 3.4.0
-	*Python 3.9
+* Structural software:
+	* OpenSeesPy 3.4.0
+	* Python 3.9
 
-*Data structure management:
-	*Pandas 1.1.5+
-	*Numpy 1.22.4+
-	*Scipy 1.12.0+
+* Data structure management:
+	* Pandas 1.1.5+
+	* Numpy 1.22.4+
+	* Scipy 1.12.0+
 
-*Machine learning analyses (required for design of experiment, inverse design):
-	*Scikit-learn
+* Machine learning analyses (required for design of experiment, inverse design):
+	* Scikit-learn
 
-*Visualization:
-	*Matplotlib
-	*Seaborn
+* Visualization:
+	* Matplotlib
+	* Seaborn
 
-*Decision-variable prediction:
-	*Pelicun 3.1+
+* Decision-variable prediction:
+	* Pelicun 3.1+
 
 
 ### Usage
