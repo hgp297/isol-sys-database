@@ -15,24 +15,24 @@ An analysis folder is available with some scripts performing data visualization 
 The database is utilized to generate inverse design targeting specific structural performance.
 
 ### Dependencies
-Structural software:
-**OpenSeesPy 3.4.0
-**Python 3.9
+*Structural software:
+	*OpenSeesPy 3.4.0
+	*Python 3.9
 
-Data structure management:
-**Pandas 1.1.5+
-**Numpy 1.22.4+
-**Scipy 1.12.0+
+*Data structure management:
+	*Pandas 1.1.5+
+	*Numpy 1.22.4+
+	*Scipy 1.12.0+
 
-Machine learning analyses (required for design of experiment, inverse design):
-**Scikit-learn
+*Machine learning analyses (required for design of experiment, inverse design):
+	*Scikit-learn
 
-Visualization:
-**Matplotlib
-**Seaborn
+*Visualization:
+	*Matplotlib
+	*Seaborn
 
-Decision-variable prediction:
-**Pelicun 3.1+
+*Decision-variable prediction:
+	*Pelicun 3.1+
 
 
 ### Usage
@@ -45,3 +45,8 @@ The project is still currently just a project for myself. Packaging for general 
 ## Personal notes:
 A reminder that this database is dependent on the OpenSees compatible with Python=3.9.
 See opensees_build/locations/ for location of a working Opensees.pyd code.
+
+## Research tools utilized
+
+* [OpenSeesPy](https://github.com/zhuminjie/OpenSeesPy)
+* [SimCenter Pelicun](https://github.com/NHERI-SimCenter/pelicun)
