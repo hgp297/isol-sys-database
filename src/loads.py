@@ -124,6 +124,24 @@ def get_x_Tfb(frame_type):
         'SW' : 0.75
     }.get(frame_type, 0.75)
 
+def estimate_period(input_df, use_Cu=True, unit_in_ft=True):
+    struct_type = input_df['superstructure_system']
+    if unit_in_ft:
+        h_n = input_df['h_bldg']
+    else:
+        h_n = input_df['h_bldg']/12
+    # approximate fixed based fundamental period
+    Ct = get_Ct(struct_type)
+    x_Tfb = get_x_Tfb(struct_type)
+    T_a = Ct*(h_n**x_Tfb)
+    
+    if use_Cu:
+        C_u = 1.4
+    else:
+        C_u = 1.0
+        
+    return(C_u*T_a)
+
 # returns the required story forces per frame per floor
 # units are kips and inches
 def define_lateral_forces(input_df, D_load=None, L_load=None):

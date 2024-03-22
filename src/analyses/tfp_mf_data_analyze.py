@@ -36,18 +36,18 @@ from math import log, exp
 
 from scipy.stats import norm
 inv_norm = norm.ppf(0.84)
-beta_drift = 0.25
+beta_drift = 0.35
 mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+# mean_log_drift = 0.05
 ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
 label_size = 16
 clabel_size = 12
 x = np.linspace(0, 0.15, 200)
 
-mu = log(0.1)- 0.25*inv_norm
-sigma = 0.25
+mu = log(mean_log_drift)
 
-ln_dist = lognorm(s=sigma, scale=exp(mu))
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 p = ln_dist.cdf(np.array(x))
 
 plt.close('all')
@@ -72,18 +72,19 @@ ax.set_xlabel('Peak drift ratio', fontsize=axis_font)
 
 ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='blue', linestyle=":")
 ax.hlines(y=0.5, xmin=xright, xmax=exp(mu), color='blue', linestyle=":")
-ax.text(0.01, 0.52, r'$\theta = 0.078$', fontsize=axis_font, color='blue')
+ax.text(0.01, 0.52, r'$\theta = %.3f$'% mean_log_drift , fontsize=axis_font, color='blue')
 ax.plot([exp(mu)], [0.5], marker='*', markersize=15, color="blue", linestyle=":")
 
-ax.vlines(x=0.1, ymin=0, ymax=0.84, color='blue', linestyle=":")
-ax.hlines(y=0.84, xmin=xright, xmax=0.1, color='blue', linestyle=":")
-ax.text(0.01, 0.87, r'$\theta = 0.10$', fontsize=axis_font, color='blue')
-ax.plot([0.10], [0.84], marker='*', markersize=15, color="blue", linestyle=":")
+upper = ln_dist.ppf(0.84)
+ax.vlines(x=upper, ymin=0, ymax=0.84, color='blue', linestyle=":")
+ax.hlines(y=0.84, xmin=xright, xmax=upper, color='blue', linestyle=":")
+ax.text(0.01, 0.87, r'$\theta = %.3f$' % upper, fontsize=axis_font, color='blue')
+ax.plot([upper], [0.84], marker='*', markersize=15, color="blue", linestyle=":")
 
 lower= ln_dist.ppf(0.16)
 ax.vlines(x=lower, ymin=0, ymax=0.16, color='blue', linestyle=":")
 ax.hlines(y=0.16, xmin=xright, xmax=lower, color='blue', linestyle=":")
-ax.text(0.01, 0.19, r'$\theta = 0.061$', fontsize=axis_font, color='blue')
+ax.text(0.01, 0.19, r'$\theta = %.3f$' % lower, fontsize=axis_font, color='blue')
 ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
 
 

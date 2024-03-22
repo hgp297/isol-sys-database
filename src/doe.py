@@ -193,12 +193,12 @@ class GP:
         # if T_m > 4, zeta must be > 0.15
         if design_filter == True:
             var_list = bound_df.columns.tolist()
-            Tm_idx = var_list.index('T_m')
+            Tm_idx = var_list.index('T_ratio')
             zeta_idx = var_list.index('zeta_e')
             
             # remove designs that have high period but low damping
             x_keep = x_keep[~((x_keep[:,Tm_idx] > 4) & 
-                              (x_keep[:,zeta_idx] < 0.18))]
+                              (x_keep[:,zeta_idx] < 0.2))]
         
         # import matplotlib.pyplot as plt
         # plt.rcParams["font.family"] = "serif"

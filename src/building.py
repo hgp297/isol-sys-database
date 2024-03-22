@@ -2480,7 +2480,7 @@ class Building:
             ops.fix(nodeTag,  1, 1, 1, 1, 0, 1)
         elif(action == 'unfix_lc'):
             ops.fix(nodeTag,  0, 1, 1, 1, 0, 1)
-            
+         
     def run_eigen(self):
         import openseespy.opensees as ops
         
@@ -2494,6 +2494,8 @@ class Building:
         
         return(T_1)
 
+    
+    # TODO: not confident about T_fb of moment frames. recheck
     def provide_damping(self, regTag, method='SP',
                         zeta=[0.05], modes=[1]):
         import openseespy.opensees as ops

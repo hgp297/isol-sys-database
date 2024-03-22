@@ -154,6 +154,7 @@ def collapse_fragility(run):
     from scipy.stats import lognorm
     from scipy.stats import norm
     
+    # TODO: change this for taller buildings
     # MF: set 84% collapse at 0.10 drift, 0.25 beta
     if system == 'MF':
         inv_norm = norm.ppf(0.84)
@@ -302,7 +303,7 @@ def run_doe(prob_target, df_train, df_test,
     # TODO: incorporate T_ratio
     
     test_set = GP(df_test)
-    covariate_columns = ['moat_ampli', 'RI', 'T_m', 'zeta_e']
+    covariate_columns = ['moat_ampli', 'RI', 'T_ratio', 'zeta_e']
     test_set.set_covariates(covariate_columns)
     
     # TODO: temporary change to outcome
@@ -316,8 +317,13 @@ def run_doe(prob_target, df_train, df_test,
     
     # drop covariates 
     reserve_df = doe_reserve_db.raw_input
+    reserve_df = reserve_df.drop(columns=['T_m'])
     pregen_designs = reserve_df.drop(columns=[col for col in reserve_df 
                                               if col in covariate_columns])
+    
+    from loads import estimate_period
+    pregen_designs[['T_fbe']] = pregen_designs.apply(lambda row: estimate_period(row),
+                                                     axis='columns', result_type='expand')
     
     rmse = 1.0
     batch_idx = 0
@@ -413,13 +419,9 @@ def run_doe(prob_target, df_train, df_test,
                 row_df = pd.DataFrame(next_row).T
                 work_df = pd.concat([work_df, row_df.set_index(work_df.index)], 
                                     axis=1)
+                
+                work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
             
-                # # ensure that work_df has columns needed for design (T_m)
-                # # approximate fixed based fundamental period
-                # Ct = get_Ct(struct_type)
-                # x_Tfb = get_x_Tfb(struct_type)
-                # h_n = np.sum(hsx)/12.0
-                # T_fb = Ct*(h_n**x_Tfb)
                 
                 # design
                 work_df[['W', 
@@ -429,7 +431,9 @@ def run_doe(prob_target, df_train, df_test,
                        'all_w_cases',
                        'all_Plc_cases']] = work_df.apply(lambda row: define_gravity_loads(row),
                                                         axis='columns', result_type='expand')
-                                
+                             
+                # work_df['T_fbe'] = 
+                # work_df['T_m'] = 
                 # TODO: gracefully handle cases where design not found
                 try:
                     all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),
