@@ -148,6 +148,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
 def collapse_fragility(run):
     system = run.superstructure_system
     peak_drift = max(run.PID)
+    n_stories = run.num_stories
     
     # collapse as a probability
     from math import log, exp
@@ -158,7 +159,10 @@ def collapse_fragility(run):
     # MF: set 84% collapse at 0.10 drift, 0.25 beta
     if system == 'MF':
         inv_norm = norm.ppf(0.84)
-        beta_drift = 0.25
+        if n_stories < 4:
+            beta_drift = 0.25
+        else:
+            beta_drift = 0.35
         mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
         
     # CBF: set 90% collapse at 0.05 drift, 0.55 beta
@@ -300,14 +304,12 @@ def run_doe(prob_target, df_train, df_test,
     from doe import GP
     from db import Database
     
-    # TODO: incorporate T_ratio
-    
+    # TODO: moat ampli -> gap ratio
     test_set = GP(df_test)
-    covariate_columns = ['moat_ampli', 'RI', 'T_ratio', 'zeta_e']
+    covariate_columns = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
     test_set.set_covariates(covariate_columns)
     
-    # TODO: temporary change to outcome
-    test_set.set_outcome('log_collapse_prob')
+    test_set.set_outcome('collapse_prob')
     
     sample_bounds = test_set.X.agg(['min', 'max'])
     
@@ -317,7 +319,7 @@ def run_doe(prob_target, df_train, df_test,
     
     # drop covariates 
     reserve_df = doe_reserve_db.raw_input
-    reserve_df = reserve_df.drop(columns=['T_m'])
+    reserve_df = reserve_df.drop(columns=['T_m', 'moat_ampli'])
     pregen_designs = reserve_df.drop(columns=[col for col in reserve_df 
                                               if col in covariate_columns])
     
@@ -348,8 +350,7 @@ def run_doe(prob_target, df_train, df_test,
             
             mdl = GP(df_train)
             
-            # TODO: temporary change to outcome
-            mdl.set_outcome('log_collapse_prob')
+            mdl.set_outcome('collapse_prob')
             
             mdl.set_covariates(covariate_columns)
             mdl.fit_gpr(kernel_name='rbf_iso')
@@ -421,7 +422,7 @@ def run_doe(prob_target, df_train, df_test,
                                     axis=1)
                 
                 work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
-            
+                work_df['moat_ampli'] = work_df['gap_ratio']
                 
                 # design
                 work_df[['W', 
@@ -432,8 +433,6 @@ def run_doe(prob_target, df_train, df_test,
                        'all_Plc_cases']] = work_df.apply(lambda row: define_gravity_loads(row),
                                                         axis='columns', result_type='expand')
                              
-                # work_df['T_fbe'] = 
-                # work_df['T_m'] = 
                 # TODO: gracefully handle cases where design not found
                 try:
                     all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),

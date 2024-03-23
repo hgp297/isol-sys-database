@@ -61,11 +61,11 @@
 # you could either read the csv or unpickle
 # or chain this straight from the analyzed main_obj
 
-path = '../data/'
+pickle_path = '../data/'
 
 import pickle
 
-with open(path+"tfp_mf_db.pickle", 'rb') as picklefile:
+with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
     main_obj = pickle.load(picklefile)
     
 main_obj.calculate_collapse()
@@ -74,3 +74,12 @@ main_obj.perform_doe(n_set=200,batch_size=10)
 import pickle
 with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
+    
+#%% load DoE
+
+# pickle_path = '../data/'
+
+# import pickle
+
+# with open(pickle_path+"tfp_mf_db_doe.pickle", 'rb') as picklefile:
+#     main_obj = pickle.load(picklefile)

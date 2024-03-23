@@ -36,7 +36,7 @@ from math import log, exp
 
 from scipy.stats import norm
 inv_norm = norm.ppf(0.84)
-beta_drift = 0.35
+beta_drift = 0.25
 mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
 # mean_log_drift = 0.05
 ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
@@ -142,6 +142,7 @@ ax1.scatter(df['gap_ratio'], df[y_var])
 ax1.set_ylabel('Peak story drift', fontsize=axis_font)
 ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
 ax1.set_title('Gap', fontsize=title_font)
+ax1.set_ylim([0, 0.1])
 ax1.grid(True)
 
 ax2=fig.add_subplot(2, 2, 2)
@@ -149,6 +150,7 @@ ax2=fig.add_subplot(2, 2, 2)
 ax2.scatter(df['RI'], df[y_var])
 ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax2.set_title('Superstructure strength', fontsize=title_font)
+ax2.set_ylim([0, 0.1])
 ax2.grid(True)
 
 ax3=fig.add_subplot(2, 2, 3)
@@ -157,6 +159,7 @@ ax3.scatter(df['T_ratio'], df[y_var])
 ax3.set_ylabel('Peak story drift', fontsize=axis_font)
 ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 ax3.set_title('Bearing period ratio', fontsize=title_font)
+ax3.set_ylim([0, 0.1])
 ax3.grid(True)
 
 ax4=fig.add_subplot(2, 2, 4)
@@ -164,6 +167,7 @@ ax4=fig.add_subplot(2, 2, 4)
 ax4.scatter(df['k_ratio'], df[y_var])
 ax4.set_xlabel(r'$k_1/  k_2$', fontsize=axis_font)
 ax4.set_title('Bearing initial stiffness', fontsize=title_font)
+ax4.set_ylim([0, 0.1])
 ax4.grid(True)
 
 fig.tight_layout()
