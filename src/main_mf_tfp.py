@@ -75,6 +75,13 @@ import pickle
 with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
     
+#%%
+# TODO: solve the optimization problem by hand
+
+# create a db with 10 sets of gap ratios, repeat the remaining variables
+# repeat each set 30 times
+# design structures
+# randomly select ground motion for each
 #%% load DoE
 
 # pickle_path = '../data/'

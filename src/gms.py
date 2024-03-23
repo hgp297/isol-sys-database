@@ -58,12 +58,15 @@ def scale_ground_motion(input_df,
     # only concerned about H1 spectra
     H1s = unscaled_spectra.filter(regex=("-1 pSa \(g\)$"))
     us_range = H1s[target_spectrum['Period (sec)'].between(t_lower, t_upper)]
+    us_max = H1s.max(axis=0)
     us_average = us_range.prod()**(1/len(us_range.index))
 
     # determine scale factor to get unscaled to target
     scale_factor = target_average/us_average
     scale_factor = scale_factor.reset_index()
     scale_factor.columns = ['full_RSN', 'sf_average_spectral']
+    scale_factor['us_max'] = us_max.values
+    scale_factor['scaled_max'] = scale_factor['us_max']*scale_factor['sf_average_spectral']
     
     # rename back to old convention and merge with previous dataframe
     scale_factor[' Record Sequence Number'] = scale_factor['full_RSN'].str.extract('(\d+)')
@@ -95,6 +98,7 @@ def scale_ground_motion(input_df,
     # grab only relevant columns
     db_cols = [' Record Sequence Number',
                'sf_average_spectral',
+               'scaled_max',
                ' Earthquake Name',
                ' Lowest Useable Frequency (Hz)',
                ' Horizontal-1 Acc. Filename']
@@ -131,11 +135,12 @@ def scale_ground_motion(input_df,
 
     final_GM = final_GM.reset_index()
     final_GM = final_GM.drop(columns=['index', 'scale_difference'])
-    final_GM.columns = ['RSN', 'sf_average_spectral', 
+    final_GM.columns = ['RSN', 'sf_average_spectral', 'scaled_peak_Sa',
                         'earthquake_name', 'lowest_frequency', 'filename']
     
     # filter excessively scaled GMs
     final_GM = final_GM[final_GM['sf_average_spectral'] < 20.0]
+    final_GM = final_GM[final_GM['scaled_peak_Sa'] < 3*S_s]
     
     # select random GM from the list
     from random import randrange
@@ -145,6 +150,28 @@ def scale_ground_motion(input_df,
     sf = float(final_GM['sf_average_spectral'].iloc[ind])  # scale factor used
     
     return(gm_name, sf, target_average)
+
+def show_selection(final_GM, target_spectrum, H1s):
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(target_spectrum['Period (sec)'], target_spectrum['Target pSa (g)'])
+    for idx, row in final_GM.iterrows():
+        new_str = 'RSN-'+str(row['RSN'])+' Horizontal-1 pSa (g)'
+        row_spectrum = H1s[new_str]
+        scaled_row = row_spectrum * row['sf_average_spectral']
+        plt.plot(target_spectrum['Period (sec)'], scaled_row,
+                 linewidth=0.5, alpha=0.3)
+        
+    plt.axvline(t_lower, linestyle=':', color='red')
+    plt.axvline(t_upper, linestyle=':', color='red')
+    plt.axvline(T_m, linestyle='--', color='red')
+    plt.axhline(target_average, linestyle=':', color='black')    
+    plt.xlabel(r'Period $T_n$ (s)')
+    plt.ylabel(r'Spectral acceleration $Sa$ (g)')
+    plt.xlim([0, 5])
+    plt.ylim([0, 2*2.5])
+    plt.grid(True)
 
 def get_gm_ST(input_df, T_query):
     Tn, gm_A, gm_D, uddg = generate_spectrum(input_df)
