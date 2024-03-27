@@ -360,7 +360,10 @@ def run_doe(prob_target, df_train, df_test,
             print('===== Training model size:', mdl.X.shape[0], '=====')
             from sklearn.metrics import mean_squared_error, mean_absolute_error
             import numpy as np
+            compare = pd.DataFrame(test_set.y).copy()
+            compare['predicted'] = y_hat
             mse = mean_squared_error(test_set.y, y_hat)
+            # TODO: change this to a cross-validation
             rmse = mse**0.5
             print('Test set RMSE: %.3f' % rmse)
 
