@@ -595,10 +595,10 @@ class Building:
              Zx_col, Sx_col, d_col,
              bf_col, tf_col, tw_col) = get_properties(current_col)
             
-            # Modified IK steel, adjusted for length from PH to PH
+            # Ibarra formulation places PH at hinge, so all values calculated for full beam
             (Ke_col, My_col, lam_col,
              thp_col, thpc_col,
-             kappa_col, thu_col) = modified_IK_params(current_col, 0.8*L_col)
+             kappa_col, thu_col) = modified_IK_params(current_col, L_col)
             
 
             ops.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
@@ -623,10 +623,11 @@ class Building:
              Zx_beam, Sx_beam, d_beam,
              bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
             
-            # Modified IK steel, adjusted for length from PH to PH
+            # Modified IK steel
+            # Ibarra formulation places PH at hinge, so all values calculated for full beam
             (Ke_beam, My_beam, lam_beam,
              thp_beam, thpc_beam,
-             kappa_beam, thu_beam) = modified_IK_params(current_beam, 0.8*L_beam)
+             kappa_beam, thu_beam) = modified_IK_params(current_beam, L_beam)
             
 
             ops.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
@@ -1492,10 +1493,10 @@ class Building:
              Zx_col, Sx_col, d_col,
              bf_col, tf_col, tw_col) = get_properties(current_col)
             
-            # Modified IK steel, adjusted for length from PH to PH
+            # Ibarra formulation places PH at hinge, so all values calculated for full beam
             (Ke_col, My_col, lam_col,
              thp_col, thpc_col,
-             kappa_col, thu_col) = modified_IK_params(current_col, 0.8*L_col)
+             kappa_col, thu_col) = modified_IK_params(current_col, L_col)
             
             
             ops.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
@@ -1520,10 +1521,10 @@ class Building:
              Zx_beam, Sx_beam, d_beam,
              bf_beam, tf_beam, tw_beam) = get_properties(current_beam)
             
-            # Modified IK steel, adjusted for length from PH to PH
+            # Ibarra formulation places PH at hinge, so all values calculated for full beam
             (Ke_beam, My_beam, lam_beam,
              thp_beam, thpc_beam,
-             kappa_beam, thu_beam) = modified_IK_params(current_beam, 0.8*L_beam)
+             kappa_beam, thu_beam) = modified_IK_params(current_beam, L_beam)
             
 
             ops.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,

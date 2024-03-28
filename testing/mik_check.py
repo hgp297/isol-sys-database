@@ -632,10 +632,10 @@ spring_rot_old = pd.read_csv(node_rot_old, sep=' ', header=None, names=['rotY'])
 
 # stress strain
 fig = plt.figure()
-plt.plot(-spring_rot['rotY'], -spring_res['mz'], label='new')
-plt.plot(-spring_rot_old['rotY'], -spring_res_old['mz'], label='old')
+plt.plot(-spring_rot['rotY'], -spring_res['mz']/12, label='new')
+plt.plot(-spring_rot_old['rotY'], -spring_res_old['mz']/12, label='old')
 plt.title('Cantilever spring moment curvature')
-plt.ylabel('Moment (kip-in)')
+plt.ylabel('Moment (kip-ft)')
 plt.xlabel('Rotation (rads)')
 plt.legend()
 plt.grid(True)
