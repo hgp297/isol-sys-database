@@ -57,7 +57,7 @@ def getModifiedIK(shape, L):
     # approximate adjustment for isotropic hardening
     My = Fy * Zx * 1.17
     thy = My/(6*Es*Iz/L)
-    Ke = My/thy
+    Ke = My/thy*10
     # consider using Lb = 0 for beams bc of slab?
     Lb = L
     kappa = 0.4
@@ -160,7 +160,7 @@ import numpy as np
 L_beam = L_bay
 L_col = h_story
 
-selectedCol = get_shape('W14X109', 'column')
+selectedCol = get_shape('W21X62', 'beam')
 
 (AgCol, IzCol, IyCol, ZxCol, SxCol, 
  dCol, bfCol, tfCol, twCol) = getProperties(selectedCol)
@@ -481,7 +481,7 @@ IyCol_mod = IyCol*(n+1)/n
 
 # adjust for increased elastic zone strength to account for plastic hinges
 # being moved 0.1 away from end
-KeCol = n*6.0*Es*IzCol/(0.8*h_story)
+KeCol = n*6.0*Es*IzCol/(h_story)
 
 McMy = 1.1 # ratio of capping moment to yield moment, Mc / My
 a_mem_col = (n+1.0)*(MyCol*(McMy-1.0))/(KeCol*thpCol)

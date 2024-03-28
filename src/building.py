@@ -3221,7 +3221,11 @@ def modified_IK_params(shape, L):
     # approximate adjustment for isotropic hardening
     My = Fy * Zx * 1.17
     thy = My/(6*Es*Iz/L)
-    Ke = My/thy
+    
+    # n is an adjustment to equate stiffness of spring-beam-spring element to 
+    # actual stiffness of spring
+    n = 10
+    Ke = n*My/thy
     # consider using Lb = 0 for beams bc of slab?
     Lb = L
     kappa = 0.4
