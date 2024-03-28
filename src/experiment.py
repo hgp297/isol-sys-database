@@ -304,7 +304,6 @@ def run_doe(prob_target, df_train, df_test,
     from doe import GP
     from db import Database
     
-    # TODO: moat ampli -> gap ratio
     test_set = GP(df_test)
     covariate_columns = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
     test_set.set_covariates(covariate_columns)
@@ -396,6 +395,7 @@ def run_doe(prob_target, df_train, df_test,
             else:
                 pass
             batch_idx = 0
+            df_train.to_csv('../data/doe/temp_save.csv', index=False)
             x_next = mdl.doe_rejection_sampler(batch_size, prob_target, 
                                                sample_bounds, design_filter=True)
             next_df = pd.DataFrame(x_next, columns=covariate_columns)

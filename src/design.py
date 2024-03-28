@@ -892,6 +892,11 @@ def select_beam(fl, Ib, Zb, sorted_beams, w_load, q_load, M_load, L_bay):
     passed_axial_beams = passed_Zx_beams
     
     story_loads = w_load[fl]
+    
+    import numpy as np
+    if selected_beam is np.nan:
+        return(np.nan, np.nan)
+    
     selected_beam, passed_checks_beams = ph_shear_check(selected_beam, 
                                                         passed_axial_beams, 
                                                         story_loads, L_bay)
@@ -932,9 +937,8 @@ def select_column(fl, wLoad, M_load, L_bay, h_col, all_beams, col_list,
     
     # initial guess: use columns that has similar Ix to beam
     qualified_Ix = col_list[col_list['Ix'] > I_beam_req]
-    from numpy import nan
     if len(qualified_Ix) < 1:
-        return (nan, nan, False)
+        return (np.nan, np.nan)
     # select the first few that qualifies Ix
     selected_col = qualified_Ix.loc[[(qualified_Ix.Ix - 
                                        I_beam_req).abs().idxmin()]] 
@@ -1098,7 +1102,7 @@ def design_MF(input_df, db_string='../resource/'):
             all_beams.append(selected_beam.iloc[0]['AISC_Manual_Label'])
         else:
             all_beams = np.nan
-            break
+            return(np.nan, np.nan, True)
       
     # select columns
     all_columns = []
@@ -1118,7 +1122,7 @@ def design_MF(input_df, db_string='../resource/'):
                 all_columns.append(selected_column.iloc[0]['AISC_Manual_Label'])
             else:
                 all_columns = np.nan
-                break
+                return(np.nan, np.nan, True)
         else:
             selected_column = all_columns[fl-1]
             all_columns.append(selected_column)

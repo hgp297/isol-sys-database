@@ -431,7 +431,7 @@ plt.show()
 #%% doe with smaller set
 
 # n_set is both test_train split
-n_set = 200
+n_set = 50
 ml_set = df.sample(n=n_set, replace=False, random_state=985)
 
 # split 50/50 for 
@@ -715,7 +715,6 @@ plt.show()
 
 rmse_hist = main_obj_doe.rmse_hist
 mae_hist = main_obj_doe.mae_hist
-plt.close('all')
 
 fig = plt.figure(figsize=(9, 6))
 

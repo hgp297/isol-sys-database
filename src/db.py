@@ -346,12 +346,15 @@ class Database:
                    self.retained_designs['isolator_system'] == 'TFP'])))
         print('======================================')
         
-    def scale_gms(self):
+    def scale_gms(self, repeat=False):
         
         
         # only scale motions that will be retained
         all_des = self.retained_designs.copy()
         
+        # put many GMs on same design if testing record-to-record variance
+        if repeat != False:
+            all_des = all_des.loc[all_des.index.repeat(repeat)]
         # set seed to ensure same GMs are selected
         from random import seed
         seed(985)
@@ -440,6 +443,9 @@ class Database:
         # split 50/50 for 
         df_train = ml_set.head(int(n_set/2))
         df_test = ml_set.tail(int(n_set/2))
+        
+        self.training_set = df_train
+        self.testing_set = df_test
         
         from experiment import run_doe
         

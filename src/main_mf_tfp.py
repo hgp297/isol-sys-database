@@ -14,7 +14,7 @@
 
 # from db import Database
 
-# main_obj = Database(400, n_buffer=8, seed=130, 
+# main_obj = Database(100, n_buffer=8, seed=130, 
 #                     struct_sys_list=['MF'], isol_wts=[1, 0])
 
 # main_obj.design_bearings(filter_designs=True)
