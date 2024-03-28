@@ -55,6 +55,7 @@ def getModifiedIK(shape, L):
     c2 = 6.895
 
     # approximate adjustment for isotropic hardening
+    # adjusted with the *n for spring-beam-spring stiffness adjustment
     My = Fy * Zx * 1.17
     thy = My/(6*Es*Iz/L)
     Ke = My/thy*10
