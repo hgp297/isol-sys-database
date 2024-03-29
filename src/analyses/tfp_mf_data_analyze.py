@@ -366,6 +366,7 @@ T = 0.5
 Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
 
 criterion = np.multiply(Wx, fs2_subset)
+# criterion = fs2_subset
 Z = criterion.reshape(xx_pl.shape)
 plt.figure()
 plt.imshow(
@@ -534,7 +535,8 @@ pi = 3.14159
 T = 0.5
 Wx = 1/((2*pi*(fs2_subset))**0.5) * exp((-1/2)*((fmu_subset - 0.5)**2/(fs2_subset)))
 
-criterion = np.multiply(Wx, fs2_subset)
+# criterion = np.multiply(Wx, fs2_subset)
+criterion = Wx
 Z = criterion.reshape(xx_pl.shape)
 plt.figure()
 plt.imshow(

@@ -365,6 +365,8 @@ def run_doe(prob_target, df_train, df_test,
             # TODO: change this to a cross-validation
             rmse = mse**0.5
             print('Test set RMSE: %.3f' % rmse)
+            
+            nrmse = rmse/(max(df_train.y) - min(df_train.y))
 
             mae = mean_absolute_error(test_set.y, y_hat)
             print('Test set MAE: %.3f' % mae)

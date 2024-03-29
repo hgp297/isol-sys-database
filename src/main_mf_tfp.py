@@ -12,15 +12,15 @@
 
 ############################################################################
 
-from db import Database
+# from db import Database
 
-main_obj = Database(400, n_buffer=8, seed=130, 
-                    struct_sys_list=['MF'], isol_wts=[1, 0])
+# main_obj = Database(400, n_buffer=8, seed=130, 
+#                     struct_sys_list=['MF'], isol_wts=[1, 0])
 
-main_obj.design_bearings(filter_designs=True)
-main_obj.design_structure(filter_designs=True)
+# main_obj.design_bearings(filter_designs=True)
+# main_obj.design_structure(filter_designs=True)
 
-main_obj.scale_gms()
+# main_obj.scale_gms()
 
 #%% troubleshoot fatal case
 
@@ -49,31 +49,31 @@ main_obj.scale_gms()
 
 #%% analyze database
 
-main_obj.analyze_db('tfp_mf_db.csv', save_interval=5)
+# main_obj.analyze_db('tfp_mf_db.csv', save_interval=5)
 
-# Pickle the main object
-import pickle
-with open('../data/tfp_mf_db.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# # Pickle the main object
+# import pickle
+# with open('../data/tfp_mf_db.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%% DoE
 
 # you could either read the csv or unpickle
 # or chain this straight from the analyzed main_obj
 
-# pickle_path = '../data/'
+pickle_path = '../data/'
 
-# import pickle
+import pickle
 
-# with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+    main_obj = pickle.load(picklefile)
     
-# main_obj.calculate_collapse()
-# main_obj.perform_doe(n_set=50,batch_size=10)
+main_obj.calculate_collapse()
+main_obj.perform_doe(n_set=50,batch_size=10)
 
-# import pickle
-# with open('../data/tfp_mf_db_doe_smaller.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+with open('../data/tfp_mf_db_doe_smaller.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
     
 #%%
 # TODO: solve the optimization problem by hand

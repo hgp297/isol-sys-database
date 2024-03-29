@@ -99,6 +99,7 @@ class GP:
                     nu=1.5)
             
         kernel = kernel + krn.WhiteKernel(noise_level=1, noise_level_bounds=(1e-5, 1e3))
+        # kernel = kernel + 0.1**2 * krn.RBF(length_scale=0.1)
             
         # pipeline to scale -> GPR
         gp_pipe = Pipeline([
@@ -313,6 +314,7 @@ class GP:
             # target exists directly in probability space
             T = pr
         
+        gp_obj = self.gpr._final_estimator
         # weight is from Lyu / Picheny
         from numpy import exp, log
         pi = 3.14159
