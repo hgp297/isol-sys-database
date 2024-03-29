@@ -104,7 +104,7 @@ mdl_collapse.fit_gpr(kernel_name='rbf_iso')
 
 #%% Prediction 3ds
 
-plt.close('all')
+# plt.close('all')
 import matplotlib as mpl
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -114,7 +114,7 @@ subt_font = 18
 label_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 X_plot = mdl.make_2D_plotting_space(100)
 # X_plot['Tm']=3.0
@@ -334,7 +334,7 @@ fs2 = fs1**2
 
 #%% plot gpc functions
 
-plt.close('all')
+# plt.close('all')
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 20
@@ -460,7 +460,7 @@ plt.show()
 #%% cost efficiency
 
 from pred import get_steel_coefs, calc_upfront_cost
-plt.close('all')
+# plt.close('all')
 steel_price = 2.00
 coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 

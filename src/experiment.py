@@ -386,12 +386,18 @@ def run_doe(prob_target, df_train, df_test,
             mae = mean_absolute_error(test_set.y, y_hat)
             print('Test set MAE: %.3f' % mae)
             
-            if len(rmse_list) == 0:
-                conv = rmse
-            else:
-                conv = abs(rmse - rmse_list[-1])/rmse_list[-1]
+            # if len(rmse_list) == 0:
+            #     conv = rmse
+            # else:
+            #     conv = abs(rmse - rmse_list[-1])/rmse_list[-1]
             
-            if rmse < error_tol:
+            # if rmse < error_tol:
+            if len(nrmse_list) == 0:
+                conv = NRMSE_cv
+            else:
+                conv = abs(NRMSE_cv - nrmse_list[-1])/nrmse_list[-1]
+            
+            if NRMSE_cv < error_tol:
                 print('Stopping criterion reached. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
                 
@@ -401,7 +407,7 @@ def run_doe(prob_target, df_train, df_test,
                 
                 return (df_train, rmse_list, mae_list, nrmse_list)
             elif conv < conv_tol:
-                print('RMSE did not improve beyond convergence tolerance. Ending DoE...')
+                print('NRMSE_cv did not improve beyond convergence tolerance. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
                 
                 rmse_list.append(rmse)
