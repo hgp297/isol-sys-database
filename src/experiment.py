@@ -308,7 +308,9 @@ def run_doe(prob_target, df_train, df_test,
     covariate_columns = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
     test_set.set_covariates(covariate_columns)
     
-    test_set.set_outcome('collapse_prob')
+    outcome = 'collapse_prob'
+    
+    test_set.set_outcome(outcome)
     
     sample_bounds = test_set.X.agg(['min', 'max'])
     
@@ -332,6 +334,7 @@ def run_doe(prob_target, df_train, df_test,
     
     rmse_list = []
     mae_list = []
+    nrmse_list = []
     
     doe_idx = 0
     
@@ -349,7 +352,7 @@ def run_doe(prob_target, df_train, df_test,
             
             mdl = GP(df_train)
             
-            mdl.set_outcome('collapse_prob')
+            mdl.set_outcome(outcome)
             
             mdl.set_covariates(covariate_columns)
             mdl.fit_gpr(kernel_name='rbf_iso')
@@ -362,11 +365,23 @@ def run_doe(prob_target, df_train, df_test,
             compare = pd.DataFrame(test_set.y).copy()
             compare['predicted'] = y_hat
             mse = mean_squared_error(test_set.y, y_hat)
-            # TODO: change this to a cross-validation
+            
+            # TODO: change this to a cross-validation (LOOCV?)
+            # SOURCE: Yi & Taflanidis (2023)
+            gp_obj = mdl.gpr._final_estimator
+            L = gp_obj.L_
+            K_mat = L @ L.T
+            alpha_ = gp_obj.alpha_.flatten()
+            K_inv_diag = np.linalg.inv(K_mat).diagonal()
+            
+            NRMSE_cv = ((np.sum(np.divide(alpha_, K_inv_diag)**2)/len(alpha_))**0.5/
+                        (max(mdl.y[outcome]) - min(mdl.y[outcome])))
+            
+            # nrmse = rmse/(max(mdl.y[outcome]) - min(mdl.y[outcome]))
+            print('Test set NRMSE_cv: %.3f' % NRMSE_cv)
+            
             rmse = mse**0.5
             print('Test set RMSE: %.3f' % rmse)
-            
-            nrmse = rmse/(max(df_train.y) - min(df_train.y))
 
             mae = mean_absolute_error(test_set.y, y_hat)
             print('Test set MAE: %.3f' % mae)
@@ -381,19 +396,19 @@ def run_doe(prob_target, df_train, df_test,
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
                 
                 rmse_list.append(rmse)
-                
+                nrmse_list.append(NRMSE_cv)
                 mae_list.append(mae)
                 
-                return (df_train, rmse_list, mae_list)
+                return (df_train, rmse_list, mae_list, nrmse_list)
             elif conv < conv_tol:
                 print('RMSE did not improve beyond convergence tolerance. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
                 
                 rmse_list.append(rmse)
-                
+                nrmse_list.append(NRMSE_cv)
                 mae_list.append(mae)
                 
-                return (df_train, rmse_list, mae_list)
+                return (df_train, rmse_list, mae_list, nrmse_list)
             else:
                 pass
             batch_idx = 0
@@ -515,6 +530,7 @@ def run_doe(prob_target, df_train, df_test,
             if (batch_idx % (batch_size) == 0):
                 rmse_list.append(rmse)
                 mae_list.append(mae)
+                nrmse_list.append(NRMSE_cv)
             
             batch_idx += 1
             doe_idx += 1
