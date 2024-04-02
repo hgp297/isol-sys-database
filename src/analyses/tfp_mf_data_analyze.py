@@ -792,7 +792,7 @@ plt.show()
 
 #%% add in doe points
 
-with open("../../data/tfp_mf_db_doe.pickle", 'rb') as picklefile:
+with open("../../data/tfp_mf_db_doe_smaller.pickle", 'rb') as picklefile:
     main_obj_doe = pickle.load(picklefile)
     
 main_obj_doe.calculate_collapse()
@@ -900,31 +900,81 @@ plt.ylim([0.5, 2.25])
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.grid(True)
-plt.title('Collapse risk after DoE (280 pts)', fontsize=axis_font)
+plt.title('Collapse risk after DoE', fontsize=axis_font)
 plt.show()
+
+#%% plots, Ry Tm
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+
+x_pl = np.unique(yy)
+y_pl = np.unique(uu)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+X_subset = X_space[X_space['gap_ratio']==np.median(X_space['gap_ratio'])]
+fs2_subset = fs2_train[X_space['gap_ratio']==np.median(X_space['gap_ratio'])]
+fmu_subset = fmu_train[X_space['gap_ratio']==np.median(X_space['gap_ratio'])]
+Z = fmu_subset.reshape(xx_pl.shape)
+
+plt.figure(figsize=(8,6))
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
+plt.clabel(cs, fontsize=clabel_size)
+plt.scatter(df_train['RI'], df_train['T_ratio'], 
+            c=df_train['collapse_prob'],
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+# plt.xlim([0.5,2.0])
+# plt.ylim([0.5, 2.5])
+plt.ylabel('T ratio', fontsize=axis_font)
+plt.xlabel(r'$R_y$', fontsize=axis_font)
+plt.grid(True)
+plt.title('Collapse risk after DoE', fontsize=axis_font)
+plt.show()
+
 
 #%% doe convergence plots
 
 rmse_hist = main_obj_doe.rmse_hist
 mae_hist = main_obj_doe.mae_hist
+nrmse_hist = main_obj_doe.nrmse_list
 
-fig = plt.figure(figsize=(9, 6))
+fig = plt.figure(figsize=(13, 6))
 
-ax1=fig.add_subplot(1, 1, 1)
-ax1.plot(np.arange(0, (len(rmse_hist)*10), 10), rmse_hist)
+ax1=fig.add_subplot(1, 2, 1)
+ax1.plot(np.arange(0, (len(rmse_hist)*5), 5), rmse_hist)
 # ax1.set_title(r'Root mean squared error', fontsize=axis_font)
 ax1.set_xlabel(r'Points added', fontsize=axis_font)
 ax1.set_ylabel(r'Root mean squared error (RMSE)', fontsize=axis_font)
 # ax1.set_xlim([0, 140])
 # ax1.set_ylim([0.19, 0.28])
-plt.grid(True)
+ax1.grid(True)
 
 
-# ax2=fig.add_subplot(1, 2, 2)
-# ax2.plot(np.arange(0, (len(rmse_hist)*10), 10), mae_hist)
-# ax2.set_title('Mean absolute error', fontsize=axis_font)
-# ax2.set_xlabel('Points added', fontsize=axis_font)
-# plt.grid(True)
+ax2=fig.add_subplot(1, 2, 2)
+ax2.plot(np.arange(0, (len(rmse_hist)*5), 5), nrmse_hist)
+ax2.set_title('Normalized root mean squared LOO error', fontsize=axis_font)
+ax2.set_xlabel('Points added', fontsize=axis_font)
+ax2.grid(True)
+fig.tight_layout()
+
 
 #%%  a demonstration of Ry - Tfb relationships
 # import matplotlib.pyplot as plt

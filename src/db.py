@@ -382,7 +382,7 @@ class Database:
         import pandas as pd
         
         all_designs = self.retained_designs
-        
+        all_designs = all_designs.reset_index()
         db_results = None
         
         for index, design in all_designs.iterrows():
@@ -449,12 +449,12 @@ class Database:
         
         from experiment import run_doe
         
-        df_doe, rmse_hist, mae_hist, nrmse_list = run_doe(target_prob, df_train, df_test, 
+        df_doe, rmse_hist, mae_hist, nrmse_hist = run_doe(target_prob, df_train, df_test, 
                                              batch_size=batch_size, error_tol=1e-2, 
                                              maxIter=600, conv_tol=1e-3)
         
         self.doe_analysis = df_doe
         self.rmse_hist = rmse_hist
         self.mae_hist = mae_hist
-        self.nrmse_list = nrmse_list
+        self.nrmse_hist = nrmse_hist
         pass

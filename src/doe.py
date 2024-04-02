@@ -201,14 +201,15 @@ class GP:
             x_keep = x_keep[~((x_keep[:,Tm_idx] > 4) & 
                               (x_keep[:,zeta_idx] < 0.2))]
         
-        # import matplotlib.pyplot as plt
-        # plt.rcParams["font.family"] = "serif"
-        # plt.rcParams["mathtext.fontset"] = "dejavuserif"
-        # import matplotlib as mpl
-        # label_size = 16
-        # mpl.rcParams['xtick.labelsize'] = label_size
-        # mpl.rcParams['ytick.labelsize'] = label_size
-        # plt.scatter(x_keep[:,0], x_keep[:,1])
+        import matplotlib.pyplot as plt
+        fig = plt.figure(figsize=(13, 6))
+        plt.rcParams["font.family"] = "serif"
+        plt.rcParams["mathtext.fontset"] = "dejavuserif"
+        import matplotlib as mpl
+        label_size = 16
+        mpl.rcParams['xtick.labelsize'] = label_size
+        mpl.rcParams['ytick.labelsize'] = label_size
+        plt.scatter(x_keep[:,0], x_keep[:,1])
         
         return x_keep[np.random.choice(x_keep.shape[0], n_pts, replace=False),:]
         
