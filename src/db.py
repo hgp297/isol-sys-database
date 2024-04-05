@@ -451,7 +451,7 @@ class Database:
         
         df_doe, rmse_hist, mae_hist, nrmse_hist = run_doe(target_prob, df_train, df_test, 
                                              batch_size=batch_size, error_tol=1e-2, 
-                                             maxIter=600, conv_tol=1e-3)
+                                             maxIter=1000, conv_tol=1e-4)
         
         self.doe_analysis = df_doe
         self.rmse_hist = rmse_hist

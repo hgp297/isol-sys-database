@@ -569,13 +569,15 @@ plt.show()
 
 #%% doe with smaller set
 
-# n_set is both test_train split
-n_set = 200
-ml_set = df.sample(n=n_set, replace=False, random_state=985)
+with open("../../data/tfp_mf_db_doe_smaller.pickle", 'rb') as picklefile:
+    main_obj_doe = pickle.load(picklefile)
+    
+main_obj_doe.calculate_collapse()
+
 
 # split 50/50 for 
-df_train = ml_set.head(int(n_set/2))
-df_test = ml_set.tail(int(n_set/2))
+df_train = main_obj_doe.training_set
+df_test = main_obj_doe.testing_set
 
 #%% train a model
 
@@ -792,10 +794,7 @@ plt.show()
 
 #%% add in doe points
 
-with open("../../data/tfp_mf_db_doe_smaller.pickle", 'rb') as picklefile:
-    main_obj_doe = pickle.load(picklefile)
-    
-main_obj_doe.calculate_collapse()
+
 
 df_doe = main_obj_doe.doe_analysis
 df_doe = df_doe.reset_index(drop=True)

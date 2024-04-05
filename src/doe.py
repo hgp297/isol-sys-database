@@ -150,8 +150,24 @@ class GP:
         return(f_star, var_f_star)
     
     def doe_rejection_sampler(self, n_pts, pr, bound_df, design_filter=False):
+        """Return points sampled proportional to a custom DoE metric using 
+        rejection sampling.
+
+        Parameters
+        ----------
+        n_pts : Scalar of number of desired sampled points
+        pr: For targeted MSE, provide the probability contour that the DoE weights
+        MSE against
+        bound_df: Dataframe of variables and their upper/lower bound
+        design_filter: Boolean determining whether or not to manually filter out
+        designs for the sake of constructability of bearings (currently manual for TFP)
+    
+        Returns
+        -------
+        Array of n_pts sampled points proportional to (tMSE) metric
+        """
         import numpy as np
-        n_max = 10000
+        n_max = 1000
         n_var = bound_df.shape[1]
         
         min_list = [val for val in bound_df.loc['min']]
@@ -171,16 +187,13 @@ class GP:
         x0 = np.array([np.random.uniform(min_list[i], max_list[i])
                           for i in range(n_var)])
         
+        '''
         # use basin hopping to avoid local minima
         minimizer_kwargs={'args':(pr, bound_df),'bounds':bnds}
         res = basinhopping(self.fn_tmse, x0, minimizer_kwargs=minimizer_kwargs,
                            niter=100, seed=985)
-        
-        # res = minimize(self.fn_test, x0, 
-        #                args=(pr),
-        #                method='Nelder-Mead', tol=1e-8,
-        #                bounds=bnds)
-        
+    
+        # get maximum of function for rejection variable scaling
         c_max = -res.fun
         
         # sample rejection variable
@@ -189,8 +202,26 @@ class GP:
         # evaluate the function at x
         fx = -self.fn_tmse(x_var, pr, bound_df).T
         x_keep = x_var[u_var.ravel() < fx,:]
+        '''
         
-        # TODO: change if T_ratio
+        # TODO: try LOOCV
+        # use basin hopping to avoid local minima
+        minimizer_kwargs={'args':(bound_df), 'bounds':bnds}
+        res = basinhopping(self.fn_LOOCV_error, x0, minimizer_kwargs=minimizer_kwargs,
+                           niter=100, seed=985)
+    
+        # get maximum of function for rejection variable scaling
+        c_max = -res.fun
+        
+        # sample rejection variable
+        u_var = np.array([np.random.uniform(0.0, c_max, n_max)]).T
+        
+        # evaluate the function at x
+        fx = np.apply_along_axis(self.fn_LOOCV_error, 1, x_var, bound_df)*-1
+        x_keep = x_var[u_var.ravel() < fx.ravel(),:]
+        
+        
+        # TODO: temporary manual design filters
         # if T_m > 4, zeta must be > 0.15
         if design_filter == True:
             var_list = bound_df.columns.tolist()
@@ -201,16 +232,18 @@ class GP:
             x_keep = x_keep[~((x_keep[:,Tm_idx] > 4) & 
                               (x_keep[:,zeta_idx] < 0.2))]
         
-        import matplotlib.pyplot as plt
-        fig = plt.figure(figsize=(13, 6))
-        plt.rcParams["font.family"] = "serif"
-        plt.rcParams["mathtext.fontset"] = "dejavuserif"
-        import matplotlib as mpl
-        label_size = 16
-        mpl.rcParams['xtick.labelsize'] = label_size
-        mpl.rcParams['ytick.labelsize'] = label_size
-        plt.scatter(x_keep[:,0], x_keep[:,1])
+        # import matplotlib.pyplot as plt
+        # fig = plt.figure(figsize=(13, 6))
+        # plt.rcParams["font.family"] = "serif"
+        # plt.rcParams["mathtext.fontset"] = "dejavuserif"
+        # import matplotlib as mpl
+        # label_size = 16
+        # mpl.rcParams['xtick.labelsize'] = label_size
+        # mpl.rcParams['ytick.labelsize'] = label_size
+        # choice = np.random.choice(x_keep.shape[0], x_keep.shape[0], replace=False)
+        # plt.scatter(x_keep[choice,0], x_keep[choice,1])
         
+        # return a choice of n_pts random qualifying points
         return x_keep[np.random.choice(x_keep.shape[0], n_pts, replace=False),:]
         
   
@@ -290,6 +323,18 @@ class GP:
     
     # returns single-point (myopic) tmse condition, Lyu 2021
     def fn_tmse(self, X_cand, pr, bound_df):
+        """Return point that maximizes tMSE criterion (Lyu et al 2021)
+        Latent variance is evaluated at the point according to current model 
+        with n data points. No hyperparameter optimization is done.
+
+        Parameters
+        ----------
+        pr : scalar. Probability contour where target is desired.
+    
+        Returns
+        -------
+        x_next: array['gap', 'RI', 'TM', 'zeta'] that maximizes tMSE
+        """
         
         import pandas as pd
         import numpy as np
@@ -324,18 +369,56 @@ class GP:
         
         return(-fs2 * Wx)
     
-    def fn_test(self, X_cand, pr):
+    # TODO: new LOO DoE function?
+    
+    def fn_LOOCV_error(self, X_cand, bound_df):
+        """Return point LOOCV error approximation for a given point
         
-        import pandas as pd
+        Parameters
+        ----------
+        X_cand: np.array of candidate point
+    
+        Returns
+        -------
+        x_next: e^cv^2 from Yi & Taflanidis paper
+        """
+        
         import numpy as np
-        if X_cand.ndim == 1:
-            X_cand = np.array([X_cand])
-            
-        X_cand = pd.DataFrame(X_cand, columns=['gapRatio',
-                                               'RI',
-                                               'Tm',
-                                               'zetaM'])
+        import pandas as pd
         
-        # function returns latent mean
-        fmu = self.gpr.predict(X_cand)
-        return(-fmu)
+        # get trained GP info
+        gp_obj = self.gpr._final_estimator
+        X_train = gp_obj.X_train_
+        lengthscale = gp_obj.kernel_.theta[1]
+        
+        # calculate LOOCV error of training set (Kyprioti)
+        L = gp_obj.L_
+        K_mat = L @ L.T
+        alpha_ = gp_obj.alpha_.flatten()
+        K_inv_diag = np.linalg.inv(K_mat).diagonal()
+        e_cv_sq = np.divide(alpha_, K_inv_diag)**2
+        
+        # use decaying distance metric
+        point = np.array([np.asarray(X_cand)])
+        from scipy.spatial.distance import cdist
+        dist_list = cdist(point/lengthscale, X_train/lengthscale).flatten()
+        
+        # smoothing function, exponentially decaying
+        gamma = np.exp(-dist_list**2)
+        
+        # aggregate LOOCV_error and distance
+        numerator = np.sum(np.multiply(gamma, e_cv_sq))
+        denominator = np.sum(gamma)
+        
+        e_cv2_cand = numerator/denominator
+        
+        if X_cand.ndim == 1:
+            X_df = np.array([X_cand])
+            
+        X_df = pd.DataFrame(X_df, columns=bound_df.columns)
+        
+        fmu, fs1 = self.gpr.predict(X_df, return_std=True)
+        fs2 = fs1**2
+        
+        # return negative for minimization purposes
+        return(-fs2 * e_cv2_cand)

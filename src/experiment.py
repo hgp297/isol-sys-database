@@ -291,7 +291,7 @@ def run_nlth(design,
     
 
 def run_doe(prob_target, df_train, df_test, 
-            batch_size=10, error_tol=0.15, maxIter=600, conv_tol=1e-2):
+            batch_size=10, error_tol=0.15, maxIter=1000, conv_tol=1e-2):
     
     import random
     import numpy as np
@@ -366,7 +366,6 @@ def run_doe(prob_target, df_train, df_test,
             compare['predicted'] = y_hat
             mse = mean_squared_error(test_set.y, y_hat)
             
-            # TODO: change this to a cross-validation (LOOCV?)
             # SOURCE: Yi & Taflanidis (2023)
             gp_obj = mdl.gpr._final_estimator
             L = gp_obj.L_
@@ -391,6 +390,7 @@ def run_doe(prob_target, df_train, df_test,
             # else:
             #     conv = abs(rmse - rmse_list[-1])/rmse_list[-1]
             
+            # TODO: more intelligent convergence criteria
             # if rmse < error_tol:
             if len(nrmse_list) == 0:
                 conv = NRMSE_cv
