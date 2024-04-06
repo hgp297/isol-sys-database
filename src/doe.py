@@ -167,7 +167,7 @@ class GP:
         Array of n_pts sampled points proportional to (tMSE) metric
         """
         import numpy as np
-        n_max = 1000
+        n_max = 10000
         n_var = bound_df.shape[1]
         
         min_list = [val for val in bound_df.loc['min']]
@@ -244,7 +244,11 @@ class GP:
         # plt.scatter(x_keep[choice,0], x_keep[choice,1])
         
         # return a choice of n_pts random qualifying points
-        return x_keep[np.random.choice(x_keep.shape[0], n_pts, replace=False),:]
+        if x_keep.shape[0] < n_pts:
+            return(x_keep[np.random.choice(x_keep.shape[0], n_pts, replace=True),:])
+        else:
+            return x_keep[np.random.choice(x_keep.shape[0], n_pts, replace=False),:]
+            
         
   
     def doe_tmse(self, pr, bound_df):
