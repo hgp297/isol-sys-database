@@ -546,5 +546,5 @@ def run_doe(prob_target, df_train, df_test,
         
         batch_no += 1
     print('DoE did not converge within maximum iteration specified.')
-    return df_train, rmse_list, mae_list
+    return df_train, rmse_list, mae_list, nrmse_list
     

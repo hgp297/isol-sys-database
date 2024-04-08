@@ -375,6 +375,7 @@ class GP:
     
     # TODO: new LOO DoE function?
     
+    
     def fn_LOOCV_error(self, X_cand, bound_df):
         """Return point LOOCV error approximation for a given point
         
@@ -410,11 +411,20 @@ class GP:
         # smoothing function, exponentially decaying
         gamma = np.exp(-dist_list**2)
         
+        
+        
         # aggregate LOOCV_error and distance
         numerator = np.sum(np.multiply(gamma, e_cv_sq))
         denominator = np.sum(gamma)
         
-        e_cv2_cand = numerator/denominator
+        try:
+            e_cv2_cand = numerator/denominator
+        except RuntimeWarning:
+            # use log-sum-exp trick to avoid underflows
+            test_den = logsumexp(-dist_list**2)
+            test_num = logsumexp(-dist_list**2, e_cv_sq)
+            
+            e_cv2_cand = np.exp(test_num - test_den)
         
         if X_cand.ndim == 1:
             X_df = np.array([X_cand])
@@ -426,3 +436,12 @@ class GP:
         
         # return negative for minimization purposes
         return(-fs2 * e_cv2_cand)
+    
+
+def logsumexp(x, a=None):
+    import numpy as np
+    c = x.max()
+    if a is None:
+        return c + np.log(np.sum(np.exp(x - c)))
+    else:
+        return c + np.log(np.sum(np.multiply(a, np.exp(x - c))))

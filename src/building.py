@@ -3057,7 +3057,7 @@ class Building:
                      '-node', *inner_col_nds, '-dof', 1, 'accel')
         
         import numpy as np
-        n_steps = np.floor(T_end/dt_transient)
+        n_steps = int(np.floor(T_end/dt_transient))
         
         # actually perform analysis; returns ok=0 if analysis was successful
         
