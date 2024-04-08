@@ -416,16 +416,25 @@ class GP:
         # aggregate LOOCV_error and distance
         numerator = np.sum(np.multiply(gamma, e_cv_sq))
         denominator = np.sum(gamma)
+        import warnings
+        
+        # only use logsumexp if we run into trouble
+        warnings.filterwarnings('error')
         
         try:
             e_cv2_cand = numerator/denominator
         except RuntimeWarning:
             # use log-sum-exp trick to avoid underflows
+            breakpoint()
             test_den = logsumexp(-dist_list**2)
             test_num = logsumexp(-dist_list**2, e_cv_sq)
             
             e_cv2_cand = np.exp(test_num - test_den)
+            
+        # reset warning so regular warnings bypass
+        warnings.resetwarnings()
         
+        # find predictive variance
         if X_cand.ndim == 1:
             X_df = np.array([X_cand])
             
