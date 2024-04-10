@@ -1,0 +1,387 @@
+############################################################################
+#               Figure generation (plotting, ML, inverse design)
+
+# Created by:   Huy Pham
+#               University of California, Berkeley
+
+# Date created: April 2024
+
+# Description:  Main file which imports the structural database and starts the
+# loss estimation
+
+# Open issues:  (1) 
+
+############################################################################
+import sys
+# caution: path[0] is reserved for script path (or '' in REPL)
+sys.path.insert(1, '../')
+
+import pickle
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from doe import GP
+
+
+with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
+    main_obj = pickle.load(picklefile)
+    
+main_obj.calculate_collapse()
+
+df_raw = main_obj.ops_analysis
+
+# remove the singular outlier point
+from scipy import stats
+df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 10].copy()
+
+# df = df_whole.head(100).copy()
+
+df['max_drift'] = df.PID.apply(max)
+df['log_drift'] = np.log(df['max_drift'])
+
+df['max_velo'] = df.PFV.apply(max)
+df['max_accel'] = df.PFA.apply(max)
+
+df['T_ratio'] = df['T_m'] / df['T_fb']
+pi = 3.14159
+g = 386.4
+
+zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+df['Bm'] = np.interp(df['zeta_e'], zetaRef, BmRef)
+
+df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
+    (g*(df['sa_tm']/df['Bm'])*df['T_m']**2)
+    
+#%%
+# make a generalized 2D plotting grid, defaulted to gap and Ry
+# grid is based on the bounds of input data
+def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI', 
+                           all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                           x_bounds=None, y_bounds=None):
+    
+    if x_bounds == None:
+        x_min = min(X[x_var])
+        x_max = max(X[x_var])
+    else:
+        x_min = x_bounds[0]
+        x_max = x_bounds[1]
+    if y_bounds == None:
+        y_min = min(X[y_var])
+        y_max = max(X[y_var])
+    else:
+        y_min = y_bounds[0]
+        y_max = y_bounds[1]
+    xx, yy = np.meshgrid(np.linspace(x_min,
+                                     x_max,
+                                     res),
+                         np.linspace(y_min,
+                                     y_max,
+                                     res))
+
+    rem_vars = [i for i in all_vars if i not in [x_var, y_var]]
+    third_var = rem_vars[0]
+    fourth_var = rem_vars[-1]
+       
+    xx = xx
+    yy = yy
+    X_pl = pd.DataFrame({x_var:xx.ravel(),
+                         y_var:yy.ravel(),
+                         third_var:np.repeat(X[third_var].median(),
+                                             res*res),
+                         fourth_var:np.repeat(X[fourth_var].median(), 
+                                              res*res)})
+    X_plot = X_pl[all_vars]
+                         
+    return(X_plot)
+
+# hard-coded
+def make_design_space(res):
+    xx, yy, uu, vv = np.meshgrid(np.linspace(0.5, 1.8,
+                                             res),
+                                 np.linspace(0.5, 2.25,
+                                             res),
+                                 np.linspace(1.5, 4.5,
+                                             res),
+                                 np.linspace(0.1, 0.25,
+                                             res))
+                                 
+    X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
+                         'RI':yy.ravel(),
+                         'T_ratio':uu.ravel(),
+                         'zeta_e':vv.ravel()})
+
+    return(X_space)
+
+#%% collapse fragility def
+
+# collapse as a probability
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+# mean_log_drift = 0.05
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+
+label_size = 16
+clabel_size = 12
+x = np.linspace(0, 0.15, 200)
+
+mu = log(mean_log_drift)
+
+ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
+p = ln_dist.cdf(np.array(x))
+
+plt.close('all')
+fig, ax = plt.subplots(1, 1, figsize=(8,6))
+
+ax.plot(x, p, label='Collapse (peak)', color='blue')
+
+mu_irr = log(0.01)
+ln_dist_irr = lognorm(s=0.3, scale=exp(mu_irr))
+p_irr = ln_dist_irr.cdf(np.array(x))
+
+# ax.plot(x, p_irr, color='red', label='Irreparable (residual)')
+
+axis_font = 20
+subt_font = 18
+xright = 0.0
+xleft = 0.15
+ax.set_ylim([0,1])
+ax.set_xlim([0, xleft])
+ax.set_ylabel('Collapse probability', fontsize=axis_font)
+ax.set_xlabel('Peak drift ratio', fontsize=axis_font)
+
+ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='blue', linestyle=":")
+ax.hlines(y=0.5, xmin=xright, xmax=exp(mu), color='blue', linestyle=":")
+ax.text(0.01, 0.52, r'$\theta = %.3f$'% mean_log_drift , fontsize=axis_font, color='blue')
+ax.plot([exp(mu)], [0.5], marker='*', markersize=15, color="blue", linestyle=":")
+
+upper = ln_dist.ppf(0.84)
+ax.vlines(x=upper, ymin=0, ymax=0.84, color='blue', linestyle=":")
+ax.hlines(y=0.84, xmin=xright, xmax=upper, color='blue', linestyle=":")
+ax.text(0.01, 0.87, r'$\theta = %.3f$' % upper, fontsize=axis_font, color='blue')
+ax.plot([upper], [0.84], marker='*', markersize=15, color="blue", linestyle=":")
+
+lower= ln_dist.ppf(0.16)
+ax.vlines(x=lower, ymin=0, ymax=0.16, color='blue', linestyle=":")
+ax.hlines(y=0.16, xmin=xright, xmax=lower, color='blue', linestyle=":")
+ax.text(0.01, 0.19, r'$\theta = %.3f$' % lower, fontsize=axis_font, color='blue')
+ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
+
+
+# ax.set_title('Replacement fragility definition', fontsize=axis_font)
+ax.grid()
+# ax.legend(fontsize=label_size, loc='upper center')
+# plt.show()
+
+#%% base-set data
+
+mdl = GP(df)
+covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+mdl.set_covariates(covariate_list)
+mdl.set_outcome('collapse_prob')
+mdl.fit_gpr(kernel_name='rbf_iso')
+
+res = 75
+X_space = make_2D_plotting_space(mdl.X, res)
+
+import time
+t0 = time.time()
+
+fmu_train, fs1_train = mdl.gpr.predict(X_space, return_std=True)
+fs2_train = fs1_train**2
+
+tp = time.time() - t0
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
+
+#%% 10% design
+
+X_design_cand = make_design_space(10)
+
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+                          columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
+baseline_risk, baseline_fs1 = mdl.gpr.predict(X_baseline, return_std=True)
+baseline_risk = baseline_risk.item()
+baseline_fs2 = baseline_fs1**2
+baseline_fs1 = baseline_fs1.item()
+baseline_fs2 = baseline_fs2.item()
+
+t0 = time.time()
+fmu_train, fs1_train = mdl.gpr.predict(X_design_cand, return_std=True)
+fs2_train = fs1_train**2
+
+tp = time.time() - t0
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_design_cand.shape[0],
+                                                                tp))
+
+
+risk_thresh = 0.1
+space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
+ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_design_cand[X_design_cand.index.isin(ok_risk.index)]
+
+
+#%% Calculate upfront cost of data
+# TODO: use PACT to get the replacement cost of these components
+# TODO: include the deckings/slabs for more realistic initial costs
+
+# TODO: normalize cost for building size
+
+def get_steel_coefs(df, steel_per_unit=1.25):
+    n_bays = df.num_bays
+    
+    # ft
+    L_beam = df.L_bay
+    h_story = df.h_story
+    
+    # weights
+    W = df.W
+    Ws = df.W_s
+    
+    
+    all_beams = df.beam
+    all_cols = df.column
+    
+    # sum of per-length-weight of all floors
+    col_wt = [[float(member.split('X',1)[1]) for member in col_list] 
+                       for col_list in all_cols]
+    beam_wt = [[float(member.split('X',1)[1]) for member in beam_list] 
+                       for beam_list in all_beams]
+    col_all_wt = np.array(list(map(sum, col_wt)))
+    beam_all_wt = np.array(list(map(sum, beam_wt)))
+    
+    # find true steel costs
+    n_frames = 4
+    n_cols = 4*n_bays
+    
+    total_floor_col_length = np.array(n_cols*h_story, dtype=float)
+    total_floor_beam_length = np.array(L_beam * n_bays * n_frames, dtype=float)
+        
+    total_col_wt = col_all_wt*total_floor_col_length 
+    total_beam_wt = beam_all_wt*total_floor_beam_length
+    
+    bldg_wt = total_col_wt + total_beam_wt
+    
+    steel_cost = steel_per_unit*bldg_wt
+    
+    # find design base shear as a feature
+    pi = 3.14159
+    g = 386.4
+    kM = (1/g)*(2*pi/df['T_m'])**2
+    S1 = 1.017
+    Dm = g*S1*df['T_m']/(4*pi**2*df['Bm'])
+    Vb = Dm * kM * Ws / 2
+    Vst = Vb*(Ws/W)**(1 - 2.5*df['zeta_e'])
+    Vs = np.array(Vst/df['RI']).reshape(-1,1)
+    
+    # linear regress cost as f(base shear)
+    from sklearn.linear_model import LinearRegression
+    reg = LinearRegression()
+    reg.fit(X=Vs, y=steel_cost)
+    return({'coef':reg.coef_, 'intercept':reg.intercept_})
+    
+# TODO: add economy of scale for land
+# TODO: investigate upfront cost's influence by Tm
+def calc_upfront_cost(X_test, steel_coefs,
+                      land_cost_per_sqft=2837/(3.28**2),
+                      W=3037.5, Ws=2227.5):
+    
+    from scipy.interpolate import interp1d
+    zeta_ref = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    Bm_ref = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    interp_f = interp1d(zeta_ref, Bm_ref)
+    Bm = interp_f(X_test['zeta_e'])
+    
+    # estimate Tm
+    
+    from loads import estimate_period
+    
+    # TODO: formalize this for all structures
+    X_query = X_test.copy()
+    X_query['superstructure_system'] = 'MF'
+    X_query['h_bldg'] = 4*13.0
+    X_query[['T_fbe']] = X_query.apply(lambda row: estimate_period(row),
+                                                     axis='columns', result_type='expand')
+    
+    X_query['T_m'] = X_query['T_fbe'] * X_query['T_ratio']
+    
+    # calculate moat gap
+    pi = 3.14159
+    g = 386.4
+    S1 = 1.017
+    SaTm = S1/X_query['T_m']
+    moat_gap = X_query['gap_ratio'] * (g*(SaTm/Bm)*X_query['T_m']**2)/(4*pi**2)
+    
+    # calculate design base shear
+    kM = (1/g)*(2*pi/X_query['T_m'])**2
+    Dm = g*S1*X_query['T_m']/(4*pi**2*Bm)
+    Vb = Dm * kM * Ws / 2
+    Vst = Vb*(Ws/W)**(1 - 2.5*X_query['zeta_e'])
+    Vs = Vst/X_query['RI']
+    
+    
+    steel_cost = steel_coefs['intercept'] + steel_coefs['coef']*Vs
+    # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
+    land_area = (90.0*12.0 + moat_gap)**2
+    land_cost = land_cost_per_sqft/144.0 * land_area
+    
+    return({'total': steel_cost + land_cost,
+            'steel': steel_cost,
+            'land': land_cost})
+    
+#%% baseline & prediction from 400-base-set
+risk_thresh = 0.1
+
+# get_structural_cmp_MF(df, metadata)
+steel_price = 2.00
+coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
+
+baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
+baseline_total = baseline_costs['total'].item()
+baseline_steel = baseline_costs['steel'].item()
+baseline_land = baseline_costs['land'].item()
+
+# least upfront cost of the viable designs
+
+print('========== Baseline design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${baseline_total:,.2f}')
+print('Predicted collapse risk: ',
+      f'{baseline_risk:.2%}')
+print(X_baseline)
+
+import warnings
+warnings.filterwarnings('ignore')
+
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+warnings.resetwarnings()
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
+# TODO: pareto

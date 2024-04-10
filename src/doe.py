@@ -204,7 +204,9 @@ class GP:
         x_keep = x_var[u_var.ravel() < fx,:]
         '''
         
-        # TODO: try LOOCV
+        # TODO: try LOOCV, another idea if poor results is go back to MSE (no rejection sampling)
+        # and reduce batch size to 1
+        
         # use basin hopping to avoid local minima
         minimizer_kwargs={'args':(bound_df), 'bounds':bnds}
         res = basinhopping(self.fn_LOOCV_error, x0, minimizer_kwargs=minimizer_kwargs,
@@ -419,16 +421,15 @@ class GP:
         import warnings
         
         # only use logsumexp if we run into trouble
+        # TODO: use LSE by default?
         warnings.filterwarnings('error')
         
         try:
             e_cv2_cand = numerator/denominator
         except RuntimeWarning:
             # use log-sum-exp trick to avoid underflows
-            breakpoint()
             test_den = logsumexp(-dist_list**2)
             test_num = logsumexp(-dist_list**2, e_cv_sq)
-            
             e_cv2_cand = np.exp(test_num - test_den)
             
         # reset warning so regular warnings bypass

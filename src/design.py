@@ -1210,6 +1210,7 @@ def get_brace_demands(Fx, del_xe, q, h_story, L_bay, w_1, w_2):
     from math import atan, sin, cos
     theta = atan(h_story/(L_bay/2))
     
+    # TODO: check q as q brace or q bay?
     # required axial stiffness of braces for each bay at each level
     E = 29000.0 # ksi
     A_brace_req = q/(2*cos(theta)**2) * (L_bay)/(del_xe * E)

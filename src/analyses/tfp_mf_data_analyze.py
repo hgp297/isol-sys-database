@@ -974,6 +974,29 @@ ax2.set_xlabel('Points added', fontsize=axis_font)
 ax2.grid(True)
 fig.tight_layout()
 
+#%% predicting baseline
+
+
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+                          columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
+baseline_risk, baseline_fs1 = mdl_doe.gpr.predict(X_baseline, return_std=True)
+baseline_risk = baseline_risk.item()
+baseline_fs2 = baseline_fs1**2
+baseline_fs1 = baseline_fs1.item()
+baseline_fs2 = baseline_fs2.item()
+
+#%%
+
+# TODO: cost estimation for new frame
+
+# TODO: make predictor frame with all range of all variables
+
+risk_thresh = 0.1
+space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
+ok_risk = X_space.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+X_design = X_space[X_space.index.isin(ok_risk.index)]
 
 #%%  a demonstration of Ry - Tfb relationships
 # import matplotlib.pyplot as plt
