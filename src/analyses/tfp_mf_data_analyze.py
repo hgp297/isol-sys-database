@@ -569,7 +569,7 @@ plt.show()
 
 #%% doe with smaller set
 
-with open("../../data/tfp_mf_db_doe_smaller.pickle", 'rb') as picklefile:
+with open("../../data/tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
     main_obj_doe = pickle.load(picklefile)
     
 main_obj_doe.calculate_collapse()
@@ -953,7 +953,7 @@ plt.show()
 
 rmse_hist = main_obj_doe.rmse_hist
 mae_hist = main_obj_doe.mae_hist
-nrmse_hist = main_obj_doe.nrmse_list
+nrmse_hist = main_obj_doe.nrmse_hist
 
 fig = plt.figure(figsize=(13, 6))
 

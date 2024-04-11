@@ -335,6 +335,7 @@ def run_doe(prob_target, df_train, df_test,
     rmse_list = []
     mae_list = []
     nrmse_list = []
+    hyperparam_list = np.empty((0,3), float)
     
     doe_idx = 0
     
@@ -372,6 +373,10 @@ def run_doe(prob_target, df_train, df_test,
             K_mat = L @ L.T
             alpha_ = gp_obj.alpha_.flatten()
             K_inv_diag = np.linalg.inv(K_mat).diagonal()
+            theta = gp_obj.kernel_.theta
+            
+            hyperparam_list = np.append(hyperparam_list, [theta], 
+                                        axis=0)
             
             NRMSE_cv = ((np.sum(np.divide(alpha_, K_inv_diag)**2)/len(alpha_))**0.5/
                         (max(mdl.y[outcome]) - min(mdl.y[outcome])))
@@ -406,7 +411,7 @@ def run_doe(prob_target, df_train, df_test,
                 nrmse_list.append(NRMSE_cv)
                 mae_list.append(mae)
                 
-                return (df_train, rmse_list, mae_list, nrmse_list)
+                return (df_train, rmse_list, mae_list, nrmse_list, hyperparam_list)
             elif conv < conv_tol:
                 print('NRMSE_cv did not improve beyond convergence tolerance. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
@@ -415,7 +420,7 @@ def run_doe(prob_target, df_train, df_test,
                 nrmse_list.append(NRMSE_cv)
                 mae_list.append(mae)
                 
-                return (df_train, rmse_list, mae_list, nrmse_list)
+                return (df_train, rmse_list, mae_list, nrmse_list, hyperparam_list)
             else:
                 pass
             batch_idx = 0
@@ -547,5 +552,8 @@ def run_doe(prob_target, df_train, df_test,
         
         batch_no += 1
     print('DoE did not converge within maximum iteration specified.')
-    return df_train, rmse_list, mae_list, nrmse_list
+    return df_train, rmse_list, mae_list, nrmse_list, hyperparam_list
+
+#%%
+# TODO: write inverse design tester
     

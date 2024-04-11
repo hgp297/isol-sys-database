@@ -97,7 +97,7 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
 
 # hard-coded
 def make_design_space(res):
-    xx, yy, uu, vv = np.meshgrid(np.linspace(0.5, 1.8,
+    xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.8,
                                              res),
                                  np.linspace(0.5, 2.25,
                                              res),
@@ -199,6 +199,55 @@ tp = time.time() - t0
 print("GPR collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                tp))
 
+#%% base-set, gap_Ry plot
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+x_var = 'gap_ratio'
+xx = X_space[x_var]
+y_var = 'RI'
+yy = X_space[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+X_subset = X_space[X_space['T_ratio']==np.median(X_space['T_ratio'])]
+fs2_subset = fs2_train[X_space['T_ratio']==np.median(X_space['T_ratio'])]
+fmu_subset = fmu_train[X_space['T_ratio']==np.median(X_space['T_ratio'])]
+Z = fmu_subset.reshape(xx_pl.shape)
+
+plt.figure(figsize=(8,6))
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
+plt.clabel(cs, fontsize=clabel_size)
+plt.scatter(df['gap_ratio'], df['RI'], 
+            c=df['collapse_prob'],
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+plt.xlim([0.5,2.0])
+plt.ylim([0.5, 2.25])
+plt.xlabel('Gap ratio', fontsize=axis_font)
+plt.ylabel(r'$R_y$', fontsize=axis_font)
+plt.grid(True)
+plt.title('Collapse risk using full 400 points', fontsize=axis_font)
+plt.show()
+
 
 #%% 10% design
 
@@ -230,15 +279,14 @@ X_design = X_design_cand[X_design_cand.index.isin(ok_risk.index)]
 
 
 #%% Calculate upfront cost of data
-# TODO: use PACT to get the replacement cost of these components
-# TODO: include the deckings/slabs for more realistic initial costs
 
 # TODO: normalize cost for building size
 
 def get_steel_coefs(df, steel_per_unit=1.25):
     n_bays = df.num_bays
-    
+    n_stories = df.num_stories
     # ft
+    L_bldg = df.L_bldg
     L_beam = df.L_bay
     h_story = df.h_story
     
@@ -271,6 +319,9 @@ def get_steel_coefs(df, steel_per_unit=1.25):
     bldg_wt = total_col_wt + total_beam_wt
     
     steel_cost = steel_per_unit*bldg_wt
+    bldg_sf = np.array(n_stories * L_bldg**2, dtype=float)
+    steel_cost_per_sf = steel_cost/bldg_sf
+    compare = pd.DataFrame([steel_cost_per_sf, df['RI']])
     
     # find design base shear as a feature
     pi = 3.14159
@@ -285,7 +336,7 @@ def get_steel_coefs(df, steel_per_unit=1.25):
     # linear regress cost as f(base shear)
     from sklearn.linear_model import LinearRegression
     reg = LinearRegression()
-    reg.fit(X=Vs, y=steel_cost)
+    reg.fit(X=Vs, y=steel_cost_per_sf)
     return({'coef':reg.coef_, 'intercept':reg.intercept_})
     
 # TODO: add economy of scale for land
@@ -305,6 +356,8 @@ def calc_upfront_cost(X_test, steel_coefs,
     from loads import estimate_period
     
     # TODO: formalize this for all structures
+    # current dummy structure: 4 bays, 4 stories
+    # 13 ft stories, 30 ft bays
     X_query = X_test.copy()
     X_query['superstructure_system'] = 'MF'
     X_query['h_bldg'] = 4*13.0
@@ -327,10 +380,14 @@ def calc_upfront_cost(X_test, steel_coefs,
     Vst = Vb*(Ws/W)**(1 - 2.5*X_query['zeta_e'])
     Vs = Vst/X_query['RI']
     
-    
-    steel_cost = steel_coefs['intercept'] + steel_coefs['coef']*Vs
+    # steel coefs now represent cost/sf as a function of Vs
+    steel_cost_per_sf = steel_coefs['intercept'] + steel_coefs['coef']*Vs
     # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
-    land_area = (90.0*12.0 + moat_gap)**2
+    
+    # TODO: change if generalized building
+    bldg_area = 4 * (30*4)**2
+    steel_cost = steel_cost_per_sf * bldg_area
+    land_area = (4*30*12.0 + moat_gap)**2
     land_cost = land_cost_per_sqft/144.0 * land_area
     
     return({'total': steel_cost + land_cost,
@@ -338,10 +395,9 @@ def calc_upfront_cost(X_test, steel_coefs,
             'land': land_cost})
     
 #%% baseline & prediction from 400-base-set
-risk_thresh = 0.1
 
 # get_structural_cmp_MF(df, metadata)
-steel_price = 2.00
+steel_price = 4.00
 coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 
 baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
@@ -384,4 +440,104 @@ print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
 print(best_design)
 
+# some issues that may lead to poor design
+# data is lacking in T_ratio and zeta realm
+# be careful if the considered design space falls outside of the 
+# available data space (model reverts to 0)
+
+#%% doe data set GP
+
+with open("../../data/tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
+    main_obj_doe = pickle.load(picklefile)
+    
+main_obj_doe.calculate_collapse()
+
+df_doe = main_obj_doe.doe_analysis
+
+df_doe['max_drift'] = df_doe.PID.apply(max)
+df_doe['log_drift'] = np.log(df_doe['max_drift'])
+
+df_doe['max_velo'] = df_doe.PFV.apply(max)
+df_doe['max_accel'] = df_doe.PFA.apply(max)
+
+df_doe['T_ratio'] = df_doe['T_m'] / df_doe['T_fb']
+pi = 3.14159
+g = 386.4
+
+zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+df_doe['Bm'] = np.interp(df_doe['zeta_e'], zetaRef, BmRef)
+
+df_doe['gap_ratio'] = (df_doe['constructed_moat']*4*pi**2)/ \
+    (g*(df_doe['sa_tm']/df_doe['Bm'])*df_doe['T_m']**2)
+
+mdl_doe = GP(df_doe)
+covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+mdl_doe.set_covariates(covariate_list)
+mdl_doe.set_outcome('collapse_prob')
+mdl_doe.fit_gpr(kernel_name='rbf_iso')
+
+res = 75
+X_space = make_2D_plotting_space(mdl_doe.X, res)
+
+import time
+t0 = time.time()
+
+fmu_train, fs1_train = mdl_doe.gpr.predict(X_space, return_std=True)
+fs2_train = fs1_train**2
+
+tp = time.time() - t0
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
+#%% doe-set, gap_Ry plot
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+x_var = 'gap_ratio'
+xx = X_space[x_var]
+y_var = 'RI'
+yy = X_space[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+X_subset = X_space[X_space['T_ratio']==np.median(X_space['T_ratio'])]
+fs2_subset = fs2_train[X_space['T_ratio']==np.median(X_space['T_ratio'])]
+fmu_subset = fmu_train[X_space['T_ratio']==np.median(X_space['T_ratio'])]
+Z = fmu_subset.reshape(xx_pl.shape)
+
+plt.figure(figsize=(8,6))
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
+plt.clabel(cs, fontsize=clabel_size)
+plt.scatter(df_doe['gap_ratio'], df_doe['RI'], 
+            c=df_doe['collapse_prob'],
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+plt.xlim([0.5,2.0])
+plt.ylim([0.5, 2.25])
+plt.xlabel('Gap ratio', fontsize=axis_font)
+plt.ylabel(r'$R_y$', fontsize=axis_font)
+plt.grid(True)
+plt.title('Collapse risk using full 400 points', fontsize=axis_font)
+plt.show()
+
+#%%
 # TODO: pareto

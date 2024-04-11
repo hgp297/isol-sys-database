@@ -449,12 +449,13 @@ class Database:
         
         from experiment import run_doe
         
-        df_doe, rmse_hist, mae_hist, nrmse_hist = run_doe(target_prob, df_train, df_test, 
+        df_doe, rmse_hist, mae_hist, nrmse_hist, hyperparam_list = run_doe(target_prob, df_train, df_test, 
                                              batch_size=batch_size, error_tol=1e-2, 
-                                             maxIter=1000, conv_tol=1e-4)
+                                             maxIter=1000, conv_tol=1e-3)
         
         self.doe_analysis = df_doe
         self.rmse_hist = rmse_hist
         self.mae_hist = mae_hist
         self.nrmse_hist = nrmse_hist
+        self.hyperparam_list = hyperparam_list
         pass
