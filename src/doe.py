@@ -149,6 +149,59 @@ class GP:
         
         return(f_star, var_f_star)
     
+    def doe_mse_loocv(self, bound_df, design_filter=False):
+        """Return max single point corresponding to the MSE LOOCV weighted metric.
+
+        Parameters
+        ----------
+        bound_df: Dataframe of variables and their upper/lower bound
+        design_filter: Boolean determining whether or not to manually filter out
+        designs for the sake of constructability of bearings (currently manual for TFP)
+    
+        Returns
+        -------
+        Array of n_pts corresponding to max (MSE-LOOCV) metric
+        """
+        import numpy as np
+        n_var = bound_df.shape[1]
+        
+        min_list = [val for val in bound_df.loc['min']]
+        max_list = [val for val in bound_df.loc['max']]
+        
+        # find the maximum that the function will be in the domain
+        from scipy.optimize import basinhopping
+        
+        # bounds for design space
+        bnds = tuple((min_list[i], max_list[i]) for i in range(n_var))
+        
+        x0 = np.array([np.random.uniform(min_list[i], max_list[i])
+                          for i in range(n_var)])
+        
+        # use basin hopping to avoid local minima
+        minimizer_kwargs={'args':(bound_df), 'bounds':bnds}
+        res = basinhopping(self.fn_LOOCV_error, x0, minimizer_kwargs=minimizer_kwargs,
+                           niter=100, seed=985)
+        
+        x_keep = res.x
+        
+        # if T_m > 4, zeta must be > 0.15
+        if design_filter == True:
+            var_list = bound_df.columns.tolist()
+            Tm_idx = var_list.index('T_ratio')
+            zeta_idx = var_list.index('zeta_e')
+            
+            # remove designs that have high period but low damping
+            x_keep = x_keep[~((x_keep[Tm_idx] > 4) & 
+                              (x_keep[zeta_idx] < 0.2))]
+            
+        # if failed to keep any point, try the rejection sampler
+        if x_keep.shape[0] < 1:
+            print('MSE point not suitable, using rejection sampler...')
+            rej_samp_list = self.doe_rejection_sampler(5, 0.5, bound_df)
+            x_keep = rej_samp_list[np.random.choice(rej_samp_list.shape[0], 1, replace=False),:]
+            
+        return x_keep
+    
     def doe_rejection_sampler(self, n_pts, pr, bound_df, design_filter=False):
         """Return points sampled proportional to a custom DoE metric using 
         rejection sampling.

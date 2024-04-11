@@ -72,7 +72,7 @@ main_obj.calculate_collapse()
 main_obj.perform_doe(n_set=50,batch_size=5)
 
 import pickle
-with open('../data/tfp_mf_db_doe_loocv.pickle', 'wb') as f:
+with open('../data/tfp_mf_db_doe_loocv_single.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
     
 #%%
