@@ -22,6 +22,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from doe import GP
 
+plt.close('all')
 
 with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
     main_obj = pickle.load(picklefile)
@@ -62,7 +63,7 @@ subt_font = 18
 label_size = 16
 title_font=20
 
-y_var = 'max_drift'
+y_var = 'max_velo'
 fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(2, 2, 1)
@@ -72,7 +73,7 @@ ax1.scatter(df['gap_ratio'], df[y_var])
 ax1.set_ylabel('Peak story drift', fontsize=axis_font)
 ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
 ax1.set_title('Gap', fontsize=title_font)
-ax1.set_ylim([0, 0.1])
+ax1.set_ylim([0, 100])
 ax1.grid(True)
 
 ax2=fig.add_subplot(2, 2, 2)
@@ -80,7 +81,7 @@ ax2=fig.add_subplot(2, 2, 2)
 ax2.scatter(df['RI'], df[y_var])
 ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax2.set_title('Superstructure strength', fontsize=title_font)
-ax2.set_ylim([0, 0.1])
+ax2.set_ylim([0, 100])
 ax2.grid(True)
 
 ax3=fig.add_subplot(2, 2, 3)
@@ -89,7 +90,7 @@ ax3.scatter(df['T_ratio'], df[y_var])
 ax3.set_ylabel('Peak story drift', fontsize=axis_font)
 ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 ax3.set_title('Bearing period ratio', fontsize=title_font)
-ax3.set_ylim([0, 0.1])
+ax3.set_ylim([0, 100])
 ax3.grid(True)
 
 ax4=fig.add_subplot(2, 2, 4)
@@ -97,7 +98,7 @@ ax4=fig.add_subplot(2, 2, 4)
 ax4.scatter(df['zeta_e'], df[y_var])
 ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
 ax4.set_title('Bearing damping', fontsize=title_font)
-ax4.set_ylim([0, 0.1])
+ax4.set_ylim([0, 100])
 ax4.grid(True)
 
 fig.tight_layout()
@@ -185,7 +186,7 @@ mu = log(mean_log_drift)
 ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 p = ln_dist.cdf(np.array(x))
 
-plt.close('all')
+
 fig, ax = plt.subplots(1, 1, figsize=(8,6))
 
 ax.plot(x, p, label='Collapse (peak)', color='blue')
@@ -315,6 +316,7 @@ print("GPR collapse prediction for %d inputs in %.3f s" % (X_plot.shape[0],
                                                                tp))
 
 #%% base-set, gap_Ry plot
+
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 20
@@ -371,7 +373,7 @@ fmu_base = mdl.kr.predict(X_plot).ravel()
 
 #%% 10% design
 
-X_design_cand = make_design_space(10)
+X_design_cand = make_design_space(25)
 
 X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
                           columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
@@ -747,7 +749,7 @@ df_doe['gap_ratio'] = (df_doe['constructed_moat']*4*pi**2)/ \
     
 theta = main_obj_doe.hyperparam_list
 
-'''
+
 mdl_doe = GP(df_doe)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_doe.set_covariates(covariate_list)
@@ -808,8 +810,8 @@ plt.clabel(cs, fontsize=clabel_size)
 plt.scatter(df_doe['gap_ratio'], df_doe['RI'], 
             c=df_doe['collapse_prob'],
             edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
-# plt.xlim([0.5,2.0])
-# plt.ylim([0.5, 2.25])
+plt.xlim([0.5,2.0])
+plt.ylim([0.5, 2.25])
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.grid(True)
@@ -840,4 +842,3 @@ ax2.set_title('Normalized root mean squared LOO error', fontsize=axis_font)
 ax2.set_xlabel('Points added', fontsize=axis_font)
 ax2.grid(True)
 fig.tight_layout()
-'''
