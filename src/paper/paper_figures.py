@@ -53,6 +53,56 @@ df['Bm'] = np.interp(df['zeta_e'], zetaRef, BmRef)
 df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
     (g*(df['sa_tm']/df['Bm'])*df['T_m']**2)
     
+#%%  dumb scatters
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+y_var = 'max_drift'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+
+ax1.scatter(df['gap_ratio'], df[y_var])
+ax1.set_ylabel('Peak story drift', fontsize=axis_font)
+ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_title('Gap', fontsize=title_font)
+ax1.set_ylim([0, 0.1])
+ax1.grid(True)
+
+ax2=fig.add_subplot(2, 2, 2)
+
+ax2.scatter(df['RI'], df[y_var])
+ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title('Superstructure strength', fontsize=title_font)
+ax2.set_ylim([0, 0.1])
+ax2.grid(True)
+
+ax3=fig.add_subplot(2, 2, 3)
+
+ax3.scatter(df['T_ratio'], df[y_var])
+ax3.set_ylabel('Peak story drift', fontsize=axis_font)
+ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax3.set_title('Bearing period ratio', fontsize=title_font)
+ax3.set_ylim([0, 0.1])
+ax3.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+
+ax4.scatter(df['zeta_e'], df[y_var])
+ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
+ax4.set_title('Bearing damping', fontsize=title_font)
+ax4.set_ylim([0, 0.1])
+ax4.grid(True)
+
+fig.tight_layout()
+plt.show()
+
 #%%
 # make a generalized 2D plotting grid, defaulted to gap and Ry
 # grid is based on the bounds of input data
@@ -103,7 +153,7 @@ def make_design_space(res):
                                              res),
                                  np.linspace(1.5, 4.5,
                                              res),
-                                 np.linspace(0.1, 0.25,
+                                 np.linspace(0.15, 0.25,
                                              res))
                                  
     X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
@@ -186,17 +236,82 @@ mdl.set_covariates(covariate_list)
 mdl.set_outcome('collapse_prob')
 mdl.fit_gpr(kernel_name='rbf_iso')
 
+
 res = 75
-X_space = make_2D_plotting_space(mdl.X, res)
+
+X_plot = make_2D_plotting_space(mdl.X, res, x_var='T_ratio', y_var='zeta_e', 
+                           all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
 
 import time
 t0 = time.time()
 
-fmu_train, fs1_train = mdl.gpr.predict(X_space, return_std=True)
-fs2_train = fs1_train**2
+fmu_base, fs1_base = mdl.gpr.predict(X_plot, return_std=True)
+fs2_base = fs1_base**2
 
 tp = time.time() - t0
-print("GPR collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_plot.shape[0],
+                                                               tp))
+
+#%% base-set, Tm_zeta plot
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+x_var = 'T_ratio'
+xx = X_plot[x_var]
+y_var = 'zeta_e'
+yy = X_plot[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+X_subset = X_plot[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
+fs2_plot = fs2_base[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
+fmu_plot = fmu_base[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
+Z = fmu_plot.reshape(xx_pl.shape)
+
+plt.figure(figsize=(8,6))
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
+plt.clabel(cs, fontsize=clabel_size)
+plt.scatter(df['T_ratio'], df['zeta_e'], 
+            c=df['collapse_prob'],
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+# plt.xlim([0.5,2.0])
+# plt.ylim([0.5, 2.25])
+plt.xlabel('T ratio', fontsize=axis_font)
+plt.ylabel(r'$\zeta_e$', fontsize=axis_font)
+plt.grid(True)
+plt.title('Collapse risk using full 400 points', fontsize=axis_font)
+plt.show()
+
+#%%
+X_plot = make_2D_plotting_space(mdl.X, res)
+
+import time
+t0 = time.time()
+
+fmu_base, fs1_base = mdl.gpr.predict(X_plot, return_std=True)
+fs2_base = fs1_base**2
+
+tp = time.time() - t0
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_plot.shape[0],
                                                                tp))
 
 #%% base-set, gap_Ry plot
@@ -210,19 +325,19 @@ mpl.rcParams['xtick.labelsize'] = label_size
 mpl.rcParams['ytick.labelsize'] = label_size 
 
 x_var = 'gap_ratio'
-xx = X_space[x_var]
+xx = X_plot[x_var]
 y_var = 'RI'
-yy = X_space[y_var]
+yy = X_plot[y_var]
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_space[X_space['T_ratio']==np.median(X_space['T_ratio'])]
-fs2_subset = fs2_train[X_space['T_ratio']==np.median(X_space['T_ratio'])]
-fmu_subset = fmu_train[X_space['T_ratio']==np.median(X_space['T_ratio'])]
-Z = fmu_subset.reshape(xx_pl.shape)
+X_subset = X_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+fs2_plot = fs2_base[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+fmu_plot = fmu_base[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+Z = fmu_plot.reshape(xx_pl.shape)
 
 plt.figure(figsize=(8,6))
 # plt.imshow(
@@ -248,6 +363,11 @@ plt.grid(True)
 plt.title('Collapse risk using full 400 points', fontsize=axis_font)
 plt.show()
 
+#%% base-set, gap_Ry plot, kernel ridge
+
+mdl.fit_kernel_ridge()
+fmu_base = mdl.kr.predict(X_plot).ravel()
+
 
 #%% 10% design
 
@@ -262,20 +382,13 @@ baseline_fs1 = baseline_fs1.item()
 baseline_fs2 = baseline_fs2.item()
 
 t0 = time.time()
-fmu_train, fs1_train = mdl.gpr.predict(X_design_cand, return_std=True)
-fs2_train = fs1_train**2
+fmu_design, fs1_design = mdl.gpr.predict(X_design_cand, return_std=True)
+fs2_design = fs1_design**2
 
 tp = time.time() - t0
 print("GPR collapse prediction for %d inputs in %.3f s" % (X_design_cand.shape[0],
                                                                 tp))
 
-
-risk_thresh = 0.1
-space_collapse_pred = pd.DataFrame(fmu_train, columns=['collapse probability'])
-ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
-                      risk_thresh]
-
-X_design = X_design_cand[X_design_cand.index.isin(ok_risk.index)]
 
 
 #%% Calculate upfront cost of data
@@ -396,8 +509,14 @@ def calc_upfront_cost(X_test, steel_coefs,
     
 #%% baseline & prediction from 400-base-set
 
+
+risk_thresh = 0.1
+space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
+ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
 # get_structural_cmp_MF(df, metadata)
-steel_price = 4.00
+steel_price = 2.00
 coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
 
 baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
@@ -418,13 +537,13 @@ print(X_baseline)
 import warnings
 warnings.filterwarnings('ignore')
 
-upfront_costs = calc_upfront_cost(X_design, coef_dict)
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict)
 cheapest_design_idx = upfront_costs['total'].idxmin()
 design_upfront_cost = upfront_costs['total'].min()
 design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
 design_land_cost = upfront_costs['land'][cheapest_design_idx]
 # least upfront cost of the viable designs
-best_design = X_design.loc[cheapest_design_idx]
+best_design = ok_risk.loc[cheapest_design_idx]
 design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
 warnings.resetwarnings()
 
@@ -445,9 +564,164 @@ print(best_design)
 # be careful if the considered design space falls outside of the 
 # available data space (model reverts to 0)
 
+
+#%%
+# TODO: pareto
+
+def simple_cull_df(input_df, dominates, *args):
+    pareto_df = pd.DataFrame(columns=input_df.columns)
+    candidateRowNr = 0
+    dominated_df = pd.DataFrame(columns=input_df.columns)
+    while True:
+        candidateRow = input_df.iloc[[candidateRowNr]]
+        input_df = input_df.drop(index=candidateRow.index)
+        rowNr = 0
+        nonDominated = True
+        while input_df.shape[0] != 0 and rowNr < input_df.shape[0]:
+            row = input_df.iloc[[rowNr]]
+            if dominates(candidateRow, row, *args):
+                # If it is worse on all features remove the row from the array
+                input_df = input_df.drop(index=row.index)
+                dominated_df = dominated_df.append(row)
+            elif dominates(row, candidateRow, *args):
+                nonDominated = False
+                dominated_df = dominated_df.append(candidateRow)
+                rowNr += 1
+            else:
+                rowNr += 1
+
+        if nonDominated:
+            # add the non-dominated point to the Pareto frontier
+            pareto_df = pareto_df.append(candidateRow)
+
+        if input_df.shape[0] == 0:
+            break
+    return pareto_df, dominated_df
+
+def dominates_pd(row, candidate_row, mdl, cost, coefs):
+    row_pr = mdl.predict(row).item()
+    cand_pr = mdl.predict(candidate_row).item()
+    
+    row_cost = cost(row, coefs).item()
+    cand_cost = cost(candidate_row, coefs).item()
+    
+    return ((row_pr < cand_pr) and (row_cost < cand_cost))
+
+# Faster than is_pareto_efficient_simple, but less readable.
+def is_pareto_efficient(costs, return_mask = True):
+    """
+    Find the pareto-efficient points
+    :param costs: An (n_points, n_costs) array
+    :param return_mask: True to return a mask
+    :return: An array of indices of pareto-efficient points.
+        If return_mask is True, this will be an (n_points, ) boolean array
+        Otherwise it will be a (n_efficient_points, ) integer array of indices.
+    """
+    is_efficient = np.arange(costs.shape[0])
+    n_points = costs.shape[0]
+    next_point_index = 0  # Next index in the is_efficient array to search for
+    while next_point_index<len(costs):
+        nondominated_point_mask = np.any(costs<costs[next_point_index], axis=1)
+        nondominated_point_mask[next_point_index] = True
+        is_efficient = is_efficient[nondominated_point_mask]  # Remove dominated points
+        costs = costs[nondominated_point_mask]
+        next_point_index = np.sum(nondominated_point_mask[:next_point_index])+1
+    if return_mask:
+        is_efficient_mask = np.zeros(n_points, dtype = bool)
+        is_efficient_mask[is_efficient] = True
+        return is_efficient_mask
+    else:
+        return is_efficient
+    
+
+all_costs = calc_upfront_cost(X_design_cand, coef_dict)
+constr_costs = all_costs['total']
+predicted_risk = space_collapse_pred['collapse probability']
+pareto_array = np.array([constr_costs, predicted_risk]).transpose()
+
+t0 = time.time()
+pareto_mask = is_pareto_efficient(pareto_array)
+tp = time.time() - t0
+
+print("Culled %d points in %.3f s" % (X_design_cand.shape[0], tp))
+
+X_pareto = X_design_cand.iloc[pareto_mask]
+risk_pareto = predicted_risk.iloc[pareto_mask]
+cost_pareto = constr_costs.iloc[pareto_mask]
+
+plt.figure(figsize=(8,6))
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+plt.scatter(risk_pareto, cost_pareto, 
+            edgecolors='k', s=20.0)
+plt.xlabel('Collapse risk', fontsize=axis_font)
+plt.ylabel('Construction cost', fontsize=axis_font)
+plt.grid(True)
+plt.title('Pareto front', fontsize=axis_font)
+plt.show()
+
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+x_var = 'gap_ratio'
+xx = X_plot[x_var]
+y_var = 'RI'
+yy = X_plot[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+X_subset = X_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+fs2_subset = fs2_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+fmu_subset = fmu_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+Z = fmu_subset.reshape(xx_pl.shape)
+
+fig = plt.figure(figsize=(14,6))
+ax1=fig.add_subplot(1, 2, 1)
+ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
+            c=risk_pareto,
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+ax1.set_xlim([0.5,2.0])
+ax1.set_ylim([0.45, 2.3])
+ax1.set_xlabel('Gap ratio', fontsize=axis_font)
+ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax1.grid(True)
+ax1.set_title('Pareto efficient designs', fontsize=axis_font)
+
+ax2=fig.add_subplot(1, 2, 2)
+ax2.scatter(X_pareto['T_ratio'], X_pareto['zeta_e'], 
+            c=risk_pareto,
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+ax2.set_xlabel('T ratio', fontsize=axis_font)
+ax2.set_ylabel(r'$\zeta_e$', fontsize=axis_font)
+ax2.grid(True)
+ax2.set_title('Pareto efficient designs', fontsize=axis_font)
+fig.tight_layout()
+
+
+###############################################################################
+# DOE
+###############################################################################
+
 #%% doe data set GP
 
-with open("../../data/tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
+with open("../../data/tfp_mf_db_doe_loocv_single.pickle", 'rb') as picklefile:
     main_obj_doe = pickle.load(picklefile)
     
 main_obj_doe.calculate_collapse()
@@ -470,7 +744,10 @@ df_doe['Bm'] = np.interp(df_doe['zeta_e'], zetaRef, BmRef)
 
 df_doe['gap_ratio'] = (df_doe['constructed_moat']*4*pi**2)/ \
     (g*(df_doe['sa_tm']/df_doe['Bm'])*df_doe['T_m']**2)
+    
+theta = main_obj_doe.hyperparam_list
 
+'''
 mdl_doe = GP(df_doe)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_doe.set_covariates(covariate_list)
@@ -478,16 +755,16 @@ mdl_doe.set_outcome('collapse_prob')
 mdl_doe.fit_gpr(kernel_name='rbf_iso')
 
 res = 75
-X_space = make_2D_plotting_space(mdl_doe.X, res)
+X_plot = make_2D_plotting_space(mdl_doe.X, res)
 
 import time
 t0 = time.time()
 
-fmu_train, fs1_train = mdl_doe.gpr.predict(X_space, return_std=True)
-fs2_train = fs1_train**2
+fmu_doe, fs1_doe = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_doe = fs1_doe**2
 
 tp = time.time() - t0
-print("GPR collapse prediction for %d inputs in %.3f s" % (X_space.shape[0],
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_plot.shape[0],
                                                                tp))
 
 #%% doe-set, gap_Ry plot
@@ -501,19 +778,19 @@ mpl.rcParams['xtick.labelsize'] = label_size
 mpl.rcParams['ytick.labelsize'] = label_size 
 
 x_var = 'gap_ratio'
-xx = X_space[x_var]
+xx = X_plot[x_var]
 y_var = 'RI'
-yy = X_space[y_var]
+yy = X_plot[y_var]
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_space[X_space['T_ratio']==np.median(X_space['T_ratio'])]
-fs2_subset = fs2_train[X_space['T_ratio']==np.median(X_space['T_ratio'])]
-fmu_subset = fmu_train[X_space['T_ratio']==np.median(X_space['T_ratio'])]
-Z = fmu_subset.reshape(xx_pl.shape)
+X_subset = X_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+fs2_plot = fs2_doe[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+fmu_plot = fmu_doe[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+Z = fmu_plot.reshape(xx_pl.shape)
 
 plt.figure(figsize=(8,6))
 # plt.imshow(
@@ -531,13 +808,36 @@ plt.clabel(cs, fontsize=clabel_size)
 plt.scatter(df_doe['gap_ratio'], df_doe['RI'], 
             c=df_doe['collapse_prob'],
             edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
-plt.xlim([0.5,2.0])
-plt.ylim([0.5, 2.25])
+# plt.xlim([0.5,2.0])
+# plt.ylim([0.5, 2.25])
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.grid(True)
-plt.title('Collapse risk using full 400 points', fontsize=axis_font)
+plt.title('Collapse risk using post-DOE points', fontsize=axis_font)
 plt.show()
 
-#%%
-# TODO: pareto
+#%% doe convergence plots
+
+rmse_hist = main_obj_doe.rmse_hist
+mae_hist = main_obj_doe.mae_hist
+nrmse_hist = main_obj_doe.nrmse_hist
+
+fig = plt.figure(figsize=(13, 6))
+
+ax1=fig.add_subplot(1, 2, 1)
+ax1.plot(np.arange(0, (len(rmse_hist)), 1), rmse_hist)
+# ax1.set_title(r'Root mean squared error', fontsize=axis_font)
+ax1.set_xlabel(r'Points added', fontsize=axis_font)
+ax1.set_ylabel(r'Root mean squared error (RMSE)', fontsize=axis_font)
+# ax1.set_xlim([0, 140])
+# ax1.set_ylim([0.19, 0.28])
+ax1.grid(True)
+
+
+ax2=fig.add_subplot(1, 2, 2)
+ax2.plot(np.arange(0, (len(rmse_hist)), 1), nrmse_hist)
+ax2.set_title('Normalized root mean squared LOO error', fontsize=axis_font)
+ax2.set_xlabel('Points added', fontsize=axis_font)
+ax2.grid(True)
+fig.tight_layout()
+'''

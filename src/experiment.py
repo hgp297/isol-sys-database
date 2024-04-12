@@ -396,7 +396,6 @@ def run_doe(prob_target, df_train, df_test,
             #     conv = abs(rmse - rmse_list[-1])/rmse_list[-1]
             
             # TODO: more intelligent convergence criteria
-            # TODO: record hyperparameters
             # if rmse < error_tol:
             if len(nrmse_list) == 0:
                 conv = NRMSE_cv

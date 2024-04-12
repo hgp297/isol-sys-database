@@ -112,6 +112,33 @@ class GP:
         gp_pipe.fit(self.X, self.y)
         
         self.gpr = gp_pipe
+        
+    def fit_kernel_ridge(self, kernel_name='rbf'):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.kernel_ridge import KernelRidge
+        from sklearn.model_selection import GridSearchCV
+        
+        kr_pipe = Pipeline([('scaler', StandardScaler()),
+                             ('kr', KernelRidge(kernel=kernel_name))])
+        
+        # cross-validate several parameters
+        from numpy import logspace
+        parameters = [
+            {'kr__alpha':[0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0],
+             'kr__gamma':logspace(-3, 3, 7)}
+            ]
+        
+        kr_cv = GridSearchCV(kr_pipe, param_grid=parameters)
+        kr_cv.fit(self.X, self.y)
+        
+        # set pipeline to use CV params
+        print("The best kernel ridge parameters are %s"
+              % (kr_cv.best_params_))
+        kr_pipe.set_params(**kr_cv.best_params_)
+        kr_pipe.fit(self.X, self.y)
+        
+        self.kr = kr_pipe
             
     def predict_gpc_latent(self, X):
         """Return latent mean and variance for the test vector X.

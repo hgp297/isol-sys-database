@@ -569,7 +569,7 @@ plt.show()
 
 #%% doe with smaller set
 
-with open("../../data/tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
+with open("../../data/tfp_mf_db_doe_loocv_single.pickle", 'rb') as picklefile:
     main_obj_doe = pickle.load(picklefile)
     
 main_obj_doe.calculate_collapse()
@@ -820,7 +820,7 @@ mdl_doe = GP(df_doe)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_doe.set_covariates(covariate_list)
 mdl_doe.set_outcome('collapse_prob')
-mdl_doe.fit_gpr(kernel_name='rbf_iso')
+mdl_doe.fit_gpr(kernel_name='rbf_ard')
 
 #%%
 
@@ -958,7 +958,7 @@ nrmse_hist = main_obj_doe.nrmse_hist
 fig = plt.figure(figsize=(13, 6))
 
 ax1=fig.add_subplot(1, 2, 1)
-ax1.plot(np.arange(0, (len(rmse_hist)*5), 5), rmse_hist)
+ax1.plot(np.arange(0, (len(rmse_hist)), 1), rmse_hist)
 # ax1.set_title(r'Root mean squared error', fontsize=axis_font)
 ax1.set_xlabel(r'Points added', fontsize=axis_font)
 ax1.set_ylabel(r'Root mean squared error (RMSE)', fontsize=axis_font)
@@ -968,7 +968,7 @@ ax1.grid(True)
 
 
 ax2=fig.add_subplot(1, 2, 2)
-ax2.plot(np.arange(0, (len(rmse_hist)*5), 5), nrmse_hist)
+ax2.plot(np.arange(0, (len(rmse_hist)), 1), nrmse_hist)
 ax2.set_title('Normalized root mean squared LOO error', fontsize=axis_font)
 ax2.set_xlabel('Points added', fontsize=axis_font)
 ax2.grid(True)

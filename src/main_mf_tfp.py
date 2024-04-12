@@ -69,7 +69,7 @@ with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
     main_obj = pickle.load(picklefile)
     
 main_obj.calculate_collapse()
-main_obj.perform_doe(n_set=50,batch_size=5)
+main_obj.perform_doe(n_set=50,batch_size=1)
 
 import pickle
 with open('../data/tfp_mf_db_doe_loocv_single.pickle', 'wb') as f:
