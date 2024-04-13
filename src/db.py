@@ -458,4 +458,160 @@ class Database:
         self.mae_hist = mae_hist
         self.nrmse_hist = nrmse_hist
         self.hyperparam_list = hyperparam_list
+        
+    def set_design(self, design, title):
         pass
+    
+    def prepare_idas(self, design_df, levels=[1.0, 1.5, 2.0]):
+        
+        import pandas as pd
+        import numpy as np
+        
+        config_dict = {
+            'S_1' : 1.017,
+            'k_ratio' : 10,
+            'Q': 0.06,
+            'L_bldg': 120.0,
+            'h_bldg': 52.0,
+            'num_frames' : 2,
+            'num_bays' : 4,
+            'num_stories' : 4,
+            'L_bay': 30.0,
+            'h_story': 13.0,
+            'isolator_system' : 'TFP',
+            'superstructure_system' : 'MF',
+            'S_s' : 2.2815
+        }
+        
+        work_df = pd.DataFrame(config_dict, index=[0])
+        from loads import estimate_period
+        work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+        
+        work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
+                            axis=1)
+        
+        import design as ds
+        from loads import define_lateral_forces, define_gravity_loads
+        from gms import scale_ground_motion
+        
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+        work_df['moat_ampli'] = work_df['gap_ratio']
+        
+        # design
+        work_df[['W', 
+               'W_s', 
+               'w_fl', 
+               'P_lc',
+               'all_w_cases',
+               'all_Plc_cases']] = work_df.apply(lambda row: define_gravity_loads(row),
+                                                axis='columns', result_type='expand')
+                     
+        try:
+            all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),
+                                           axis='columns', result_type='expand')
+        except:
+            print('Bearing design failed.')
+            return
+        
+        all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
+                                   'T_e', 'k_e', 'zeta_e', 'D_m']
+        
+        tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
+                                          (all_tfp_designs['R_1'] <= 50.0) &
+                                          (all_tfp_designs['R_2'] <= 190.0) &
+                                          (all_tfp_designs['zeta_e'] <= 0.27)]
+        
+        # retry if design didn't work
+        if tfp_designs.shape[0] == 0:
+            print('Bearing design failed.')
+            return
+        
+        tfp_designs = tfp_designs.drop(columns=['zeta_e'])
+        work_df = pd.concat([work_df, tfp_designs.set_index(work_df.index)], 
+                            axis=1)
+        
+        # get lateral force and design structures
+        work_df[['wx', 
+               'hx', 
+               'h_col', 
+               'hsx', 
+               'Fx', 
+               'Vs',
+               'T_fbe']] = work_df.apply(lambda row: define_lateral_forces(row),
+                                    axis='columns', result_type='expand')
+                                          
+        all_mf_designs = work_df.apply(lambda row: ds.design_MF(row),
+                                         axis='columns', 
+                                         result_type='expand')
+          
+        all_mf_designs.columns = ['beam', 'column', 'flag']
+        
+        # keep the designs that look sensible
+        mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
+        mf_designs = mf_designs.dropna(subset=['beam','column'])
+         
+        mf_designs = mf_designs.drop(['flag'], axis=1)
+        
+        if mf_designs.shape[0] == 0:
+            print('Bearing design failed.')
+            return
+      
+        # get the design params of those bearings
+        work_df = pd.concat([work_df, mf_designs.set_index(work_df.index)], 
+                            axis=1)
+        
+        gm_series, sf_series, sa_avg = scale_ground_motion(work_df.iloc[0], return_list=True)
+        ida_base = pd.concat([gm_series, sf_series], axis=1)
+        ida_base['sa_avg'] = sa_avg
+        ida_base.columns = ['gm_selected', 'scale_factor', 'sa_avg']
+        ida_base = ida_base.reset_index(drop=True)
+        
+        
+        ida_gms = pd.DataFrame(columns=['gm_selected', 'scale_factor', 'sa_avg'])
+        
+        for lvl in levels:
+            ida_level = ida_base[['scale_factor', 'sa_avg']].copy()
+            ida_level = ida_level*lvl
+            ida_level['ida_level'] = lvl
+            ida_level['gm_selected'] = ida_base['gm_selected']
+            ida_gms = pd.concat([ida_gms, ida_level], axis=0)
+            
+        ida_gms = ida_gms.reset_index(drop=True)
+        
+        ida_df = pd.DataFrame(np.repeat(work_df.values, ida_gms.shape[0], axis=0))
+        ida_df.columns = work_df.columns
+        
+        self.ida_df = pd.concat([ida_df, ida_gms], axis=1)
+        
+    def analyze_ida(self, output_str, save_interval=10,
+                   data_path='../data/',
+                   gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
+        
+        from experiment import run_nlth
+        import pandas as pd
+        
+        all_designs = self.ida_df
+        all_designs = all_designs.reset_index()
+        
+        db_results = None
+        
+        for index, design in all_designs.iterrows():
+            i_run = all_designs.index.get_loc(index)
+            print('========= Run %d of %d ==========' % 
+                  (i_run+1, len(all_designs)))
+            bldg_result = run_nlth(design, gm_path)
+            
+            # if initial run, start the dataframe with headers
+            if db_results is None:
+                db_results = pd.DataFrame(bldg_result).T
+            else:
+                db_results = pd.concat([db_results,bldg_result.to_frame().T], 
+                                       sort=False)
+                
+            if (len(db_results)%save_interval == 0):
+                db_results.to_csv(data_path+'ida_temp_save.csv', index=False)
+        
+        db_results.to_csv(data_path+output_str, index=False)
+        self.ida_results = db_results
+    
+#%% test inverse design validator

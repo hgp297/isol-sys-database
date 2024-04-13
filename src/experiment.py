@@ -16,7 +16,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     import numpy as np
     from gms import get_gm_ST
     
-    # TODO: collect Sa values, collect validation indicator (IDA level)
+    # TODO: collect validation indicator (IDA level)
     num_stories = design['num_stories']
     
     # gather EDPs from opensees output
@@ -557,7 +557,3 @@ def run_doe(prob_target, df_train, df_test,
         batch_no += 1
     print('DoE did not converge within maximum iteration specified.')
     return df_train, rmse_list, mae_list, nrmse_list, hyperparam_list
-
-#%%
-# TODO: write inverse design tester
-    

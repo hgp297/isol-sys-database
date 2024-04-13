@@ -16,7 +16,7 @@
 
 
 
-def scale_ground_motion(input_df,
+def scale_ground_motion(input_df, return_list=False,
                         db_dir='../resource/ground_motions/gm_db.csv',
                         spec_dir='../resource/ground_motions/gm_spectra.csv'):
     
@@ -142,14 +142,19 @@ def scale_ground_motion(input_df,
     final_GM = final_GM[final_GM['sf_average_spectral'] < 20.0]
     final_GM = final_GM[final_GM['scaled_peak_Sa'] < 3*S_s]
     
-    # select random GM from the list
-    from random import randrange
-    ind = randrange(len(final_GM.index))
-    filename = str(final_GM['filename'].iloc[ind]) # ground motion name
-    gm_name = filename.replace('.AT2', '') # remove extension from file name
-    sf = float(final_GM['sf_average_spectral'].iloc[ind])  # scale factor used
-    
-    return(gm_name, sf, target_average)
+    if return_list:
+        gm_name = final_GM['filename'].replace('.AT2', '')
+        sf = final_GM['sf_average_spectral']
+        return(gm_name, sf, target_average)
+    else:
+        # select random GM from the list
+        from random import randrange
+        ind = randrange(len(final_GM.index))
+        filename = str(final_GM['filename'].iloc[ind]) # ground motion name
+        gm_name = filename.replace('.AT2', '') # remove extension from file name
+        sf = float(final_GM['sf_average_spectral'].iloc[ind])  # scale factor used
+        
+        return(gm_name, sf, target_average)
 
 def show_selection(final_GM, target_spectrum, H1s):
 
