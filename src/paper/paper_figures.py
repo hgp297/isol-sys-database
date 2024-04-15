@@ -63,7 +63,7 @@ subt_font = 18
 label_size = 16
 title_font=20
 
-y_var = 'max_velo'
+y_var = 'max_drift'
 fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(2, 2, 1)
@@ -73,7 +73,7 @@ ax1.scatter(df['gap_ratio'], df[y_var])
 ax1.set_ylabel('Peak story drift', fontsize=axis_font)
 ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
 ax1.set_title('Gap', fontsize=title_font)
-ax1.set_ylim([0, 100])
+ax1.set_ylim([0, 0.1])
 ax1.grid(True)
 
 ax2=fig.add_subplot(2, 2, 2)
@@ -81,7 +81,7 @@ ax2=fig.add_subplot(2, 2, 2)
 ax2.scatter(df['RI'], df[y_var])
 ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax2.set_title('Superstructure strength', fontsize=title_font)
-ax2.set_ylim([0, 100])
+ax2.set_ylim([0, 0.1])
 ax2.grid(True)
 
 ax3=fig.add_subplot(2, 2, 3)
@@ -90,7 +90,7 @@ ax3.scatter(df['T_ratio'], df[y_var])
 ax3.set_ylabel('Peak story drift', fontsize=axis_font)
 ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 ax3.set_title('Bearing period ratio', fontsize=title_font)
-ax3.set_ylim([0, 100])
+ax3.set_ylim([0, 0.1])
 ax3.grid(True)
 
 ax4=fig.add_subplot(2, 2, 4)
@@ -98,7 +98,7 @@ ax4=fig.add_subplot(2, 2, 4)
 ax4.scatter(df['zeta_e'], df[y_var])
 ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
 ax4.set_title('Bearing damping', fontsize=title_font)
-ax4.set_ylim([0, 100])
+ax4.set_ylim([0, 0.1])
 ax4.grid(True)
 
 fig.tight_layout()
@@ -723,7 +723,7 @@ fig.tight_layout()
 
 #%% doe data set GP
 
-with open("../../data/tfp_mf_db_doe_loocv_single.pickle", 'rb') as picklefile:
+with open("../../data/tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
     main_obj_doe = pickle.load(picklefile)
     
 main_obj_doe.calculate_collapse()

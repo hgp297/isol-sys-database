@@ -61,19 +61,19 @@
 # you could either read the csv or unpickle
 # or chain this straight from the analyzed main_obj
 
-pickle_path = '../data/'
+# pickle_path = '../data/'
 
-import pickle
+# import pickle
 
-with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
-    main_obj = pickle.load(picklefile)
+# with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+#     main_obj = pickle.load(picklefile)
     
-main_obj.calculate_collapse()
-main_obj.perform_doe(n_set=50,batch_size=1)
+# main_obj.calculate_collapse()
+# main_obj.perform_doe(n_set=50,batch_size=5)
 
-import pickle
-with open('../data/tfp_mf_db_doe_loocv_single.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# with open('../data/tfp_mf_db_doe_loocv_single.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
     
 #%%
 # TODO: solve the optimization problem by hand
@@ -83,10 +83,23 @@ with open('../data/tfp_mf_db_doe_loocv_single.pickle', 'wb') as f:
 # design structures
 # randomly select ground motion for each
 #%% load DoE
+from db import Database
+pickle_path = '../data/'
 
-# pickle_path = '../data/'
+import pickle
+import pandas as pd
 
-# import pickle
+with open(pickle_path+"tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
+    main_obj = pickle.load(picklefile)
+    
+# TODO: is there a way to pipe this straight from GP?
+sample_dict = {
+    'gap_ratio' : 1.1,
+    'RI' : 1.67,
+    'T_ratio': 2.5,
+    'zeta_e': 0.18
+}
 
-# with open(pickle_path+"tfp_mf_db_doe.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+design_df = pd.DataFrame(sample_dict, index=[0])
+
+main_obj.prepare_idas(design_df)

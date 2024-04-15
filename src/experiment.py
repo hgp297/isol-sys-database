@@ -426,10 +426,10 @@ def run_doe(prob_target, df_train, df_test,
             df_train.to_csv('../data/doe/temp_save.csv', index=False)
             
             # TODO: temp change: single pt MSE
-            # x_next = mdl.doe_rejection_sampler(batch_size, prob_target, 
-            #                                    sample_bounds, design_filter=True)
+            x_next = mdl.doe_rejection_sampler(batch_size, prob_target, 
+                                                sample_bounds, design_filter=True)
             
-            x_next = mdl.doe_mse_loocv(sample_bounds, design_filter=True)
+            # x_next = mdl.doe_mse_loocv(sample_bounds, design_filter=True)
             
             next_df = pd.DataFrame(x_next, columns=covariate_columns)
             print('Convergence not reached yet. Resetting batch index to 0...')
