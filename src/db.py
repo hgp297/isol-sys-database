@@ -569,6 +569,7 @@ class Database:
         
         ida_gms = pd.DataFrame(columns=['gm_selected', 'scale_factor', 'sa_avg'])
         
+        # prepare the sets of ida levels
         for lvl in levels:
             ida_level = ida_base[['scale_factor', 'sa_avg']].copy()
             ida_level = ida_level*lvl
@@ -584,7 +585,7 @@ class Database:
         self.ida_df = pd.concat([ida_df, ida_gms], axis=1)
         
     def analyze_ida(self, output_str, save_interval=10,
-                   data_path='../data/',
+                   data_path='../data/validation/',
                    gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
         
         from experiment import run_nlth
@@ -594,11 +595,14 @@ class Database:
         all_designs = all_designs.reset_index()
         
         db_results = None
+        print('========= Validation IDAs ==========')
         
         for index, design in all_designs.iterrows():
             i_run = all_designs.index.get_loc(index)
             print('========= Run %d of %d ==========' % 
                   (i_run+1, len(all_designs)))
+            
+            print('IDA level: %.1f' % design.ida_level)
             bldg_result = run_nlth(design, gm_path)
             
             # if initial run, start the dataframe with headers

@@ -92,14 +92,21 @@ import pandas as pd
 with open(pickle_path+"tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
     main_obj = pickle.load(picklefile)
     
-# TODO: is there a way to pipe this straight from GP?
+#%% run validation
+
+validation_path = '../data/validation/'
+# TODO: is there a way to pipe this straight from GP? and organize depending on target
 sample_dict = {
-    'gap_ratio' : 1.1,
-    'RI' : 1.67,
-    'T_ratio': 2.5,
-    'zeta_e': 0.18
+    'gap_ratio' : 0.6,
+    'RI' : 1.447,
+    'T_ratio': 1.500,
+    'zeta_e': 0.25
 }
 
 design_df = pd.DataFrame(sample_dict, index=[0])
 
 main_obj.prepare_idas(design_df)
+main_obj.analyze_ida(validation_path+'ida_10.csv')
+
+with open(validation_path+"tfp_mf_db_10_validation.pickle", 'rb') as picklefile:
+    main_obj = pickle.load(picklefile)

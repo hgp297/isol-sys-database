@@ -143,7 +143,7 @@ def scale_ground_motion(input_df, return_list=False,
     final_GM = final_GM[final_GM['scaled_peak_Sa'] < 3*S_s]
     
     if return_list:
-        gm_name = final_GM['filename'].replace('.AT2', '')
+        gm_name = final_GM.apply(lambda sheet: sheet.filename.replace('.AT2', ''), axis=1)
         sf = final_GM['sf_average_spectral']
         return(gm_name, sf, target_average)
     else:

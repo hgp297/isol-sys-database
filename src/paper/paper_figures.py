@@ -109,6 +109,7 @@ plt.show()
 # grid is based on the bounds of input data
 def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI', 
                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                           third_var_set = None, fourth_var_set = None,
                            x_bounds=None, y_bounds=None):
     
     if x_bounds == None:
@@ -136,11 +137,22 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
        
     xx = xx
     yy = yy
+    
+    if third_var_set is None:
+        third_var_val= X[third_var].median()
+    else:
+        third_var_val = third_var_set
+    if fourth_var_set is None:
+        fourth_var_val = X[fourth_var].median()
+    else:
+        fourth_var_val = fourth_var_set
+    
+    
     X_pl = pd.DataFrame({x_var:xx.ravel(),
                          y_var:yy.ravel(),
-                         third_var:np.repeat(X[third_var].median(),
+                         third_var:np.repeat(third_var_val,
                                              res*res),
-                         fourth_var:np.repeat(X[fourth_var].median(), 
+                         fourth_var:np.repeat(fourth_var_val, 
                                               res*res)})
     X_plot = X_pl[all_vars]
                          
@@ -756,7 +768,73 @@ mdl_doe.set_covariates(covariate_list)
 mdl_doe.set_outcome('collapse_prob')
 mdl_doe.fit_gpr(kernel_name='rbf_iso')
 
+#%% doe-set, Tm_zeta plot
+
 res = 75
+X_plot = make_2D_plotting_space(mdl.X, res, x_var='T_ratio', y_var='zeta_e', 
+                           all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                           third_var_set = 1.0, fourth_var_set = 2.0)
+
+import time
+t0 = time.time()
+
+fmu_base, fs1_base = mdl.gpr.predict(X_plot, return_std=True)
+fs2_base = fs1_base**2
+
+tp = time.time() - t0
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_plot.shape[0],
+                                                               tp))
+
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+x_var = 'T_ratio'
+xx = X_plot[x_var]
+y_var = 'zeta_e'
+yy = X_plot[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+X_subset = X_plot[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
+fs2_plot = fs2_base[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
+fmu_plot = fmu_base[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
+Z = fmu_plot.reshape(xx_pl.shape)
+
+plt.figure(figsize=(8,6))
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
+plt.clabel(cs, fontsize=clabel_size)
+plt.scatter(df['T_ratio'], df['zeta_e'], 
+            c=df['collapse_prob'],
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+# plt.xlim([0.5,2.0])
+# plt.ylim([0.5, 2.25])
+plt.xlabel('T ratio', fontsize=axis_font)
+plt.ylabel(r'$\zeta_e$', fontsize=axis_font)
+plt.grid(True)
+plt.title('Collapse risk using post DoE points', fontsize=axis_font)
+plt.show()
+
+#%% doe-set, gap_Ry plot
 X_plot = make_2D_plotting_space(mdl_doe.X, res)
 
 import time
@@ -769,7 +847,6 @@ tp = time.time() - t0
 print("GPR collapse prediction for %d inputs in %.3f s" % (X_plot.shape[0],
                                                                tp))
 
-#%% doe-set, gap_Ry plot
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 20

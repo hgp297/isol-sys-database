@@ -455,8 +455,6 @@ class GP:
         
         return(-fs2 * Wx)
     
-    # TODO: new LOO DoE function?
-    
     
     def fn_LOOCV_error(self, X_cand, bound_df):
         """Return point LOOCV error approximation for a given point
@@ -490,30 +488,41 @@ class GP:
         from scipy.spatial.distance import cdist
         dist_list = cdist(point/lengthscale, X_train/lengthscale).flatten()
         
+        '''
         # smoothing function, exponentially decaying
         gamma = np.exp(-dist_list**2)
-        
-        
         
         # aggregate LOOCV_error and distance
         numerator = np.sum(np.multiply(gamma, e_cv_sq))
         denominator = np.sum(gamma)
+        '''
+        
+        
+        # smoothing function, exponentially decaying
+        # aggregate LOOCV_error and distance
+        # use LSE
+        from scipy.special import logsumexp
+        denominator = logsumexp(-dist_list**2)
+        numerator = logsumexp(-dist_list**2, b=e_cv_sq)
+        e_cv2_cand = np.exp(numerator - denominator)
+        
+        '''
         import warnings
         
-        # only use logsumexp if we run into trouble
-        # TODO: use LSE by default?
         warnings.filterwarnings('error')
         
         try:
             e_cv2_cand = numerator/denominator
         except RuntimeWarning:
+            from scipy.special import logsumexp
             # use log-sum-exp trick to avoid underflows
             test_den = logsumexp(-dist_list**2)
-            test_num = logsumexp(-dist_list**2, e_cv_sq)
+            test_num = logsumexp(-dist_list**2, b=e_cv_sq)
             e_cv2_cand = np.exp(test_num - test_den)
             
         # reset warning so regular warnings bypass
         warnings.resetwarnings()
+        '''
         
         # find predictive variance
         if X_cand.ndim == 1:
@@ -528,10 +537,10 @@ class GP:
         return(-fs2 * e_cv2_cand)
     
 
-def logsumexp(x, a=None):
-    import numpy as np
-    c = x.max()
-    if a is None:
-        return c + np.log(np.sum(np.exp(x - c)))
-    else:
-        return c + np.log(np.sum(np.multiply(a, np.exp(x - c))))
+# def logsumexp(x, a=None):
+#     import numpy as np
+#     c = x.max()
+#     if a is None:
+#         return c + np.log(np.sum(np.exp(x - c)))
+#     else:
+#         return c + np.log(np.sum(np.multiply(a, np.exp(x - c))))
