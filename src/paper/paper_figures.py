@@ -104,42 +104,6 @@ ax4.grid(True)
 fig.tight_layout()
 plt.show()
 
-#%% histogram
-
-fig = plt.figure(figsize=(13, 10))
-
-ax1=fig.add_subplot(2, 2, 1)
-
-
-ax1.hist(df['gap_ratio'], bins='auto')
-ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
-ax1.set_title('Gap', fontsize=title_font)
-ax1.grid(True)
-
-ax2=fig.add_subplot(2, 2, 2)
-
-ax2.hist(df['RI'])
-ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
-ax2.set_title('Superstructure strength', fontsize=title_font)
-ax2.grid(True)
-
-ax3=fig.add_subplot(2, 2, 3)
-
-ax3.hist(df['T_ratio'])
-ax3.set_ylabel('Peak story drift', fontsize=axis_font)
-ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
-ax3.set_title('Bearing period ratio', fontsize=title_font)
-ax3.grid(True)
-
-ax4=fig.add_subplot(2, 2, 4)
-
-ax4.hist(df['zeta_e'])
-ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
-ax4.set_title('Bearing damping', fontsize=title_font)
-ax4.grid(True)
-
-fig.tight_layout()
-plt.show()
 #%%
 # make a generalized 2D plotting grid, defaulted to gap and Ry
 # grid is based on the bounds of input data
@@ -200,7 +164,7 @@ def make_design_space(res):
                                              res),
                                  np.linspace(0.5, 2.25,
                                              res),
-                                 np.linspace(1.5, 4.5,
+                                 np.linspace(2.0, 5.0,
                                              res),
                                  np.linspace(0.13, 0.25,
                                              res))
@@ -975,22 +939,24 @@ fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(2, 2, 1)
 
-
-ax1.hist(df_doe['gap_ratio'], bins='auto')
+ax1.hist(df['gap_ratio'], bins='auto', alpha = 0.5, edgecolor='black', lw=3, color= 'r')
+ax1.hist(df_doe['gap_ratio'], bins='auto', alpha = 0.5, edgecolor='black', lw=3, color= 'b')
 ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
 ax1.set_title('Gap', fontsize=title_font)
 ax1.grid(True)
 
 ax2=fig.add_subplot(2, 2, 2)
 
-ax2.hist(df_doe['RI'])
+ax2.hist(df['RI'], alpha = 0.5, edgecolor='black', lw=3, color= 'r')
+ax2.hist(df_doe['RI'], alpha = 0.5, edgecolor='black', lw=3, color= 'b')
 ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax2.set_title('Superstructure strength', fontsize=title_font)
 ax2.grid(True)
 
 ax3=fig.add_subplot(2, 2, 3)
 
-ax3.hist(df_doe['T_ratio'])
+ax3.hist(df['T_ratio'], alpha = 1, edgecolor='black', lw=3, color= 'r')
+ax3.hist(df_doe['T_ratio'], alpha = 0.5, edgecolor='black', lw=3, color= 'b')
 ax3.set_ylabel('Peak story drift', fontsize=axis_font)
 ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 ax3.set_title('Bearing period ratio', fontsize=title_font)
@@ -998,10 +964,94 @@ ax3.grid(True)
 
 ax4=fig.add_subplot(2, 2, 4)
 
-ax4.hist(df_doe['zeta_e'])
+ax4.hist(df['zeta_e'], alpha = 0.5, edgecolor='black', lw=3, color= 'r')
+ax4.hist(df_doe['zeta_e'], alpha = 0.5, edgecolor='black', lw=3, color= 'b')
 ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
 ax4.set_title('Bearing damping', fontsize=title_font)
 ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
+
+###############################################################################
+# VALIDATION
+###############################################################################
+
+def df_collapse(df, drift_mu_plus_std=0.1):
+    
+    from experiment import collapse_fragility
+    df[['max_drift',
+       'collapse_prob']] = df.apply(lambda row: collapse_fragility(row, drift_at_mu_plus_std=drift_mu_plus_std),
+                                            axis='columns', result_type='expand')
+                           
+    from numpy import log
+    df['log_collapse_prob'] = log(df['collapse_prob'])
+    
+    return df
+    
+#%% 10% validation
+
+with open("../../data/validation/tfp_mf_db_ida_10.pickle", 'rb') as picklefile:
+    main_obj_val = pickle.load(picklefile)
+    
+# main_obj_val.calculate_collapse()
+
+df_val_10 = df_collapse(main_obj_val.ida_results)
+
+with open("../../data/validation/tfp_mf_db_ida_baseline.pickle", 'rb') as picklefile:
+    main_obj_val = pickle.load(picklefile)
+
+df_val_baseline = df_collapse(main_obj_val.ida_results)
+
+df_val_10['max_drift'] = df_val_10.PID.apply(max)
+df_val_10['log_drift'] = np.log(df_val_10['max_drift'])
+df_val_10['max_velo'] = df_val_10.PFV.apply(max)
+df_val_10['max_accel'] = df_val_10.PFA.apply(max)
+df_val_10['T_ratio'] = df_val_10['T_m'] / df_val_10['T_fb']
+pi = 3.14159
+g = 386.4
+zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+df_val_10['Bm'] = np.interp(df_val_10['zeta_e'], zetaRef, BmRef)
+df_val_10['gap_ratio'] = (df_val_10['constructed_moat']*4*pi**2)/ \
+    (g*(df_val_10['sa_tm']/df_val_10['Bm'])*df_val_10['T_m']**2)
+    
+df_val_baseline['max_drift'] = df_val_baseline.PID.apply(max)
+df_val_baseline['log_drift'] = np.log(df_val_baseline['max_drift'])
+df_val_baseline['max_velo'] = df_val_baseline.PFV.apply(max)
+df_val_baseline['max_accel'] = df_val_baseline.PFA.apply(max)
+df_val_baseline['T_ratio'] = df_val_baseline['T_m'] / df_val_baseline['T_fb']
+pi = 3.14159
+g = 386.4
+zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+df_val_baseline['Bm'] = np.interp(df_val_baseline['zeta_e'], zetaRef, BmRef)
+df_val_baseline['gap_ratio'] = (df_val_baseline['constructed_moat']*4*pi**2)/ \
+    (g*(df_val_baseline['sa_tm']/df_val_baseline['Bm'])*df_val_baseline['T_m']**2)
+    
+
+ida_levels = [1.0, 1.5, 2.0]
+val_10_collapse = np.zeros((3,))
+baseline_collapse = np.zeros((3,))
+
+for i, lvl in enumerate(ida_levels):
+    val_10_ida = df_val_10[df_val_10['ida_level']==lvl]
+    base_ida = df_val_baseline[df_val_baseline['ida_level']==lvl]
+    
+    val_10_collapse[i] = val_10_ida['collapse_prob'].mean()
+    baseline_collapse[i] = base_ida['collapse_prob'].mean()
+    
+print('==================================')
+print('   Validation results  (1.0 MCE)  ')
+print('==================================')
+
+inverse_collapse = val_10_collapse[0]
+baseline_collapse_mce = baseline_collapse[0]
+
+print('====== INVERSE DESIGN (10%) ======')
+print('MCE collapse frequency: ',
+      f'{inverse_collapse:.2%}')
+
+print('====== BASELINE DESIGN ======')
+print('MCE collapse frequency: ',
+      f'{baseline_collapse_mce:.2%}')

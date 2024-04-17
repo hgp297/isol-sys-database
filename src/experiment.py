@@ -16,7 +16,6 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     import numpy as np
     from gms import get_gm_ST
     
-    # TODO: collect validation indicator (IDA level)
     num_stories = design['num_stories']
     
     # gather EDPs from opensees output
@@ -176,6 +175,8 @@ def collapse_fragility(run, drift_at_mu_plus_std=0.1):
     
     return(peak_drift, collapse_prob)
     
+# TODO: run pushover
+
 # run the experiment, GM name and scale factor must be baked into design
 
 def run_nlth(design, 
@@ -425,7 +426,6 @@ def run_doe(prob_target, df_train, df_test,
             batch_idx = 0
             df_train.to_csv('../data/doe/temp_save.csv', index=False)
             
-            # TODO: temp change: single pt MSE
             x_next = mdl.doe_rejection_sampler(batch_size, prob_target, 
                                                 sample_bounds, design_filter=True)
             
@@ -469,7 +469,6 @@ def run_doe(prob_target, df_train, df_test,
                        'all_Plc_cases']] = work_df.apply(lambda row: define_gravity_loads(row),
                                                         axis='columns', result_type='expand')
                              
-                # TODO: gracefully handle cases where design not found
                 try:
                     all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),
                                                    axis='columns', result_type='expand')

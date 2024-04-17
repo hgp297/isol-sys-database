@@ -195,7 +195,6 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
     Vs = (Vst/R_y)
     F1 = (Vb - Vst)/R_y
 
-    # TODO: use allowed maximum 1.4x? CuTa
     # approximate fixed based fundamental period
     Ct = get_Ct(struct_type)
     x_Tfb = get_x_Tfb(struct_type)
