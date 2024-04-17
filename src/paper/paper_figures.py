@@ -104,6 +104,42 @@ ax4.grid(True)
 fig.tight_layout()
 plt.show()
 
+#%% histogram
+
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+
+ax1.hist(df['gap_ratio'], bins='auto')
+ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_title('Gap', fontsize=title_font)
+ax1.grid(True)
+
+ax2=fig.add_subplot(2, 2, 2)
+
+ax2.hist(df['RI'])
+ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title('Superstructure strength', fontsize=title_font)
+ax2.grid(True)
+
+ax3=fig.add_subplot(2, 2, 3)
+
+ax3.hist(df['T_ratio'])
+ax3.set_ylabel('Peak story drift', fontsize=axis_font)
+ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax3.set_title('Bearing period ratio', fontsize=title_font)
+ax3.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+
+ax4.hist(df['zeta_e'])
+ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
+ax4.set_title('Bearing damping', fontsize=title_font)
+ax4.grid(True)
+
+fig.tight_layout()
+plt.show()
 #%%
 # make a generalized 2D plotting grid, defaulted to gap and Ry
 # grid is based on the bounds of input data
@@ -166,7 +202,7 @@ def make_design_space(res):
                                              res),
                                  np.linspace(1.5, 4.5,
                                              res),
-                                 np.linspace(0.15, 0.25,
+                                 np.linspace(0.13, 0.25,
                                              res))
                                  
     X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
@@ -768,6 +804,19 @@ mdl_doe.set_covariates(covariate_list)
 mdl_doe.set_outcome('collapse_prob')
 mdl_doe.fit_gpr(kernel_name='rbf_iso')
 
+baseline_risk, baseline_fs1 = mdl_doe.gpr.predict(X_baseline, return_std=True)
+baseline_risk = baseline_risk.item()
+baseline_fs2 = baseline_fs1**2
+baseline_fs1 = baseline_fs1.item()
+baseline_fs2 = baseline_fs2.item()
+
+print('========== Baseline design (DoE) ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${baseline_total:,.2f}')
+print('Predicted collapse risk: ',
+      f'{baseline_risk:.2%}')
+print(X_baseline)
 #%% doe-set, Tm_zeta plot
 
 res = 75
@@ -919,3 +968,40 @@ ax2.set_title('Normalized root mean squared LOO error', fontsize=axis_font)
 ax2.set_xlabel('Points added', fontsize=axis_font)
 ax2.grid(True)
 fig.tight_layout()
+
+#%% histogram
+
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+
+ax1.hist(df_doe['gap_ratio'], bins='auto')
+ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_title('Gap', fontsize=title_font)
+ax1.grid(True)
+
+ax2=fig.add_subplot(2, 2, 2)
+
+ax2.hist(df_doe['RI'])
+ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title('Superstructure strength', fontsize=title_font)
+ax2.grid(True)
+
+ax3=fig.add_subplot(2, 2, 3)
+
+ax3.hist(df_doe['T_ratio'])
+ax3.set_ylabel('Peak story drift', fontsize=axis_font)
+ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax3.set_title('Bearing period ratio', fontsize=title_font)
+ax3.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+
+ax4.hist(df_doe['zeta_e'])
+ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
+ax4.set_title('Bearing damping', fontsize=title_font)
+ax4.grid(True)
+
+fig.tight_layout()
+plt.show()

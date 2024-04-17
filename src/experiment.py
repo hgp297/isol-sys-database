@@ -145,7 +145,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     final_series = design.append(result_series)
     return(final_series)
     
-def collapse_fragility(run):
+def collapse_fragility(run, drift_at_mu_plus_std=0.1):
     system = run.superstructure_system
     peak_drift = max(run.PID)
     n_stories = run.num_stories
@@ -163,7 +163,7 @@ def collapse_fragility(run):
             beta_drift = 0.25
         else:
             beta_drift = 0.35
-        mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
+        mean_log_drift = exp(log(drift_at_mu_plus_std) - beta_drift*inv_norm) 
         
     # CBF: set 90% collapse at 0.05 drift, 0.55 beta
     else:

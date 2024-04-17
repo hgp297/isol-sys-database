@@ -28,6 +28,19 @@ class GP:
     def set_outcome(self, outcome_var):
         self.y = self._raw_data[[outcome_var]]
         
+    def fit_linear(self):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.linear_model import LinearRegression 
+        
+        lin_pipe = Pipeline([('scaler', StandardScaler()),
+                             ('lin_reg', LinearRegression(fit_intercept=False))])
+        
+        # fit linear
+        lin_pipe.fit(self.X, self.y)
+        
+        self.lin_reg = lin_pipe
+        
     # Train GP classifier
     def fit_gpc(self, kernel_name, noisy=True):
         from sklearn.pipeline import Pipeline
@@ -71,8 +84,62 @@ class GP:
               %tr_scr)
         
         self.gpc = gp_pipe
+        
+    def fit_gpr_mean_fcn(self, kernel_name):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.gaussian_process import GaussianProcessRegressor
+        import sklearn.gaussian_process.kernels as krn
+        
+        import numpy as np
+        n_vars = self.X.shape[1]
+        
+        if kernel_name=='rbf_ard':
+            kernel = 1.0 * krn.RBF(np.ones(n_vars))
+        elif kernel_name=='rbf_iso':
+            kernel = 1.0 * krn.RBF(1.0)
+        elif kernel_name=='rq':
+            kernel = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
+                                                    alpha=1.0)
+        elif kernel_name == 'matern_iso':
+            kernel = 1.0 * krn.Matern(
+                    length_scale=1.0, 
+                    nu=1.5)
+        elif kernel_name == 'matern_ard':
+            kernel = 1.0 * krn.Matern(
+                    length_scale=np.ones(n_vars), 
+                    nu=1.5)
+        
+        # fitting linear fits normalized X on y (all in lin_reg pipeline)
+        self.fit_linear()
+        prior_y = self.lin_reg.predict(self.X)
+        
+        y_residual = self.y.to_numpy(dtype=float) - prior_y
+        
+        # pipeline to scale -> GPR
+        gp_pipe = Pipeline([
+                ('scaler', StandardScaler()),
+                ('gpr', GaussianProcessRegressor(kernel=kernel,
+                                                 random_state=985,
+                                                 n_restarts_optimizer=10))
+                ])
+    
+        gp_pipe.fit(self.X, y_residual)
+        
+        self.gpr_residual = gp_pipe
+        
+    def predict_gpr_mean_fcn(self, X_test):
+        
+        # pipeline scales X, then gives mean function
+        prior_y = self.lin_reg.predict(X_test)
+        
+        # pipeline scales X, then gives prediction of residuals
+        y_gp, gp_std = self.gpr_residual.predict(X_test, return_std=True)
+        y_pred = prior_y.ravel() + y_gp
+        return y_pred, gp_std
     
     # Train GP regression
+    # TODO: fit a linear mean function
     def fit_gpr(self, kernel_name):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
@@ -267,25 +334,8 @@ class GP:
         x0 = np.array([np.random.uniform(min_list[i], max_list[i])
                           for i in range(n_var)])
         
-        '''
-        # use basin hopping to avoid local minima
-        minimizer_kwargs={'args':(pr, bound_df),'bounds':bnds}
-        res = basinhopping(self.fn_tmse, x0, minimizer_kwargs=minimizer_kwargs,
-                           niter=100, seed=985)
-    
-        # get maximum of function for rejection variable scaling
-        c_max = -res.fun
         
-        # sample rejection variable
-        u_var = np.array([np.random.uniform(0.0, c_max, n_max)]).T
         
-        # evaluate the function at x
-        fx = -self.fn_tmse(x_var, pr, bound_df).T
-        x_keep = x_var[u_var.ravel() < fx,:]
-        '''
-        
-        # TODO: try LOOCV, another idea if poor results is go back to MSE (no rejection sampling)
-        # and reduce batch size to 1
         
         # use basin hopping to avoid local minima
         minimizer_kwargs={'args':(bound_df), 'bounds':bnds}
@@ -297,6 +347,12 @@ class GP:
         
         # sample rejection variable
         u_var = np.array([np.random.uniform(0.0, c_max, n_max)]).T
+        
+        '''
+        # evaluate the function at x
+        fx = -self.fn_tmse(x_var, pr, bound_df).T
+        x_keep = x_var[u_var.ravel() < fx,:]
+        '''
         
         # evaluate the function at x
         fx = np.apply_along_axis(self.fn_LOOCV_error, 1, x_var, bound_df)*-1

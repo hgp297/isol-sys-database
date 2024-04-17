@@ -61,19 +61,19 @@
 # you could either read the csv or unpickle
 # or chain this straight from the analyzed main_obj
 
-# pickle_path = '../data/'
+pickle_path = '../data/'
 
-# import pickle
+import pickle
 
-# with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+    main_obj = pickle.load(picklefile)
     
-# main_obj.calculate_collapse()
-# main_obj.perform_doe(n_set=50,batch_size=5)
+main_obj.calculate_collapse()
+main_obj.perform_doe(n_set=50,batch_size=5)
 
-# import pickle
-# with open('../data/tfp_mf_db_doe_loocv_single.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+with open('../data/tfp_mf_db_doe_loocv_single.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
     
 #%%
 # TODO: solve the optimization problem by hand
@@ -83,30 +83,32 @@
 # design structures
 # randomly select ground motion for each
 #%% load DoE
-from db import Database
-pickle_path = '../data/'
 
-import pickle
-import pandas as pd
+# from db import Database
+# pickle_path = '../data/'
 
-with open(pickle_path+"tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
-    main_obj = pickle.load(picklefile)
+# import pickle
+# import pandas as pd
+
+# with open(pickle_path+"tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
+#     main_obj = pickle.load(picklefile)
     
 #%% run validation
 
-validation_path = '../data/validation/'
-# TODO: is there a way to pipe this straight from GP? and organize depending on target
-sample_dict = {
-    'gap_ratio' : 0.6,
-    'RI' : 1.447,
-    'T_ratio': 1.500,
-    'zeta_e': 0.25
-}
+# validation_path = '../data/validation/'
+# # TODO: is there a way to pipe this straight from GP? and organize depending on target
+# sample_dict = {
+#     'gap_ratio' : 0.6,
+#     'RI' : 1.447,
+#     'T_ratio': 1.500,
+#     'zeta_e': 0.25
+# }
 
-design_df = pd.DataFrame(sample_dict, index=[0])
+# design_df = pd.DataFrame(sample_dict, index=[0])
 
-main_obj.prepare_idas(design_df)
-main_obj.analyze_ida(validation_path+'ida_10.csv')
+# main_obj.prepare_idas(design_df)
+# main_obj.analyze_ida('ida_10.csv')
 
-with open(validation_path+"tfp_mf_db_10_validation.pickle", 'rb') as picklefile:
-    main_obj = pickle.load(picklefile)
+# import pickle
+# with open(validation_path+'tfp_mf_db_ida_10.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)

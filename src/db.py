@@ -406,12 +406,12 @@ class Database:
         self.ops_analysis = db_results
         
         
-    def calculate_collapse(self):
+    def calculate_collapse(self, drift_mu_plus_std=0.1):
         df = self.ops_analysis
         
         from experiment import collapse_fragility
         df[['max_drift',
-           'collapse_prob']] = df.apply(lambda row: collapse_fragility(row),
+           'collapse_prob']] = df.apply(lambda row: collapse_fragility(row, drift_at_mu_plus_std=drift_mu_plus_std),
                                                 axis='columns', result_type='expand')
                                
         from numpy import log
