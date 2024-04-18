@@ -161,7 +161,7 @@ import numpy as np
 L_beam = L_bay
 L_col = h_story
 
-selectedCol = get_shape('W21X62', 'beam')
+selectedCol = get_shape('W24X55', 'beam')
 
 (AgCol, IzCol, IyCol, ZxCol, SxCol, 
  dCol, bfCol, tfCol, twCol) = getProperties(selectedCol)
@@ -402,11 +402,6 @@ import numpy as np
 # nominal change
 L_beam = L_bay
 L_col = h_story
-
-selectedCol = get_shape('W14X109', 'column')
-
-(AgCol, IzCol, IyCol, ZxCol, SxCol, 
- dCol, bfCol, tfCol, twCol) = getProperties(selectedCol)
 
 # base node
 ops.node(10, 0.0, 0.0, 0.0)

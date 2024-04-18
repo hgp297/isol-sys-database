@@ -300,8 +300,8 @@ def plot_pushover(run, data_dir='./outputs/pushover/'):
     
     rxn_cols = ['bay_'+str(bay)
                  for bay in range(0, num_bays+1)]
-    rxn_cols.insert(-1, 'left_wall')
-    rxn_cols.insert(-1, 'right_wall')
+    rxn_cols.insert(len(rxn_cols), 'left_wall')
+    rxn_cols.insert(len(rxn_cols), 'right_wall')
     
     bay_names = rxn_cols.copy()
     rxn_cols.insert(0, 'time')

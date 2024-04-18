@@ -199,7 +199,9 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
     Ct = get_Ct(struct_type)
     x_Tfb = get_x_Tfb(struct_type)
     h_n = np.sum(hsx)/12.0
-    T_fb = Ct*(h_n**x_Tfb)
+    C_u = 1.4
+    T_a = Ct*(h_n**x_Tfb)
+    T_fb = C_u*T_a
 
     k       = 14*zeta_e*T_fb
 

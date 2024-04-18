@@ -122,6 +122,16 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     Sa_1 = Sa_gm[1]
     Sa_Tfb = Sa_gm[2]
         
+    import numpy as np
+    zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    Bm = np.interp(design['zeta_e'], zetaRef, BmRef)
+    
+    pi = 3.14159
+    g = 386.4
+    gap_ratio = (design['moat_ampli']*design['D_m']*4*pi**2)/ \
+        (g*(Sa_Tm/Bm)*design['T_m']**2)
+        
     # Sa_Tm = get_ST(design, design['T_m'])
     # Sa_1 = get_ST(design, 1.0)
     
@@ -131,6 +141,8 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
                    'constructed_moat': design['moat_ampli']*design['D_m'],
                    'T_1': T_1,
                    'T_fb': Tfb,
+                   'T_ratio' : design['T_m']/Tfb,
+                   'gap_ratio' : gap_ratio,
                    'max_isol_disp': isol_max_horiz_disp,
                    'PID': PID,
                    'PFV': PFV,
@@ -313,7 +325,13 @@ def run_doe(prob_target, df_train, df_test,
     
     test_set.set_outcome(outcome)
     
-    sample_bounds = test_set.X.agg(['min', 'max'])
+    # sample_bounds = test_set.X.agg(['min', 'max'])
+    
+    # set bounds for DoE
+    sample_bounds = pd.DataFrame({'gap_ratio': [0.5, 2.0],
+                                  'RI': [0.5, 2.25],
+                                  'T_ratio': [2.0, 5.0],
+                                  'zeta_e': [0.10, 0.25]}, index=['min', 'max'])
     
     buffer = 4
     doe_reserve_db = Database(maxIter, n_buffer=buffer, seed=131, 

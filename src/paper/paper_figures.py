@@ -160,13 +160,13 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
 
 # hard-coded
 def make_design_space(res):
-    xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.8,
+    xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.5,
                                              res),
                                  np.linspace(0.5, 2.25,
                                              res),
                                  np.linspace(2.0, 5.0,
                                              res),
-                                 np.linspace(0.13, 0.25,
+                                 np.linspace(0.1, 0.25,
                                              res))
                                  
     X_space = pd.DataFrame({'gap_ratio':xx.ravel(),

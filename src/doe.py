@@ -311,7 +311,7 @@ class GP:
     
         Returns
         -------
-        Array of n_pts sampled points proportional to (tMSE) metric
+        Array of n_pts sampled points proportional to (LOOCV) metric
         """
         import numpy as np
         n_max = 10000
@@ -592,6 +592,69 @@ class GP:
         # return negative for minimization purposes
         return(-fs2 * e_cv2_cand)
     
+    '''
+    def fn_LOOCV_IMSE(self, X_cand, bound_df):
+        """Return point LOOCV error approximation for a given point
+        
+        Parameters
+        ----------
+        X_cand: np.array of candidate point
+    
+        Returns
+        -------
+        x_next: e^cv^2 from Yi & Taflanidis paper
+        """
+        
+        import numpy as np
+        import pandas as pd
+        
+        min_list = [val for val in bound_df.loc['min']]
+        max_list = [val for val in bound_df.loc['max']]
+        
+        res = 20
+        
+        xx, yy, uu, vv = np.meshgrid(np.linspace(min_list[0], max_list[0],
+                                                 res),
+                                     np.linspace(min_list[1], max_list[1],
+                                                 res),
+                                     np.linspace(min_list[2], max_list[2],
+                                                 res),
+                                     np.linspace(min_list[3], max_list[3],
+                                                 res))
+                                     
+        X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
+                             'RI':yy.ravel(),
+                             'T_ratio':uu.ravel(),
+                             'zeta_e':vv.ravel()})
+        
+        fmu_q, fs1_q = self.gpr.predict(X_space, return_std=True)
+        fs2_q = fs1_q**2
+        
+        # get trained GP info
+        gp_obj = self.gpr._final_estimator
+        X_train = gp_obj.X_train_
+        lengthscale = gp_obj.kernel_.theta[1]
+        
+        # calculate LOOCV error of training set (Kyprioti)
+        L = gp_obj.L_
+        K_mat = L @ L.T
+        alpha_ = gp_obj.alpha_.flatten()
+        K_inv_diag = np.linalg.inv(K_mat).diagonal()
+        e_cv_sq = np.divide(alpha_, K_inv_diag)**2
+        
+        # use decaying distance metric
+        point = np.array([np.asarray(X_cand)])
+        from scipy.spatial.distance import cdist
+        dist_list = cdist(point/lengthscale, X_train/lengthscale).flatten()
+        
+        # smoothing function, exponentially decaying
+        # aggregate LOOCV_error and distance
+        # use LSE
+        from scipy.special import logsumexp
+        denominator = logsumexp(-dist_list**2)
+        numerator = logsumexp(-dist_list**2, b=e_cv_sq)
+        e_cv2_cand = np.exp(numerator - denominator)
+    '''
 
 # def logsumexp(x, a=None):
 #     import numpy as np

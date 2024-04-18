@@ -51,7 +51,7 @@ class Database:
             
         self.param_ranges   = {
             'S_1' : [0.8, 1.3],
-            'T_m' : [2.0, 5.0],
+            'T_m' : [2.5, 5.0],
             'k_ratio' :[5.0, 18.0],
             'Q': [0.05, 0.12],
             'moat_ampli' : [0.5, 1.2],
@@ -426,7 +426,7 @@ class Database:
         except:
             print('Cannot perform DoE without analysis results')
             
-        # TODO: temporary assign variable here
+        # TODO: temporary assign variable here, to be removed
         import numpy as np
         zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
         BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
@@ -459,9 +459,110 @@ class Database:
         self.nrmse_hist = nrmse_hist
         self.hyperparam_list = hyperparam_list
         
+    # TODO: unify design procedure for main, DoE, IDAs, validation
     def set_design(self, design, title):
         pass
     
+    def prepare_pushover(self, design_df):
+        import pandas as pd
+        import numpy as np
+        
+        config_dict = {
+            'S_1' : 1.017,
+            'k_ratio' : 10,
+            'Q': 0.06,
+            'num_frames' : 2,
+            'num_bays' : 4,
+            'num_stories' : 4,
+            'L_bay': 30.0,
+            'h_story': 13.0,
+            'isolator_system' : 'TFP',
+            'superstructure_system' : 'MF',
+            'S_s' : 2.2815
+        }
+        
+        config_dict['L_bldg'] = config_dict['num_bays'] * config_dict['L_bay']
+        config_dict['h_bldg'] = config_dict['num_stories'] * config_dict['h_story']
+        
+        work_df = pd.DataFrame(config_dict, index=[0])
+        from loads import estimate_period
+        work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+        
+        work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
+                            axis=1)
+        
+        import design as ds
+        from loads import define_lateral_forces, define_gravity_loads
+        from gms import scale_ground_motion
+        
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+        work_df['moat_ampli'] = work_df['gap_ratio']
+        
+        # design
+        work_df[['W', 
+               'W_s', 
+               'w_fl', 
+               'P_lc',
+               'all_w_cases',
+               'all_Plc_cases']] = work_df.apply(lambda row: define_gravity_loads(row),
+                                                axis='columns', result_type='expand')
+                     
+        try:
+            all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),
+                                           axis='columns', result_type='expand')
+        except:
+            print('Bearing design failed.')
+            return
+        
+        all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
+                                   'T_e', 'k_e', 'zeta_e', 'D_m']
+        
+        tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
+                                          (all_tfp_designs['R_1'] <= 50.0) &
+                                          (all_tfp_designs['R_2'] <= 190.0) &
+                                          (all_tfp_designs['zeta_e'] <= 0.27)]
+        
+        # retry if design didn't work
+        if tfp_designs.shape[0] == 0:
+            print('Bearing design failed.')
+            return
+        
+        tfp_designs = tfp_designs.drop(columns=['zeta_e'])
+        work_df = pd.concat([work_df, tfp_designs.set_index(work_df.index)], 
+                            axis=1)
+        
+        # get lateral force and design structures
+        work_df[['wx', 
+               'hx', 
+               'h_col', 
+               'hsx', 
+               'Fx', 
+               'Vs',
+               'T_fbe']] = work_df.apply(lambda row: define_lateral_forces(row),
+                                    axis='columns', result_type='expand')
+        work_df['Vb'] = work_df['k_e'] * work_df['W'] * work_df['D_m'] / work_df['num_frames']
+        all_mf_designs = work_df.apply(lambda row: ds.design_MF(row),
+                                         axis='columns', 
+                                         result_type='expand')
+          
+        all_mf_designs.columns = ['beam', 'column', 'flag']
+        
+        # keep the designs that look sensible
+        mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
+        mf_designs = mf_designs.dropna(subset=['beam','column'])
+         
+        mf_designs = mf_designs.drop(['flag'], axis=1)
+        
+        if mf_designs.shape[0] == 0:
+            print('Bearing design failed.')
+            return
+      
+        # get the design params of those bearings
+        work_df = pd.concat([work_df, mf_designs.set_index(work_df.index)], 
+                            axis=1)
+        
+        self.pushover_design = work_df
+        
     def prepare_idas(self, design_df, levels=[1.0, 1.5, 2.0]):
         
         import pandas as pd
@@ -616,6 +717,8 @@ class Database:
                 db_results.to_csv(data_path+'ida_temp_save.csv', index=False)
         
         db_results.to_csv(data_path+output_str, index=False)
+        
+        # TODO: store ida depending on target
         self.ida_results = db_results
     
 #%% test inverse design validator
