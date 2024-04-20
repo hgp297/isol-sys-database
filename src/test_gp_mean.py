@@ -114,6 +114,11 @@ mdl_var.fit_gpr(kernel_name='rbf_iso')
 #%%
 import matplotlib.pyplot as plt
 
+L = gp_mdl.L_
+K_mat = L @ L.T
+alpha_ = gp_mdl.alpha_.flatten()
+K_inv_diag = np.linalg.inv(K_mat).diagonal()
+
 y_pl_gpr = mdl.gpr.predict(X_pl, return_std=False)
 y_pl_log_var = mdl_var.gpr.predict(X_pl)
 y_pl_var = np.exp(y_pl_log_var)
