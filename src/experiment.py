@@ -303,7 +303,7 @@ def run_nlth(design,
     return(results_series)
     
 
-def run_doe(prob_target, df_train, df_test, 
+def run_doe(prob_target, df_train, df_test, sample_bounds=None,
             batch_size=10, error_tol=0.15, maxIter=1000, conv_tol=1e-2):
     
     import random
@@ -317,21 +317,25 @@ def run_doe(prob_target, df_train, df_test,
     from doe import GP
     from db import Database
     
+    # sample_bounds = test_set.X.agg(['min', 'max'])
+    
+    # set bounds for DoE
+    if sample_bounds is None:
+        sample_bounds = pd.DataFrame({'gap_ratio': [0.5, 2.0],
+                                      'RI': [0.5, 2.25],
+                                      'T_ratio': [2.0, 5.0],
+                                      'zeta_e': [0.10, 0.25]}, index=['min', 'max'])
+        covariate_columns = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+    
+    else:
+        covariate_columns = sample_bounds.columns
+    
     test_set = GP(df_test)
-    covariate_columns = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
     test_set.set_covariates(covariate_columns)
     
     outcome = 'collapse_prob'
     
     test_set.set_outcome(outcome)
-    
-    # sample_bounds = test_set.X.agg(['min', 'max'])
-    
-    # set bounds for DoE
-    sample_bounds = pd.DataFrame({'gap_ratio': [0.5, 2.0],
-                                  'RI': [0.5, 2.25],
-                                  'T_ratio': [2.0, 5.0],
-                                  'zeta_e': [0.10, 0.25]}, index=['min', 'max'])
     
     buffer = 4
     doe_reserve_db = Database(maxIter, n_buffer=buffer, seed=131, 
@@ -546,7 +550,12 @@ def run_doe(prob_target, df_train, df_test,
                    
                 break
             
+            # TODO: we cannot have the exact T_ratio and gap_ratio as DOE called for
+            # gap ratio is affected by a stochastic gm_sa_tm
+            # T_ratio is affected by the fact that the true Tfb is not the estimated Tfb
             
+            # drop the "called-for" values and record the "as constructed" values
+            work_df = work_df.drop(columns=['gap_ratio', 'T_ratio'])
             bldg_result = run_nlth(work_df.iloc[0], gm_path)
             result_df = pd.DataFrame(bldg_result).T
             
@@ -557,7 +566,6 @@ def run_doe(prob_target, df_train, df_test,
                                    
             from numpy import log
             result_df['log_collapse_prob'] = log(result_df['collapse_prob'])
-            result_df['T_ratio'] = result_df['T_m'] / result_df['T_fb']
             
             # if run is successful and is batch marker, record error metric
             if (batch_idx % (batch_size) == 0):
@@ -574,3 +582,6 @@ def run_doe(prob_target, df_train, df_test,
         batch_no += 1
     print('DoE did not converge within maximum iteration specified.')
     return df_train, rmse_list, mae_list, nrmse_list, hyperparam_list
+
+#Do we have to run 2 more nonlinear rhas in our model with new ground motions?
+#To get the other 2 sets of edps

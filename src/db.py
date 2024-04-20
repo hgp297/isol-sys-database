@@ -426,20 +426,10 @@ class Database:
         except:
             print('Cannot perform DoE without analysis results')
             
-        # TODO: temporary assign variable here, to be removed
-        import numpy as np
-        zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
-        BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
-        whole_set['Bm'] = np.interp(whole_set['zeta_e'], zetaRef, BmRef)
-        
-        pi = 3.14159
-        g = 386.4
-        whole_set['T_ratio'] = whole_set['T_m'] / whole_set['T_fb']
-        whole_set['gap_ratio'] = (whole_set['constructed_moat']*4*pi**2)/ \
-            (g*(whole_set['sa_tm']/whole_set['Bm'])*whole_set['T_m']**2)
         # n_set is both test_train split
         ml_set = whole_set.sample(n=n_set, replace=False, random_state=985)
         
+        # TODO: no need to split if no test set
         # split 50/50 for 
         df_train = ml_set.head(int(n_set/2))
         df_test = ml_set.tail(int(n_set/2))

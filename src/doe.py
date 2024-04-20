@@ -139,7 +139,6 @@ class GP:
         return y_pred, gp_std
     
     # Train GP regression
-    # TODO: fit a linear mean function
     def fit_gpr(self, kernel_name):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
@@ -165,7 +164,7 @@ class GP:
                     length_scale=np.ones(n_vars), 
                     nu=1.5)
             
-        kernel = kernel + krn.WhiteKernel(noise_level=1, noise_level_bounds=(1e-5, 1e3))
+        kernel = kernel + krn.WhiteKernel(noise_level=0.1, noise_level_bounds=(1e-5, 1e1))
         # kernel = kernel + 0.1**2 * krn.RBF(length_scale=0.1)
             
         # pipeline to scale -> GPR

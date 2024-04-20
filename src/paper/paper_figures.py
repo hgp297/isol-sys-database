@@ -315,7 +315,8 @@ plt.title('Collapse risk using full 400 points', fontsize=axis_font)
 plt.show()
 
 #%%
-X_plot = make_2D_plotting_space(mdl.X, res)
+X_plot = make_2D_plotting_space(mdl.X, res, 
+                                third_var_set=3.0, fourth_var_set=0.2)
 
 import time
 t0 = time.time()
