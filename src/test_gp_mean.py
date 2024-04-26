@@ -110,7 +110,7 @@ from doe import GP
 mdl_var = GP(replicates_df)
 mdl_var.set_outcome('log_var_outcome')
 mdl_var.set_covariates(covariate_columns)
-mdl_var.fit_gpr(kernel_name='rbf_iso')
+mdl_var.fit_gpr(kernel_name='rbf_ard')
 #%%
 import matplotlib.pyplot as plt
 

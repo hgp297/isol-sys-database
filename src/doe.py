@@ -529,7 +529,19 @@ class GP:
         # get trained GP info
         gp_obj = self.gpr._final_estimator
         X_train = gp_obj.X_train_
-        lengthscale = gp_obj.kernel_.theta[1]
+        
+        # isotropic RBF, probably
+        # use decaying distance metric
+        point = np.array([np.asarray(X_cand)])
+        from scipy.spatial.distance import cdist
+        
+        if len(gp_obj.kernel_.theta < 4):
+            lengthscale = gp_obj.kernel_.theta[1]
+        # ARD RBF, probably
+        else:
+            lengthscale = gp_obj.kernel_.theta[1:5]
+        
+        dist_list = cdist(point/lengthscale, X_train/lengthscale).flatten()
         
         # calculate LOOCV error of training set (Kyprioti)
         L = gp_obj.L_
@@ -537,11 +549,6 @@ class GP:
         alpha_ = gp_obj.alpha_.flatten()
         K_inv_diag = np.linalg.inv(K_mat).diagonal()
         e_cv_sq = np.divide(alpha_, K_inv_diag)**2
-        
-        # use decaying distance metric
-        point = np.array([np.asarray(X_cand)])
-        from scipy.spatial.distance import cdist
-        dist_list = cdist(point/lengthscale, X_train/lengthscale).flatten()
         
         '''
         # smoothing function, exponentially decaying

@@ -44,6 +44,7 @@ df['max_velo'] = df.PFV.apply(max)
 df['max_accel'] = df.PFA.apply(max)
 
 df['T_ratio'] = df['T_m'] / df['T_fb']
+df['T_ratio_e'] = df['T_m'] / df['T_fbe']
 pi = 3.14159
 g = 386.4
 
@@ -87,6 +88,7 @@ ax2.grid(True)
 ax3=fig.add_subplot(2, 2, 3)
 
 ax3.scatter(df['T_ratio'], df[y_var])
+ax3.scatter(df['T_ratio_e'], df[y_var])
 ax3.set_ylabel('Peak story drift', fontsize=axis_font)
 ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 ax3.set_title('Bearing period ratio', fontsize=title_font)
@@ -247,13 +249,14 @@ mdl = GP(df)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl.set_covariates(covariate_list)
 mdl.set_outcome('collapse_prob')
-mdl.fit_gpr(kernel_name='rbf_iso')
+mdl.fit_gpr(kernel_name='rbf_ard')
 
 
 res = 75
 
 X_plot = make_2D_plotting_space(mdl.X, res, x_var='T_ratio', y_var='zeta_e', 
-                           all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
+                           all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                           third_var_set = 1.0, fourth_var_set=2.0)
 
 import time
 t0 = time.time()
@@ -736,7 +739,7 @@ fig.tight_layout()
 
 #%% doe data set GP
 
-with open("../../data/tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
+with open("../../data/tfp_mf_db_doe.pickle", 'rb') as picklefile:
     main_obj_doe = pickle.load(picklefile)
     
 main_obj_doe.calculate_collapse()
@@ -767,7 +770,7 @@ mdl_doe = GP(df_doe)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_doe.set_covariates(covariate_list)
 mdl_doe.set_outcome('collapse_prob')
-mdl_doe.fit_gpr(kernel_name='rbf_iso')
+mdl_doe.fit_gpr(kernel_name='rbf_ard')
 
 baseline_risk, baseline_fs1 = mdl_doe.gpr.predict(X_baseline, return_std=True)
 baseline_risk = baseline_risk.item()
@@ -782,6 +785,49 @@ print('Upfront cost of selected design: ',
 print('Predicted collapse risk: ',
       f'{baseline_risk:.2%}')
 print(X_baseline)
+
+X_design_cand = make_design_space(15)
+
+
+t0 = time.time()
+fmu_design, fs1_design = mdl.gpr.predict(X_design_cand, return_std=True)
+fs2_design = fs1_design**2
+
+tp = time.time() - t0
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_design_cand.shape[0],
+                                                                tp))
+
+
+risk_thresh = 0.1
+space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
+ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+import warnings
+warnings.filterwarnings('ignore')
+
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = ok_risk.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+warnings.resetwarnings()
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
 #%% doe-set, Tm_zeta plot
 
 res = 75
@@ -909,6 +955,88 @@ plt.grid(True)
 plt.title('Collapse risk using post-DOE points', fontsize=axis_font)
 plt.show()
 
+#%% pareto - doe
+
+all_costs = calc_upfront_cost(X_design_cand, coef_dict)
+constr_costs = all_costs['total']
+predicted_risk = space_collapse_pred['collapse probability']
+pareto_array = np.array([constr_costs, predicted_risk]).transpose()
+
+t0 = time.time()
+pareto_mask = is_pareto_efficient(pareto_array)
+tp = time.time() - t0
+
+print("Culled %d points in %.3f s" % (X_design_cand.shape[0], tp))
+
+X_pareto = X_design_cand.iloc[pareto_mask]
+risk_pareto = predicted_risk.iloc[pareto_mask]
+cost_pareto = constr_costs.iloc[pareto_mask]
+
+plt.figure(figsize=(8,6))
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+plt.scatter(risk_pareto, cost_pareto, 
+            edgecolors='k', s=20.0)
+plt.xlabel('Collapse risk', fontsize=axis_font)
+plt.ylabel('Construction cost', fontsize=axis_font)
+plt.grid(True)
+plt.title('Pareto front', fontsize=axis_font)
+plt.show()
+
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+x_var = 'gap_ratio'
+xx = X_plot[x_var]
+y_var = 'RI'
+yy = X_plot[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+X_subset = X_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+fs2_subset = fs2_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+fmu_subset = fmu_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
+Z = fmu_subset.reshape(xx_pl.shape)
+
+fig = plt.figure(figsize=(14,6))
+ax1=fig.add_subplot(1, 2, 1)
+ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
+            c=risk_pareto,
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+ax1.set_xlim([0.5,2.0])
+ax1.set_ylim([0.45, 2.3])
+ax1.set_xlabel('Gap ratio', fontsize=axis_font)
+ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax1.grid(True)
+ax1.set_title('Pareto efficient designs', fontsize=axis_font)
+
+ax2=fig.add_subplot(1, 2, 2)
+ax2.scatter(X_pareto['T_ratio'], X_pareto['zeta_e'], 
+            c=risk_pareto,
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+ax2.set_xlabel('T ratio', fontsize=axis_font)
+ax2.set_ylabel(r'$\zeta_e$', fontsize=axis_font)
+ax2.grid(True)
+ax2.set_title('Pareto efficient designs', fontsize=axis_font)
+fig.tight_layout()
+
 #%% doe convergence plots
 
 rmse_hist = main_obj_doe.rmse_hist
@@ -916,9 +1044,10 @@ mae_hist = main_obj_doe.mae_hist
 nrmse_hist = main_obj_doe.nrmse_hist
 
 fig = plt.figure(figsize=(13, 6))
+batch_size = 5
 
 ax1=fig.add_subplot(1, 2, 1)
-ax1.plot(np.arange(0, (len(rmse_hist)), 1), rmse_hist)
+ax1.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), rmse_hist)
 # ax1.set_title(r'Root mean squared error', fontsize=axis_font)
 ax1.set_xlabel(r'Points added', fontsize=axis_font)
 ax1.set_ylabel(r'Root mean squared error (RMSE)', fontsize=axis_font)
@@ -928,7 +1057,7 @@ ax1.grid(True)
 
 
 ax2=fig.add_subplot(1, 2, 2)
-ax2.plot(np.arange(0, (len(rmse_hist)), 1), nrmse_hist)
+ax2.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), nrmse_hist)
 ax2.set_title('Normalized root mean squared LOO error', fontsize=axis_font)
 ax2.set_xlabel('Points added', fontsize=axis_font)
 ax2.grid(True)

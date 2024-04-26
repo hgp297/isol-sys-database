@@ -73,7 +73,7 @@ main_obj.perform_doe(n_set=100,batch_size=5)
 
 # current settings: loocv, batch of 5, strict convergence, rejection sample
 import pickle
-with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
+with open('../data/tfp_mf_db_doe_ard.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
     
 #%%
@@ -99,19 +99,19 @@ with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
 # validation_path = '../data/validation/'
 # # TODO: is there a way to pipe this straight from GP? and organize depending on target
 # sample_dict = {
-#     'gap_ratio' : 1.0,
-#     'RI' : 2.0,
-#     'T_ratio': 3.0,
-#     'zeta_e': 0.2
+#     'gap_ratio' : 0.6,
+#     'RI' : 1.23,
+#     'T_ratio': 2.125,
+#     'zeta_e': 0.25
 # }
 
 # design_df = pd.DataFrame(sample_dict, index=[0])
 
 # main_obj.prepare_idas(design_df)
-# main_obj.analyze_ida('ida_baseline.csv')
+# main_obj.analyze_ida('ida_10.csv')
 
 # import pickle
-# with open(validation_path+'tfp_mf_db_ida_baseline.pickle', 'wb') as f:
+# with open(validation_path+'tfp_mf_db_ida_10.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
 
 #%% run pushover

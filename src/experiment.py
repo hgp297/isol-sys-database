@@ -379,7 +379,7 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
             mdl.set_outcome(outcome)
             
             mdl.set_covariates(covariate_columns)
-            mdl.fit_gpr(kernel_name='rbf_iso')
+            mdl.fit_gpr(kernel_name='rbf_ard')
             
             y_hat = mdl.gpr.predict(test_set.X)
             
