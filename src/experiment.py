@@ -304,7 +304,8 @@ def run_nlth(design,
     
 
 def run_doe(prob_target, df_train, df_test, sample_bounds=None,
-            batch_size=10, error_tol=0.15, maxIter=1000, conv_tol=1e-2):
+            batch_size=10, error_tol=0.15, maxIter=1000, conv_tol=1e-2,
+            kernel='rbf_ard'):
     
     import random
     import numpy as np
@@ -358,7 +359,11 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
     rmse_list = []
     mae_list = []
     nrmse_list = []
-    hyperparam_list = np.empty((0,3), float)
+    
+    if kernel == 'rbf_iso':
+        hyperparam_list = np.empty((0,3), float)
+    else:
+        hyperparam_list = np.empty((0,6), float)
     
     doe_idx = 0
     
@@ -379,7 +384,7 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
             mdl.set_outcome(outcome)
             
             mdl.set_covariates(covariate_columns)
-            mdl.fit_gpr(kernel_name='rbf_ard')
+            mdl.fit_gpr(kernel_name=kernel)
             
             y_hat = mdl.gpr.predict(test_set.X)
             
@@ -553,6 +558,8 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
             # TODO: we cannot have the exact T_ratio and gap_ratio as DOE called for
             # gap ratio is affected by a stochastic gm_sa_tm
             # T_ratio is affected by the fact that the true Tfb is not the estimated Tfb
+            # gap ratio can be equal if scale_ground_motion can be done s.t.
+            # sa_tm is the scaling control
             
             # drop the "called-for" values and record the "as constructed" values
             work_df = work_df.drop(columns=['gap_ratio', 'T_ratio'])
