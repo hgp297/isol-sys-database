@@ -55,56 +55,7 @@ df['Bm'] = np.interp(df['zeta_e'], zetaRef, BmRef)
 df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
     (g*(df['sa_tm']/df['Bm'])*df['T_m']**2)
     
-#%%  dumb scatters
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-
-y_var = 'max_drift'
-fig = plt.figure(figsize=(13, 10))
-
-ax1=fig.add_subplot(2, 2, 1)
-
-
-ax1.scatter(df['gap_ratio'], df[y_var])
-ax1.set_ylabel('Peak story drift', fontsize=axis_font)
-ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
-ax1.set_title('Gap', fontsize=title_font)
-ax1.set_ylim([0, 0.1])
-ax1.grid(True)
-
-ax2=fig.add_subplot(2, 2, 2)
-
-ax2.scatter(df['RI'], df[y_var])
-ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
-ax2.set_title('Superstructure strength', fontsize=title_font)
-ax2.set_ylim([0, 0.1])
-ax2.grid(True)
-
-ax3=fig.add_subplot(2, 2, 3)
-
-ax3.scatter(df['T_ratio'], df[y_var])
-ax3.scatter(df['T_ratio_e'], df[y_var])
-ax3.set_ylabel('Peak story drift', fontsize=axis_font)
-ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
-ax3.set_title('Bearing period ratio', fontsize=title_font)
-ax3.set_ylim([0, 0.1])
-ax3.grid(True)
-
-ax4=fig.add_subplot(2, 2, 4)
-
-ax4.scatter(df['zeta_e'], df[y_var])
-ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
-ax4.set_title('Bearing damping', fontsize=title_font)
-ax4.set_ylim([0, 0.1])
-ax4.grid(True)
-
-fig.tight_layout()
-plt.show()
 
 #%%
 # make a generalized 2D plotting grid, defaulted to gap and Ry
@@ -288,10 +239,7 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_plot[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
-fs2_plot = fs2_base[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
-fmu_plot = fmu_base[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
-Z = fmu_plot.reshape(xx_pl.shape)
+Z = fmu_base.reshape(xx_pl.shape)
 
 plt.figure(figsize=(8,6))
 # plt.imshow(
@@ -352,10 +300,7 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-fs2_plot = fs2_base[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-fmu_plot = fmu_base[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-Z = fmu_plot.reshape(xx_pl.shape)
+Z = fmu_base.reshape(xx_pl.shape)
 
 plt.figure(figsize=(8,6))
 # plt.imshow(
@@ -705,10 +650,6 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-fs2_subset = fs2_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-fmu_subset = fmu_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-Z = fmu_subset.reshape(xx_pl.shape)
 
 fig = plt.figure(figsize=(14,6))
 ax1=fig.add_subplot(1, 2, 1)
@@ -746,6 +687,8 @@ main_obj_doe.calculate_collapse()
 
 df_doe = main_obj_doe.doe_analysis
 
+# df_doe = df_doe.drop(columns=['index'])
+
 df_doe['max_drift'] = df_doe.PID.apply(max)
 df_doe['log_drift'] = np.log(df_doe['max_drift'])
 
@@ -753,6 +696,7 @@ df_doe['max_velo'] = df_doe.PFV.apply(max)
 df_doe['max_accel'] = df_doe.PFA.apply(max)
 
 df_doe['T_ratio'] = df_doe['T_m'] / df_doe['T_fb']
+df_doe['T_ratio_e'] = df_doe['T_m'] / df_doe['T_fbe']
 pi = 3.14159
 g = 386.4
 
@@ -763,13 +707,120 @@ df_doe['Bm'] = np.interp(df_doe['zeta_e'], zetaRef, BmRef)
 df_doe['gap_ratio'] = (df_doe['constructed_moat']*4*pi**2)/ \
     (g*(df_doe['sa_tm']/df_doe['Bm'])*df_doe['T_m']**2)
     
+print('% impact of DoE set:', sum(df_doe['impacted'])/df_doe.shape[0])
+print('average drift:', df_doe['max_drift'].mean())
+
+
+#%% doe convergence plots
+
+rmse_hist = main_obj_doe.rmse_hist
+mae_hist = main_obj_doe.mae_hist
+nrmse_hist = main_obj_doe.nrmse_hist
 theta = main_obj_doe.hyperparam_list
 
+plt.close('all')
+fig = plt.figure(figsize=(13, 6))
+batch_size = 5
+
+ax1=fig.add_subplot(1, 3, 1)
+ax1.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), rmse_hist)
+ax1.set_title(r'RMSE on test set', fontsize=axis_font)
+ax1.set_xlabel(r'Points added', fontsize=axis_font)
+ax1.set_ylabel(r'Error metric', fontsize=axis_font)
+# ax1.set_xlim([0, 140])
+# ax1.set_ylim([0.19, 0.28])
+ax1.grid(True)
+
+
+ax2=fig.add_subplot(1, 3, 2)
+ax2.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), nrmse_hist)
+ax2.set_title('NRMSE using LOOCV of training set', fontsize=axis_font)
+ax2.set_xlabel('Points added', fontsize=axis_font)
+ax2.grid(True)
+
+from numpy import exp
+all_hyperparams = exp(theta)
+hyperparam_norm = all_hyperparams / all_hyperparams.max(axis=0)
+ax3=fig.add_subplot(1, 3, 3)
+for param_idx in range(all_hyperparams.shape[1]):
+    ax3.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), 
+             hyperparam_norm[:,param_idx])
+ax3.set_title('Normalized hyperparameter convergence', fontsize=axis_font)
+ax3.set_xlabel('Points added', fontsize=axis_font)
+ax3.grid(True)
+fig.tight_layout()
+
+#%%  dumb scatters
+
+plt.close('all')
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+y_var = 'max_drift'
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+cmap = plt.cm.coolwarm
+sc = ax1.scatter(df_doe['gap_ratio'], df_doe[y_var], alpha=0.2, c=df_doe['impacted'], cmap=cmap)
+ax1.set_ylabel('Peak story drift', fontsize=axis_font)
+ax1.set_xlabel(r'GR', fontsize=axis_font)
+ax1.set_title('a) Gap ratio', fontsize=title_font)
+ax1.set_ylim([0, 0.15])
+
+from matplotlib.lines import Line2D
+custom_lines = [Line2D([0], [0], marker='o', color='w', label='No impact',
+                          markerfacecolor=cmap(0.), alpha=0.4, markersize=15),
+                Line2D([0], [0], marker='o', color='w', label='Wall impact',
+                       markerfacecolor=cmap(1.), alpha=0.4, markersize=15)]
+ax1.legend(custom_lines, ['No impact', 'Impact'], fontsize=subt_font)
+ax1.grid(True)
+
+ax2=fig.add_subplot(2, 2, 2)
+
+ax2.scatter(df_doe['RI'], df_doe[y_var], alpha=0.3, c=df_doe['impacted'], cmap=cmap)
+ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title('b) Superstructure strength', fontsize=title_font)
+ax2.set_ylim([0, 0.15])
+ax2.grid(True)
+
+ax3=fig.add_subplot(2, 2, 3)
+
+ax3.scatter(df_doe['T_ratio'], df_doe[y_var], alpha=0.3, c=df_doe['impacted'], cmap=cmap)
+# ax3.scatter(df_doe['T_ratio_e'], df_doe[y_var])
+ax3.set_ylabel('Peak story drift', fontsize=axis_font)
+ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax3.set_title('c) Bearing period ratio', fontsize=title_font)
+ax3.set_ylim([0, 0.15])
+ax3.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+
+ax4.scatter(df_doe['zeta_e'], df_doe[y_var], alpha=0.3, c=df_doe['impacted'], cmap=cmap)
+ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
+ax4.set_title('d) Bearing damping', fontsize=title_font)
+ax4.set_ylim([0, 0.15])
+ax4.grid(True)
+
+fig.tight_layout()
+plt.show()
+# plt.savefig('./figures/scatter.pdf')
+
+# TODO: hist on the axes
+#%% seaborn scatter with histogram: DoE data
+# import seaborn as sns
+#%% DoE GP
 
 mdl_doe = GP(df_doe)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_doe.set_covariates(covariate_list)
 mdl_doe.set_outcome('collapse_prob')
+
 mdl_doe.fit_gpr(kernel_name='rbf_ard')
 
 baseline_risk, baseline_fs1 = mdl_doe.gpr.predict(X_baseline, return_std=True)
@@ -786,11 +837,12 @@ print('Predicted collapse risk: ',
       f'{baseline_risk:.2%}')
 print(X_baseline)
 
-X_design_cand = make_design_space(15)
+design_res = 20
+X_design_cand = make_design_space(design_res)
 
 
 t0 = time.time()
-fmu_design, fs1_design = mdl.gpr.predict(X_design_cand, return_std=True)
+fmu_design, fs1_design = mdl_doe.gpr.predict(X_design_cand, return_std=True)
 fs2_design = fs1_design**2
 
 tp = time.time() - t0
@@ -828,22 +880,24 @@ print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
 print(best_design)
 
+
+
 #%% doe-set, Tm_zeta plot
 
 res = 75
 X_plot = make_2D_plotting_space(mdl.X, res, x_var='T_ratio', y_var='zeta_e', 
-                           all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                           third_var_set = 1.0, fourth_var_set = 2.0)
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 0.83, fourth_var_set = 1.5)
 
 import time
 t0 = time.time()
 
-fmu_base, fs1_base = mdl.gpr.predict(X_plot, return_std=True)
-fs2_base = fs1_base**2
+fmu_doe, fs1_doe = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_doe = fs1_doe**2
 
 tp = time.time() - t0
 print("GPR collapse prediction for %d inputs in %.3f s" % (X_plot.shape[0],
-                                                               tp))
+                                                                tp))
 
 
 plt.rcParams["font.family"] = "serif"
@@ -865,10 +919,7 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_plot[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
-fs2_plot = fs2_base[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
-fmu_plot = fmu_base[X_plot['gap_ratio']==np.min(X_plot['gap_ratio'])]
-Z = fmu_plot.reshape(xx_pl.shape)
+Z = fmu_doe.reshape(xx_pl.shape)
 
 plt.figure(figsize=(8,6))
 # plt.imshow(
@@ -905,7 +956,7 @@ fs2_doe = fs1_doe**2
 
 tp = time.time() - t0
 print("GPR collapse prediction for %d inputs in %.3f s" % (X_plot.shape[0],
-                                                               tp))
+                                                                tp))
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -926,10 +977,7 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-fs2_plot = fs2_doe[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-fmu_plot = fmu_doe[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-Z = fmu_plot.reshape(xx_pl.shape)
+Z = fmu_doe.reshape(xx_pl.shape)
 
 plt.figure(figsize=(8,6))
 # plt.imshow(
@@ -955,7 +1003,76 @@ plt.grid(True)
 plt.title('Collapse risk using post-DOE points', fontsize=axis_font)
 plt.show()
 
+
+#%% doe plot (put on gap Ry dimensions)
+
+gp_obj = mdl_doe.gpr._final_estimator
+X_train = gp_obj.X_train_
+
+ard_lengthscale = gp_obj.kernel_.theta[1:5]
+
+def loo_error_approx(X_cand, X_data, lengthscale, e_cv_sq):
+    point = np.array([np.asarray(X_cand)])
+    from scipy.spatial.distance import cdist
+    from numpy import exp
+    dist_list = cdist(point/lengthscale, X_data/lengthscale).flatten()
+    gamma = exp(-dist_list**2)
+    numerator = np.sum(np.multiply(gamma, e_cv_sq))
+    denominator = np.sum(gamma)
+    return(numerator/denominator)
+
+L = gp_obj.L_
+K_mat = L @ L.T
+alpha_ = gp_obj.alpha_.flatten()
+K_inv_diag = np.linalg.inv(K_mat).diagonal()
+
+e_cv_sq = np.divide(alpha_, K_inv_diag)**2
+
+loo_error = X_plot.apply(lambda row: loo_error_approx(row, X_train, ard_lengthscale, e_cv_sq),
+                           axis='columns', result_type='expand')
+
+x_var = 'gap_ratio'
+xx = X_plot[x_var]
+y_var = 'RI'
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# loocv
+mse_w = np.array(loo_error*fs2_doe)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+Z = mse_w.reshape(xx_pl.shape)
+
+batch_size = 5
+
+df_doe = df_doe.reset_index(drop=True)
+df_doe['batch_id'] = df_doe.index.values//batch_size + 1
+
+plt.close('all')
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font = 20
+
+fig= plt.figure(figsize=(8,6))
+cmap = plt.cm.plasma
+sc = plt.scatter(df_doe['gap_ratio'], df_doe['RI'], c=df_doe['batch_id'], alpha=0.5, cmap=cmap)
+cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
+
+fig.colorbar(sc, label='Batch added')
+plt.clabel(cs, fontsize=clabel_size)
+plt.xlabel(r'GR', fontsize=axis_font)
+plt.ylabel(r'$R_y$', fontsize=axis_font)
+plt.title(r'$MSE_w$ selection criterion', fontsize=axis_font)
+plt.grid(True)
+
+
 #%% pareto - doe
+
+# TODO: limit this to designs that pass threshold
 
 all_costs = calc_upfront_cost(X_design_cand, coef_dict)
 constr_costs = all_costs['total']
@@ -968,9 +1085,12 @@ tp = time.time() - t0
 
 print("Culled %d points in %.3f s" % (X_design_cand.shape[0], tp))
 
-X_pareto = X_design_cand.iloc[pareto_mask]
+X_pareto = X_design_cand.iloc[pareto_mask].copy()
 risk_pareto = predicted_risk.iloc[pareto_mask]
 cost_pareto = constr_costs.iloc[pareto_mask]
+
+# -1 if predicted risk > allowable
+X_pareto['acceptable_risk'] = np.sign(risk_thresh - risk_pareto)
 
 plt.figure(figsize=(8,6))
 # plt.imshow(
@@ -1010,16 +1130,14 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-X_subset = X_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-fs2_subset = fs2_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-fmu_subset = fmu_plot[X_plot['T_ratio']==np.median(X_plot['T_ratio'])]
-Z = fmu_subset.reshape(xx_pl.shape)
+Z = fmu_doe.reshape(xx_pl.shape)
 
+cmap = plt.cm.coolwarm
 fig = plt.figure(figsize=(14,6))
 ax1=fig.add_subplot(1, 2, 1)
 ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
-            c=risk_pareto,
-            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+            c=X_pareto['acceptable_risk'],
+            edgecolors='k', s=20.0, cmap=cmap, vmax=5e-1)
 ax1.set_xlim([0.5,2.0])
 ax1.set_ylim([0.45, 2.3])
 ax1.set_xlabel('Gap ratio', fontsize=axis_font)
@@ -1029,39 +1147,14 @@ ax1.set_title('Pareto efficient designs', fontsize=axis_font)
 
 ax2=fig.add_subplot(1, 2, 2)
 ax2.scatter(X_pareto['T_ratio'], X_pareto['zeta_e'], 
-            c=risk_pareto,
-            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+            c=X_pareto['acceptable_risk'],
+            edgecolors='k', s=20.0, cmap=cmap, vmax=5e-1)
 ax2.set_xlabel('T ratio', fontsize=axis_font)
 ax2.set_ylabel(r'$\zeta_e$', fontsize=axis_font)
 ax2.grid(True)
 ax2.set_title('Pareto efficient designs', fontsize=axis_font)
 fig.tight_layout()
 
-#%% doe convergence plots
-
-rmse_hist = main_obj_doe.rmse_hist
-mae_hist = main_obj_doe.mae_hist
-nrmse_hist = main_obj_doe.nrmse_hist
-
-fig = plt.figure(figsize=(13, 6))
-batch_size = 5
-
-ax1=fig.add_subplot(1, 2, 1)
-ax1.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), rmse_hist)
-# ax1.set_title(r'Root mean squared error', fontsize=axis_font)
-ax1.set_xlabel(r'Points added', fontsize=axis_font)
-ax1.set_ylabel(r'Root mean squared error (RMSE)', fontsize=axis_font)
-# ax1.set_xlim([0, 140])
-# ax1.set_ylim([0.19, 0.28])
-ax1.grid(True)
-
-
-ax2=fig.add_subplot(1, 2, 2)
-ax2.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), nrmse_hist)
-ax2.set_title('Normalized root mean squared LOO error', fontsize=axis_font)
-ax2.set_xlabel('Points added', fontsize=axis_font)
-ax2.grid(True)
-fig.tight_layout()
 
 #%% histogram
 
