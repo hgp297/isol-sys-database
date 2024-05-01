@@ -969,44 +969,44 @@ class Loss_Analysis:
     
 #%% test
 # run info
-# import pandas as pd
-# import numpy as np
+import pandas as pd
+import numpy as np
 
-# idx = pd.IndexSlice
-# pd.options.display.max_rows = 30
+idx = pd.IndexSlice
+pd.options.display.max_rows = 30
 
-# # and import pelicun classes and methods
-# from pelicun.assessment import Assessment
+# and import pelicun classes and methods
+from pelicun.assessment import Assessment
 
-# # get database
-# # initialize, no printing outputs, offset fixed with current components
-# PAL = Assessment({
-#     "PrintLog": False, 
-#     "Seed": 985,
-#     "Verbose": False,
-#     "DemandOffset": {"PFA": 0, "PFV": 0}
-# })
+# get database
+# initialize, no printing outputs, offset fixed with current components
+PAL = Assessment({
+    "PrintLog": False, 
+    "Seed": 985,
+    "Verbose": False,
+    "DemandOffset": {"PFA": 0, "PFV": 0}
+})
 
-# # generate structural components and join with NSCs
-# P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
+# generate structural components and join with NSCs
+P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
 
-# data = pd.read_csv('../data/structural_db_conv.csv')
-# cbf_run = data.iloc[0]
+data = pd.read_csv('../data/tfp_mf_db.csv')
+run = data.iloc[0]
 
 
-# cbf_floors = cbf_run.num_stories
-# cbf_area = cbf_run.L_bldg**2 # sq ft
+floors = run.num_stories
+area = run.L_bldg**2 # sq ft
 
-# # lab, health, ed, res, office, retail, warehouse, hotel
-# fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
-# bldg_usage = [fl_usage]*cbf_floors
+# lab, health, ed, res, office, retail, warehouse, hotel
+fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
+bldg_usage = [fl_usage]*floors
 
-# area_usage = np.array(fl_usage)*cbf_area
+area_usage = np.array(fl_usage)*area
 
-# loss = Loss_Analysis(cbf_run)
-# loss.nqe_sheets()
-# loss.normative_quantity_estimation(bldg_usage, P58_metadata)
+loss = Loss_Analysis(run)
+loss.nqe_sheets()
+loss.normative_quantity_estimation(bldg_usage, P58_metadata)
 
-# # TODO: keep record of total cmp (groupby?)
+# TODO: keep record of total cmp (groupby?)
 
-# loss.process_EDP()
+loss.process_EDP()

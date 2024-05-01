@@ -530,7 +530,7 @@ def normative_quantity_estimation(run_info, usage, nqe_mean, nqe_std, nqe_meta,
 #%% main
 
 # run info
-data = pd.read_csv('../../data/structural_db_conv.csv')
+data = pd.read_csv('../../data/tfp_mf_db.csv')
 cbf_run = data.iloc[0]
 mf_run = data.iloc[-1]
 

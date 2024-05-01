@@ -98,9 +98,26 @@ with open(pickle_path+"tfp_mf_db_doe.pickle", 'rb') as picklefile:
 
 validation_path = '../data/validation/'
 # TODO: is there a way to pipe this straight from GP? and organize depending on target
+# sample_dict = {
+#     'gap_ratio' : 0.836,
+#     'RI' : 1.51,
+#     'T_ratio': 2.0,
+#     'zeta_e': 0.25
+# }
+
+# design_df = pd.DataFrame(sample_dict, index=[0])
+
+# main_obj.prepare_idas(design_df)
+# main_obj.analyze_ida('ida_10.csv')
+
+# import pickle
+# with open(validation_path+'tfp_mf_db_ida_10.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+
 sample_dict = {
-    'gap_ratio' : 0.836,
-    'RI' : 1.51,
+    'gap_ratio' : 1.026,
+    'RI' : 1.605,
     'T_ratio': 2.0,
     'zeta_e': 0.25
 }
@@ -108,12 +125,28 @@ sample_dict = {
 design_df = pd.DataFrame(sample_dict, index=[0])
 
 main_obj.prepare_idas(design_df)
-main_obj.analyze_ida('ida_10.csv')
+main_obj.analyze_ida('ida_5.csv')
 
 import pickle
-with open(validation_path+'tfp_mf_db_ida_10.pickle', 'wb') as f:
+with open(validation_path+'tfp_mf_db_ida_5.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
+    
+    
+sample_dict = {
+    'gap_ratio' : 0.979,
+    'RI' : 1.236,
+    'T_ratio': 2.0,
+    'zeta_e': 0.25
+}
 
+design_df = pd.DataFrame(sample_dict, index=[0])
+
+main_obj.prepare_idas(design_df)
+main_obj.analyze_ida('ida_2_5.csv')
+
+import pickle
+with open(validation_path+'tfp_mf_db_ida_2_5.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 #%% run pushover
 
 # from db import Database

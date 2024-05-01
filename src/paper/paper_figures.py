@@ -195,12 +195,13 @@ ax.grid()
 # plt.show()
 
 #%% base-set data
+kernel_name = 'rbf_ard'
 
 mdl = GP(df)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl.set_covariates(covariate_list)
 mdl.set_outcome('collapse_prob')
-mdl.fit_gpr(kernel_name='rbf_ard')
+mdl.fit_gpr(kernel_name=kernel_name)
 
 
 res = 75
@@ -682,7 +683,9 @@ fig.tight_layout()
 
 with open("../../data/tfp_mf_db_doe.pickle", 'rb') as picklefile:
     main_obj_doe = pickle.load(picklefile)
-    
+
+kernel_name = 'rbf_ard'
+
 main_obj_doe.calculate_collapse()
 
 df_doe = main_obj_doe.doe_analysis
@@ -749,10 +752,11 @@ ax3.set_title('Normalized hyperparameter convergence', fontsize=axis_font)
 ax3.set_xlabel('Points added', fontsize=axis_font)
 ax3.grid(True)
 fig.tight_layout()
+# plt.savefig('./figures/convergence.eps')
 
 #%%  dumb scatters
 
-plt.close('all')
+# plt.close('all')
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -812,6 +816,8 @@ plt.show()
 # plt.savefig('./figures/scatter.pdf')
 
 # TODO: hist on the axes
+# TODO: mega DoE plot with GP predictions and comparisons
+
 #%% seaborn scatter with histogram: DoE data
 # import seaborn as sns
 #%% DoE GP
@@ -821,7 +827,7 @@ covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_doe.set_covariates(covariate_list)
 mdl_doe.set_outcome('collapse_prob')
 
-mdl_doe.fit_gpr(kernel_name='rbf_ard')
+mdl_doe.fit_gpr(kernel_name=kernel_name)
 
 baseline_risk, baseline_fs1 = mdl_doe.gpr.predict(X_baseline, return_std=True)
 baseline_risk = baseline_risk.item()
@@ -881,11 +887,73 @@ print('Predicted collapse risk: ',
 print(best_design)
 
 
+risk_thresh = 0.05
+space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
+ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+import warnings
+warnings.filterwarnings('ignore')
+
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = ok_risk.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+warnings.resetwarnings()
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
+
+risk_thresh = 0.025
+space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
+ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+import warnings
+warnings.filterwarnings('ignore')
+
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = ok_risk.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+warnings.resetwarnings()
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+
+
 
 #%% doe-set, Tm_zeta plot
 
 res = 75
-X_plot = make_2D_plotting_space(mdl.X, res, x_var='T_ratio', y_var='zeta_e', 
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var='T_ratio', y_var='zeta_e', 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 0.83, fourth_var_set = 1.5)
 
@@ -919,7 +987,7 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-Z = fmu_doe.reshape(xx_pl.shape)
+Z_Tze = fmu_doe.reshape(xx_pl.shape)
 
 plt.figure(figsize=(8,6))
 # plt.imshow(
@@ -932,7 +1000,7 @@ plt.figure(figsize=(8,6))
 #     cmap=plt.cm.Blues,
 # ) 
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
+cs = plt.contour(xx_pl, yy_pl, Z_Tze, linewidths=1.1, cmap='Blues', vmin=-1)
 plt.clabel(cs, fontsize=clabel_size)
 plt.scatter(df['T_ratio'], df['zeta_e'], 
             c=df['collapse_prob'],
@@ -977,7 +1045,7 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-Z = fmu_doe.reshape(xx_pl.shape)
+Z_GRy = fmu_doe.reshape(xx_pl.shape)
 
 plt.figure(figsize=(8,6))
 # plt.imshow(
@@ -990,7 +1058,7 @@ plt.figure(figsize=(8,6))
 #     cmap=plt.cm.Blues,
 # ) 
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
+cs = plt.contour(xx_pl, yy_pl, Z_GRy, linewidths=1.1, cmap='Blues', vmin=-1)
 plt.clabel(cs, fontsize=clabel_size)
 plt.scatter(df_doe['gap_ratio'], df_doe['RI'], 
             c=df_doe['collapse_prob'],
@@ -1009,7 +1077,10 @@ plt.show()
 gp_obj = mdl_doe.gpr._final_estimator
 X_train = gp_obj.X_train_
 
-ard_lengthscale = gp_obj.kernel_.theta[1:5]
+if kernel_name == 'rbf_iso':
+    lengthscale = gp_obj.kernel_.theta[1]
+else:
+    lengthscale = gp_obj.kernel_.theta[1:5]
 
 def loo_error_approx(X_cand, X_data, lengthscale, e_cv_sq):
     point = np.array([np.asarray(X_cand)])
@@ -1028,7 +1099,7 @@ K_inv_diag = np.linalg.inv(K_mat).diagonal()
 
 e_cv_sq = np.divide(alpha_, K_inv_diag)**2
 
-loo_error = X_plot.apply(lambda row: loo_error_approx(row, X_train, ard_lengthscale, e_cv_sq),
+loo_error = X_plot.apply(lambda row: loo_error_approx(row, X_train, lengthscale, e_cv_sq),
                            axis='columns', result_type='expand')
 
 x_var = 'gap_ratio'
@@ -1048,7 +1119,7 @@ batch_size = 5
 df_doe = df_doe.reset_index(drop=True)
 df_doe['batch_id'] = df_doe.index.values//batch_size + 1
 
-plt.close('all')
+# plt.close('all')
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -1068,30 +1139,43 @@ plt.xlabel(r'GR', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.title(r'$MSE_w$ selection criterion', fontsize=axis_font)
 plt.grid(True)
+# plt.savefig('./figures/doe.pdf')
 
 
 #%% pareto - doe
-
-# TODO: limit this to designs that pass threshold
+risk_thresh = 0.1
 
 all_costs = calc_upfront_cost(X_design_cand, coef_dict)
 constr_costs = all_costs['total']
 predicted_risk = space_collapse_pred['collapse probability']
+
+# acceptable_mask = predicted_risk < risk_thresh
+# X_acceptable = X_design_cand[acceptable_mask]
+# acceptable_cost = constr_costs[acceptable_mask]
+# acceptable_risk = predicted_risk[acceptable_mask]
+
 pareto_array = np.array([constr_costs, predicted_risk]).transpose()
+# pareto_array = np.array([acceptable_cost, acceptable_risk]).transpose()
 
 t0 = time.time()
 pareto_mask = is_pareto_efficient(pareto_array)
 tp = time.time() - t0
 
-print("Culled %d points in %.3f s" % (X_design_cand.shape[0], tp))
+print("Culled %d points in %.3f s" % (pareto_array.shape[0], tp))
 
 X_pareto = X_design_cand.iloc[pareto_mask].copy()
 risk_pareto = predicted_risk.iloc[pareto_mask]
 cost_pareto = constr_costs.iloc[pareto_mask]
 
+# X_pareto = X_acceptable.iloc[pareto_mask].copy()
+# risk_pareto = acceptable_risk.iloc[pareto_mask]
+# cost_pareto = acceptable_cost.iloc[pareto_mask]
+
 # -1 if predicted risk > allowable
+
 X_pareto['acceptable_risk'] = np.sign(risk_thresh - risk_pareto)
 
+# plt.close('all')
 plt.figure(figsize=(8,6))
 # plt.imshow(
 #     Z,
@@ -1130,25 +1214,32 @@ y_pl = np.unique(yy)
 
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-Z = fmu_doe.reshape(xx_pl.shape)
 
-cmap = plt.cm.coolwarm
+cmap = plt.cm.Blues
 fig = plt.figure(figsize=(14,6))
 ax1=fig.add_subplot(1, 2, 1)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = plt.contour(xx_pl, yy_pl, Z_GRy, linewidths=1.1, cmap='Blues', vmin=-1,
+                 levels=lvls)
+plt.clabel(cs, fontsize=clabel_size)
 ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
             c=X_pareto['acceptable_risk'],
-            edgecolors='k', s=20.0, cmap=cmap, vmax=5e-1)
-ax1.set_xlim([0.5,2.0])
-ax1.set_ylim([0.45, 2.3])
+            edgecolors='k', s=20.0, cmap=cmap)
+ax1.set_xlim([0.5, 2.0])
+ax1.set_ylim([0.5, 2.25])
 ax1.set_xlabel('Gap ratio', fontsize=axis_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax1.grid(True)
 ax1.set_title('Pareto efficient designs', fontsize=axis_font)
 
+# lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+# cs = plt.contour(xx_pl, yy_pl, Z_Tze, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
 ax2=fig.add_subplot(1, 2, 2)
+plt.clabel(cs, fontsize=clabel_size)
 ax2.scatter(X_pareto['T_ratio'], X_pareto['zeta_e'], 
             c=X_pareto['acceptable_risk'],
-            edgecolors='k', s=20.0, cmap=cmap, vmax=5e-1)
+            edgecolors='k', s=20.0, cmap=cmap)
 ax2.set_xlabel('T ratio', fontsize=axis_font)
 ax2.set_ylabel(r'$\zeta_e$', fontsize=axis_font)
 ax2.grid(True)
@@ -1157,38 +1248,48 @@ fig.tight_layout()
 
 
 #%% histogram
-
+plt.close('all')
 fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(2, 2, 1)
 
-ax1.hist(df['gap_ratio'], bins='auto', alpha = 0.5, edgecolor='black', lw=3, color= 'r')
-ax1.hist(df_doe['gap_ratio'], bins='auto', alpha = 0.5, edgecolor='black', lw=3, color= 'b')
+ax1.hist(df_doe['gap_ratio'][:50,], 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'r', label='Original set')
+ax1.hist(df_doe['gap_ratio'][50:,], 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'b', label='DoE set')
 ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_ylabel('Frequency of points', fontsize=axis_font)
 ax1.set_title('Gap', fontsize=title_font)
+ax1.legend()
 ax1.grid(True)
 
 ax2=fig.add_subplot(2, 2, 2)
 
-ax2.hist(df['RI'], alpha = 0.5, edgecolor='black', lw=3, color= 'r')
-ax2.hist(df_doe['RI'], alpha = 0.5, edgecolor='black', lw=3, color= 'b')
+ax2.hist(df_doe['RI'][:50,], bins='auto', 
+         alpha = 1, edgecolor='black', lw=3, color= 'r')
+ax2.hist(df_doe['RI'][50:,], bins='auto', 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'b')
 ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax2.set_title('Superstructure strength', fontsize=title_font)
 ax2.grid(True)
 
 ax3=fig.add_subplot(2, 2, 3)
 
-ax3.hist(df['T_ratio'], alpha = 1, edgecolor='black', lw=3, color= 'r')
-ax3.hist(df_doe['T_ratio'], alpha = 0.5, edgecolor='black', lw=3, color= 'b')
-ax3.set_ylabel('Peak story drift', fontsize=axis_font)
+ax3.hist(df_doe['T_ratio'][:50,], bins='auto', 
+         alpha = 1, edgecolor='black', lw=3, color= 'r')
+ax3.hist(df_doe['T_ratio'][50:,], bins='auto', 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'b')
+ax3.set_ylabel('Frequency of points', fontsize=axis_font)
 ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 ax3.set_title('Bearing period ratio', fontsize=title_font)
 ax3.grid(True)
 
 ax4=fig.add_subplot(2, 2, 4)
 
-ax4.hist(df['zeta_e'], alpha = 0.5, edgecolor='black', lw=3, color= 'r')
-ax4.hist(df_doe['zeta_e'], alpha = 0.5, edgecolor='black', lw=3, color= 'b')
+ax4.hist(df_doe['zeta_e'][:50,], bins='auto', 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'r')
+ax4.hist(df_doe['zeta_e'][50:,], bins='auto', 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'b')
 ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
 ax4.set_title('Bearing damping', fontsize=title_font)
 ax4.grid(True)
@@ -1196,6 +1297,7 @@ ax4.grid(True)
 fig.tight_layout()
 plt.show()
 
+#%%
 ###############################################################################
 # VALIDATION
 ###############################################################################
