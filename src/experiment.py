@@ -14,7 +14,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     
     import pandas as pd
     import numpy as np
-    from gms import get_gm_ST
+    from gms import get_gm_ST, get_ST
     
     num_stories = design['num_stories']
     
@@ -116,11 +116,18 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
         impact_bool = 0
         
     Tms_interest = np.array([design['T_m'], 1.0, Tfb])
-    Sa_gm = get_gm_ST(design, Tms_interest)
+    
+    # be careful not to double calculate damping effect
+    # Sa_gm = get_gm_ST(design, Tms_interest)
+    Sa_gm = get_ST(design, Tms_interest)
     
     Sa_Tm = Sa_gm[0]
     Sa_1 = Sa_gm[1]
     Sa_Tfb = Sa_gm[2]
+    
+    # Sa_Tm = get_ST(design, design['T_m'])
+    # Sa_1 = get_ST(design, 1.0)
+    # Sa_Tfb = get_ST(design, Tfb)
         
     import numpy as np
     zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
@@ -131,9 +138,6 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     g = 386.4
     gap_ratio = (design['moat_ampli']*design['D_m']*4*pi**2)/ \
         (g*(Sa_Tm/Bm)*design['T_m']**2)
-        
-    # Sa_Tm = get_ST(design, design['T_m'])
-    # Sa_1 = get_ST(design, 1.0)
     
     result_dict = {'sa_tm': Sa_Tm,
                    'sa_1': Sa_1,

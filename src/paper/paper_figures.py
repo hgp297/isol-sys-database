@@ -130,7 +130,7 @@ def make_design_space(res):
     return(X_space)
 
 #%% collapse fragility def
-
+'''
 # collapse as a probability
 from scipy.stats import lognorm
 from math import log, exp
@@ -354,7 +354,7 @@ print("GPR collapse prediction for %d inputs in %.3f s" % (X_design_cand.shape[0
                                                                 tp))
 
 
-
+'''
 #%% Calculate upfront cost of data
 
 # TODO: normalize cost for building size
@@ -415,7 +415,7 @@ def get_steel_coefs(df, steel_per_unit=1.25):
     reg = LinearRegression()
     reg.fit(X=Vs, y=steel_cost_per_sf)
     return({'coef':reg.coef_, 'intercept':reg.intercept_})
-    
+
 # TODO: add economy of scale for land
 # TODO: investigate upfront cost's influence by Tm
 def calc_upfront_cost(X_test, steel_coefs,
@@ -470,7 +470,8 @@ def calc_upfront_cost(X_test, steel_coefs,
     return({'total': steel_cost + land_cost,
             'steel': steel_cost,
             'land': land_cost})
-    
+   
+''' 
 #%% baseline & prediction from 400-base-set
 
 
@@ -528,7 +529,7 @@ print(best_design)
 # be careful if the considered design space falls outside of the 
 # available data space (model reverts to 0)
 
-
+'''
 #%%
 # TODO: pareto
 
@@ -597,7 +598,7 @@ def is_pareto_efficient(costs, return_mask = True):
     else:
         return is_efficient
     
-
+'''
 all_costs = calc_upfront_cost(X_design_cand, coef_dict)
 constr_costs = all_costs['total']
 predicted_risk = space_collapse_pred['collapse probability']
@@ -673,22 +674,39 @@ ax2.set_ylabel(r'$\zeta_e$', fontsize=axis_font)
 ax2.grid(True)
 ax2.set_title('Pareto efficient designs', fontsize=axis_font)
 fig.tight_layout()
-
+'''
 
 ###############################################################################
 # DOE
 ###############################################################################
 
 #%% doe data set GP
+import time
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+clabel_size = 12
 
 with open("../../data/tfp_mf_db_doe.pickle", 'rb') as picklefile:
     main_obj_doe = pickle.load(picklefile)
 
-kernel_name = 'rbf_ard'
+kernel_name = 'rbf_iso'
 
-main_obj_doe.calculate_collapse()
-
+collapse_drift_def_mu_std = 0.1
 df_doe = main_obj_doe.doe_analysis
+
+from experiment import collapse_fragility
+df_doe[['max_drift',
+   'collapse_prob']] = df_doe.apply(lambda row: collapse_fragility(row, drift_at_mu_plus_std=collapse_drift_def_mu_std),
+                                        axis='columns', result_type='expand')
+
+
 
 # df_doe = df_doe.drop(columns=['index'])
 
@@ -709,11 +727,12 @@ df_doe['Bm'] = np.interp(df_doe['zeta_e'], zetaRef, BmRef)
 
 df_doe['gap_ratio'] = (df_doe['constructed_moat']*4*pi**2)/ \
     (g*(df_doe['sa_tm']/df_doe['Bm'])*df_doe['T_m']**2)
+
     
 print('% impact of DoE set:', sum(df_doe['impacted'])/df_doe.shape[0])
 print('average drift:', df_doe['max_drift'].mean())
 
-
+df_init = df_doe.head(50)
 #%% doe convergence plots
 
 rmse_hist = main_obj_doe.rmse_hist
@@ -721,8 +740,15 @@ mae_hist = main_obj_doe.mae_hist
 nrmse_hist = main_obj_doe.nrmse_hist
 theta = main_obj_doe.hyperparam_list
 
+
+if kernel_name == 'rbf_iso':
+    theta_vars = [r'$\sigma_f^2$', r'$\ell$', r'$\sigma_n^2$']
+else:
+    theta_vars = [r'$\sigma_f^2$', r'$\ell_{GR}$', r'$\ell_{R_y}$', 
+                  r'$\ell_{T}$', r'$\ell_{\zeta}$' , r'$\sigma_n^2$']
+
 plt.close('all')
-fig = plt.figure(figsize=(13, 6))
+fig = plt.figure(figsize=(16, 6))
 batch_size = 5
 
 ax1=fig.add_subplot(1, 3, 1)
@@ -737,7 +763,7 @@ ax1.grid(True)
 
 ax2=fig.add_subplot(1, 3, 2)
 ax2.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), nrmse_hist)
-ax2.set_title('NRMSE using LOOCV of training set', fontsize=axis_font)
+ax2.set_title('NRMSE-LOOCV of training set', fontsize=axis_font)
 ax2.set_xlabel('Points added', fontsize=axis_font)
 ax2.grid(True)
 
@@ -747,7 +773,8 @@ hyperparam_norm = all_hyperparams / all_hyperparams.max(axis=0)
 ax3=fig.add_subplot(1, 3, 3)
 for param_idx in range(all_hyperparams.shape[1]):
     ax3.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), 
-             hyperparam_norm[:,param_idx])
+             hyperparam_norm[:,param_idx], label=theta_vars[param_idx])
+ax3.legend()
 ax3.set_title('Normalized hyperparameter convergence', fontsize=axis_font)
 ax3.set_xlabel('Points added', fontsize=axis_font)
 ax3.grid(True)
@@ -813,14 +840,142 @@ ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
-# plt.savefig('./figures/scatter.pdf')
+plt.savefig('./figures/scatter.pdf')
 
-# TODO: hist on the axes
-# TODO: mega DoE plot with GP predictions and comparisons
+#%%
+
+plt.close('all')
+fig = plt.figure(figsize=(13, 6))
+
+ax1=fig.add_subplot(1, 2, 1)
+
+cmap = plt.cm.coolwarm
+sc = ax1.scatter(df_doe['moat_ampli'], df_doe['gap_ratio'], alpha=0.2)
+ax1.plot([0, 5], [0, 5])
+ax1.set_ylabel(r'True gap ratio', fontsize=axis_font)
+ax1.set_xlabel(r'Constructed moat gap / $D_M$', fontsize=axis_font)
+ax1.set_title('a) Gap ratio', fontsize=title_font)
+ax1.set_xlim([0, 5])
+ax1.grid(True)
+
+ax2=fig.add_subplot(1, 2, 2)
+
+ax2.scatter(df_doe['T_ratio_e'], df_doe['T_ratio'], alpha=0.3)
+ax2.plot([0, 5], [0, 5])
+ax2.set_xlabel(r'$T_M / T_{fbe}$', fontsize=axis_font)
+ax2.set_ylabel(r'$T_M / T_{fb}$', fontsize=axis_font)
+ax2.set_title('b) Period ratio', fontsize=title_font)
+ax2.set_xlim([1, 6])
+ax2.grid(True)
+plt.show()
 
 #%% seaborn scatter with histogram: DoE data
-# import seaborn as sns
+def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy):
+    # no labels
+    ax_histx.tick_params(axis="x", labelbottom=False)
+    ax_histy.tick_params(axis="y", labelleft=False)
+
+    # the scatter plot:
+    cmap = plt.cm.Blues
+    ax.scatter(x, y, alpha=alpha, edgecolors='black', s=25, facecolors=c)
+
+    # now determine nice limits by hand:
+    binwidth = 0.25
+    xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+    lim = (int(xymax/binwidth) + 1) * binwidth
+
+    bins = np.arange(-lim, lim + binwidth, binwidth)
+    
+    if y.name == 'zeta_e':
+        binwidth = 0.02
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_y = np.arange(-lim, lim + binwidth, binwidth)
+    elif y.name == 'RI':
+        binwidth = 0.15
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_y = np.arange(-lim, lim + binwidth, binwidth)
+    else:
+        bin_y = bins
+    ax_histx.hist(x, bins=bins, alpha = 0.5, weights=np.ones(len(x)) / len(x),
+                  facecolor = c, edgecolor='navy', linewidth=0.5)
+    ax_histy.hist(y, bins=bin_y, orientation='horizontal', alpha = 0.5, weights=np.ones(len(x)) / len(x),
+                  facecolor = c, edgecolor='navy', linewidth=0.5)
+    
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+plt.close('all')
+# Start with a square Figure.
+fig = plt.figure(figsize=(13, 6), layout='constrained')
+
+# Add a gridspec with two rows and two columns and a ratio of 1 to 4 between
+# the size of the marginal axes and the main axes in both directions.
+# Also adjust the subplot parameters for a square plot.
+gs = fig.add_gridspec(2, 4,  width_ratios=(5, 1, 5, 1), height_ratios=(1, 5),
+                      left=0.1, right=0.9, bottom=0.1, top=0.9,
+                      wspace=0., hspace=0.)
+# # Create the Axes.
+# fig = plt.figure(figsize=(13, 10))
+# ax1=fig.add_subplot(2, 2, 1)
+
+ax = fig.add_subplot(gs[1, 0])
+ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df_init['gap_ratio'], df_init['RI'], 'navy', 0.9, ax, ax_histx, ax_histy)
+scatter_hist(df_doe['gap_ratio'], df_doe['RI'], 'orange', 0.3, ax, ax_histx, ax_histy)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_xlim([0.4, 4.0])
+ax.set_ylim([0.5, 2.25])
+
+ax = fig.add_subplot(gs[1, 2])
+ax_histx = fig.add_subplot(gs[0, 2], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 3], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df_init['T_ratio'], df_init['zeta_e'], 'navy', 0.9, ax, ax_histx, ax_histy)
+scatter_hist(df_doe['T_ratio'], df_doe['zeta_e'], 'orange', 0.3, ax, ax_histx, ax_histy)
+
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax.set_xlim([1.25, 5.0])
+ax.set_ylim([0.1, 0.25])
+
+
+# ax = fig.add_subplot(gs[3, 0])
+# ax_histx = fig.add_subplot(gs[2, 0], sharex=ax)
+# ax_histy = fig.add_subplot(gs[3, 1], sharey=ax)
+# # Draw the scatter plot and marginals.
+# scatter_hist(df_doe['gap_ratio'], df_doe['RI'], df_doe['collapse_prob'], ax, ax_histx, ax_histy)
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+# # ax.set_xlim([0.4, 4.0])
+# # ax.set_ylim([0.45, 2.4])
+
+# ax = fig.add_subplot(gs[3, 2])
+# ax_histx = fig.add_subplot(gs[2, 2], sharex=ax)
+# ax_histy = fig.add_subplot(gs[3, 3], sharey=ax)
+# # Draw the scatter plot and marginals.
+# scatter_hist(df_doe['T_ratio'], df_doe['zeta_e'], df_doe['collapse_prob'], ax, ax_histx, ax_histy)
+# ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+# ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+
+plt.savefig('./figures/doe_hist.pdf')
+
+# ax.set_xlim([0.5, 4.0])
+# ax.set_ylim([0.5, 2.25])
 #%% DoE GP
+
 
 mdl_doe = GP(df_doe)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
@@ -829,11 +984,25 @@ mdl_doe.set_outcome('collapse_prob')
 
 mdl_doe.fit_gpr(kernel_name=kernel_name)
 
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+                          columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
+
+
 baseline_risk, baseline_fs1 = mdl_doe.gpr.predict(X_baseline, return_std=True)
 baseline_risk = baseline_risk.item()
 baseline_fs2 = baseline_fs1**2
 baseline_fs1 = baseline_fs1.item()
 baseline_fs2 = baseline_fs2.item()
+
+steel_price = 2.0
+coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
+baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
+
+baseline_total = baseline_costs['total'].item()
+baseline_steel = baseline_costs['steel'].item()
+baseline_land = baseline_costs['land'].item()
+
+risk_thresh = 0.1
 
 print('========== Baseline design (DoE) ============')
 print('Design target', f'{risk_thresh:.2%}')
@@ -955,7 +1124,7 @@ print(best_design)
 res = 75
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var='T_ratio', y_var='zeta_e', 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            third_var_set = 0.83, fourth_var_set = 1.5)
+                            third_var_set = 1.0, fourth_var_set = 2.0)
 
 import time
 t0 = time.time()
@@ -1005,8 +1174,8 @@ plt.clabel(cs, fontsize=clabel_size)
 plt.scatter(df['T_ratio'], df['zeta_e'], 
             c=df['collapse_prob'],
             edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
-# plt.xlim([0.5,2.0])
-# plt.ylim([0.5, 2.25])
+plt.xlim([2.0,5.0])
+plt.ylim([0.1, 0.25])
 plt.xlabel('T ratio', fontsize=axis_font)
 plt.ylabel(r'$\zeta_e$', fontsize=axis_font)
 plt.grid(True)
@@ -1073,6 +1242,9 @@ plt.show()
 
 
 #%% doe plot (put on gap Ry dimensions)
+
+# remake X_plot in gap Ry
+X_plot = make_2D_plotting_space(mdl_doe.X, res)
 
 gp_obj = mdl_doe.gpr._final_estimator
 X_train = gp_obj.X_train_
@@ -1141,8 +1313,154 @@ plt.title(r'$MSE_w$ selection criterion', fontsize=axis_font)
 plt.grid(True)
 # plt.savefig('./figures/doe.pdf')
 
+#%% DoE effect plot
 
+X_plot = make_2D_plotting_space(mdl_doe.X, res)
+
+x_var = 'gap_ratio'
+xx = X_plot[x_var]
+y_var = 'RI'
+yy = X_plot[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+
+
+# plt.close('all')
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+
+# first we show initial dataset
+
+
+mdl_init = GP(df_init)
+covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+mdl_init.set_covariates(covariate_list)
+mdl_init.set_outcome('collapse_prob')
+
+mdl_init.fit_gpr(kernel_name=kernel_name)
+fmu_init, fs1_init = mdl_init.gpr.predict(X_plot, return_std=True)
+fs2_init = fs1_init**2
+
+# kernel stuff for loocv
+gp_obj = mdl_init.gpr._final_estimator
+X_train = gp_obj.X_train_
+if kernel_name == 'rbf_iso':
+    lengthscale = gp_obj.kernel_.theta[1]
+else:
+    lengthscale = gp_obj.kernel_.theta[1:5]
+L = gp_obj.L_
+K_mat = L @ L.T
+alpha_ = gp_obj.alpha_.flatten()
+K_inv_diag = np.linalg.inv(K_mat).diagonal()
+
+e_cv_sq = np.divide(alpha_, K_inv_diag)**2
+  
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+Z_init = fmu_init.reshape(xx_pl.shape)
+
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+
+cmap = plt.cm.Blues
+sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
+                 alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax1.contour(xx_pl, yy_pl, Z_init, linewidths=1.1, cmap=cmap, vmin=-1)
+ax1.clabel(cs, fontsize=clabel_size)
+ax1.set_xlabel(r'$GR$', fontsize=axis_font)
+ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax1.set_title('a) Collapse risk, pre-DoE', fontsize=title_font)
+ax1.set_xlim([0.5, 2.5])
+ax1.set_ylim([0.5, 2.25])
+ax1.grid()
+
+loo_error = X_plot.apply(lambda row: loo_error_approx(row, X_train, lengthscale, e_cv_sq),
+                           axis='columns', result_type='expand')
+# loocv
+mse_w = np.array(loo_error*fs2_init)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+Z_mse = mse_w.reshape(xx_pl.shape)
+
+# then we show selection criterion
+
+ax2=fig.add_subplot(2, 2, 2)
+
+sc = ax2.scatter(df_doe['gap_ratio'][50:55,], df_doe['RI'][50:55,] , edgecolors='black',
+                 alpha=0.6, c=df_doe['collapse_prob'][50:55,], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax2.contour(xx_pl, yy_pl, Z_mse, linewidths=1.1, cmap=cmap, vmin=-1)
+ax2.clabel(cs, fontsize=clabel_size)
+ax2.set_xlabel(r'$GR$', fontsize=axis_font)
+ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title(r'b) $MSE_w$ selection criterion, first batch', fontsize=title_font)
+ax2.set_xlim([0.5, 2.5])
+ax2.set_ylim([0.5, 2.25])
+ax2.grid()
+
+# then we show prediction of the full set
+
+ax3=fig.add_subplot(2, 2, 3)
+
+sc = ax3.scatter(df_doe['gap_ratio'], df_doe['RI'], alpha=0.6, edgecolors='black', s=15,
+                 c=df_doe['collapse_prob'], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax3.contour(xx_pl, yy_pl, Z_GRy, linewidths=1.1, cmap=cmap, vmin=-0.5)
+ax3.clabel(cs, fontsize=clabel_size)
+ax3.set_xlabel(r'GR', fontsize=axis_font)
+ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax3.set_title('c) Collapse risk, post-DoE', fontsize=title_font)
+handles, labels = sc.legend_elements(prop="colors")
+legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Pr(collapse)",
+                      fontsize=16, title_fontsize=16, edgecolor='black')
+ax3.set_xlim([0.5, 2.5])
+ax3.set_ylim([0.5, 2.25])
+ax3.grid()
+
+# then we show prediction of the full set
+
+ax4=fig.add_subplot(2, 2, 4)
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var='T_ratio', y_var='zeta_e', 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+x_var = 'T_ratio'
+xx = X_plot[x_var]
+y_var = 'zeta_e'
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+sc = ax4.scatter(df_doe['T_ratio'], df_doe['zeta_e'], alpha=0.6, edgecolors='black', s=15,
+                 c=df_doe['collapse_prob'], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax4.contour(xx_pl, yy_pl, Z_Tze, linewidths=1.1, cmap=cmap, vmin=-0.5)
+ax4.clabel(cs, fontsize=clabel_size)
+ax4.set_xlabel(r'$T_M$ / $T_{fb}$', fontsize=axis_font)
+ax4.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax4.set_xlim([2.0, 5.0])
+ax4.set_title('d) Collapse risk, post-DoE', fontsize=title_font)
+handles, labels = sc.legend_elements(prop="colors")
+legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Pr(collapse)",
+                      fontsize=16, title_fontsize=16, edgecolor='black')
+ax4.grid()
+
+fig.tight_layout()
+plt.savefig('./figures/doe_full.pdf')
 #%% pareto - doe
+
+# remake X_plot in gap Ry
+X_plot = make_2D_plotting_space(mdl_doe.X, res)
+
+
 risk_thresh = 0.1
 
 all_costs = calc_upfront_cost(X_design_cand, coef_dict)
@@ -1248,7 +1566,7 @@ fig.tight_layout()
 
 
 #%% histogram
-plt.close('all')
+# plt.close('all')
 fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(2, 2, 1)
@@ -1297,6 +1615,59 @@ ax4.grid(True)
 fig.tight_layout()
 plt.show()
 
+#%% impact histogram
+'''
+# plt.close('all')
+fig = plt.figure(figsize=(13, 10))
+
+ax1=fig.add_subplot(2, 2, 1)
+df_impact = df_doe[df_doe['impacted'] == 1]
+df_no_impact = df_doe[df_doe['impacted'] == 0]
+
+ax1.hist(df_impact['gap_ratio'], 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'r', label='Impact')
+ax1.hist(df_no_impact['gap_ratio'], 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'b', label='No impact')
+ax1.set_xlabel(r'Gap ratio', fontsize=axis_font)
+ax1.set_ylabel('Frequency of points', fontsize=axis_font)
+ax1.set_title('Gap', fontsize=title_font)
+ax1.legend()
+ax1.grid(True)
+
+ax2=fig.add_subplot(2, 2, 2)
+
+ax2.hist(df_impact['RI'], bins='auto', 
+         alpha = 1, edgecolor='black', lw=3, color= 'r')
+ax2.hist(df_no_impact['RI'], bins='auto', 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'b')
+ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax2.set_title('Superstructure strength', fontsize=title_font)
+ax2.grid(True)
+
+ax3=fig.add_subplot(2, 2, 3)
+
+ax3.hist(df_impact['T_ratio'], bins='auto', 
+         alpha = 1, edgecolor='black', lw=3, color= 'r')
+ax3.hist(df_no_impact['T_ratio'], bins='auto', 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'b')
+ax3.set_ylabel('Frequency of points', fontsize=axis_font)
+ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax3.set_title('Bearing period ratio', fontsize=title_font)
+ax3.grid(True)
+
+ax4=fig.add_subplot(2, 2, 4)
+
+ax4.hist(df_impact['zeta_e'], bins='auto', 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'r')
+ax4.hist(df_no_impact['zeta_e'], bins='auto', 
+         alpha = 0.5, edgecolor='black', lw=3, color= 'b')
+ax4.set_xlabel(r'$\zeta_e$', fontsize=axis_font)
+ax4.set_title('Bearing damping', fontsize=title_font)
+ax4.grid(True)
+
+fig.tight_layout()
+plt.show()
+'''
 #%%
 ###############################################################################
 # VALIDATION

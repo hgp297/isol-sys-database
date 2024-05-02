@@ -12,15 +12,15 @@
 
 ############################################################################
 
-# from db import Database
+from db import Database
 
-# main_obj = Database(400, n_buffer=8, seed=130, 
-#                     struct_sys_list=['MF'], isol_wts=[1, 0])
+main_obj = Database(400, n_buffer=8, seed=130, 
+                    struct_sys_list=['MF'], isol_wts=[1, 0])
 
-# main_obj.design_bearings(filter_designs=True)
-# main_obj.design_structure(filter_designs=True)
+main_obj.design_bearings(filter_designs=True)
+main_obj.design_structure(filter_designs=True)
 
-# main_obj.scale_gms()
+main_obj.scale_gms()
 
 #%% troubleshoot fatal case
 
@@ -49,12 +49,12 @@
 
 #%% analyze database
 
-# main_obj.analyze_db('tfp_mf_db.csv', save_interval=5)
+main_obj.analyze_db('tfp_mf_db.csv', save_interval=5)
 
-# # Pickle the main object
-# import pickle
-# with open('../data/tfp_mf_db.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+# Pickle the main object
+import pickle
+with open('../data/tfp_mf_db.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 #%% DoE
 
@@ -85,18 +85,18 @@
 # randomly select ground motion for each
 #%% load DoE
 
-from db import Database
-pickle_path = '../data/'
+# from db import Database
+# pickle_path = '../data/'
 
-import pickle
-import pandas as pd
+# import pickle
+# import pandas as pd
 
-with open(pickle_path+"tfp_mf_db_doe.pickle", 'rb') as picklefile:
-    main_obj = pickle.load(picklefile)
+# with open(pickle_path+"tfp_mf_db_doe.pickle", 'rb') as picklefile:
+#     main_obj = pickle.load(picklefile)
     
 #%% run validation
 
-validation_path = '../data/validation/'
+# validation_path = '../data/validation/'
 # TODO: is there a way to pipe this straight from GP? and organize depending on target
 # sample_dict = {
 #     'gap_ratio' : 0.836,
@@ -115,38 +115,38 @@ validation_path = '../data/validation/'
 #     pickle.dump(main_obj, f)
 
 
-sample_dict = {
-    'gap_ratio' : 1.026,
-    'RI' : 1.605,
-    'T_ratio': 2.0,
-    'zeta_e': 0.25
-}
-
-design_df = pd.DataFrame(sample_dict, index=[0])
-
-main_obj.prepare_idas(design_df)
-main_obj.analyze_ida('ida_5.csv')
-
-import pickle
-with open(validation_path+'tfp_mf_db_ida_5.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# sample_dict = {
+#     'gap_ratio' : 1.026,
+#     'RI' : 1.605,
+#     'T_ratio': 2.0,
+#     'zeta_e': 0.25
+# }
+# 
+# design_df = pd.DataFrame(sample_dict, index=[0])
+# 
+# main_obj.prepare_idas(design_df)
+# main_obj.analyze_ida('ida_5.csv')
+# 
+# import pickle
+# with open(validation_path+'tfp_mf_db_ida_5.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
     
     
-sample_dict = {
-    'gap_ratio' : 0.979,
-    'RI' : 1.236,
-    'T_ratio': 2.0,
-    'zeta_e': 0.25
-}
+# sample_dict = {
+#     'gap_ratio' : 0.979,
+#     'RI' : 1.236,
+#     'T_ratio': 2.0,
+#     'zeta_e': 0.25
+# }
 
-design_df = pd.DataFrame(sample_dict, index=[0])
+# design_df = pd.DataFrame(sample_dict, index=[0])
 
-main_obj.prepare_idas(design_df)
-main_obj.analyze_ida('ida_2_5.csv')
+# main_obj.prepare_idas(design_df)
+# main_obj.analyze_ida('ida_2_5.csv')
 
-import pickle
-with open(validation_path+'tfp_mf_db_ida_2_5.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# with open(validation_path+'tfp_mf_db_ida_2_5.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 #%% run pushover
 
 # from db import Database
