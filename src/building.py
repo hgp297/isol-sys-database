@@ -2496,7 +2496,6 @@ class Building:
         return(T_1)
 
     
-    # TODO: not confident about T_fb of moment frames. recheck
     def provide_damping(self, regTag, method='SP',
                         zeta=[0.05], modes=[1]):
         import openseespy.opensees as ops
@@ -3208,14 +3207,14 @@ def modified_IK_params(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi
     Es = 29000 # ksi
-
-    Zx = float(shape['Zx'])
+    
+    Zx = float(shape.iloc[0]['Zx'])
     # Sx = float(shape['Sx'])
-    Iz = float(shape['Ix'])
-    d = float(shape['d'])
-    htw = float(shape['h/tw'])
-    bftf = float(shape['bf/2tf'])
-    ry = float(shape['ry'])
+    Iz = float(shape.iloc[0]['Ix'])
+    d = float(shape.iloc[0]['d'])
+    htw = float(shape.iloc[0]['h/tw'])
+    bftf = float(shape.iloc[0]['bf/2tf'])
+    ry = float(shape.iloc[0]['ry'])
     c1 = 25.4
     c2 = 6.895
 

@@ -45,12 +45,12 @@ def getModifiedIK(shape, L):
     Fy = 50 # ksi
     Es = 29000 # ksi
 
-    Zx = float(shape['Zx'])
-    Iz = float(shape['Ix'])
-    d = float(shape['d'])
-    htw = float(shape['h/tw'])
-    bftf = float(shape['bf/2tf'])
-    ry = float(shape['ry'])
+    Zx = float(shape.iloc[0]['Zx'])
+    Iz = float(shape.iloc[0]['Ix'])
+    d = float(shape.iloc[0]['d'])
+    htw = float(shape.iloc[0]['h/tw'])
+    bftf = float(shape.iloc[0]['bf/2tf'])
+    ry = float(shape.iloc[0]['ry'])
     c1 = 25.4
     c2 = 6.895
 
@@ -89,12 +89,12 @@ def getModifiedIK_old(shape, L):
     Fy = 50 # ksi
     Es = 29000 # ksi
 
-    Zx = float(shape['Zx'])
-    Iz = float(shape['Ix'])
-    d = float(shape['d'])
-    htw = float(shape['h/tw'])
-    bftf = float(shape['bf/2tf'])
-    ry = float(shape['ry'])
+    Zx = float(shape.iloc[0]['Zx'])
+    Iz = float(shape.iloc[0]['Ix'])
+    d = float(shape.iloc[0]['d'])
+    htw = float(shape.iloc[0]['h/tw'])
+    bftf = float(shape.iloc[0]['bf/2tf'])
+    ry = float(shape.iloc[0]['ry'])
     c1 = 25.4
     c2 = 6.895
 

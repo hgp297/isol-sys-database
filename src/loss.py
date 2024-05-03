@@ -114,6 +114,10 @@ class Loss_Analysis:
         nqe_meta.loc[mask, 'PACT_block'] = 'SF 500'
         
         # ceiling
+        mask = nqe_meta['PACT_name'].str.contains('Raised Access Floor')
+        nqe_meta.loc[mask, 'PACT_block'] = 'SF 1000'
+        
+        # ceiling
         mask = nqe_meta['PACT_name'].str.contains('Suspended Ceiling')
         nqe_meta.loc[mask, 'PACT_block'] = 'SF 1000'
         
@@ -502,7 +506,7 @@ class Loss_Analysis:
         
         # hardcoded no-block list
         no_block_stuff = ['Chiller', 'Cooling Tower', 'Motor Control', 'stair',
-                          'Elevator', 'Raised Access Floor', 'Switchgear']
+                          'Elevator', 'Switchgear']
         mask = cmp_marginal['Comment'].str.contains('|'.join(no_block_stuff))
         cmp_marginal.loc[mask, 'Blocks'] = np.nan
         

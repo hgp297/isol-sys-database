@@ -353,7 +353,7 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
                                               if col in covariate_columns])
     
     from loads import estimate_period
-    pregen_designs[['T_fbe']] = pregen_designs.apply(lambda row: estimate_period(row),
+    pregen_designs['T_fbe'] = pregen_designs.apply(lambda row: estimate_period(row),
                                                      axis='columns', result_type='expand')
     
     rmse = 1.0

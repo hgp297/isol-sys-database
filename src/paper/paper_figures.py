@@ -24,8 +24,10 @@ from doe import GP
 
 plt.close('all')
 
-with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
-    main_obj = pickle.load(picklefile)
+main_obj = pd.read_pickle("../../data/tfp_mf_db.pickle")
+
+# with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
+#     main_obj = pickle.load(picklefile)
     
 main_obj.calculate_collapse()
 
@@ -438,7 +440,7 @@ def calc_upfront_cost(X_test, steel_coefs,
     X_query = X_test.copy()
     X_query['superstructure_system'] = 'MF'
     X_query['h_bldg'] = 4*13.0
-    X_query[['T_fbe']] = X_query.apply(lambda row: estimate_period(row),
+    X_query['T_fbe'] = X_query.apply(lambda row: estimate_period(row),
                                                      axis='columns', result_type='expand')
     
     X_query['T_m'] = X_query['T_fbe'] * X_query['T_ratio']
@@ -693,8 +695,10 @@ mpl.rcParams['xtick.labelsize'] = label_size
 mpl.rcParams['ytick.labelsize'] = label_size 
 clabel_size = 12
 
-with open("../../data/tfp_mf_db_doe.pickle", 'rb') as picklefile:
-    main_obj_doe = pickle.load(picklefile)
+main_obj_doe = pd.read_pickle('../../data/tfp_mf_db_doe.pickle')
+
+# with open("../../data/tfp_mf_db_doe.pickle", 'rb') as picklefile:
+#     main_obj_doe = pickle.load(picklefile)
 
 kernel_name = 'rbf_iso'
 
@@ -1708,16 +1712,18 @@ def df_collapse(df, drift_mu_plus_std=0.1):
     
 #%% 10% validation
 
-with open("../../data/validation/tfp_mf_db_ida_10.pickle", 'rb') as picklefile:
-    main_obj_val = pickle.load(picklefile)
+# with open("../../data/validation/tfp_mf_db_ida_10.pickle", 'rb') as picklefile:
+#     main_obj_val = pickle.load(picklefile)
     
 # main_obj_val.calculate_collapse()
 
+main_obj_val = pd.read_pickle("../../data/validation/tfp_mf_db_ida_10.pickle")
 df_val_10 = df_collapse(main_obj_val.ida_results)
 
-with open("../../data/validation/tfp_mf_db_ida_baseline.pickle", 'rb') as picklefile:
-    main_obj_val = pickle.load(picklefile)
+# with open("../../data/validation/tfp_mf_db_ida_baseline.pickle", 'rb') as picklefile:
+#     main_obj_val = pickle.load(picklefile)
 
+main_obj_val = pd.read_pickle("../../data/validation/tfp_mf_db_ida_baseline.pickle")
 df_val_baseline = df_collapse(main_obj_val.ida_results)
 
 df_val_10['max_drift'] = df_val_10.PID.apply(max)

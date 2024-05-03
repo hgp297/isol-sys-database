@@ -63,10 +63,12 @@ main_obj.scale_gms()
 
 # pickle_path = '../data/'
 
-# import pickle
+# import pandas as pd
 
-# with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
     
 # main_obj.calculate_collapse()
 # main_obj.perform_doe(n_set=100,batch_size=5)
@@ -88,11 +90,12 @@ main_obj.scale_gms()
 # from db import Database
 # pickle_path = '../data/'
 
-# import pickle
 # import pandas as pd
 
-# with open(pickle_path+"tfp_mf_db_doe.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
+
+# # with open(pickle_path+"tfp_mf_db_doe.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
     
 #%% run validation
 
@@ -155,8 +158,8 @@ main_obj.scale_gms()
 # import pickle
 # import pandas as pd
 
-# with open(pickle_path+"tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
+
     
 # sample_dict = {
 #     'gap_ratio' : 1.0,

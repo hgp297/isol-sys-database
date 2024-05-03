@@ -327,9 +327,13 @@ class Database:
         # retained designs
         # ensure even distribution between number of systems
         n_systems = len(pd.unique(df_in['superstructure_system']))
+                
+        # add a duplicate struct_system column to facilitate groupby dropping (whY???)
+        all_des['supersystem_drop'] = all_des['superstructure_system'].copy()
+        
         self.retained_designs = all_des.groupby(
-            'superstructure_system', group_keys=False).apply(
-            lambda x: x.sample(n=int(self.n_points/n_systems)))
+            'supersystem_drop', group_keys=False).apply(
+            lambda x: x.sample(n=int(self.n_points/n_systems)), include_groups=False)
         self.generated_designs = all_des
         
         print('======================================')
