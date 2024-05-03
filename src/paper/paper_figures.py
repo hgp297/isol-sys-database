@@ -701,6 +701,26 @@ kernel_name = 'rbf_iso'
 collapse_drift_def_mu_std = 0.1
 df_doe = main_obj_doe.doe_analysis
 
+#%% box to fix
+# TODO: remove this box when new data comes in
+from gms import get_gm_ST, get_ST
+
+def correct_Sa(row):
+    Tms_interest = np.array([row['T_m'], 1.0, row['T_fb']])
+    Sa_gm = get_ST(row, Tms_interest, 
+               db_dir='../../resource/ground_motions/gm_db.csv',
+               spec_dir='../../resource/ground_motions/gm_spectra.csv')
+    Sa_Tm = Sa_gm[0]
+    Sa_1 = Sa_gm[1]
+    Sa_Tfb = Sa_gm[2]
+    
+    return(Sa_Tm, Sa_1, Sa_Tfb)
+
+df_doe[['sa_tm',
+    'sa_1',
+    'sa_tfb']] = df_doe.apply(lambda row: correct_Sa(row),
+                                        axis='columns', result_type='expand')
+#%%
 from experiment import collapse_fragility
 df_doe[['max_drift',
    'collapse_prob']] = df_doe.apply(lambda row: collapse_fragility(row, drift_at_mu_plus_std=collapse_drift_def_mu_std),
@@ -733,6 +753,8 @@ print('% impact of DoE set:', sum(df_doe['impacted'])/df_doe.shape[0])
 print('average drift:', df_doe['max_drift'].mean())
 
 df_init = df_doe.head(50)
+
+
 #%% doe convergence plots
 
 rmse_hist = main_obj_doe.rmse_hist
@@ -844,7 +866,6 @@ plt.savefig('./figures/scatter.pdf')
 
 #%%
 
-plt.close('all')
 fig = plt.figure(figsize=(13, 6))
 
 ax1=fig.add_subplot(1, 2, 1)

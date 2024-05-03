@@ -122,10 +122,9 @@ def scale_ground_motion(input_df, return_list=False,
         # take 3 random ones (shuffle then take)
         match_eqs = match_eqs.reindex(np.random.permutation(match_eqs.index))
         random_set = match_eqs.head(3)
-
+        
         if final_GM is None:
-            GM_headers = list(match_eqs.columns)
-            final_GM = pd.DataFrame(columns=GM_headers)
+            final_GM = pd.DataFrame(random_set)
         
         final_GM = pd.concat([random_set,final_GM], sort=False)
         final_GM[' Horizontal-1 Acc. Filename'] = final_GM[
@@ -139,7 +138,6 @@ def scale_ground_motion(input_df, return_list=False,
     # filter excessively scaled GMs
     final_GM = final_GM[final_GM['sf_average_spectral'] < 20.0]
     final_GM = final_GM[final_GM['scaled_peak_Sa'] < 3*S_s]
-    breakpoint()
     if return_list:
         gm_name = final_GM.apply(lambda sheet: sheet.filename.replace('.AT2', ''), axis=1)
         sf = final_GM['sf_average_spectral']

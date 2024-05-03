@@ -49,12 +49,12 @@ main_obj.scale_gms()
 
 #%% analyze database
 
-main_obj.analyze_db('tfp_mf_db.csv', save_interval=5)
+# main_obj.analyze_db('tfp_mf_db.csv', save_interval=5)
 
-# Pickle the main object
-import pickle
-with open('../data/tfp_mf_db.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# # Pickle the main object
+# import pickle
+# with open('../data/tfp_mf_db.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%% DoE
 

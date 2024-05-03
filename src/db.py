@@ -419,7 +419,7 @@ class Database:
         
         self.ops_analysis = df
                 
-    def perform_doe(self, target_prob=0.5, n_set=200, batch_size=10):
+    def perform_doe(self, target_prob=0.5, n_set=200, batch_size=10, kernel='rbf_iso'):
         
         try:
             whole_set = self.ops_analysis
@@ -441,7 +441,8 @@ class Database:
         
         df_doe, rmse_hist, mae_hist, nrmse_hist, hyperparam_list = run_doe(target_prob, df_train, df_test, 
                                              batch_size=batch_size, error_tol=1e-2, 
-                                             maxIter=1000, conv_tol=1e-4)
+                                             maxIter=1000, conv_tol=1e-4,
+                                             kernel=kernel)
         
         self.doe_analysis = df_doe
         self.rmse_hist = rmse_hist
