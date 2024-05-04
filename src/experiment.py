@@ -562,10 +562,9 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
             # TODO: we cannot have the exact T_ratio and gap_ratio as DOE called for
             # gap ratio is affected by a stochastic gm_sa_tm
             # T_ratio is affected by the fact that the true Tfb is not the estimated Tfb
-            # gap ratio can be equal if scale_ground_motion can be done s.t.
-            # sa_tm is the scaling control
             
             # drop the "called-for" values and record the "as constructed" values
+            
             work_df = work_df.drop(columns=['gap_ratio', 'T_ratio'])
             bldg_result = run_nlth(work_df.iloc[0], gm_path)
             result_df = pd.DataFrame(bldg_result).T

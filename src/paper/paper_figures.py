@@ -132,15 +132,18 @@ def make_design_space(res):
     return(X_space)
 
 #%% collapse fragility def
-'''
+
 # collapse as a probability
 from scipy.stats import lognorm
 from math import log, exp
 
+collapse_drift_def_mu_std = 0.1
+
+
 from scipy.stats import norm
 inv_norm = norm.ppf(0.84)
 beta_drift = 0.25
-mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+mean_log_drift = exp(log(collapse_drift_def_mu_std) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
 # mean_log_drift = 0.05
 ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
 
@@ -197,6 +200,7 @@ ax.grid()
 # plt.show()
 
 #%% base-set data
+'''
 kernel_name = 'rbf_ard'
 
 mdl = GP(df)
@@ -940,7 +944,7 @@ label_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-plt.close('all')
+# plt.close('all')
 # Start with a square Figure.
 fig = plt.figure(figsize=(13, 6), layout='constrained')
 
@@ -1592,6 +1596,7 @@ fig.tight_layout()
 
 
 #%% histogram
+'''
 # plt.close('all')
 fig = plt.figure(figsize=(13, 10))
 
@@ -1640,6 +1645,691 @@ ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
+
+'''
+#%% Prediction 3ds
+
+# as an example, let's do T-ratio vs zeta as gap evolves
+# plt.close('all')
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=20
+axis_font = 18
+subt_font = 18
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+res = 75
+plt_density = 200
+x_var = 'T_ratio'
+y_var = 'zeta_e'
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [2.0, 5.0],
+                            third_var_set = 0.5, fourth_var_set = 2.0)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_3d, fs1_3d = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_3d = fs1_3d**2
+
+Z_3d = fmu_3d.reshape(xx_pl.shape)
+
+fig = plt.figure(figsize=(11, 9))
+ax=fig.add_subplot(2, 2, 1, projection='3d')
+
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_3d, cmap=plt.cm.Spectral_r,
+                        linewidth=0, antialiased=False,
+                        alpha=0.7, vmin=0, vmax=0.075)
+
+df = df_doe[df_doe['gap_ratio'] < 0.75]
+ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density], 
+            df['collapse_prob'][:plt_density],
+            edgecolors='k')
+
+ax.set_xlabel(r'$T_M/ T_{fb}$', fontsize=axis_font, linespacing=0.5)
+ax.set_ylabel(r'$\zeta_e$', fontsize=axis_font, linespacing=1.0)
+ax.set_zlabel(r'Collapse risk', fontsize=axis_font, linespacing=3.0)
+ax.set_title(r'$GR = 0.5$', fontsize=title_font)
+ax.set_xlim([2, 5])
+ax.set_zlim([0, 1])
+# plt.show()
+
+# #################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [2.0, 5.0],
+                            third_var_set = 0.75, fourth_var_set = 2.0)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_3d, fs1_3d = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_3d = fs1_3d**2
+
+Z_3d = fmu_3d.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(2, 2, 2, projection='3d')
+
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_3d, cmap=plt.cm.Spectral_r,
+                        linewidth=0, antialiased=False,
+                        alpha=0.7, vmin=0, vmax=0.075)
+
+df = df_doe[(df_doe['gap_ratio'] < 1.0) & (df_doe['gap_ratio'] > 0.75)]
+ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density], 
+            df['collapse_prob'][:plt_density],
+            edgecolors='k')
+
+ax.set_xlabel(r'$T_M/ T_{fb}$', fontsize=axis_font, linespacing=0.5)
+ax.set_ylabel(r'$\zeta_e$', fontsize=axis_font, linespacing=1.0)
+ax.set_zlabel(r'Collapse risk', fontsize=axis_font, linespacing=3.0)
+ax.set_title(r'$GR = 0.75$', fontsize=title_font)
+ax.set_xlim([2, 5])
+ax.set_zlim([0, 1])
+
+# #################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [2.0, 5.0],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_3d, fs1_3d = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_3d = fs1_3d**2
+
+Z_3d = fmu_3d.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(2, 2, 3, projection='3d')
+
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_3d, cmap=plt.cm.Spectral_r,
+                        linewidth=0, antialiased=False,
+                        alpha=0.7, vmin=0, vmax=0.075)
+
+df = df_doe[(df_doe['gap_ratio'] < 1.5) & (df_doe['gap_ratio'] > 1.0)]
+ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density], 
+            df['collapse_prob'][:plt_density],
+            edgecolors='k')
+
+ax.set_xlabel(r'$T_M/ T_{fb}$', fontsize=axis_font, linespacing=0.5)
+ax.set_ylabel(r'$\zeta_e$', fontsize=axis_font, linespacing=1.0)
+ax.set_zlabel(r'Collapse risk', fontsize=axis_font, linespacing=3.0)
+ax.set_title(r'$GR = 1.0$', fontsize=title_font)
+ax.set_xlim([2, 5])
+ax.set_zlim([0, 1])
+
+
+# #################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [2.0, 5.0],
+                            third_var_set = 2.0, fourth_var_set = 2.0)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_3d, fs1_3d = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_3d = fs1_3d**2
+
+Z_3d = fmu_3d.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(2, 2, 4, projection='3d')
+
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_3d, cmap=plt.cm.Spectral_r,
+                        linewidth=0, antialiased=False,
+                        alpha=0.7, vmin=0, vmax=0.075)
+
+df = df_doe[(df_doe['gap_ratio'] > 1.5) ]
+ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density], 
+            df['collapse_prob'][:plt_density],
+            edgecolors='k')
+
+ax.set_xlabel(r'$T_M/ T_{fb}$', fontsize=axis_font, linespacing=0.5)
+ax.set_ylabel(r'$\zeta_e$', fontsize=axis_font, linespacing=1.0)
+ax.set_zlabel(r'Collapse risk', fontsize=axis_font, linespacing=3.0)
+ax.set_title(r'$GR = 2.0$', fontsize=title_font)
+ax.set_xlim([2, 5])
+ax.set_zlim([0, 1])
+
+fig.tight_layout(w_pad=0.0)
+plt.savefig('./figures/surf.pdf')
+# plt.show()
+
+#%% GP plots, highlight design targets
+
+# plt.close('all')
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=20
+axis_font = 18
+subt_font = 18
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+res = 75
+plt_density = 200
+x_var = 'gap_ratio'
+y_var = 'RI'
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            third_var_set = 2.0, fourth_var_set = 0.1)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_highlight = mdl_doe.gpr.predict(X_plot, return_std=False)
+
+Z_highlight = fmu_highlight.reshape(xx_pl.shape)
+
+fig = plt.figure(figsize=(9, 14))
+ax=fig.add_subplot(3, 2, 1)
+
+# Plot the surface.
+cmap = plt.cm.magma
+# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
+#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+ax.clabel(cs, fontsize=clabel_size)
+
+# draw lines for design targets
+
+prob_list = [0.025, 0.05, 0.1]
+offset_list = [0.65, 0.5, 0.5]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.5, 1.5, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_highlight)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='maroon')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
+    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='steelblue')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    
+
+    
+
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_title(r'a) $T_M/T_{fb} = 2.0$, $\zeta_e = 0.10$', fontsize=title_font)
+ax.set_xlim([0.5, 1.5])
+ax.set_ylim([0.5, 2.25])
+ax.grid()
+
+
+##########################################################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            third_var_set = 3.5, fourth_var_set = 0.1)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_highlight = mdl_doe.gpr.predict(X_plot, return_std=False)
+
+Z_highlight = fmu_highlight.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(3, 2, 2)
+
+# Plot the surface.
+cmap = plt.cm.magma
+# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
+#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+ax.clabel(cs, fontsize=clabel_size)
+
+# draw lines for design targets
+
+prob_list = [0.025, 0.05, 0.1]
+offset_list = [0.65, 0.5, 0.5]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.5, 1.5, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_highlight)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='maroon')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
+    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='steelblue')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_title(r'b) $T_M/T_{fb} = 3.5$, $\zeta_e = 0.10$', fontsize=title_font)
+ax.set_xlim([0.5, 1.5])
+ax.set_ylim([0.5, 2.25])
+ax.grid()
+
+
+##########################################################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_highlight = mdl_doe.gpr.predict(X_plot, return_std=False)
+
+Z_highlight = fmu_highlight.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(3, 2, 3)
+
+# Plot the surface.
+cmap = plt.cm.magma
+# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
+#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+ax.clabel(cs, fontsize=clabel_size)
+
+# draw lines for design targets
+
+prob_list = [0.025, 0.05, 0.1]
+offset_list = [0.65, 0.5, 0.5]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.5, 1.5, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_highlight)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='maroon')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
+    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='steelblue')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    
+
+    
+
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_title(r'c) $T_M/T_{fb} = 2.0$, $\zeta_e = 0.15$', fontsize=title_font)
+ax.set_xlim([0.5, 1.5])
+ax.set_ylim([0.5, 2.25])
+ax.grid()
+
+##########################################################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            third_var_set = 3.5, fourth_var_set = 0.15)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_highlight = mdl_doe.gpr.predict(X_plot, return_std=False)
+
+Z_highlight = fmu_highlight.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(3, 2, 4)
+
+# Plot the surface.
+cmap = plt.cm.magma
+# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
+#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+ax.clabel(cs, fontsize=clabel_size)
+
+# draw lines for design targets
+
+prob_list = [0.025, 0.05, 0.1]
+offset_list = [0.65, 0.5, 0.5]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.5, 1.5, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_highlight)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='maroon')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
+    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='steelblue')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    
+
+    
+
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_title(r'd) $T_M/T_{fb} = 3.5$, $\zeta_e = 0.15$', fontsize=title_font)
+ax.set_xlim([0.5, 1.5])
+ax.set_ylim([0.5, 2.25])
+ax.grid()
+
+##########################################################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            third_var_set = 2.0, fourth_var_set = 0.20)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_highlight = mdl_doe.gpr.predict(X_plot, return_std=False)
+
+Z_highlight = fmu_highlight.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(3, 2, 5)
+
+# Plot the surface.
+cmap = plt.cm.magma
+# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
+#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+ax.clabel(cs, fontsize=clabel_size)
+
+# draw lines for design targets
+
+prob_list = [0.025, 0.05, 0.1]
+offset_list = [0.65, 0.5, 0.5]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.5, 1.5, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_highlight)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='maroon')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
+    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='steelblue')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    
+
+    
+
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_title(r'e) $T_M/T_{fb} = 2.0$, $\zeta_e = 0.20$', fontsize=title_font)
+ax.set_xlim([0.5, 1.5])
+ax.set_ylim([0.5, 2.25])
+ax.grid()
+
+##########################################################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            third_var_set = 3.5, fourth_var_set = 0.2)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_highlight = mdl_doe.gpr.predict(X_plot, return_std=False)
+
+Z_highlight = fmu_highlight.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(3, 2, 6)
+
+# Plot the surface.
+cmap = plt.cm.magma
+# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
+#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+ax.clabel(cs, fontsize=clabel_size)
+
+# draw lines for design targets
+
+prob_list = [0.025, 0.05, 0.1]
+offset_list = [0.65, 0.5, 0.5]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.5, 1.5, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_highlight)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='maroon')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
+    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='steelblue')
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    
+
+    
+
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_title(r'f) $T_M/T_{fb} = 3.5$, $\zeta_e = 0.20$', fontsize=title_font)
+ax.set_xlim([0.5, 1.5])
+ax.set_ylim([0.5, 2.25])
+ax.grid()
+
+fig.tight_layout()
+plt.savefig('./figures/inverse_design_contours.eps')
+# plt.show()
 
 #%% impact histogram
 '''
