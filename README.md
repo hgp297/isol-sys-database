@@ -20,7 +20,7 @@ The database is utilized to generate inverse design targeting specific structura
 	* Python 3.9
 
 * Data structure management:
-	* Pandas 1.1.5+
+	* Pandas 2.2.0+
 	* Numpy 1.22.4+
 	* Scipy 1.12.0+
 

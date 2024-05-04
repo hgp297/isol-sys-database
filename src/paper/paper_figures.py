@@ -727,8 +727,9 @@ df_doe[['sa_tm',
 #%%
 from experiment import collapse_fragility
 df_doe[['max_drift',
-   'collapse_prob']] = df_doe.apply(lambda row: collapse_fragility(row, drift_at_mu_plus_std=collapse_drift_def_mu_std),
-                                        axis='columns', result_type='expand')
+   'collapse_prob']] = df_doe.apply(
+       lambda row: collapse_fragility(row, drift_at_mu_plus_std=collapse_drift_def_mu_std), 
+       axis='columns', result_type='expand')
 
 
 
@@ -961,7 +962,7 @@ scatter_hist(df_init['gap_ratio'], df_init['RI'], 'navy', 0.9, ax, ax_histx, ax_
 scatter_hist(df_doe['gap_ratio'], df_doe['RI'], 'orange', 0.3, ax, ax_histx, ax_histy)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax.set_xlim([0.4, 4.0])
+ax.set_xlim([0.0, 4.0])
 ax.set_ylim([0.5, 2.25])
 
 ax = fig.add_subplot(gs[1, 2])
