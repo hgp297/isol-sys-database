@@ -698,9 +698,7 @@ class Loss_Analysis:
         # # COMPONENTS
         # ###########################################################################
         
-        # # generate structural components and join with NSCs
-        # P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
-        # cmp_structural = get_structural_cmp_MF(run_data, P58_metadata)
+        # generate structural components and join with NSCs
         
         cmp_marginals = self.components
         cmp_marginals = cmp_marginals.set_index('Component')
@@ -713,7 +711,7 @@ class Loss_Analysis:
         
         
         # review the damage model - in this example: fragility functions
-        P58_data = PAL.get_default_data('fragility_DB_FEMA_P58_2nd')
+        P58_data = PAL.get_default_data('damage_DB_FEMA_P58_2nd')
 
         # note that we drop the last three components here (excessiveRID, irreparable, and collapse) 
         # because they are not part of P58
@@ -744,12 +742,16 @@ class Loss_Analysis:
         custom_fragility_db = custom_fragility_db.rename(
             columns=lambda x: '' if "Unnamed" in x else x, level=1)
         
+        breakpoint() 
+        
         additional_fragility_db = pd.concat([custom_fragility_db, incomplete_db], axis=0)
         
         # if we have all components accounted for, drop the initial duplicate list
         if set(inc_names).issubset(custom_fragility_db.index.tolist()):
             additional_fragility_db = additional_fragility_db[additional_fragility_db['Incomplete'] != 1]
             
+        mask = additional_fragility_db.index.isin(inc_names)
+        additional_fragility_db = additional_fragility_db[mask]
         # TODO: change this section to the system-dependent drift values
         
         # add demand for the replacement criteria
@@ -812,9 +814,10 @@ class Loss_Analysis:
         # 3-story global collapse drift, lowered by 0.05 if nonlin dynamic anly
         from math import log, exp
         from scipy.stats import norm
+        drift_mu_plus_std = 0.1
         inv_norm = norm.ppf(0.84)
         beta_drift = 0.25
-        mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+        mean_log_drift = exp(log(drift_mu_plus_std) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
         additional_fragility_db.loc[
             'collapse', [('Demand','Directional'),
                             ('Demand','Offset'),
@@ -829,10 +832,11 @@ class Loss_Analysis:
         # We set the incomplete flag to 0 for the additional components
         additional_fragility_db['Incomplete'] = 0
         
+        
         # load fragility data
         PAL.damage.load_damage_model([
             additional_fragility_db,  # This is the extra fragility data we've just created
-            'PelicunDefault/fragility_DB_FEMA_P58_2nd.csv' # and this is a table with the default P58 data    
+            'PelicunDefault/damage_DB_FEMA_P58_2nd.csv' # and this is a table with the default P58 data    
         ])
         
         ### 3.3.5 Damage Process
@@ -892,10 +896,10 @@ class Loss_Analysis:
 
         # Assemble the DataFrame with the mapping information
         # The column name identifies the type of the consequence model.
-        loss_map = pd.DataFrame(loss_models, columns=['BldgRepair'], index=drivers)
+        loss_map = pd.DataFrame(loss_models, columns=['Repair'], index=drivers)
         
         # load the consequence models
-        P58_data = PAL.get_default_data('bldg_repair_DB_FEMA_P58_2nd')
+        P58_data = PAL.get_default_data('loss_repair_DB_FEMA_P58_2nd')
 
         # group E (filing cabinets, bookcases)
         incomplete_cmp = pd.DataFrame(
@@ -942,11 +946,11 @@ class Loss_Analysis:
         # get the consequences used by this assessment
         # grab all loss map values that are present in P58_data
         P58_available = list(set(P58_data.index.get_level_values(0).values).intersection(
-            loss_map['BldgRepair'].values.tolist()))
+            loss_map['Repair'].values.tolist()))
         P58_data_for_this_assessment = P58_data.loc[P58_available,:]
         
         # this should be taken care of from incomplete_cmp
-        P58_missing = set(loss_map['BldgRepair'].values[:-2]) - set(P58_available)
+        P58_missing = set(loss_map['Repair'].values[:-2]) - set(P58_available)
 
         # initialize the dataframe
         additional_consequences = pd.DataFrame(
@@ -986,22 +990,23 @@ class Loss_Analysis:
                                                                 replacement_time,
                                                                 0,
                                                                 np.nan]
+        
         # Load the loss model to pelicun
-        PAL.bldg_repair.load_model(
+        PAL.repair.load_model(
             [additional_consequences, incomplete_cmp,
-              "PelicunDefault/bldg_repair_DB_FEMA_P58_2nd.csv"], 
-            loss_map)
+              "PelicunDefault/loss_repair_DB_FEMA_P58_2nd.csv"], 
+            loss_map, decision_variables=['Cost', 'Time'])
         
         # and run the calculations
         print('Loss estimation...')
-        PAL.bldg_repair.calculate()
+        PAL.repair.calculate()
         print('Loss estimation done!')
         
         # loss estimates
-        loss_sample = PAL.bldg_repair.sample
+        loss_sample = PAL.repair.sample
         
         # group components and ensure that all components and replacement are present
-        loss_by_cmp = loss_sample.groupby(level=[0, 2], axis=1).sum()['COST']
+        loss_by_cmp = loss_sample.groupby(level=[0, 2], axis=1).sum()['Cost']
         for cmp_grp in list(cmp_list):
             if cmp_grp not in list(loss_by_cmp.columns):
                 loss_by_cmp[cmp_grp] = 0
@@ -1043,7 +1048,7 @@ class Loss_Analysis:
         loss_groups = loss_groups.describe()
         
         # aggregate
-        agg_DF = PAL.bldg_repair.aggregate_losses()
+        agg_DF = PAL.repair.aggregate_losses()
         
         breakpoint()
         # return(cmp_sample, damage_sample, loss_sample, loss_groups, agg_DF,
@@ -1070,7 +1075,7 @@ PAL = Assessment({
 })
 
 # generate structural components and join with NSCs
-P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
+P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
 
 data = pd.read_csv('../data/tfp_mf_db.csv')
 run = data.iloc[1]
