@@ -692,12 +692,12 @@ import time
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 20
-subt_font = 18
+subt_font = 20
 import matplotlib as mpl
-label_size = 16
+label_size = 18
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-clabel_size = 12
+clabel_size = 16
 
 main_obj_doe = pd.read_pickle('../../data/tfp_mf_db_doe.pickle')
 
@@ -709,25 +709,6 @@ kernel_name = 'rbf_iso'
 collapse_drift_def_mu_std = 0.1
 df_doe = main_obj_doe.doe_analysis
 
-#%% box to fix
-# TODO: remove this box when new data comes in
-from gms import get_gm_ST, get_ST
-
-def correct_Sa(row):
-    Tms_interest = np.array([row['T_m'], 1.0, row['T_fb']])
-    Sa_gm = get_ST(row, Tms_interest, 
-               db_dir='../../resource/ground_motions/gm_db.csv',
-               spec_dir='../../resource/ground_motions/gm_spectra.csv')
-    Sa_Tm = Sa_gm[0]
-    Sa_1 = Sa_gm[1]
-    Sa_Tfb = Sa_gm[2]
-    
-    return(Sa_Tm, Sa_1, Sa_Tfb)
-
-df_doe[['sa_tm',
-    'sa_1',
-    'sa_tfb']] = df_doe.apply(lambda row: correct_Sa(row),
-                                        axis='columns', result_type='expand')
 #%%
 from experiment import collapse_fragility
 df_doe[['max_drift',
@@ -773,9 +754,9 @@ theta = main_obj_doe.hyperparam_list
 
 
 if kernel_name == 'rbf_iso':
-    theta_vars = [r'$\sigma_f^2$', r'$\ell$', r'$\sigma_n^2$']
+    theta_vars = [r'$\kappa$', r'$\ell$', r'$\sigma_n^2$']
 else:
-    theta_vars = [r'$\sigma_f^2$', r'$\ell_{GR}$', r'$\ell_{R_y}$', 
+    theta_vars = [r'$\kappa$', r'$\ell_{GR}$', r'$\ell_{R_y}$', 
                   r'$\ell_{T}$', r'$\ell_{\zeta}$' , r'$\sigma_n^2$']
 
 plt.close('all')
@@ -871,7 +852,7 @@ ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
-plt.savefig('./figures/scatter.pdf')
+# plt.savefig('./figures/scatter.pdf')
 
 #%%
 
@@ -1000,7 +981,7 @@ ax.set_ylim([0.1, 0.25])
 # ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 # ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 
-plt.savefig('./figures/doe_hist.pdf')
+# plt.savefig('./figures/doe_hist.pdf')
 
 # ax.set_xlim([0.5, 4.0])
 # ax.set_ylim([0.5, 2.25])
@@ -1014,7 +995,7 @@ mdl_doe.set_outcome('collapse_prob')
 
 mdl_doe.fit_gpr(kernel_name=kernel_name)
 
-X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 2.0, 0.15]]),
                           columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
 
 
@@ -1201,10 +1182,10 @@ plt.figure(figsize=(8,6))
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
 cs = plt.contour(xx_pl, yy_pl, Z_Tze, linewidths=1.1, cmap='Blues', vmin=-1)
 plt.clabel(cs, fontsize=clabel_size)
-plt.scatter(df['T_ratio'], df['zeta_e'], 
-            c=df['collapse_prob'],
+plt.scatter(df_doe['T_ratio'], df_doe['zeta_e'], 
+            c=df_doe['collapse_prob'],
             edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
-plt.xlim([2.0,5.0])
+# plt.xlim([2.0,5.0])
 plt.ylim([0.1, 0.25])
 plt.xlabel('T ratio', fontsize=axis_font)
 plt.ylabel(r'$\zeta_e$', fontsize=axis_font)
@@ -1484,7 +1465,7 @@ legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Pr(collapse)",
 ax4.grid()
 
 fig.tight_layout()
-plt.savefig('./figures/doe_full.pdf')
+# plt.savefig('./figures/doe_full.pdf')
 #%% pareto - doe
 
 # remake X_plot in gap Ry
@@ -1496,6 +1477,8 @@ risk_thresh = 0.1
 all_costs = calc_upfront_cost(X_design_cand, coef_dict)
 constr_costs = all_costs['total']
 predicted_risk = space_collapse_pred['collapse probability']
+# predicted_risk[predicted_risk < 0] = 0
+
 
 # acceptable_mask = predicted_risk < risk_thresh
 # X_acceptable = X_design_cand[acceptable_mask]
@@ -1522,26 +1505,13 @@ cost_pareto = constr_costs.iloc[pareto_mask]
 # -1 if predicted risk > allowable
 
 X_pareto['acceptable_risk'] = np.sign(risk_thresh - risk_pareto)
+X_pareto['predicted_risk'] = risk_pareto
 
-# plt.close('all')
-plt.figure(figsize=(8,6))
-# plt.imshow(
-#     Z,
-#     interpolation="nearest",
-#     extent=(xx_pl.min(), xx_pl.max(),
-#             yy_pl.min(), yy_pl.max()),
-#     aspect="auto",
-#     origin="lower",
-#     cmap=plt.cm.Blues,
-# ) 
-plt.scatter(risk_pareto, cost_pareto, 
-            edgecolors='k', s=20.0)
-plt.xlabel('Collapse risk', fontsize=axis_font)
-plt.ylabel('Construction cost', fontsize=axis_font)
-plt.grid(True)
-plt.title('Pareto front', fontsize=axis_font)
-plt.show()
+dom_idx = np.random.choice(len(pareto_array), 10000, replace = False)
+dominated_sample = np.array([pareto_array[i] for i in dom_idx])
 
+plt.close('all')
+fig = plt.figure(figsize=(13, 10))
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -1551,6 +1521,29 @@ import matplotlib as mpl
 label_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+ax = fig.add_subplot(2, 2, 1)
+ax.scatter(risk_pareto, cost_pareto, marker='s', facecolors='none',
+            edgecolors='green', s=20.0, label='Pareto optimal designs')
+ax.scatter(risk_pareto, cost_pareto, s=1, color='black')
+ax.scatter(dominated_sample[:,1], dominated_sample[:,0], s=1, color='black',
+           label='Dominated designs')
+ax.set_xlabel('Collapse risk', fontsize=axis_font)
+ax.set_ylabel('Construction cost', fontsize=axis_font)
+ax.set_ylim([4.64e6, 4.75e6])
+ax.grid(True)
+ax.legend()
+plt.title('a) Pareto front', fontsize=axis_font)
+plt.show()
+
 
 x_var = 'gap_ratio'
 xx = X_plot[x_var]
@@ -1563,36 +1556,94 @@ y_pl = np.unique(yy)
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
-cmap = plt.cm.Blues
-fig = plt.figure(figsize=(14,6))
-ax1=fig.add_subplot(1, 2, 1)
+cmap = plt.cm.Spectral_r
+ax1=fig.add_subplot(2, 2, 2)
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = plt.contour(xx_pl, yy_pl, Z_GRy, linewidths=1.1, cmap='Blues', vmin=-1,
-                 levels=lvls)
-plt.clabel(cs, fontsize=clabel_size)
-ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
-            c=X_pareto['acceptable_risk'],
+sc = ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
+            c=X_pareto['predicted_risk'],
             edgecolors='k', s=20.0, cmap=cmap)
+
+# cbar = plt.colorbar(sc, ticks=[0, 0.2, 0.4])
+cs = plt.contour(xx_pl, yy_pl, Z_GRy, linewidths=1.1, cmap='Blues', vmin=-1,
+                  levels=lvls)
+plt.clabel(cs, fontsize=clabel_size)
 ax1.set_xlim([0.5, 2.0])
 ax1.set_ylim([0.5, 2.25])
 ax1.set_xlabel('Gap ratio', fontsize=axis_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax1.grid(True)
-ax1.set_title('Pareto efficient designs', fontsize=axis_font)
+ax1.set_title(r'b) $T_M / T_{fb} = 3.0$, $\zeta_e = 0.15$', fontsize=axis_font)
 
-# lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-# cs = plt.contour(xx_pl, yy_pl, Z_Tze, linewidths=1.1, cmap='Blues', vmin=-1,
-#                  levels=lvls)
+
+
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+cbaxes = inset_axes(ax1,  width="3%", height="20%", loc='lower right',
+                    bbox_to_anchor=(-0.05,0.05,1,1), bbox_transform=ax1.transAxes) 
+plt.colorbar(sc, cax=cbaxes, orientation='vertical')
+cbaxes.set_ylabel('Collapse risk', fontsize=axis_font)
+cbaxes.yaxis.set_ticks_position('left')
+
+
+'''
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var='T_ratio', y_var='zeta_e', 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+x_var = 'T_ratio'
+xx = X_plot[x_var]
+y_var = 'zeta_e'
+yy = X_plot[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
 ax2=fig.add_subplot(1, 2, 2)
 plt.clabel(cs, fontsize=clabel_size)
+cs = plt.contour(xx_pl, yy_pl, Z_Tze, linewidths=1.1, cmap='Blues', vmin=-1,
+                 levels=lvls)
+plt.clabel(cs, fontsize=clabel_size)
 ax2.scatter(X_pareto['T_ratio'], X_pareto['zeta_e'], 
-            c=X_pareto['acceptable_risk'],
-            edgecolors='k', s=20.0, cmap=cmap)
+            c=X_pareto['predicted_risk'],
+            edgecolors='k', s=20.0, cmap=plt.cm.Spectral_r)
 ax2.set_xlabel('T ratio', fontsize=axis_font)
 ax2.set_ylabel(r'$\zeta_e$', fontsize=axis_font)
 ax2.grid(True)
-ax2.set_title('Pareto efficient designs', fontsize=axis_font)
-fig.tight_layout()
+ax2.set_title(r'b) $GR = 1.0$, $R_y = 2.0$', fontsize=axis_font)
+
+
+plt.savefig('./figures/pareto.eps')
+'''
+
+# 3D
+
+ax=fig.add_subplot(2, 2, 3, projection='3d')
+
+sc = ax.scatter(X_pareto['gap_ratio'], X_pareto['RI'], X_pareto['T_ratio'], 
+           c=X_pareto['predicted_risk'],
+           edgecolors='k', alpha = 1, cmap=plt.cm.Spectral_r)
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax.set_xlim([0.3, 2.0])
+ax.set_zlabel(r'$T_M / T_{fb}$', fontsize=axis_font)
+ax.set_title(r'c) $\zeta_e$ not shown', fontsize=axis_font)
+
+ax=fig.add_subplot(2, 2, 4, projection='3d')
+
+ax.scatter(X_pareto['gap_ratio'], X_pareto['RI'], X_pareto['zeta_e'], 
+           c=X_pareto['predicted_risk'],
+           edgecolors='k', alpha = 1, cmap=plt.cm.Spectral_r)
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax.set_xlim([0.3, 2.0])
+ax.set_zlabel(r'$\zeta_e$', fontsize=axis_font)
+ax.set_title(r'd) $T_M/T_{fb}$ not shown', fontsize=axis_font)
+fig.colorbar(sc, ax=ax)
+fig.tight_layout(w_pad=0.0)
+plt.savefig('./figures/pareto_full.pdf')
+plt.show()
 
 
 #%% histogram
@@ -1811,7 +1862,7 @@ ax.set_xlim([2, 5])
 ax.set_zlim([0, 1])
 
 fig.tight_layout(w_pad=0.0)
-plt.savefig('./figures/surf.pdf')
+# plt.savefig('./figures/surf.pdf')
 # plt.show()
 
 #%% GP plots, highlight design targets
@@ -2328,7 +2379,7 @@ ax.set_ylim([0.5, 2.25])
 ax.grid()
 
 fig.tight_layout()
-plt.savefig('./figures/inverse_design_contours.eps')
+# plt.savefig('./figures/inverse_design_contours.eps')
 # plt.show()
 
 #%% impact histogram

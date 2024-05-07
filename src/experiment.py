@@ -156,8 +156,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
                    'run_status': run_status
         }
     result_series = pd.Series(result_dict)
-    
-    final_series = design.append(result_series)
+    final_series = pd.concat([design, result_series])
     return(final_series)
     
 def collapse_fragility(run, drift_at_mu_plus_std=0.1):
