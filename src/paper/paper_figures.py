@@ -508,7 +508,7 @@ print(X_baseline)
 import warnings
 warnings.filterwarnings('ignore')
 
-upfront_costs = calc_upfront_cost(ok_risk, coef_dict)
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict, W=W_seis, Ws=W_super)
 cheapest_design_idx = upfront_costs['total'].idxmin()
 design_upfront_cost = upfront_costs['total'].min()
 design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
@@ -537,8 +537,6 @@ print(best_design)
 
 '''
 #%%
-# TODO: pareto
-
 def simple_cull_df(input_df, dominates, *args):
     pareto_df = pd.DataFrame(columns=input_df.columns)
     candidateRowNr = 0
@@ -744,6 +742,22 @@ print('average drift:', df_doe['max_drift'].mean())
 
 df_init = df_doe.head(50)
 
+from loads import define_gravity_loads
+config_dict = {
+    'S_1' : 1.017,
+    'k_ratio' : 10,
+    'Q': 0.06,
+    'num_frames' : 2,
+    'num_bays' : 4,
+    'num_stories' : 4,
+    'L_bay': 30.0,
+    'h_story': 13.0,
+    'isolator_system' : 'TFP',
+    'superstructure_system' : 'MF',
+    'S_s' : 2.2815
+}
+(W_seis, W_super, w_on_frame, P_on_leaning_column,
+       all_w_cases, all_plc_cases) = define_gravity_loads(config_dict)
 
 #%% doe convergence plots
 
@@ -791,7 +805,7 @@ ax3.set_title('Normalized hyperparameter convergence', fontsize=axis_font)
 ax3.set_xlabel('Points added', fontsize=axis_font)
 ax3.grid(True)
 fig.tight_layout()
-# plt.savefig('./figures/convergence.eps')
+plt.savefig('./figures/convergence.eps')
 
 #%%  dumb scatters
 
@@ -852,7 +866,7 @@ ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
-# plt.savefig('./figures/scatter.pdf')
+plt.savefig('./figures/scatter.pdf')
 
 #%%
 
@@ -981,7 +995,7 @@ ax.set_ylim([0.1, 0.25])
 # ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 # ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 
-# plt.savefig('./figures/doe_hist.pdf')
+plt.savefig('./figures/doe_hist.pdf')
 
 # ax.set_xlim([0.5, 4.0])
 # ax.set_ylim([0.5, 2.25])
@@ -1007,7 +1021,7 @@ baseline_fs2 = baseline_fs2.item()
 
 steel_price = 2.0
 coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
-baseline_costs = calc_upfront_cost(X_baseline, coef_dict)
+baseline_costs = calc_upfront_cost(X_baseline, coef_dict, W=W_seis, Ws=W_super)
 
 baseline_total = baseline_costs['total'].item()
 baseline_steel = baseline_costs['steel'].item()
@@ -1044,7 +1058,7 @@ ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
 import warnings
 warnings.filterwarnings('ignore')
 
-upfront_costs = calc_upfront_cost(ok_risk, coef_dict)
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict, W=W_seis, Ws=W_super)
 cheapest_design_idx = upfront_costs['total'].idxmin()
 design_upfront_cost = upfront_costs['total'].min()
 design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
@@ -1075,7 +1089,7 @@ ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
 import warnings
 warnings.filterwarnings('ignore')
 
-upfront_costs = calc_upfront_cost(ok_risk, coef_dict)
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict, W=W_seis, Ws=W_super)
 cheapest_design_idx = upfront_costs['total'].idxmin()
 design_upfront_cost = upfront_costs['total'].min()
 design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
@@ -1106,7 +1120,7 @@ ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
 import warnings
 warnings.filterwarnings('ignore')
 
-upfront_costs = calc_upfront_cost(ok_risk, coef_dict)
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict, W=W_seis, Ws=W_super)
 cheapest_design_idx = upfront_costs['total'].idxmin()
 design_upfront_cost = upfront_costs['total'].min()
 design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
@@ -1322,7 +1336,7 @@ plt.xlabel(r'GR', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.title(r'$MSE_w$ selection criterion', fontsize=axis_font)
 plt.grid(True)
-# plt.savefig('./figures/doe.pdf')
+plt.savefig('./figures/doe.pdf')
 
 #%% DoE effect plot
 
@@ -1465,7 +1479,7 @@ legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Pr(collapse)",
 ax4.grid()
 
 fig.tight_layout()
-# plt.savefig('./figures/doe_full.pdf')
+plt.savefig('./figures/doe_full.pdf')
 #%% pareto - doe
 
 # remake X_plot in gap Ry
@@ -1474,7 +1488,7 @@ X_plot = make_2D_plotting_space(mdl_doe.X, res)
 
 risk_thresh = 0.1
 
-all_costs = calc_upfront_cost(X_design_cand, coef_dict)
+all_costs = calc_upfront_cost(X_design_cand, coef_dict, W=W_seis, Ws=W_super)
 constr_costs = all_costs['total']
 predicted_risk = space_collapse_pred['collapse probability']
 # predicted_risk[predicted_risk < 0] = 0
@@ -1507,10 +1521,10 @@ cost_pareto = constr_costs.iloc[pareto_mask]
 X_pareto['acceptable_risk'] = np.sign(risk_thresh - risk_pareto)
 X_pareto['predicted_risk'] = risk_pareto
 
-dom_idx = np.random.choice(len(pareto_array), 10000, replace = False)
+dom_idx = np.random.choice(len(pareto_array), 1000, replace = False)
 dominated_sample = np.array([pareto_array[i] for i in dom_idx])
 
-plt.close('all')
+# plt.close('all')
 fig = plt.figure(figsize=(13, 10))
 
 plt.rcParams["font.family"] = "serif"
@@ -1538,7 +1552,7 @@ ax.scatter(dominated_sample[:,1], dominated_sample[:,0], s=1, color='black',
            label='Dominated designs')
 ax.set_xlabel('Collapse risk', fontsize=axis_font)
 ax.set_ylabel('Construction cost', fontsize=axis_font)
-ax.set_ylim([4.64e6, 4.75e6])
+# ax.set_ylim([4.64e6, 4.75e6])
 ax.grid(True)
 ax.legend()
 plt.title('a) Pareto front', fontsize=axis_font)
@@ -1862,7 +1876,7 @@ ax.set_xlim([2, 5])
 ax.set_zlim([0, 1])
 
 fig.tight_layout(w_pad=0.0)
-# plt.savefig('./figures/surf.pdf')
+plt.savefig('./figures/surf.pdf')
 # plt.show()
 
 #%% GP plots, highlight design targets
@@ -2379,7 +2393,7 @@ ax.set_ylim([0.5, 2.25])
 ax.grid()
 
 fig.tight_layout()
-# plt.savefig('./figures/inverse_design_contours.eps')
+plt.savefig('./figures/inverse_design_contours.eps')
 # plt.show()
 
 #%% impact histogram
