@@ -61,44 +61,44 @@
 # you could either read the csv or unpickle
 # or chain this straight from the analyzed main_obj
 
-pickle_path = '../data/'
+# pickle_path = '../data/'
 
-import pandas as pd
+# import pandas as pd
 
-main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
 
-# with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
     
-main_obj.calculate_collapse()
-main_obj.perform_doe(n_set=100,batch_size=5)
+# main_obj.calculate_collapse()
+# main_obj.perform_doe(n_set=100,batch_size=5)
 
-# current settings: loocv, batch of 5, strict convergence, rejection sample
-import pickle
-with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# # current settings: loocv, batch of 5, strict convergence, rejection sample
+# import pickle
+# with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
     
 #%% DoE with ARD
 
 # you could either read the csv or unpickle
 # or chain this straight from the analyzed main_obj
 
-pickle_path = '../data/'
+# pickle_path = '../data/'
 
-import pandas as pd
+# import pandas as pd
 
-main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
 
-# with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
     
-main_obj.calculate_collapse()
-main_obj.perform_doe(n_set=100,batch_size=5, kernel='rbf_ard')
+# main_obj.calculate_collapse()
+# main_obj.perform_doe(n_set=100,batch_size=5, kernel='rbf_ard')
 
-# current settings: loocv, batch of 5, strict convergence, rejection sample
-import pickle
-with open('../data/tfp_mf_db_doe_ard.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# # current settings: loocv, batch of 5, strict convergence, rejection sample
+# import pickle
+# with open('../data/tfp_mf_db_doe_ard.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
     
 #%%
 # TODO: solve the optimization problem by hand
@@ -119,13 +119,11 @@ with open('../data/tfp_mf_db_doe_ard.pickle', 'wb') as f:
 # # with open(pickle_path+"tfp_mf_db_doe.pickle", 'rb') as picklefile:
 # #     main_obj = pickle.load(picklefile)
     
-#%% run validation
-
 # validation_path = '../data/validation/'
-# TODO: is there a way to pipe this straight from GP? and organize depending on target
+# # TODO: is there a way to pipe this straight from GP? and organize depending on target
 # sample_dict = {
-#     'gap_ratio' : 0.836,
-#     'RI' : 1.51,
+#     'gap_ratio' : 0.6,
+#     'RI' : 2.25,
 #     'T_ratio': 2.0,
 #     'zeta_e': 0.25
 # }
@@ -133,45 +131,46 @@ with open('../data/tfp_mf_db_doe_ard.pickle', 'wb') as f:
 # design_df = pd.DataFrame(sample_dict, index=[0])
 
 # main_obj.prepare_idas(design_df)
-# main_obj.analyze_ida('ida_10.csv')
+# main_obj.analyze_ida('ida_10_iso.csv')
 
 # import pickle
-# with open(validation_path+'tfp_mf_db_ida_10.pickle', 'wb') as f:
+# with open(validation_path+'tfp_mf_db_ida_10_iso.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
 
 
 # sample_dict = {
-#     'gap_ratio' : 1.026,
-#     'RI' : 1.605,
-#     'T_ratio': 2.0,
+#     'gap_ratio' : 0.6,
+#     'RI' : 2.25,
+#     'T_ratio': 2.63,
 #     'zeta_e': 0.25
 # }
-# 
+
 # design_df = pd.DataFrame(sample_dict, index=[0])
-# 
+
 # main_obj.prepare_idas(design_df)
-# main_obj.analyze_ida('ida_5.csv')
-# 
+# main_obj.analyze_ida('ida_5_iso.csv')
+
 # import pickle
-# with open(validation_path+'tfp_mf_db_ida_5.pickle', 'wb') as f:
+# with open(validation_path+'tfp_mf_db_ida_5_iso.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
     
     
 # sample_dict = {
-#     'gap_ratio' : 0.979,
-#     'RI' : 1.236,
-#     'T_ratio': 2.0,
+#     'gap_ratio' : 0.6,
+#     'RI' : 2.16,
+#     'T_ratio': 2.94,
 #     'zeta_e': 0.25
 # }
 
 # design_df = pd.DataFrame(sample_dict, index=[0])
 
 # main_obj.prepare_idas(design_df)
-# main_obj.analyze_ida('ida_2_5.csv')
+# main_obj.analyze_ida('ida_2_5_iso.csv')
 
 # import pickle
-# with open(validation_path+'tfp_mf_db_ida_2_5.pickle', 'wb') as f:
+# with open(validation_path+'tfp_mf_db_ida_2_5_iso.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
+
 #%% run pushover
 
 # from db import Database
@@ -204,3 +203,17 @@ with open('../data/tfp_mf_db_doe_ard.pickle', 'wb') as f:
 # from plot_structure import plot_pushover
 # plot_pushover(pushover_design)
 # T_1 = bldg.run_eigen()
+
+#%% run pelicun
+
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
+
+main_obj.run_pelicun(main_obj.doe_analysis, mode='generate',
+                cmp_dir='../resource/loss/')
+
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'tfp_mf_db_doe_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)

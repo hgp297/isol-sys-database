@@ -1019,7 +1019,7 @@ baseline_fs2 = baseline_fs1**2
 baseline_fs1 = baseline_fs1.item()
 baseline_fs2 = baseline_fs2.item()
 
-steel_price = 2.0
+steel_price = 4.0
 coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
 baseline_costs = calc_upfront_cost(X_baseline, coef_dict, W=W_seis, Ws=W_super)
 
@@ -1917,14 +1917,13 @@ ax=fig.add_subplot(3, 2, 1)
 cmap = plt.cm.magma
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+lvls = [0, 0.01, 0.025, 0.05, 0.075, 0.10, 0.15, 0.2, 0.3]
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
 ax.clabel(cs, fontsize=clabel_size)
 
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
-offset_list = [0.65, 0.5, 0.5]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
     xq = np.linspace(0.5, 1.5, 200)
@@ -2001,14 +2000,12 @@ ax=fig.add_subplot(3, 2, 2)
 cmap = plt.cm.magma
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
 ax.clabel(cs, fontsize=clabel_size)
 
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
-offset_list = [0.65, 0.5, 0.5]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
     xq = np.linspace(0.5, 1.5, 200)
@@ -2082,14 +2079,12 @@ ax=fig.add_subplot(3, 2, 3)
 cmap = plt.cm.magma
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
 ax.clabel(cs, fontsize=clabel_size)
 
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
-offset_list = [0.65, 0.5, 0.5]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
     xq = np.linspace(0.5, 1.5, 200)
@@ -2165,14 +2160,12 @@ ax=fig.add_subplot(3, 2, 4)
 cmap = plt.cm.magma
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
 ax.clabel(cs, fontsize=clabel_size)
 
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
-offset_list = [0.65, 0.5, 0.5]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
     xq = np.linspace(0.5, 1.5, 200)
@@ -2248,14 +2241,12 @@ ax=fig.add_subplot(3, 2, 5)
 cmap = plt.cm.magma
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
 ax.clabel(cs, fontsize=clabel_size)
 
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
-offset_list = [0.65, 0.5, 0.5]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
     xq = np.linspace(0.5, 1.5, 200)
@@ -2331,8 +2322,7 @@ ax=fig.add_subplot(3, 2, 6)
 cmap = plt.cm.magma
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, linewidths=1.1, cmap=cmap)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
 ax.clabel(cs, fontsize=clabel_size)
 
 # draw lines for design targets
@@ -2450,6 +2440,8 @@ fig.tight_layout()
 plt.show()
 '''
 #%%
+# TODO: validation curves
+
 ###############################################################################
 # VALIDATION
 ###############################################################################
@@ -2473,7 +2465,7 @@ def df_collapse(df, drift_mu_plus_std=0.1):
     
 # main_obj_val.calculate_collapse()
 
-main_obj_val = pd.read_pickle("../../data/validation/tfp_mf_db_ida_10.pickle")
+main_obj_val = pd.read_pickle("../../data/validation/tfp_mf_db_ida_10_iso.pickle")
 df_val_10 = df_collapse(main_obj_val.ida_results)
 
 # with open("../../data/validation/tfp_mf_db_ida_baseline.pickle", 'rb') as picklefile:

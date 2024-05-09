@@ -158,9 +158,12 @@ class Loss_Analysis:
         
         n_col_base = (n_bays+1)**2
         
-        from ast import literal_eval
-        all_beams = literal_eval(self.beam)
-        all_cols = literal_eval(self.column)
+        # from ast import literal_eval
+        # all_beams = literal_eval(self.beam)
+        # all_cols = literal_eval(self.column)
+        
+        all_beams = self.beam
+        all_cols = self.column
         
         # column base plates
         n_col_base = (n_bays+1)**2
@@ -271,9 +274,12 @@ class Loss_Analysis:
         
         n_col_base = (n_bays+1)**2
         
-        from ast import literal_eval
-        all_cols = literal_eval(self.column)
-        all_braces = literal_eval(self.brace)
+        # from ast import literal_eval
+        # all_cols = literal_eval(self.column)
+        # all_braces = literal_eval(self.brace)
+        
+        all_cols = self.column
+        all_braces = self.brace
         
         # column base plates
         n_col_base = (n_bays+1)**2
@@ -548,10 +554,14 @@ class Loss_Analysis:
         
     def process_EDP(self):
 
-        from ast import literal_eval
-        PID = literal_eval(self.PID)
-        PFV = literal_eval(self.PFV)
-        PFA = literal_eval(self.PFA)
+        # from ast import literal_eval
+        # PID = literal_eval(self.PID)
+        # PFV = literal_eval(self.PFV)
+        # PFA = literal_eval(self.PFA)
+        
+        PID = self.PID
+        PFV = self.PFV
+        PFA = self.PFA
         # max_isol_disp = self.max_isol_disp
         
         PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
@@ -580,7 +590,7 @@ class Loss_Analysis:
 
         self.edp = edp_df
     
-    def estimate_damage(self, mode='generate', custom_component_fragilities=None):
+    def estimate_damage(self, mode='generate', custom_fragility_db=None):
         
         
         from pelicun.assessment import Assessment
@@ -674,8 +684,10 @@ class Loss_Analysis:
 
         demand_sample_ext[('SA_Tm',0,1)] = self.sa_tm
         
-        from ast import literal_eval
-        PID_all = literal_eval(self.PID)
+        # from ast import literal_eval
+        # PID_all = literal_eval(self.PID)
+        
+        PID_all = self.PID
         
         demand_sample_ext[('PID_all',0,1)] = max(PID_all)
         
@@ -737,12 +749,13 @@ class Loss_Analysis:
             P58_data_for_this_assessment['Incomplete'] == 1].sort_index() 
         inc_names = incomplete_db.index.tolist()
         
-        custom_fragility_db = pd.read_csv('../resource/loss/custom_component_fragilities.csv',
-                                          header=[0,1], index_col=0)
+        # TODO: review custom fragilities (FEMA P-58 Vol 3.7, 8 9)
+        if custom_fragility_db is None:
+            custom_fragility_db = pd.read_csv('../resource/loss/custom_component_fragilities.csv',
+                                              header=[0,1], index_col=0)
+            
         custom_fragility_db = custom_fragility_db.rename(
             columns=lambda x: '' if "Unnamed" in x else x, level=1)
-        
-        breakpoint() 
         
         additional_fragility_db = pd.concat([custom_fragility_db, incomplete_db], axis=0)
         
@@ -752,6 +765,7 @@ class Loss_Analysis:
             
         mask = additional_fragility_db.index.isin(inc_names)
         additional_fragility_db = additional_fragility_db[mask]
+        
         # TODO: change this section to the system-dependent drift values
         
         # add demand for the replacement criteria
@@ -1040,7 +1054,6 @@ class Loss_Analysis:
         loss_groups = loss_groups.loc[
             (replacement_instances['collapse'] == 0) & (replacement_instances['irreparable'] == 0)]
         
-        # TODO: these two conditions are mutually exclusive
         collapse_freq = replacement_instances['collapse'].sum(axis=0)/n_sample
         irreparable_freq = replacement_instances['irreparable'].sum(axis=0)/n_sample
         
@@ -1050,11 +1063,11 @@ class Loss_Analysis:
         # aggregate
         agg_DF = PAL.repair.aggregate_losses()
         
-        breakpoint()
-        # return(cmp_sample, damage_sample, loss_sample, loss_groups, agg_DF,
-        #        collapse_freq, irreparable_freq)
+        return(cmp_sample, damage_sample, loss_sample, loss_groups, agg_DF,
+                collapse_freq, irreparable_freq)
     
 #%% test
+'''
 # run info
 import pandas as pd
 import numpy as np
@@ -1100,3 +1113,4 @@ additional_frag_db = pd.read_csv('../resource/loss/custom_component_fragilities.
                                   header=[0,1], index_col=0)
 loss.process_EDP()
 loss.estimate_damage(custom_component_fragilities=additional_frag_db)
+'''

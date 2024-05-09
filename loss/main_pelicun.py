@@ -57,7 +57,6 @@ def run_pelicun(database_path, results_path,
     all_demands = all_demands.set_index('EDP', drop=True)
     
     # estimate loss for set
-    
     all_losses = []
     loss_cmp_group = []
     col_list = []
