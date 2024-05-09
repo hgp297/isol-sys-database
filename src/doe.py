@@ -334,9 +334,11 @@ class GP:
         
         
         
+        # TODO: here, weight is changed to favor loocv exploitation
+        rho_wt = 5.0
         
         # use basin hopping to avoid local minima
-        minimizer_kwargs={'args':(bound_df), 'bounds':bnds}
+        minimizer_kwargs={'args':(bound_df, rho_wt), 'bounds':bnds}
         res = basinhopping(self.fn_LOOCV_error, x0, minimizer_kwargs=minimizer_kwargs,
                            niter=100, seed=985)
     
@@ -353,8 +355,6 @@ class GP:
         '''
         
         # evaluate the function at x
-        # TODO: here, weight is changed to favor loocv exploitation
-        rho_wt = 5.0
         fx = np.apply_along_axis(self.fn_LOOCV_error, 1, x_var, bound_df, rho_wt)*-1
         x_keep = x_var[u_var.ravel() < fx.ravel(),:]
         
