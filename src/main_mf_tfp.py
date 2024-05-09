@@ -71,11 +71,11 @@ main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
 #     main_obj = pickle.load(picklefile)
     
 main_obj.calculate_collapse()
-main_obj.perform_doe(n_set=100,batch_size=5, max_iters=1500)
+main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500)
 
 # current settings: loocv, batch of 5, strict convergence, rejection sample, upweigh loocv 5.0
 import pickle
-with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
+with open('../data/tfp_mf_db_doe_exploit.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
     
 #%% DoE with ARD

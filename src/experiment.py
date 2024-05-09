@@ -308,7 +308,7 @@ def run_nlth(design,
 
 def run_doe(prob_target, df_train, df_test, sample_bounds=None,
             batch_size=10, error_tol=0.15, maxIter=1000, conv_tol=1e-2,
-            kernel='rbf_ard'):
+            kernel='rbf_iso'):
     
     import random
     import numpy as np
@@ -370,6 +370,9 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
     
     doe_idx = 0
     
+    # exploitation weighting from Kyprioti et al. 2020
+    rho_list = [10.0, 5.0, 1.0, 0.5, 0.0]
+    rho_idx = 0
     
     import design as ds
     from loads import define_lateral_forces, define_gravity_loads
@@ -453,12 +456,17 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
                 return (df_train, rmse_list, mae_list, nrmse_list, hyperparam_list)
             else:
                 pass
+            
             batch_idx = 0
             df_train.to_csv('../data/doe/temp_save.csv', index=False)
             
+            # select the next points via rejection sampling
+            rho_selected = rho_list[rho_idx % len(rho_list)]
             x_next = mdl.doe_rejection_sampler(batch_size, prob_target, 
-                                                sample_bounds, design_filter=True)
+                                                sample_bounds, rho_wt=rho_selected,
+                                                design_filter=True)
             
+            rho_idx += 1
             # x_next = mdl.doe_mse_loocv(sample_bounds, design_filter=True)
             
             next_df = pd.DataFrame(x_next, columns=covariate_columns)

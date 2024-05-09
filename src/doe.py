@@ -294,7 +294,7 @@ class GP:
             
         return x_keep
     
-    def doe_rejection_sampler(self, n_pts, pr, bound_df, design_filter=False):
+    def doe_rejection_sampler(self, n_pts, pr, bound_df, rho_wt=1.0, design_filter=False):
         """Return points sampled proportional to a custom DoE metric using 
         rejection sampling.
 
@@ -331,11 +331,6 @@ class GP:
         
         x0 = np.array([np.random.uniform(min_list[i], max_list[i])
                           for i in range(n_var)])
-        
-        
-        
-        # TODO: here, weight is changed to favor loocv exploitation
-        rho_wt = 5.0
         
         # use basin hopping to avoid local minima
         minimizer_kwargs={'args':(bound_df, rho_wt), 'bounds':bnds}

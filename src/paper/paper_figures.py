@@ -843,7 +843,7 @@ ax1=fig.add_subplot(2, 2, 1)
 cmap = plt.cm.coolwarm
 sc = ax1.scatter(df_doe['gap_ratio'], df_doe[y_var], alpha=0.2, c=df_doe['impacted'], cmap=cmap)
 ax1.set_ylabel('Peak story drift', fontsize=axis_font)
-ax1.set_xlabel(r'GR', fontsize=axis_font)
+ax1.set_xlabel(r'$GR$', fontsize=axis_font)
 ax1.set_title('a) Gap ratio', fontsize=title_font)
 ax1.set_ylim([0, 0.15])
 
@@ -1351,7 +1351,7 @@ cs = plt.contour(xx_pl, yy_pl, Z, linewidths=1.1, cmap='Blues', vmin=-1)
 
 fig.colorbar(sc, label='Batch added')
 plt.clabel(cs, fontsize=clabel_size)
-plt.xlabel(r'GR', fontsize=axis_font)
+plt.xlabel(r'$GR$', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.title(r'$MSE_w$ selection criterion', fontsize=axis_font)
 plt.grid(True)
@@ -1363,7 +1363,7 @@ ax=fig.add_subplot(projection='3d')
 surf = ax.plot_surface(xx_pl, yy_pl, Z, cmap=plt.cm.viridis,
                         linewidth=0, antialiased=False,
                         alpha=0.7)
-plt.xlabel(r'GR', fontsize=axis_font)
+plt.xlabel(r'$GR$', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.title(r'$MSE_w$ selection criterion', fontsize=axis_font)
 plt.grid(True)
