@@ -353,7 +353,9 @@ class GP:
         '''
         
         # evaluate the function at x
-        fx = np.apply_along_axis(self.fn_LOOCV_error, 1, x_var, bound_df)*-1
+        # TODO: here, weight is changed to favor loocv exploitation
+        rho_wt = 5.0
+        fx = np.apply_along_axis(self.fn_LOOCV_error, 1, x_var, bound_df, rho_wt)*-1
         x_keep = x_var[u_var.ravel() < fx.ravel(),:]
         
         
@@ -510,7 +512,7 @@ class GP:
         return(-fs2 * Wx)
     
     
-    def fn_LOOCV_error(self, X_cand, bound_df):
+    def fn_LOOCV_error(self, X_cand, bound_df, rho=1.0):
         """Return point LOOCV error approximation for a given point
         
         Parameters
@@ -595,7 +597,7 @@ class GP:
         fs2 = fs1**2
         
         # return negative for minimization purposes
-        return(-fs2 * e_cv2_cand)
+        return(-fs2 * e_cv2_cand ** rho)
     
     '''
     def fn_LOOCV_IMSE(self, X_cand, bound_df):

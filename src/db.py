@@ -423,7 +423,8 @@ class Database:
         
         self.ops_analysis = df
                 
-    def perform_doe(self, target_prob=0.5, n_set=200, batch_size=10, kernel='rbf_iso'):
+    def perform_doe(self, target_prob=0.5, n_set=200, max_iters=1000,
+                    batch_size=10, kernel='rbf_iso'):
         
         try:
             whole_set = self.ops_analysis
@@ -433,8 +434,7 @@ class Database:
         # n_set is both test_train split
         ml_set = whole_set.sample(n=n_set, replace=False, random_state=985)
         
-        # TODO: no need to split if no test set
-        # split 50/50 for 
+        # split 50/50 for holdout set
         df_train = ml_set.head(int(n_set/2))
         df_test = ml_set.tail(int(n_set/2))
         
@@ -445,7 +445,7 @@ class Database:
         
         df_doe, rmse_hist, mae_hist, nrmse_hist, hyperparam_list = run_doe(target_prob, df_train, df_test, 
                                              batch_size=batch_size, error_tol=1e-2, 
-                                             maxIter=1000, conv_tol=1e-4,
+                                             maxIter=max_iters, conv_tol=1e-4,
                                              kernel=kernel)
         
         self.doe_analysis = df_doe
@@ -796,7 +796,6 @@ class Database:
             col_list.append(collapse_rate)
             irr_list.append(irr_rate)
                  
-            breakpoint()
         
         # concat list of df into one df
         loss_df = pd.concat(all_losses)

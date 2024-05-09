@@ -591,6 +591,3 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
         batch_no += 1
     print('DoE did not converge within maximum iteration specified.')
     return df_train, rmse_list, mae_list, nrmse_list, hyperparam_list
-
-#Do we have to run 2 more nonlinear rhas in our model with new ground motions?
-#To get the other 2 sets of edps

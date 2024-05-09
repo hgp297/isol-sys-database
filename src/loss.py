@@ -749,7 +749,6 @@ class Loss_Analysis:
             P58_data_for_this_assessment['Incomplete'] == 1].sort_index() 
         inc_names = incomplete_db.index.tolist()
         
-        # TODO: review custom fragilities (FEMA P-58 Vol 3.7, 8 9)
         if custom_fragility_db is None:
             custom_fragility_db = pd.read_csv('../resource/loss/custom_component_fragilities.csv',
                                               header=[0,1], index_col=0)
@@ -765,6 +764,7 @@ class Loss_Analysis:
             
         mask = additional_fragility_db.index.isin(inc_names)
         additional_fragility_db = additional_fragility_db[mask]
+        
         
         # TODO: change this section to the system-dependent drift values
         

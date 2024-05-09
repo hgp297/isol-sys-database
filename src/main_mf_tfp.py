@@ -61,22 +61,22 @@
 # you could either read the csv or unpickle
 # or chain this straight from the analyzed main_obj
 
-# pickle_path = '../data/'
+pickle_path = '../data/'
 
-# import pandas as pd
+import pandas as pd
 
-# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
 
-# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
-# #     main_obj = pickle.load(picklefile)
+# with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+#     main_obj = pickle.load(picklefile)
     
-# main_obj.calculate_collapse()
-# main_obj.perform_doe(n_set=100,batch_size=5)
+main_obj.calculate_collapse()
+main_obj.perform_doe(n_set=100,batch_size=5, max_iters=1500)
 
-# # current settings: loocv, batch of 5, strict convergence, rejection sample
-# import pickle
-# with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+# current settings: loocv, batch of 5, strict convergence, rejection sample, upweigh loocv 5.0
+import pickle
+with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
     
 #%% DoE with ARD
 
@@ -206,14 +206,14 @@
 
 #%% run pelicun
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
 
-main_obj.run_pelicun(main_obj.doe_analysis, mode='generate',
-                cmp_dir='../resource/loss/')
+# main_obj.run_pelicun(main_obj.doe_analysis, mode='generate',
+#                 cmp_dir='../resource/loss/')
 
-import pickle
-loss_path = '../data/loss/'
-with open(loss_path+'tfp_mf_db_doe_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_doe_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
