@@ -71,12 +71,41 @@ main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
 #     main_obj = pickle.load(picklefile)
     
 main_obj.calculate_collapse()
-main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500)
+main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500, strategy='balanced')
 
-# current settings: loocv, batch of 5, strict convergence, rejection sample, upweigh loocv 5.0
+# current settings: loocv, batch of 5, stricter convergence, rejection sample
 import pickle
-with open('../data/tfp_mf_db_doe_exploit.pickle', 'wb') as f:
+with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
+    
+    
+# # exploit
+
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
+    
+# main_obj.calculate_collapse()
+# main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500, strategy='exploit')
+
+# import pickle
+# with open('../data/tfp_mf_db_doe_exploit.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+    
+# # explore
+    
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
+    
+# main_obj.calculate_collapse()
+# main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500, strategy='explore')
+
+# import pickle
+# with open('../data/tfp_mf_db_doe_explore.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
     
 #%% DoE with ARD
 
@@ -109,17 +138,15 @@ with open('../data/tfp_mf_db_doe_exploit.pickle', 'wb') as f:
 # randomly select ground motion for each
 #%% load DoE
 
-# from db import Database
-# pickle_path = '../data/'
+from db import Database
+pickle_path = '../data/'
 
-# import pandas as pd
+import pandas as pd
 
-# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
-
-# # with open(pickle_path+"tfp_mf_db_doe.pickle", 'rb') as picklefile:
-# #     main_obj = pickle.load(picklefile)
+main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
     
-# validation_path = '../data/validation/'
+validation_path = '../data/validation/'
+
 # # TODO: is there a way to pipe this straight from GP? and organize depending on target
 # sample_dict = {
 #     'gap_ratio' : 0.6,
@@ -170,6 +197,22 @@ with open('../data/tfp_mf_db_doe_exploit.pickle', 'wb') as f:
 # import pickle
 # with open(validation_path+'tfp_mf_db_ida_2_5_iso.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
+
+sample_dict = {
+    'gap_ratio' : 1.0,
+    'RI' : 2.0,
+    'T_ratio': 3.0,
+    'zeta_e': 0.15
+}
+
+design_df = pd.DataFrame(sample_dict, index=[0])
+
+main_obj.prepare_idas(design_df)
+main_obj.analyze_ida('ida_baseline.csv')
+
+import pickle
+with open(validation_path+'tfp_mf_db_ida_baseline.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 #%% run pushover
 

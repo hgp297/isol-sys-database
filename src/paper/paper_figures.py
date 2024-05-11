@@ -20,6 +20,7 @@ import pickle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from doe import GP
 
 plt.close('all')
@@ -132,6 +133,10 @@ def make_design_space(res):
     return(X_space)
 
 #%% collapse fragility def
+
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
 
 # collapse as a probability
 from scipy.stats import lognorm
@@ -423,8 +428,6 @@ def get_steel_coefs(df, steel_per_unit=1.25):
     reg.fit(X=Vs, y=steel_cost_per_sf)
     return({'coef':reg.coef_, 'intercept':reg.intercept_})
 
-# TODO: add economy of scale for land
-# TODO: investigate upfront cost's influence by Tm
 def calc_upfront_cost(X_test, steel_coefs,
                       land_cost_per_sqft=2837/(3.28**2),
                       W=3037.5, Ws=2227.5):
@@ -439,7 +442,6 @@ def calc_upfront_cost(X_test, steel_coefs,
     
     from loads import estimate_period
     
-    # TODO: formalize this for all structures
     # current dummy structure: 4 bays, 4 stories
     # 13 ft stories, 30 ft bays
     X_query = X_test.copy()
@@ -468,7 +470,6 @@ def calc_upfront_cost(X_test, steel_coefs,
     steel_cost_per_sf = steel_coefs['intercept'] + steel_coefs['coef']*Vs
     # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
     
-    # TODO: change if generalized building
     bldg_area = 4 * (30*4)**2
     steel_cost = steel_cost_per_sf * bldg_area
     land_area = (4*30*12.0 + moat_gap)**2
@@ -1026,7 +1027,7 @@ mdl_doe.set_outcome('collapse_prob')
 
 mdl_doe.fit_gpr(kernel_name=kernel_name)
 
-X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 2.0, 0.15]]),
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
                           columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
 
 
@@ -1225,7 +1226,8 @@ plt.title('Collapse risk using post DoE points', fontsize=axis_font)
 plt.show()
 
 #%% doe-set, gap_Ry plot
-X_plot = make_2D_plotting_space(mdl_doe.X, res)
+X_plot = make_2D_plotting_space(mdl_doe.X, res,
+                                third_var_set = 3.0)
 
 import time
 t0 = time.time()
@@ -1324,7 +1326,7 @@ x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 
 # loocv
-rho = 5.0
+rho = 0.0
 mse_w = np.array(loo_error**rho*fs2_doe)
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 Z = mse_w.reshape(xx_pl.shape)
@@ -1334,7 +1336,7 @@ batch_size = 5
 df_doe = df_doe.reset_index(drop=True)
 df_doe['batch_id'] = df_doe.index.values//batch_size + 1
 
-plt.close('all')
+# plt.close('all')
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -1564,7 +1566,7 @@ cost_pareto = constr_costs.iloc[pareto_mask]
 X_pareto['acceptable_risk'] = np.sign(risk_thresh - risk_pareto)
 X_pareto['predicted_risk'] = risk_pareto
 
-dom_idx = np.random.choice(len(pareto_array), 1000, replace = False)
+dom_idx = np.random.choice(len(pareto_array), 500, replace = False)
 dominated_sample = np.array([pareto_array[i] for i in dom_idx])
 
 # plt.close('all')
@@ -1940,7 +1942,7 @@ x_var = 'gap_ratio'
 y_var = 'RI'
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
                             third_var_set = 2.0, fourth_var_set = 0.1)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -1968,7 +1970,7 @@ ax.clabel(cs, fontsize=clabel_size)
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.5, 1.5, 200)
+    xq = np.linspace(0.3, 1.5, 200)
     
     Ry_target = 1.0
     
@@ -2015,7 +2017,7 @@ for j, prob_des in enumerate(prob_list):
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'a) $T_M/T_{fb} = 2.0$, $\zeta_M = 0.10$', fontsize=title_font)
-ax.set_xlim([0.5, 1.5])
+ax.set_xlim([0.3, 1.5])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2024,7 +2026,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
                             third_var_set = 3.5, fourth_var_set = 0.1)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2050,7 +2052,7 @@ ax.clabel(cs, fontsize=clabel_size)
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.5, 1.5, 200)
+    xq = np.linspace(0.3, 1.5, 200)
     
     Ry_target = 1.0
     
@@ -2094,7 +2096,7 @@ for j, prob_des in enumerate(prob_list):
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'b) $T_M/T_{fb} = 3.5$, $\zeta_M = 0.10$', fontsize=title_font)
-ax.set_xlim([0.5, 1.5])
+ax.set_xlim([0.3, 1.5])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2103,7 +2105,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
                             third_var_set = 2.0, fourth_var_set = 0.15)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2129,7 +2131,7 @@ ax.clabel(cs, fontsize=clabel_size)
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.5, 1.5, 200)
+    xq = np.linspace(0.3, 1.5, 200)
     
     Ry_target = 1.0
     
@@ -2176,7 +2178,7 @@ for j, prob_des in enumerate(prob_list):
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'c) $T_M/T_{fb} = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
-ax.set_xlim([0.5, 1.5])
+ax.set_xlim([0.3, 1.5])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2184,7 +2186,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
                             third_var_set = 3.5, fourth_var_set = 0.15)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2210,7 +2212,7 @@ ax.clabel(cs, fontsize=clabel_size)
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.5, 1.5, 200)
+    xq = np.linspace(0.3, 1.5, 200)
     
     Ry_target = 1.0
     
@@ -2257,7 +2259,7 @@ for j, prob_des in enumerate(prob_list):
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'd) $T_M/T_{fb} = 3.5$, $\zeta_M = 0.15$', fontsize=title_font)
-ax.set_xlim([0.5, 1.5])
+ax.set_xlim([0.3, 1.5])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2265,7 +2267,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
                             third_var_set = 2.0, fourth_var_set = 0.20)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2291,7 +2293,7 @@ ax.clabel(cs, fontsize=clabel_size)
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.5, 1.5, 200)
+    xq = np.linspace(0.3, 1.5, 200)
     
     Ry_target = 1.0
     
@@ -2338,7 +2340,7 @@ for j, prob_des in enumerate(prob_list):
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'e) $T_M/T_{fb} = 2.0$, $\zeta_M = 0.20$', fontsize=title_font)
-ax.set_xlim([0.5, 1.5])
+ax.set_xlim([0.3, 1.5])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2346,7 +2348,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.5, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
                             third_var_set = 3.5, fourth_var_set = 0.2)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2373,7 +2375,7 @@ prob_list = [0.025, 0.05, 0.1]
 offset_list = [0.65, 0.5, 0.5]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.5, 1.5, 200)
+    xq = np.linspace(0.3, 1.5, 200)
     
     Ry_target = 1.0
     
@@ -2420,7 +2422,7 @@ for j, prob_des in enumerate(prob_list):
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'f) $T_M/T_{fb} = 3.5$, $\zeta_M = 0.20$', fontsize=title_font)
-ax.set_xlim([0.5, 1.5])
+ax.set_xlim([0.3, 1.5])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2482,7 +2484,6 @@ fig.tight_layout()
 plt.show()
 '''
 #%%
-# TODO: validation curves
 
 ###############################################################################
 # VALIDATION
@@ -2492,66 +2493,58 @@ def df_collapse(df, drift_mu_plus_std=0.1):
     
     from experiment import collapse_fragility
     df[['max_drift',
-       'collapse_prob']] = df.apply(lambda row: collapse_fragility(row, drift_at_mu_plus_std=drift_mu_plus_std),
-                                            axis='columns', result_type='expand')
+       'collapse_prob']] = df.apply(
+           lambda row: collapse_fragility(
+               row, drift_at_mu_plus_std=drift_mu_plus_std), 
+           axis='columns', result_type='expand')
                            
     from numpy import log
     df['log_collapse_prob'] = log(df['collapse_prob'])
     
     return df
     
-#%% 10% validation
 
-# with open("../../data/validation/tfp_mf_db_ida_10.pickle", 'rb') as picklefile:
-#     main_obj_val = pickle.load(picklefile)
-    
-# main_obj_val.calculate_collapse()
+#%% full validation (IDA data)
 
-main_obj_val = pd.read_pickle("../../data/validation/tfp_mf_db_ida_10_iso.pickle")
+val_dir = '../../data/validation/'
+
+val_10_file = 'tfp_mf_db_ida_10_iso.pickle'
+val_5_file = 'tfp_mf_db_ida_5_iso.pickle'
+val_2_file = 'tfp_mf_db_ida_2_5_iso.pickle'
+baseline_file = 'tfp_mf_db_ida_baseline.pickle'
+
+main_obj_val = pd.read_pickle(val_dir+val_10_file)
 df_val_10 = df_collapse(main_obj_val.ida_results)
+df_val_10 = df_val_10.reset_index(drop=True)
 
-# with open("../../data/validation/tfp_mf_db_ida_baseline.pickle", 'rb') as picklefile:
-#     main_obj_val = pickle.load(picklefile)
+main_obj_val = pd.read_pickle(val_dir+val_5_file)
+df_val_5 = df_collapse(main_obj_val.ida_results)
+df_val_5 = df_val_5.reset_index(drop=True)
 
-main_obj_val = pd.read_pickle("../../data/validation/tfp_mf_db_ida_baseline.pickle")
-df_val_baseline = df_collapse(main_obj_val.ida_results)
+main_obj_val = pd.read_pickle(val_dir+val_2_file)
+df_val_2_5 = df_collapse(main_obj_val.ida_results)
+df_val_2_5 = df_val_2_5.reset_index(drop=True)
 
-df_val_10['max_drift'] = df_val_10.PID.apply(max)
-df_val_10['log_drift'] = np.log(df_val_10['max_drift'])
-df_val_10['max_velo'] = df_val_10.PFV.apply(max)
-df_val_10['max_accel'] = df_val_10.PFA.apply(max)
-df_val_10['T_ratio'] = df_val_10['T_m'] / df_val_10['T_fb']
-pi = 3.14159
-g = 386.4
-zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
-BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
-df_val_10['Bm'] = np.interp(df_val_10['zeta_e'], zetaRef, BmRef)
-df_val_10['gap_ratio'] = (df_val_10['constructed_moat']*4*pi**2)/ \
-    (g*(df_val_10['sa_tm']/df_val_10['Bm'])*df_val_10['T_m']**2)
-    
-df_val_baseline['max_drift'] = df_val_baseline.PID.apply(max)
-df_val_baseline['log_drift'] = np.log(df_val_baseline['max_drift'])
-df_val_baseline['max_velo'] = df_val_baseline.PFV.apply(max)
-df_val_baseline['max_accel'] = df_val_baseline.PFA.apply(max)
-df_val_baseline['T_ratio'] = df_val_baseline['T_m'] / df_val_baseline['T_fb']
-pi = 3.14159
-g = 386.4
-zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
-BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
-df_val_baseline['Bm'] = np.interp(df_val_baseline['zeta_e'], zetaRef, BmRef)
-df_val_baseline['gap_ratio'] = (df_val_baseline['constructed_moat']*4*pi**2)/ \
-    (g*(df_val_baseline['sa_tm']/df_val_baseline['Bm'])*df_val_baseline['T_m']**2)
-    
+main_obj_val = pd.read_pickle(val_dir+baseline_file)
+df_base = df_collapse(main_obj_val.ida_results)
+df_base = df_base.reset_index(drop=True)
 
 ida_levels = [1.0, 1.5, 2.0]
 val_10_collapse = np.zeros((3,))
+val_5_collapse = np.zeros((3,))
+val_2_collapse = np.zeros((3,))
 baseline_collapse = np.zeros((3,))
 
 for i, lvl in enumerate(ida_levels):
     val_10_ida = df_val_10[df_val_10['ida_level']==lvl]
-    base_ida = df_val_baseline[df_val_baseline['ida_level']==lvl]
+    val_5_ida = df_val_5[df_val_5['ida_level']==lvl]
+    val_2_ida = df_val_2_5[df_val_2_5['ida_level']==lvl]
+    base_ida = df_base[df_base['ida_level']==lvl]
     
     val_10_collapse[i] = val_10_ida['collapse_prob'].mean()
+    val_5_collapse[i] = val_5_ida['collapse_prob'].mean()
+    val_2_collapse[i] = val_2_ida['collapse_prob'].mean()
+    
     baseline_collapse[i] = base_ida['collapse_prob'].mean()
     
 print('==================================')
@@ -2559,12 +2552,300 @@ print('   Validation results  (1.0 MCE)  ')
 print('==================================')
 
 inverse_collapse = val_10_collapse[0]
-baseline_collapse_mce = baseline_collapse[0]
 
 print('====== INVERSE DESIGN (10%) ======')
 print('MCE collapse frequency: ',
       f'{inverse_collapse:.2%}')
 
+inverse_collapse = val_5_collapse[0]
+
+print('====== INVERSE DESIGN (5%) ======')
+print('MCE collapse frequency: ',
+      f'{inverse_collapse:.2%}')
+
+inverse_collapse = val_2_collapse[0]
+
+print('====== INVERSE DESIGN (2.5%) ======')
+print('MCE collapse frequency: ',
+      f'{inverse_collapse:.2%}')
+
+baseline_collapse_mce = baseline_collapse[0]
+
 print('====== BASELINE DESIGN ======')
 print('MCE collapse frequency: ',
       f'{baseline_collapse_mce:.2%}')
+
+val_10_mce = df_val_10[df_val_10['ida_level']==1.0]
+val_5_mce = df_val_5[df_val_5['ida_level']==1.0]
+val_2_mce = df_val_2_5[df_val_2_5['ida_level']==1.0]
+base_mce = df_base[df_base['ida_level']==1.0]
+
+#%%
+from scipy.stats import lognorm
+from scipy.optimize import curve_fit
+f = lambda x,mu,sigma: lognorm(sigma,mu).cdf(x)
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(13, 10))
+
+b_TOT = np.linalg.norm([0.2, 0.2, 0.2, 0.4])
+
+theta_10, beta_10 = curve_fit(f,ida_levels,val_10_collapse)[0]
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_10, beta_10)
+p2 = f(xx_pr, theta_10, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p)
+# ax1.plot(xx_pr, p2)
+ax1.axhline(0.1, linestyle='--', color='black')
+ax1.axvline(1.0, linestyle='--', color='black')
+ax1.text(2.2, 0.12, r'10\% collapse risk',
+          fontsize=subt_font, color='black')
+ax1.text(0.25, 0.13, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+# ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+ax1.set_ylabel('Collapse probability', fontsize=axis_font)
+# ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax1.set_title('10\% design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [val_10_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax1.grid()
+ax1.set_xlim([0, 4.0])
+ax1.set_ylim([0, 1.0])
+
+####
+theta_5, beta_5 = curve_fit(f,ida_levels,val_5_collapse)[0]
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_5, beta_5)
+p2 = f(xx_pr, theta_5, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax2=fig.add_subplot(2, 2, 2)
+ax2.plot(xx_pr, p)
+# ax2.plot(xx_pr, p2)
+ax2.axhline(0.05, linestyle='--', color='black')
+ax2.axvline(1.0, linestyle='--', color='black')
+ax2.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax2.text(2.2, 0.07, r'5\% collapse risk',
+          fontsize=subt_font, color='black')
+ax2.text(0.25, 0.08, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+# ax2.text(0.3, 0.17, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+
+# ax2.set_ylabel('Collapse probability', fontsize=axis_font)
+# ax2.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax2.set_title('5\% design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax2.plot([lvl], [val_5_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax2.grid()
+ax2.set_xlim([0, 4.0])
+ax2.set_ylim([0, 1.0])
+
+####
+theta_2, beta_2 = curve_fit(f,ida_levels,val_2_collapse)[0]
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_2, beta_2)
+p2 = f(xx_pr, theta_2, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax3=fig.add_subplot(2, 2, 3)
+ax3.plot(xx_pr, p)
+# ax3.plot(xx_pr, p2)
+ax3.axhline(0.025, linestyle='--', color='black')
+ax3.axvline(1.0, linestyle='--', color='black')
+ax3.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax3.text(2.2, 0.04, r'2.5\% collapse risk',
+          fontsize=subt_font, color='black')
+ax3.text(0.3, 0.045, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+# ax3.text(0.25, 0.04, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+
+ax3.set_ylabel('Collapse probability', fontsize=axis_font)
+ax3.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax3.set_title('2.5\% design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax3.plot([lvl], [val_2_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax3.grid()
+ax3.set_xlim([0, 4.0])
+ax3.set_ylim([0, 1.0])
+
+####
+theta_base, beta_base = curve_fit(f,ida_levels,baseline_collapse)[0]
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_base, beta_base)
+p2 = f(xx_pr, theta_base, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax4=fig.add_subplot(2, 2, 4)
+ax4.plot(xx_pr, p, label='Best lognormal fit')
+# ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
+ax4.axhline(0.1, linestyle='--', color='black')
+ax4.axvline(1.0, linestyle='--', color='black')
+ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax4.text(2.2, 0.12, r'10\% collapse risk',
+          fontsize=subt_font, color='black')
+ax4.text(0.25, 0.13, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+# ax4.text(0.2, 0.2, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+
+# ax4.set_ylabel('Collapse probability', fontsize=axis_font)
+ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax4.set_title('Baseline design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax4.plot([lvl], [baseline_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax4.grid()
+ax4.set_xlim([0, 4.0])
+ax4.set_ylim([0, 1.0])
+# ax4.legend(fontsize=subt_font-2, loc='center right')
+
+fig.tight_layout()
+# plt.savefig('./figures/fragility_curve.eps', dpi=1200, format='eps')
+plt.show()
+
+from numpy import exp
+print('10% fit mean:', exp(theta_10))
+print('10% fit beta:', beta_10)
+print('5% fit mean:', exp(theta_5))
+print('5% fit beta:', beta_5)
+print('2.5% fit mean:', exp(theta_2))
+print('2.5% fit beta:', beta_2)
+print('Baseline fit mean:', exp(theta_base))
+print('Baseline fit beta:', beta_base)
+
+#%% validation collapse distribution at mce
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+
+mce_dict = {'10%': val_10_mce['collapse_prob'],
+            '5%': val_5_mce['collapse_prob'],
+            '2.5%': val_2_mce['collapse_prob'],
+            'Baseline': base_mce['collapse_prob']}
+
+test = pd.DataFrame(mce_dict)
+
+df_mce = pd.DataFrame.from_dict(
+    data=mce_dict,
+    orient='index',
+).T
+
+df_mce = df_mce.dropna()
+
+# print('Inverse runs requiring replacement:', repl_cases_10)
+# print('Baseline runs requiring replacement:', base_repl_cases)
+
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings("ignore", category=FutureWarning) 
+
+import seaborn as sns
+ax = sns.stripplot(data=df_mce, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+
+sns.boxplot(data=df_mce, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4)
+ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel('Collapse probability', fontsize=axis_font)
+ax.axvline(0.10, linestyle='--', color='black')
+ax.grid(visible=True)
+
+# ax.text(0.095, 0, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 1, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 2, u'\u2192', fontsize=axis_font, color='red')
+# ax.text(0.095, 3, u'\u2192', fontsize=axis_font, color='red')
+
+# ax.text(0.084, 0, f'{repl_cases_10} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 1, f'{repl_cases_5} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 2, f'{repl_cases_2} runs', fontsize=axis_font, color='red')
+# ax.text(0.084, 3, f'{base_repl_cases} runs', fontsize=axis_font, color='red')
+
+ax.text(0.075, 3.4, r'10% threshold', fontsize=axis_font, color='black')
+# ax.set_xlim(0, 0.1)
+
+ax.set_xscale("log")
+plt.show()
+warnings.resetwarnings()
+
+#%% validation drift distribution at mce
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+mce_dr_dict = {'10%': val_10_mce['max_drift'],
+            '5%': val_5_mce['max_drift'],
+            '2.5%': val_2_mce['max_drift'],
+            'Baseline': base_mce['max_drift']}
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+df_mce = pd.DataFrame.from_dict(
+    data=mce_dr_dict,
+    orient='index',
+).T
+
+
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings("ignore", category=FutureWarning) 
+
+import seaborn as sns
+ax = sns.stripplot(data=df_mce, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+ax.set_xlim(0, 0.2)
+sns.boxplot(data=df_mce, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4)
+ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel('Max drift', fontsize=axis_font)
+ax.axvline(0.078, linestyle='--', color='black')
+ax.grid(visible=True)
+
+ax.text(0.08, 3.45, r'50\% collapse threshold, $\theta=0.078$', fontsize=axis_font, color='black')
+# ax.set_xscale("log")
+# plt.savefig('./figures/drift_box.pdf')
+plt.show()
+
+warnings.resetwarnings()

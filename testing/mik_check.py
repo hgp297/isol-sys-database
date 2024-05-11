@@ -350,7 +350,7 @@ ops.recorder('Element', '-ele', 51, '-file', spring_moment, 'localForce')
 
 ops.analysis("Static")                      # create analysis object
 
-peaks = np.arange(0.0, 80.0, 6.0)
+peaks = np.arange(0.0, 30.0, 3.0)
 steps = 500
 for i, pk in enumerate(peaks):
     du = (-1.0)**i*(peaks[i] / steps)
@@ -635,3 +635,10 @@ plt.ylabel('Moment (kip-ft)')
 plt.xlabel('Rotation (rads)')
 plt.legend()
 plt.grid(True)
+
+# stress strain
+fig = plt.figure()
+plt.plot(-spring_rot['rotY'], -spring_res['mz']/12, color='maroon',
+         linewidth=1.5, label='new')
+plt.axis('off')
+plt.grid(False)
