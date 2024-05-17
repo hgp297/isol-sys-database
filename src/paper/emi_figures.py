@@ -134,46 +134,59 @@ def make_design_space(res):
 
     return(X_space)
 
+###############################################################################
+    # Full prediction models
+###############################################################################
+
+# two ways of doing this
+        
+        # 1) predict impact first (binary), then fit the impact predictions 
+        # with the impact-only SVR and likewise with non-impacts. This creates
+        # two tiers of predictions that are relatively flat (impact dominated)
+        # 2) using expectations, get probabilities of collapse and weigh the
+        # two (cost|impact) regressions with Pr(impact). Creates smooth
+        # predictions that are somewhat moderate
+        
 def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
                outcome='cost_50%'):
         
 #        # get points that are predicted impact from full dataset
 #        preds_imp = impact_pred_mdl.svc.predict(self.X)
 #        df_imp = self.X[preds_imp == 1]
+
+    # get probability of impact
+    if 'log_reg_kernel' in impact_pred_mdl.named_steps.keys():
+        probs_imp = impact_pred_mdl.predict_proba(impact_pred_mdl.K_pr)
+    else:
+        probs_imp = impact_pred_mdl.predict_proba(X)
+
+    miss_prob = probs_imp[:,0]
+    hit_prob = probs_imp[:,1]
     
-        # get probability of impact
-        if 'log_reg_kernel' in impact_pred_mdl.named_steps.keys():
-            probs_imp = impact_pred_mdl.predict_proba(impact_pred_mdl.K_pr)
-        else:
-            probs_imp = impact_pred_mdl.predict_proba(X)
-    
-        miss_prob = probs_imp[:,0]
-        hit_prob = probs_imp[:,1]
-        
-        # weight with probability of collapse
-        # E[Loss] = (impact loss)*Pr(impact) + (no impact loss)*Pr(no impact)
-        # run SVR_hit model on this dataset
-        outcome_str = outcome+'_pred'
-        expected_DV_hit = pd.DataFrame(
-                {outcome_str:np.multiply(
-                        hit_loss_mdl.predict(X),
-                        hit_prob)})
-                
+    # weight with probability of collapse
+    # E[Loss] = (impact loss)*Pr(impact) + (no impact loss)*Pr(no impact)
+    # run SVR_hit model on this dataset
+    outcome_str = outcome+'_pred'
+    expected_DV_hit = pd.DataFrame(
+            {outcome_str:np.multiply(
+                    hit_loss_mdl.predict(X).ravel(),
+                    hit_prob)})
+            
 #        # get points that are predicted no impact from full dataset
 #        df_mss = self.X[preds_imp == 0]
-        
-        # run SVR_miss model on this dataset
-        expected_DV_miss = pd.DataFrame(
-                {outcome_str:np.multiply(
-                        miss_loss_mdl.predict(X),
-                        miss_prob)})
-        
-        expected_DV = expected_DV_hit + expected_DV_miss
-        
-        # self.median_loss_pred = pd.concat([loss_pred_hit,loss_pred_miss], 
-        #                                   axis=0).sort_index(ascending=True)
-        
-        return(expected_DV)
+    
+    # run miss model on this dataset
+    expected_DV_miss = pd.DataFrame(
+            {outcome_str:np.multiply(
+                    miss_loss_mdl.predict(X).ravel(),
+                    miss_prob)})
+    
+    expected_DV = expected_DV_hit + expected_DV_miss
+    
+    # self.median_loss_pred = pd.concat([loss_pred_hit,loss_pred_miss], 
+    #                                   axis=0).sort_index(ascending=True)
+    
+    return(expected_DV)
 #%% collapse fragility def
 
 plt.rcParams["text.usetex"] = True
@@ -463,22 +476,22 @@ plt.show()
 #%% impact prediction
 
 # prepare the problem
-mdl = GP(df)
-mdl.set_covariates(covariate_list)
-mdl.set_outcome('impacted', use_ravel=True)
-mdl.test_train_split(0.2)
+mdl_impact = GP(df)
+mdl_impact.set_covariates(covariate_list)
+mdl_impact.set_outcome('impacted', use_ravel=True)
+mdl_impact.test_train_split(0.2)
 
-mdl.fit_gpc(kernel_name='rbf_iso')
+mdl_impact.fit_gpc(kernel_name='rbf_iso')
 
 # predict the entire dataset
-preds_imp = mdl.gpc.predict(mdl.X)
-probs_imp = mdl.gpc.predict_proba(mdl.X)
+preds_imp = mdl_impact.gpc.predict(mdl_impact.X)
+probs_imp = mdl_impact.gpc.predict_proba(mdl_impact.X)
 
 # we've done manual CV to pick the hyperparams that trades some accuracy
 # in order to lower false negatives
 from sklearn.metrics import confusion_matrix
 
-tn, fp, fn, tp = confusion_matrix(mdl.y, preds_imp).ravel()
+tn, fp, fn, tp = confusion_matrix(mdl_impact.y, preds_imp).ravel()
 print('False negatives: ', fn)
 print('False positives: ', fp)
 
@@ -503,12 +516,12 @@ xvar = 'gap_ratio'
 yvar = 'zeta_e'
 
 res = 75
-X_plot = make_2D_plotting_space(mdl.X, res, x_var=xvar, y_var=yvar, 
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 2.0, fourth_var_set = 3.0)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
-Z = mdl.gpc.predict_proba(X_plot)[:,1]
+Z = mdl_impact.gpc.predict_proba(X_plot)[:,1]
 
 
 x_pl = np.unique(xx)
@@ -534,9 +547,9 @@ cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.1, cmap='Blues', vmin=-1,
                   levels=np.linspace(0.1,1.0,num=10))
 plt.clabel(cs, fontsize=clabel_size)
 
-# sc = ax3.scatter(mdl.X_train[xvar][:plt_density],
-#             mdl.X_train[yvar][:plt_density],
-#             s=30, c=mdl.y_train[:plt_density],
+# sc = ax3.scatter(mdl_impact.X_train[xvar][:plt_density],
+#             mdl_impact.X_train[yvar][:plt_density],
+#             s=30, c=mdl_impact.y_train[:plt_density],
 #             cmap=plt.cm.copper, edgecolors='w')
 
 #ax1.contour(xx, yy, Z, levels=[0.5], linewidths=2,
@@ -563,19 +576,21 @@ plt.show()
 # Fit costs (SVR), fit time (KLR)
 
 # fit impacted set
-# mdl_cost_hit.fit_svr()
 mdl_cost_hit.fit_kernel_ridge(kernel_name='rbf')
-
-# mdl_time_hit.fit_svr()
 mdl_time_hit.fit_kernel_ridge(kernel_name='rbf')
 
 # fit no impact set
-# mdl_cost_miss.fit_svr()
 mdl_cost_miss.fit_kernel_ridge(kernel_name='rbf')
-
-# mdl_time_miss.fit_svr()
 mdl_time_miss.fit_kernel_ridge(kernel_name='rbf')
 
 
 mdl_repl_hit.fit_kernel_ridge(kernel_name='rbf')
 mdl_repl_miss.fit_kernel_ridge(kernel_name='rbf')
+
+#%%
+
+grid_repair_time = predict_DV(X_plot,
+                              mdl_impact.gpc,
+                              mdl_time_hit.kr,
+                              mdl_time_miss.kr,
+                              outcome=time_var)
