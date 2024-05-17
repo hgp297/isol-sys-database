@@ -410,7 +410,6 @@ def get_steel_coefs(df, steel_per_unit=1.25):
     steel_cost = steel_per_unit*bldg_wt
     bldg_sf = np.array(n_stories * L_bldg**2, dtype=float)
     steel_cost_per_sf = steel_cost/bldg_sf
-    compare = pd.DataFrame([steel_cost_per_sf, df['RI']])
     
     # find design base shear as a feature
     pi = 3.14159
@@ -699,16 +698,23 @@ mpl.rcParams['xtick.labelsize'] = label_size
 mpl.rcParams['ytick.labelsize'] = label_size 
 clabel_size = 16
 
-main_obj_doe = pd.read_pickle('../../data/tfp_mf_db_doe.pickle')
+main_obj_doe = pd.read_pickle('../../data/tfp_mf_db_doe_prestrat.pickle')
+df_doe = main_obj_doe.doe_analysis
 
-# with open("../../data/tfp_mf_db_doe.pickle", 'rb') as picklefile:
-#     main_obj_doe = pickle.load(picklefile)
+
+# from ast import literal_eval
+# df_doe = pd.read_csv('../../data/doe/temp_save.csv', 
+#                      converters={'PID': literal_eval,
+#                                  'PFV': literal_eval,
+#                                  'PFA': literal_eval,
+#                                  'RID': literal_eval,
+#                                  'beam': literal_eval,
+#                                  'column': literal_eval})
+
 
 kernel_name = 'rbf_iso'
 
 collapse_drift_def_mu_std = 0.1
-df_doe = main_obj_doe.doe_analysis
-
 #%%
 from experiment import collapse_fragility
 df_doe[['max_drift',
@@ -742,7 +748,7 @@ df_doe['gap_ratio'] = (df_doe['constructed_moat']*4*pi**2)/ \
 print('% impact of DoE set:', sum(df_doe['impacted'])/df_doe.shape[0])
 print('average drift:', df_doe['max_drift'].mean())
 
-df_init = df_doe.head(50)
+df_init = df_doe.head(100)
 
 from loads import define_gravity_loads
 config_dict = {
@@ -811,15 +817,23 @@ all_hyperparams = np.delete(all_hyperparams, 1, axis=0)
 
 max_thetas = all_hyperparams.max(axis=0)
 hyperparam_norm = all_hyperparams / max_thetas
+
+change_array = np.diff(nrmse_hist)
+conv_array = np.abs(change_array) < 1e-3
 ax3=fig.add_subplot(1, 3, 3)
-for param_idx in range(all_hyperparams.shape[1]):
-    ax3.plot(np.arange(0, (len(hyperparam_norm))*batch_size, batch_size), 
-             hyperparam_norm[:,param_idx], label=theta_vars[param_idx])
-ax3.legend(fontsize=axis_font)
-ax3.set_title('Normalized hyperparameter convergence', fontsize=axis_font)
+ax3.plot(np.arange(0, (len(change_array))*batch_size, batch_size), change_array)
+ax3.set_title('Relative change', fontsize=axis_font)
 ax3.set_xlabel('Points added', fontsize=axis_font)
 ax3.grid(True)
-fig.tight_layout()
+
+# for param_idx in range(all_hyperparams.shape[1]):
+#     ax3.plot(np.arange(0, (len(hyperparam_norm))*batch_size, batch_size), 
+#              hyperparam_norm[:,param_idx], label=theta_vars[param_idx])
+# ax3.legend(fontsize=axis_font)
+# ax3.set_title('Normalized hyperparameter convergence', fontsize=axis_font)
+# ax3.set_xlabel('Points added', fontsize=axis_font)
+# ax3.grid(True)
+# fig.tight_layout()
 # plt.savefig('./figures/convergence.eps')
 
 #%%  dumb scatters
@@ -1037,7 +1051,7 @@ baseline_fs2 = baseline_fs1**2
 baseline_fs1 = baseline_fs1.item()
 baseline_fs2 = baseline_fs2.item()
 
-steel_price = 4.0
+steel_price = 2.0
 coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
 baseline_costs = calc_upfront_cost(X_baseline, coef_dict, W=W_seis, Ws=W_super)
 
@@ -1326,7 +1340,7 @@ x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 
 # loocv
-rho = 0.0
+rho = 1.0
 mse_w = np.array(loo_error**rho*fs2_doe)
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 Z = mse_w.reshape(xx_pl.shape)
@@ -1535,7 +1549,7 @@ risk_thresh = 0.1
 
 all_costs = calc_upfront_cost(X_design_cand, coef_dict, W=W_seis, Ws=W_super)
 constr_costs = all_costs['total']
-predicted_risk = space_collapse_pred['collapse probability']
+predicted_risk = space_collapse_pred['collapse probability'] #+ fs1_design
 # predicted_risk[predicted_risk < 0] = 0
 
 
@@ -1566,7 +1580,8 @@ cost_pareto = constr_costs.iloc[pareto_mask]
 X_pareto['acceptable_risk'] = np.sign(risk_thresh - risk_pareto)
 X_pareto['predicted_risk'] = risk_pareto
 
-dom_idx = np.random.choice(len(pareto_array), 500, replace = False)
+dom_idx = np.random.choice(len(pareto_array), len(pareto_array)//10, 
+                           replace = False)
 dominated_sample = np.array([pareto_array[i] for i in dom_idx])
 
 # plt.close('all')
@@ -1596,7 +1611,7 @@ ax.scatter(risk_pareto, cost_pareto, marker='s', facecolors='none',
 ax.scatter(risk_pareto, cost_pareto, s=1, color='black')
 ax.scatter(dominated_sample[:,1], dominated_sample[:,0], s=1, color='black',
            label='Dominated designs')
-ax.set_xlabel('Collapse risk', fontsize=axis_font)
+ax.set_xlabel('Predicted collapse risk', fontsize=axis_font)
 ax.set_ylabel('Construction cost', fontsize=axis_font)
 # ax.set_ylim([4.64e6, 4.75e6])
 ax.grid(True)
@@ -1620,8 +1635,7 @@ cmap = plt.cm.Spectral_r
 ax1=fig.add_subplot(2, 2, 2)
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
 sc = ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
-            c=X_pareto['predicted_risk'],
-            edgecolors='k', s=20.0, cmap=cmap)
+            c=X_pareto['predicted_risk'], s=20.0, cmap=cmap)
 
 # cbar = plt.colorbar(sc, ticks=[0, 0.2, 0.4])
 cs = plt.contour(xx_pl, yy_pl, Z_GRy, linewidths=1.1, cmap='Blues', vmin=-1,
@@ -1986,12 +2000,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
-                linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
-    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='maroon')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    # ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+    #             linewidth=2.0)
+    # ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    # ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+    #           fontsize=subt_font, color='maroon')
+    # ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
     
     
     # Ry = 2.0
@@ -2068,12 +2082,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
-                linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
-    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='maroon')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    # ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+    #             linewidth=2.0)
+    # ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    # ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+    #           fontsize=subt_font, color='maroon')
+    # ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
     
     
     # Ry = 2.0
@@ -2147,12 +2161,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
-                linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
-    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='maroon')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    # ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+    #             linewidth=2.0)
+    # ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    # ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+    #           fontsize=subt_font, color='maroon')
+    # ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
     
     
     # Ry = 2.0
@@ -2228,12 +2242,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
-                linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
-    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='maroon')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    # ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+    #             linewidth=2.0)
+    # ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    # ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+    #           fontsize=subt_font, color='maroon')
+    # ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
     
     
     # Ry = 2.0
@@ -2309,12 +2323,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
-                linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
-    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='maroon')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    # ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+    #             linewidth=2.0)
+    # ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    # ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+    #           fontsize=subt_font, color='maroon')
+    # ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
     
     
     # Ry = 2.0
@@ -2391,12 +2405,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
-                linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
-    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='maroon')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    # ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
+    #             linewidth=2.0)
+    # ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
+    # ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+    #           fontsize=subt_font, color='maroon')
+    # ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
     
     
     # Ry = 2.0
@@ -2551,36 +2565,243 @@ print('==================================')
 print('   Validation results  (1.0 MCE)  ')
 print('==================================')
 
+design_tested = df_val_10[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+design_specifics = df_val_10[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column']].iloc[0]
 inverse_collapse = val_10_collapse[0]
 
 print('====== INVERSE DESIGN (10%) ======')
 print('MCE collapse frequency: ',
       f'{inverse_collapse:.2%}')
+print(design_tested)
+print(design_specifics)
 
+design_tested = df_val_5[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+design_specifics = df_val_5[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column']].iloc[0]
 inverse_collapse = val_5_collapse[0]
 
 print('====== INVERSE DESIGN (5%) ======')
 print('MCE collapse frequency: ',
       f'{inverse_collapse:.2%}')
+print(design_tested)
+print(design_specifics)
 
+design_tested = df_val_2_5[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+design_specifics = df_val_2_5[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column']].iloc[0]
 inverse_collapse = val_2_collapse[0]
 
 print('====== INVERSE DESIGN (2.5%) ======')
 print('MCE collapse frequency: ',
       f'{inverse_collapse:.2%}')
+print(design_tested)
+print(design_specifics)
 
+design_tested = df_base[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+design_specifics = df_base[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column']].iloc[0]
 baseline_collapse_mce = baseline_collapse[0]
 
 print('====== BASELINE DESIGN ======')
 print('MCE collapse frequency: ',
       f'{baseline_collapse_mce:.2%}')
+print(design_tested)
+print(design_specifics)
 
 val_10_mce = df_val_10[df_val_10['ida_level']==1.0]
 val_5_mce = df_val_5[df_val_5['ida_level']==1.0]
 val_2_mce = df_val_2_5[df_val_2_5['ida_level']==1.0]
 base_mce = df_base[df_base['ida_level']==1.0]
 
+#%% MLE fragility curves
+def neg_log_likelihood_sum(params, im_l, no_a, no_c):
+    from scipy import stats
+    import numpy as np
+    sigma, beta = params
+    theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(im_l)
+    likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
+    log_likelihood = np.log(likelihood)
+    log_likelihood_sum = np.sum(log_likelihood)
+
+    return -log_likelihood_sum
+
+def mle_fit_collapse(ida_levels, pr_collapse):
+    from functools import partial
+    import numpy as np
+    from scipy import optimize
+    
+    im_log = np.log(ida_levels)
+    number_of_analyses = np.array([1000, 1000, 1000 ])
+    number_of_collapses = np.round(1000*pr_collapse)
+    
+    neg_log_likelihood_sum_partial = partial(
+        neg_log_likelihood_sum, im_l=im_log, no_a=number_of_analyses, no_c=number_of_collapses)
+    
+    
+    res = optimize.minimize(neg_log_likelihood_sum_partial, (1, 1), method="Nelder-Mead")
+    return res.x[0], res.x[1]
+
+
+from scipy.stats import norm
+f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(13, 10))
+
+b_TOT = np.linalg.norm([0.2, 0.2, 0.2, 0.4])
+
+theta_10, beta_10 = mle_fit_collapse(ida_levels,val_10_collapse)
+
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_10, beta_10)
+p2 = f(xx_pr, theta_10, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p)
+# ax1.plot(xx_pr, p2)
+ax1.axhline(0.1, linestyle='--', color='black')
+ax1.axvline(1.0, linestyle='--', color='black')
+ax1.text(2.2, 0.12, r'10\% collapse risk',
+          fontsize=subt_font, color='black')
+ax1.text(0.25, 0.13, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+# ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+ax1.set_ylabel('Collapse probability', fontsize=axis_font)
+# ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax1.set_title('10\% design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [val_10_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax1.grid()
+ax1.set_xlim([0, 4.0])
+ax1.set_ylim([0, 1.0])
+
+####
+theta_5, beta_5 = mle_fit_collapse(ida_levels,val_5_collapse)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_5, beta_5)
+p2 = f(xx_pr, theta_5, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax2=fig.add_subplot(2, 2, 2)
+ax2.plot(xx_pr, p)
+# ax2.plot(xx_pr, p2)
+ax2.axhline(0.05, linestyle='--', color='black')
+ax2.axvline(1.0, linestyle='--', color='black')
+ax2.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax2.text(2.2, 0.07, r'5\% collapse risk',
+          fontsize=subt_font, color='black')
+ax2.text(0.25, 0.08, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+# ax2.text(0.3, 0.17, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+
+# ax2.set_ylabel('Collapse probability', fontsize=axis_font)
+# ax2.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax2.set_title('5\% design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax2.plot([lvl], [val_5_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax2.grid()
+ax2.set_xlim([0, 4.0])
+ax2.set_ylim([0, 1.0])
+
+####
+theta_2, beta_2 = mle_fit_collapse(ida_levels,val_2_collapse)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_2, beta_2)
+p2 = f(xx_pr, theta_2, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax3=fig.add_subplot(2, 2, 3)
+ax3.plot(xx_pr, p)
+# ax3.plot(xx_pr, p2)
+ax3.axhline(0.025, linestyle='--', color='black')
+ax3.axvline(1.0, linestyle='--', color='black')
+ax3.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax3.text(2.2, 0.04, r'2.5\% collapse risk',
+          fontsize=subt_font, color='black')
+ax3.text(0.3, 0.045, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+# ax3.text(0.25, 0.04, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+
+ax3.set_ylabel('Collapse probability', fontsize=axis_font)
+ax3.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax3.set_title('2.5\% design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax3.plot([lvl], [val_2_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax3.grid()
+ax3.set_xlim([0, 4.0])
+ax3.set_ylim([0, 1.0])
+
+####
+theta_base, beta_base = mle_fit_collapse(ida_levels, baseline_collapse)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_base, beta_base)
+p2 = f(xx_pr, theta_base, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax4=fig.add_subplot(2, 2, 4)
+ax4.plot(xx_pr, p, label='Best lognormal fit')
+# ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
+ax4.axhline(0.1, linestyle='--', color='black')
+ax4.axvline(1.0, linestyle='--', color='black')
+ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax4.text(2.2, 0.12, r'10\% collapse risk',
+          fontsize=subt_font, color='black')
+ax4.text(0.25, 0.13, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='blue')
+# ax4.text(0.2, 0.2, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+
+# ax4.set_ylabel('Collapse probability', fontsize=axis_font)
+ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax4.set_title('Baseline design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax4.plot([lvl], [baseline_collapse[i]], 
+              marker='x', markersize=15, color="red")
+ax4.grid()
+ax4.set_xlim([0, 4.0])
+ax4.set_ylim([0, 1.0])
+# ax4.legend(fontsize=subt_font-2, loc='center right')
+
+fig.tight_layout()
+# plt.savefig('./figures/fragility_curve.eps', dpi=1200, format='eps')
+plt.show()
+
+from numpy import exp
+print('============== MLE fit ===============')
+print('10% fit mean:', theta_10)
+print('10% fit beta:', beta_10)
+print('5% fit mean:', theta_5)
+print('5% fit beta:', beta_5)
+print('2.5% fit mean:', theta_2)
+print('2.5% fit beta:', beta_2)
+print('Baseline fit mean:', theta_base)
+print('Baseline fit beta:', beta_base)
+
 #%%
+'''
 from scipy.stats import lognorm
 from scipy.optimize import curve_fit
 f = lambda x,mu,sigma: lognorm(sigma,mu).cdf(x)
@@ -2732,6 +2953,7 @@ fig.tight_layout()
 plt.show()
 
 from numpy import exp
+print('============== non-MLE least squares curve fit ===============')
 print('10% fit mean:', exp(theta_10))
 print('10% fit beta:', beta_10)
 print('5% fit mean:', exp(theta_5))
@@ -2740,7 +2962,7 @@ print('2.5% fit mean:', exp(theta_2))
 print('2.5% fit beta:', beta_2)
 print('Baseline fit mean:', exp(theta_base))
 print('Baseline fit beta:', beta_base)
-
+'''
 #%% validation collapse distribution at mce
 
 plt.rcParams["font.family"] = "serif"

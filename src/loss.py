@@ -113,6 +113,14 @@ class Loss_Analysis:
         mask = nqe_meta['PACT_name'].str.contains('Curtain Walls')
         nqe_meta.loc[mask, 'PACT_block'] = 'SF 500'
         
+        # # steam piping
+        # mask = nqe_meta['PACT_name'].str.contains('Steam Piping')
+        # nqe_meta.loc[mask, 'PACT_block'] = 'LF 1000'
+        
+        # # waste piping
+        # mask = nqe_meta['PACT_name'].str.contains('Waste Piping')
+        # nqe_meta.loc[mask, 'PACT_block'] = 'LF 1000'
+        
         # ceiling
         mask = nqe_meta['PACT_name'].str.contains('Raised Access Floor')
         nqe_meta.loc[mask, 'PACT_block'] = 'SF 1000'
@@ -514,7 +522,7 @@ class Loss_Analysis:
         no_block_stuff = ['Chiller', 'Cooling Tower', 'Motor Control', 'stair',
                           'Elevator', 'Switchgear']
         mask = cmp_marginal['Comment'].str.contains('|'.join(no_block_stuff))
-        cmp_marginal.loc[mask, 'Blocks'] = np.nan
+        cmp_marginal.loc[mask, 'Blocks'] = cmp_marginal.loc[mask, 'Theta_0']//1.0
         
         # convert all 0 blocks to nan
         mask = cmp_marginal['Blocks'] == 0
@@ -613,6 +621,16 @@ class Loss_Analysis:
             raw_demands.columns = ['Units', 'Value']
             raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
             raw_demands.index.names = ['type','loc','dir']
+            
+        # if mode is maximize, add high EDPs to maximize loss
+        elif mode=='maximize':
+            raw_demands = self.edp.transpose()
+            raw_demands.columns = ['Units', 'Value']
+            raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
+            raw_demands.index.names = ['type','loc','dir']
+            raw_demands.loc[raw_demands['Units'] == 'g', 'Value'] = 1e4
+            raw_demands.loc[raw_demands['Units'] == 'rad', 'Value'] = 1e2
+            raw_demands.loc[raw_demands['Units'] == 'inps', 'Value'] = 1e6
         
         # initialize, no printing outputs, offset fixed with current components
         PAL = Assessment({
@@ -681,15 +699,14 @@ class Loss_Analysis:
         #                                        run_data['accMax1'],
         #                                        run_data['accMax2'],
         #                                        run_data['accMax3'])
-
-        demand_sample_ext[('SA_Tm',0,1)] = self.sa_tm
-        
-        # from ast import literal_eval
-        # PID_all = literal_eval(self.PID)
         
         PID_all = self.PID
-        
-        demand_sample_ext[('PID_all',0,1)] = max(PID_all)
+        if mode != 'maximize':
+            demand_sample_ext[('SA_Tm',0,1)] = self.sa_tm
+            demand_sample_ext[('PID_all',0,1)] = max(PID_all)
+        else:
+            demand_sample_ext[('SA_Tm',0,1)] = 1e4
+            demand_sample_ext[('PID_all',0,1)] = 1e2
         
         # demand_sample_ext[('PID_all',0,1)] = demand_sample_ext[[('PID','1','1'),
         #                                                         ('PID','2','1'),
@@ -767,7 +784,6 @@ class Loss_Analysis:
         
         
         # TODO: change this section to the system-dependent drift values
-        
         # add demand for the replacement criteria
         # irreparable damage
         # this is based on the default values in P58
@@ -846,6 +862,10 @@ class Loss_Analysis:
         # We set the incomplete flag to 0 for the additional components
         additional_fragility_db['Incomplete'] = 0
         
+        # if maximizing, drop the three replacement damage states
+        if mode == 'maximize':
+            additional_fragility_db = additional_fragility_db.drop(
+                index=['collapse', 'excessiveRID', 'irreparable'])
         
         # load fragility data
         PAL.damage.load_damage_model([
@@ -869,14 +889,17 @@ class Loss_Analysis:
         # then the irreparable component should be set to DS1.
 
         # FEMA P58 uses the following process:
-        dmg_process = {
-            "1_collapse": {
-                "DS1": "ALL_NA"
-            },
-            "2_excessiveRID": {
-                "DS1": "irreparable_DS1"
+        if mode != 'maximize':
+            dmg_process = {
+                "1_collapse": {
+                    "DS1": "ALL_NA"
+                },
+                "2_excessiveRID": {
+                    "DS1": "irreparable_DS1"
+                }
             }
-        }
+        else:
+            dmg_process = None
         
         ###########################################################################
         # DAMAGE
@@ -955,7 +978,10 @@ class Loss_Analysis:
         incomplete_cmp.loc[('E.20.22.114b', 'Time')] = [0, '1 EA', 'worker_day',
                                                       0.03, 0.5, 'lognormal']
         
-        
+        # if maximizing, drop the three replacement damage states
+        if mode == 'maximize':
+            loss_map = loss_map.drop(
+                index=['DMG-irreparable', 'DMG-collapse'])
 
         # get the consequences used by this assessment
         # grab all loss map values that are present in P58_data
@@ -1005,6 +1031,8 @@ class Loss_Analysis:
                                                                 0,
                                                                 np.nan]
         
+        
+    
         # Load the loss model to pelicun
         PAL.repair.load_model(
             [additional_consequences, incomplete_cmp,
@@ -1017,7 +1045,8 @@ class Loss_Analysis:
         print('Loss estimation done!')
         
         # loss estimates
-        loss_sample = PAL.repair.sample
+        loss_sample = PAL.repair.save_sample()
+        
         
         # group components and ensure that all components and replacement are present
         loss_by_cmp = loss_sample.groupby(level=[0, 2], axis=1).sum()['Cost']
@@ -1025,6 +1054,30 @@ class Loss_Analysis:
             if cmp_grp not in list(loss_by_cmp.columns):
                 loss_by_cmp[cmp_grp] = 0
                 
+        if mode == 'maximize':
+            # summarize by groups
+            loss_groups = pd.DataFrame()
+            loss_groups['B'] = loss_by_cmp[[
+                col for col in loss_by_cmp.columns if col.startswith('B')]].sum(axis=1)
+            loss_groups['C'] = loss_by_cmp[[
+                col for col in loss_by_cmp.columns if col.startswith('C')]].sum(axis=1)
+            loss_groups['D'] = loss_by_cmp[[
+                col for col in loss_by_cmp.columns if col.startswith('D')]].sum(axis=1)
+            loss_groups['E'] = loss_by_cmp[[
+                col for col in loss_by_cmp.columns if col.startswith('E')]].sum(axis=1)
+            
+            # this returns NaN if collapse/irreparable is 100%
+            loss_groups = loss_groups.describe()
+            
+            # aggregate
+            agg_DF = PAL.repair.aggregate_losses()
+            
+            collapse_freq = 0.0
+            irreparable_freq = 0.0
+            
+            return(cmp_sample, damage_sample, loss_sample, loss_groups, agg_DF,
+                    collapse_freq, irreparable_freq)
+            
         # grab replacement cost and convert to instances, fill with zeros if needed
         replacement_instances = pd.DataFrame()
         try:
@@ -1090,7 +1143,10 @@ PAL = Assessment({
 # generate structural components and join with NSCs
 P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
 
-data = pd.read_csv('../data/tfp_mf_db.csv')
+# data = pd.read_csv('../data/tfp_mf_db.csv')
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+data = main_obj.ops_analysis
 run = data.iloc[1]
 
 
@@ -1107,10 +1163,12 @@ loss = Loss_Analysis(run)
 loss.nqe_sheets()
 loss.normative_quantity_estimation(bldg_usage, P58_metadata)
 
-# TODO: keep record of total cmp (groupby?)
 
 additional_frag_db = pd.read_csv('../resource/loss/custom_component_fragilities.csv',
                                   header=[0,1], index_col=0)
 loss.process_EDP()
-loss.estimate_damage(custom_component_fragilities=additional_frag_db)
+[cmp, dmg, loss, loss_cmp, agg, 
+ collapse_rate, irr_rate] = loss.estimate_damage(
+     custom_fragility_db=additional_frag_db, mode='maximize')
+
 '''

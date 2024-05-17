@@ -61,22 +61,22 @@
 # you could either read the csv or unpickle
 # or chain this straight from the analyzed main_obj
 
-pickle_path = '../data/'
+# pickle_path = '../data/'
 
-import pandas as pd
+# import pandas as pd
 
-main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
 
-# with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
     
-main_obj.calculate_collapse()
-main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500, strategy='balanced')
+# main_obj.calculate_collapse()
+# main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500, strategy='balanced')
 
-# current settings: loocv, batch of 5, stricter convergence, rejection sample
-import pickle
-with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# # current settings: loocv, batch of 5, stricter convergence, rejection sample, start at 100
+# import pickle
+# with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
     
     
 # # exploit
@@ -138,14 +138,14 @@ with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
 # randomly select ground motion for each
 #%% load DoE
 
-from db import Database
-pickle_path = '../data/'
+# from db import Database
+# pickle_path = '../data/'
 
-import pandas as pd
+# import pandas as pd
 
-main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
     
-validation_path = '../data/validation/'
+# validation_path = '../data/validation/'
 
 # # TODO: is there a way to pipe this straight from GP? and organize depending on target
 # sample_dict = {
@@ -198,21 +198,21 @@ validation_path = '../data/validation/'
 # with open(validation_path+'tfp_mf_db_ida_2_5_iso.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
 
-sample_dict = {
-    'gap_ratio' : 1.0,
-    'RI' : 2.0,
-    'T_ratio': 3.0,
-    'zeta_e': 0.15
-}
+# sample_dict = {
+#     'gap_ratio' : 1.0,
+#     'RI' : 2.0,
+#     'T_ratio': 3.0,
+#     'zeta_e': 0.15
+# }
 
-design_df = pd.DataFrame(sample_dict, index=[0])
+# design_df = pd.DataFrame(sample_dict, index=[0])
 
-main_obj.prepare_idas(design_df)
-main_obj.analyze_ida('ida_baseline.csv')
+# main_obj.prepare_idas(design_df)
+# main_obj.analyze_ida('ida_baseline.csv')
 
-import pickle
-with open(validation_path+'tfp_mf_db_ida_baseline.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# with open(validation_path+'tfp_mf_db_ida_baseline.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%% run pushover
 
@@ -260,3 +260,17 @@ with open(validation_path+'tfp_mf_db_ida_baseline.pickle', 'wb') as f:
 # loss_path = '../data/loss/'
 # with open(loss_path+'tfp_mf_db_doe_loss.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
+
+#%% calculate maximum pelicun losses
+
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
+
+main_obj.calc_cmp_max(main_obj.doe_analysis,
+                cmp_dir='../resource/loss/')
+
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'tfp_mf_db_doe_loss_max.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)

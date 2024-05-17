@@ -24,8 +24,24 @@ class GP:
         self.X = self._raw_data[var_list]
         
     # sets up prediction variable
-    def set_outcome(self, outcome_var):
-        self.y = self._raw_data[[outcome_var]]
+    def set_outcome(self, outcome_var, use_ravel=False):
+        if use_ravel:
+            self.y = self._raw_data[outcome_var].ravel()
+        else:
+            self.y = self._raw_data[[outcome_var]]
+        
+    def test_train_split(self, percentage):
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(self.X, self.y, 
+                                                            test_size=percentage,
+                                                            random_state=985)
+        
+        from numpy import ravel
+        
+        self.X_train = X_train
+        self.X_test = X_test
+        self.y_train = ravel(y_train)
+        self.y_test = ravel(y_test)
         
     def fit_linear(self):
         from sklearn.pipeline import Pipeline
@@ -204,7 +220,54 @@ class GP:
         kr_pipe.fit(self.X, self.y)
         
         self.kr = kr_pipe
-            
+    
+    # Train SVM regression
+    def fit_svr(self):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.svm import SVR
+        from sklearn.model_selection import GridSearchCV
+        from numpy import logspace
+        
+        # pipeline to scale -> SVR
+        sv_pipe = Pipeline([('scaler', StandardScaler()),
+                            ('svr', SVR(kernel='rbf'))])
+        
+        # cross-validate several parameters
+        parameters = [
+            {'svr__C':[1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0],
+             'svr__epsilon':[0.01, 0.1, 1.0],
+             'svr__gamma':logspace(-3, 3, 7)}
+            ]
+        
+        svr_cv = GridSearchCV(sv_pipe, param_grid=parameters)
+        svr_cv.fit(self.X_train, self.y_train)
+        
+        print("The best SVR parameters are %s"
+              % (svr_cv.best_params_))
+        
+        # set pipeline to use CV params
+        sv_pipe.set_params(**svr_cv.best_params_)
+        sv_pipe.fit(self.X_train, self.y_train)
+        
+        self.svr = sv_pipe
+    
+        
+    # Train regular ridge regression
+    def fit_ols_ridge(self):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.linear_model import RidgeCV
+        from numpy import logspace
+        
+        or_pipe = Pipeline([('scaler', StandardScaler()),
+                             ('o_ridge', RidgeCV(alphas=logspace(-2, 2, 5)))]
+            )
+        
+        or_pipe.fit(self.X_train, self.y_train)
+        
+        self.o_ridge = or_pipe
+        
     def predict_gpc_latent(self, X):
         """Return latent mean and variance for the test vector X.
         Uses Laplace approximation (Williams & Rasmussen Algorithm 3.2)

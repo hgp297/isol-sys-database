@@ -279,7 +279,7 @@ mpl.rcParams['xtick.labelsize'] = label_size
 mpl.rcParams['ytick.labelsize'] = label_size 
 clabel_size = 16
 
-main_obj_doe = pd.read_pickle('../../data/tfp_mf_db_doe.pickle')
+main_obj_doe = pd.read_pickle('../../data/tfp_mf_db_doe_prestrat.pickle')
 
 # with open("../../data/tfp_mf_db_doe.pickle", 'rb') as picklefile:
 #     main_obj_doe = pickle.load(picklefile)
@@ -400,7 +400,7 @@ for sens_idx, theta in enumerate(theta_mu_stds):
     
 #%% sensitivity to steel cost
 
-drift_mu_std = 0.07
+drift_mu_std = 0.06
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 kernel_name = 'rbf_iso'
 
@@ -466,7 +466,7 @@ for steel_idx, steel_price in enumerate(steel_prices):
     
 #%% sensitivity to land cost
 
-drift_mu_std = 0.07
+drift_mu_std = 0.06
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 kernel_name = 'rbf_iso'
 
@@ -661,4 +661,4 @@ ax.set_ylim([25, 200])
 ax.grid()
 
 fig.tight_layout()
-plt.savefig('./figures/sensitivity.pdf')
+# plt.savefig('./figures/sensitivity.pdf')
