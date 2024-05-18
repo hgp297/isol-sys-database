@@ -122,7 +122,7 @@ def make_design_space(res):
                                              res),
                                  np.linspace(0.5, 2.25,
                                              res),
-                                 np.linspace(2.0, 5.0,
+                                 np.linspace(2.0, 4.0,
                                              res),
                                  np.linspace(0.1, 0.25,
                                              res))
@@ -260,6 +260,73 @@ ax.grid()
 # plt.show()
 # plt.savefig('./figures/collapse_def.eps')
 
+#%% collapse fragility def
+import numpy as np
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+x = np.linspace(0, 0.15, 200)
+mu = log(0.1)- 0.25*inv_norm
+sigma = 0.25;
+
+ln_dist = lognorm(s=sigma, scale=exp(mu))
+p = ln_dist.cdf(np.array(x))
+
+# plt.close('all')
+fig, ax = plt.subplots(1, 1, figsize=(8,6))
+
+ax.plot(x, p, label='Collapse', color='blue')
+
+mu_irr = log(0.01)
+ln_dist_irr = lognorm(s=0.3, scale=exp(mu_irr))
+p_irr = ln_dist_irr.cdf(np.array(x))
+
+ax.plot(x, p_irr, color='red', label='Irreparable')
+
+axis_font = 20
+subt_font = 18
+xleft = 0.15
+ax.set_ylim([0,1])
+ax.set_xlim([0, xleft])
+ax.set_ylabel('Limit state probability', fontsize=axis_font)
+ax.set_xlabel('Drift ratio', fontsize=axis_font)
+
+ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='blue', linestyle=":")
+ax.hlines(y=0.5, xmin=exp(mu), xmax=0.15, color='blue', linestyle=":")
+ax.text(0.105, 0.52, r'PID = 0.078', fontsize=axis_font, color='blue')
+ax.plot([exp(mu)], [0.5], marker='*', markersize=15, color="blue", linestyle=":")
+
+ax.vlines(x=0.1, ymin=0, ymax=0.84, color='blue', linestyle=":")
+ax.hlines(y=0.84, xmin=0.1, xmax=xleft, color='blue', linestyle=":")
+ax.text(0.105, 0.87, r'PID = 0.10', fontsize=axis_font, color='blue')
+ax.plot([0.10], [0.84], marker='*', markersize=15, color="blue", linestyle=":")
+
+lower= ln_dist.ppf(0.16)
+ax.vlines(x=lower, ymin=0, ymax=0.16, color='blue', linestyle=":")
+ax.hlines(y=0.16, xmin=lower, xmax=xleft, color='blue', linestyle=":")
+ax.text(0.105, 0.19, r'PID = 0.061', fontsize=axis_font, color='blue')
+ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
+
+
+ax.hlines(y=0.5, xmin=0.0, xmax=exp(mu_irr), color='red', linestyle=":")
+lower = ln_dist_irr.ppf(0.16)
+ax.hlines(y=0.16, xmin=0.0, xmax=lower, color='red', linestyle=":")
+upper = ln_dist_irr.ppf(0.84)
+ax.hlines(y=0.84, xmin=0.0, xmax=upper, color='red', linestyle=":")
+ax.plot([lower], [0.16], marker='*', markersize=15, color="red", linestyle=":")
+ax.plot([0.01], [0.5], marker='*', markersize=15, color="red", linestyle=":")
+ax.plot([upper], [0.84], marker='*', markersize=15, color="red", linestyle=":")
+ax.vlines(x=upper, ymin=0, ymax=0.84, color='red', linestyle=":")
+ax.vlines(x=0.01, ymin=0, ymax=0.5, color='red', linestyle=":")
+ax.vlines(x=lower, ymin=0, ymax=0.16, color='red', linestyle=":")
+
+ax.text(0.005, 0.19, r'RID = 0.007', fontsize=axis_font, color='red')
+ax.text(0.005, 0.87, r'RID = 0.013', fontsize=axis_font, color='red')
+ax.text(0.005, 0.53, r'RID = 0.010', fontsize=axis_font, color='red')
+
+ax.set_title('Replacement fragility definition', fontsize=axis_font)
+ax.grid()
+ax.legend(fontsize=label_size, loc='upper center')
+plt.show()
 #%% normalize DVs and prepare all variables
 df['bldg_area'] = df['L_bldg']**2 * (df['num_stories'] + 1)
 
@@ -318,6 +385,11 @@ mdl_repl_miss = GP(df_miss)
 mdl_repl_miss.set_covariates(covariate_list)
 mdl_repl_miss.set_outcome('replacement_freq')
 mdl_repl_miss.test_train_split(0.2)
+
+mdl_unconditioned = GP(df)
+mdl_unconditioned.set_covariates(covariate_list)
+mdl_unconditioned.set_outcome(cost_var)
+mdl_unconditioned.test_train_split(0.2)
 
 #%%  dumb scatters
 
@@ -475,6 +547,8 @@ plt.show()
 
 #%% impact prediction
 
+print('========== Fitting impact classification (GPC) ============')
+
 # prepare the problem
 mdl_impact = GP(df)
 mdl_impact.set_covariates(covariate_list)
@@ -482,6 +556,8 @@ mdl_impact.set_outcome('impacted', use_ravel=True)
 mdl_impact.test_train_split(0.2)
 
 mdl_impact.fit_gpc(kernel_name='rbf_iso')
+
+mdl_impact.fit_kernel_logistic(kernel_name='rbf')
 
 # predict the entire dataset
 preds_imp = mdl_impact.gpc.predict(mdl_impact.X)
@@ -500,6 +576,7 @@ print('False positives: ', fp)
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 22
+title_font = 22
 subt_font = 18
 import matplotlib as mpl
 label_size = 18
@@ -510,19 +587,25 @@ mpl.rcParams['ytick.labelsize'] = label_size
 # make grid and plot classification predictions
 
 fig, ax = plt.subplots(1, 1, figsize=(9,7))
-plt.setp(ax, xticks=np.arange(0.5, 4.0, step=0.5))
 
 xvar = 'gap_ratio'
-yvar = 'zeta_e'
+yvar = 'T_ratio'
 
 res = 75
 X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            third_var_set = 2.0, fourth_var_set = 3.0)
+                            third_var_set = 2.0, fourth_var_set = 0.15)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
-Z = mdl_impact.gpc.predict_proba(X_plot)[:,1]
 
+# # GPC impact prediction
+# Z = mdl_impact.gpc.predict_proba(X_plot)[:,1]
+
+
+# kernel logistic impact prediction
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+probs_imp = mdl_impact.log_reg_kernel.predict_proba(K_space)
+Z = probs_imp[:,1]
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -542,38 +625,43 @@ Z_classif = Z.reshape(xx_pl.shape)
 #         cmap=plt.cm.Greys,
 #     )
 
-plt_density = 50
+plt.imshow(
+        Z_classif,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.Blues,
+    )
+plt_density = 200
 cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.1, cmap='Blues', vmin=-1,
                   levels=np.linspace(0.1,1.0,num=10))
 plt.clabel(cs, fontsize=clabel_size)
 
-# sc = ax3.scatter(mdl_impact.X_train[xvar][:plt_density],
-#             mdl_impact.X_train[yvar][:plt_density],
-#             s=30, c=mdl_impact.y_train[:plt_density],
-#             cmap=plt.cm.copper, edgecolors='w')
+ax.scatter(df_hit[xvar][:plt_density],
+            df_hit[yvar][:plt_density],
+            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Impacted')
 
-#ax1.contour(xx, yy, Z, levels=[0.5], linewidths=2,
-#            linestyles="dashed", colors='black')
+ax.scatter(df_miss[xvar][:plt_density],
+            df_miss[yvar][:plt_density],
+            s=40, c='azure', edgecolors='k', label='No impact')
 
-# ax1.scatter(hit.X_train[xvar][:plt_density],
-#             hit.X_train[yvar][:plt_density],
-#             s=30, c='darkblue', marker='v', edgecolors='k', label='Impacted')
-
-# ax1.scatter(miss.X_train[xvar][:plt_density],
-#             miss.X_train[yvar][:plt_density],
-#             s=30, c='azure', edgecolors='k', label='No impact')
 
 ax.set_xlim(0.3, 2.5)
-# ax.set_title(r'$T_M = 3.25$ s, $\zeta_M = 0.15$', fontsize=subt_font)
-# ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
-# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_title(r'Impact likelihood: $R_y = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 
 fig.tight_layout()
 plt.show()
 
+
 #%% fit regressions for impact / non-impact set
 
-# Fit costs (SVR), fit time (KLR)
+# Fit conditioned DVs using kernel ridge
+
+print('========== Fitting regressions (kernel ridge) ============')
 
 # fit impacted set
 mdl_cost_hit.fit_kernel_ridge(kernel_name='rbf')
@@ -587,10 +675,697 @@ mdl_time_miss.fit_kernel_ridge(kernel_name='rbf')
 mdl_repl_hit.fit_kernel_ridge(kernel_name='rbf')
 mdl_repl_miss.fit_kernel_ridge(kernel_name='rbf')
 
-#%%
 
-grid_repair_time = predict_DV(X_plot,
-                              mdl_impact.gpc,
-                              mdl_time_hit.kr,
-                              mdl_time_miss.kr,
-                              outcome=time_var)
+print('========== Fitting regressions (GPR) ============')
+
+# Fit conditioned DVs using GPR
+
+# fit impacted set
+mdl_cost_hit.fit_gpr(kernel_name='rbf_iso')
+mdl_time_hit.fit_gpr(kernel_name='rbf_iso')
+
+# fit no impact set
+mdl_cost_miss.fit_gpr(kernel_name='rbf_iso')
+mdl_time_miss.fit_gpr(kernel_name='rbf_iso')
+
+
+mdl_repl_hit.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_miss.fit_gpr(kernel_name='rbf_iso')
+
+mdl_unconditioned.fit_gpr(kernel_name='rbf_iso')
+
+print('========== Fitting ordinary ridge (OR) ============')
+
+# Fit conditioned DVs using GPR
+
+# fit impacted set
+mdl_cost_hit.fit_ols_ridge()
+mdl_time_hit.fit_ols_ridge()
+
+# fit no impact set
+mdl_cost_miss.fit_ols_ridge()
+mdl_time_miss.fit_ols_ridge()
+
+
+mdl_repl_hit.fit_ols_ridge()
+mdl_repl_miss.fit_ols_ridge()
+
+mdl_unconditioned.fit_gpr(kernel_name='rbf_iso')
+#%% plot no-impact regressions
+axis_font = 20
+subt_font = 18
+
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+Z = mdl_cost_miss.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_regr = Z.reshape(xx_pl.shape)
+
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_regr, cmap=plt.cm.coolwarm,
+                       linewidth=0, antialiased=False,
+                       alpha=0.5)
+
+ax.scatter(df_miss[xvar], df_miss[yvar], df_miss[cost_var],
+           c=df_miss[cost_var], alpha=0.3,
+           edgecolors='k')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_regr, zdir='z', offset=-1e5, cmap='coolwarm')
+cset = ax.contour(xx_pl, yy_pl, Z_regr, zdir='x', offset=xlim[0], cmap='coolwarm_r')
+cset = ax.contour(xx_pl, yy_pl, Z_regr, zdir='y', offset=ylim[1], cmap='coolwarm')
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.set_zlim([0, 0.2])
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+# ax.set_zlabel('Median loss ($)', fontsize=axis_font)
+# ax.set_title('Median cost predictions given no impact (RBF kernel ridge)')
+fig.tight_layout()
+plt.show()
+
+#%% plot yes-impact regressions
+axis_font = 20
+subt_font = 18
+
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+Z = mdl_cost_hit.kr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_regr = Z.reshape(xx_pl.shape)
+
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_regr, cmap=plt.cm.coolwarm,
+                       linewidth=0, antialiased=False,
+                       alpha=0.5)
+
+ax.scatter(df_hit[xvar], df_hit[yvar], df_hit[cost_var],
+           c=df_hit[cost_var], alpha=0.3,
+           edgecolors='k')
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_regr, zdir='z', offset=-1e5, cmap='coolwarm')
+cset = ax.contour(xx_pl, yy_pl, Z_regr, zdir='x', offset=xlim[0], cmap='coolwarm_r')
+cset = ax.contour(xx_pl, yy_pl, Z_regr, zdir='y', offset=ylim[1], cmap='coolwarm')
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+# ax.set_zlabel('Median loss ($)', fontsize=axis_font)
+# ax.set_title('Median cost predictions given no impact (RBF kernel ridge)')
+fig.tight_layout()
+plt.show()
+
+#%% unconditioned models
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+#################################
+xvar = 'RI'
+yvar = 'gap_ratio'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_unconditioned.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+
+Z = mdl_unconditioned.gpr.predict(X_plot)
+Z_unconditioned = Z.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 3, 1)
+cs = ax.contour(xx_pl, Z_unconditioned, yy_pl, linewidths=1.1, cmap='coolwarm',
+                 levels=np.arange(0.5, 3.0, step=0.25))
+ax.scatter(df[xvar], df[cost_var], color='steelblue', alpha=0.5,
+          edgecolors='k')
+ax.clabel(cs, fontsize=label_size)
+ax.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax.grid(visible=True)
+ax.plot(0.65, 0.01, color='red', label=r'$GR$')
+ax.legend(fontsize=axis_font, loc='center left')
+ax.set_ylabel('Median loss ratio', fontsize=axis_font)
+# ax.set_ylim([0.1, 0.5])
+# ax.set_xlim([0.3, 2.5])
+plt.show()
+
+#################################
+# show dichotomy of data
+
+
+ax=fig.add_subplot(1, 3, 2)
+
+cmap = plt.cm.coolwarm
+sc = ax.scatter(df[xvar], df[cost_var], alpha=0.4, c=df['impacted'], 
+                edgecolors='k', cmap=cmap)
+ax.set_xlabel(r'$R_y$', fontsize=axis_font)
+# ax.set_title('a) Gap ratio', fontsize=title_font)
+# ax.set_xlim([0.3, 2.5])
+from matplotlib.lines import Line2D
+custom_lines = [Line2D([0], [0], marker='o', color='w', label='No impact',
+                          markerfacecolor=cmap(0.), alpha=0.4, markersize=15),
+                Line2D([0], [0], marker='o', color='w', label='Wall impact',
+                       markerfacecolor=cmap(1.), alpha=0.4, markersize=15)]
+ax.legend(custom_lines, ['No impact', 'Impact'], fontsize=subt_font)
+ax.grid(True)
+
+#################################
+# plot conditioned fits
+cmap=plt.cm.coolwarm
+ax=fig.add_subplot(2, 3, 3)
+
+Z = mdl_cost_hit.gpr.predict(X_plot)
+Z_hit_cond = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, Z_hit_cond, yy_pl, linewidths=1.1, cmap='coolwarm',
+                 levels=np.arange(0.5, 3.0, step=0.25))
+ax.scatter(df_hit[xvar], df_hit[cost_var], color=cmap(1.), alpha=0.5,
+          edgecolors='k')
+ax.clabel(cs, fontsize=label_size)
+ax.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax.grid(visible=True)
+# ax.set_ylim([0.1, 0.5])
+# ax.set_xlim([0.3, 2.5])
+plt.show()
+
+
+ax=fig.add_subplot(2, 3, 6)
+
+Z = mdl_cost_miss.gpr.predict(X_plot)
+Z_hit_cond = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, Z_hit_cond, yy_pl, linewidths=1.1, cmap='coolwarm',
+                 levels=np.arange(0.5, 3.0, step=0.25))
+ax.scatter(df_miss[xvar], df_miss[cost_var], color=cmap(0.), alpha=0.5,
+          edgecolors='k')
+ax.clabel(cs, fontsize=label_size)
+ax.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax.grid(visible=True)
+ax.set_ylim([0.0, 0.05])
+# ax.set_xlim([0.7, 4.0])
+plt.show()
+
+#%% 3d surf for replacement risk
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+               mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome='replacement_freq')
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df[xvar], df[yvar], df['replacement_freq'], c=df['replacement_freq'],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+               mdl_cost_hit.gpr, mdl_cost_miss.gpr, outcome='replacement_freq')
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df[xvar], df[yvar], df['replacement_freq'], c=df['replacement_freq'],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+
+# #################################
+# xvar = 'gap_ratio'
+# yvar = 'RI'
+
+# res = 75
+# X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+#                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+#                             third_var_set = 3.0, fourth_var_set = 0.15)
+# xx = X_plot[xvar]
+# yy = X_plot[yvar]
+
+# Z = predict_DV(X_plot, mdl_impact.gpc, 
+#                mdl_time_hit.gpr, mdl_time_miss.gpr, outcome=time_var)
+
+
+# x_pl = np.unique(xx)
+# y_pl = np.unique(yy)
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+# Z_time = np.array(Z).reshape(xx_pl.shape)
+
+# ax=fig.add_subplot(1, 3, 3, projection='3d')
+# surf = ax.plot_surface(xx_pl, yy_pl, Z_cost, cmap='Blues',
+#                        linewidth=0, antialiased=False, alpha=0.6,
+#                        vmin=-0.1)
+
+# ax.xaxis.pane.fill = False
+# ax.yaxis.pane.fill = False
+# ax.zaxis.pane.fill = False
+
+# ax.scatter(df[xvar], df[yvar], df[time_var], c=df[time_var],
+#            edgecolors='k', alpha = 0.7, cmap='Blues')
+
+# xlim = ax.get_xlim()
+# ylim = ax.get_ylim()
+# zlim = ax.get_zlim()
+# cset = ax.contour(xx_pl, yy_pl, Z_cost, zdir='x', offset=xlim[0], cmap='Blues_r')
+# cset = ax.contour(xx_pl, yy_pl, Z_cost, zdir='y', offset=ylim[1], cmap='Blues')
+
+# ax.set_xlabel('Gap ratio', fontsize=axis_font)
+# ax.set_ylabel('$R_y$', fontsize=axis_font)
+# #ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+# ax.set_title('c) Replacement time (GPR)', fontsize=subt_font)
+
+# fig.tight_layout(w_pad=0.0)
+
+#%% 2d contours for replacement
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+               mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome='replacement_freq')
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_contour = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1)
+
+plt_density = 200
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = plt.contour(xx_pl, yy_pl, Z_contour, linewidths=1.1, cmap='Blues', vmin=-1,
+                 levels=lvls)
+plt.clabel(cs, fontsize=clabel_size)
+plt.scatter(df[xvar][:plt_density], df[yvar][:plt_density], 
+            c=df['replacement_freq'][:plt_density],
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+plt.xlim([0.3, 2.0])
+plt.ylim([0.5, 2.25])
+plt.xlabel('$GR$', fontsize=axis_font)
+plt.ylabel('$R_y$', fontsize=axis_font)
+plt.grid(True)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+               mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome='replacement_freq')
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_contour = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2)
+
+plt_density = 200
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+cs = ax.contour(xx_pl, yy_pl, Z_contour, linewidths=1.1, cmap='Blues', vmin=-1,
+                 levels=lvls)
+plt.clabel(cs, fontsize=clabel_size)
+ax.scatter(df[xvar][:plt_density], df[yvar][:plt_density], 
+            c=df['replacement_freq'][:plt_density],
+            edgecolors='k', s=20.0, cmap=plt.cm.Blues, vmax=5e-1)
+plt.xlim([2.0, 5.0])
+plt.ylim([0.1, 0.25])
+plt.xlabel('$T_M/T_{fb}$', fontsize=axis_font)
+plt.ylabel('$\zeta_M$', fontsize=axis_font)
+plt.grid(True)
+plt.show()
+
+#%% 3d surf for cost ratio
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+               mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome=cost_var)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df[xvar], df[yvar], df[cost_var], c=df[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+               mdl_cost_hit.gpr, mdl_cost_miss.gpr, outcome=cost_var)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df[xvar], df[yvar], df[cost_var], c=df[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+
+#%% 3d surf for time ratio
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+               mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome=time_var)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df[xvar], df[yvar], df[time_var], c=df[time_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+               mdl_cost_hit.gpr, mdl_cost_miss.gpr, outcome=time_var)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df[xvar], df[yvar], df[time_var], c=df[time_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
