@@ -23,6 +23,10 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from doe import GP
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings("ignore", category=FutureWarning) 
+
 plt.close('all')
 
 main_obj = pd.read_pickle("../../data/loss/tfp_mf_db_doe_loss_max.pickle")
@@ -187,6 +191,7 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
     #                                   axis=0).sort_index(ascending=True)
     
     return(expected_DV)
+
 #%% collapse fragility def
 
 plt.rcParams["text.usetex"] = True
@@ -348,9 +353,155 @@ df[['B_50%', 'C_50%', 'D_50%', 'E_50%']] = df_loss[['B_50%', 'C_50%', 'D_50%', '
 
 df['impacted'] = pd.to_numeric(df['impacted'])
 
-cost_var = 'median_cost_ratio'
-time_var = 'median_time_ratio'
+cost_var = 'cmp_cost_ratio'
+time_var = 'cmp_time_ratio'
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+
+mask = df['B_50%'].isnull()
+
+df['B_50%'].loc[mask] = df_loss_max['B_50%'].loc[mask]
+df['C_50%'].loc[mask] = df_loss_max['C_50%'].loc[mask]
+df['D_50%'].loc[mask] = df_loss_max['D_50%'].loc[mask]
+df['E_50%'].loc[mask] = df_loss_max['E_50%'].loc[mask]
+#%% determine when to stop DoE
+
+rmse_hist = main_obj.rmse_hist
+mae_hist = main_obj.mae_hist
+nrmse_hist = main_obj.nrmse_hist
+theta = main_obj.hyperparam_list
+
+
+change_array = np.diff(nrmse_hist)
+conv_array = np.abs(change_array) < 5e-4
+
+# when does conv_array hit 10 Trues in a row
+for conv_idx in range(10, len(conv_array)):
+    # getting Consecutive elements 
+    if all(conv_array[conv_idx-10:conv_idx]):
+        break
+
+rmse_hist = rmse_hist[:conv_idx]
+mae_hist = mae_hist[:conv_idx]
+nrmse_hist = nrmse_hist[:conv_idx]
+
+fig = plt.figure(figsize=(16, 6))
+batch_size = 5
+
+ax1=fig.add_subplot(1, 3, 1)
+ax1.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), rmse_hist)
+ax1.set_title(r'RMSE on test set', fontsize=axis_font)
+ax1.set_xlabel(r'Points added', fontsize=axis_font)
+ax1.set_ylabel(r'Error metric', fontsize=axis_font)
+# ax1.set_xlim([0, 140])
+# ax1.set_ylim([0.19, 0.28])
+ax1.grid(True)
+
+
+ax2=fig.add_subplot(1, 3, 2)
+ax2.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), nrmse_hist)
+ax2.set_title('NRMSE-LOOCV of training set', fontsize=axis_font)
+ax2.set_xlabel('Points added', fontsize=axis_font)
+ax2.grid(True)
+
+
+ax3=fig.add_subplot(1, 3, 3)
+ax3.plot(np.arange(0, (len(change_array))*batch_size, batch_size), change_array)
+ax3.set_title('Relative change', fontsize=axis_font)
+ax3.set_xlabel('Points added', fontsize=axis_font)
+ax3.grid(True)
+
+df_raw = df.copy()
+df = df.head(conv_idx*batch_size + 50)
+
+#%% seaborn scatter with histogram: DoE data
+df_init = df_raw.head(50)
+
+def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
+    # no labels
+    ax_histx.tick_params(axis="x", labelbottom=False)
+    ax_histy.tick_params(axis="y", labelleft=False)
+
+    # the scatter plot:
+    cmap = plt.cm.Blues
+    ax.scatter(x, y, alpha=alpha, edgecolors='black', s=25, facecolors=c,
+               label=label)
+
+    # now determine nice limits by hand:
+    binwidth = 0.25
+    xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+    lim = (int(xymax/binwidth) + 1) * binwidth
+
+    bins = np.arange(-lim, lim + binwidth, binwidth)
+    
+    if y.name == 'zeta_e':
+        binwidth = 0.02
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_y = np.arange(-lim, lim + binwidth, binwidth)
+    elif y.name == 'RI':
+        binwidth = 0.15
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_y = np.arange(-lim, lim + binwidth, binwidth)
+    else:
+        bin_y = bins
+    ax_histx.hist(x, bins=bins, alpha = 0.5, weights=np.ones(len(x)) / len(x),
+                  facecolor = c, edgecolor='navy', linewidth=0.5)
+    ax_histy.hist(y, bins=bin_y, orientation='horizontal', alpha = 0.5, weights=np.ones(len(x)) / len(x),
+                  facecolor = c, edgecolor='navy', linewidth=0.5)
+    
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+# plt.close('all')
+# Start with a square Figure.
+fig = plt.figure(figsize=(13, 6), layout='constrained')
+
+# Add a gridspec with two rows and two columns and a ratio of 1 to 4 between
+# the size of the marginal axes and the main axes in both directions.
+# Also adjust the subplot parameters for a square plot.
+gs = fig.add_gridspec(2, 4,  width_ratios=(5, 1, 5, 1), height_ratios=(1, 5),
+                      left=0.1, right=0.9, bottom=0.1, top=0.9,
+                      wspace=0., hspace=0.)
+# # Create the Axes.
+# fig = plt.figure(figsize=(13, 10))
+# ax1=fig.add_subplot(2, 2, 1)
+
+ax = fig.add_subplot(gs[1, 0])
+ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df_init['gap_ratio'], df_init['RI'], 'navy', 0.9, ax, ax_histx, ax_histy,
+             label='Initial set')
+scatter_hist(df['gap_ratio'], df['RI'], 'orange', 0.3, ax, ax_histx, ax_histy,
+             label='DoE added')
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax.set_xlim([0.0, 4.0])
+ax.set_ylim([0.5, 2.25])
+ax.legend(fontsize=label_size)
+
+ax = fig.add_subplot(gs[1, 2])
+ax_histx = fig.add_subplot(gs[0, 2], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 3], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df_init['T_ratio'], df_init['zeta_e'], 'navy', 0.9, ax, ax_histx, ax_histy)
+scatter_hist(df['T_ratio'], df['zeta_e'], 'orange', 0.3, ax, ax_histx, ax_histy)
+
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax.set_xlim([1.25, 5.0])
+ax.set_ylim([0.1, 0.25])
+
+
 #%% ml training
 
 # make prediction objects for impacted and non-impacted datasets
@@ -405,7 +556,7 @@ title_font = 24
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-y_var = 'median_cost_ratio'
+y_var = 'max_drift'
 fig = plt.figure(figsize=(13, 10))
 
 ax1=fig.add_subplot(2, 2, 1)
@@ -415,7 +566,7 @@ sc = ax1.scatter(df['gap_ratio'], df[y_var], alpha=0.2, c=df['impacted'], cmap=c
 ax1.set_ylabel('Median loss ratio', fontsize=axis_font)
 ax1.set_xlabel(r'$GR$', fontsize=axis_font)
 ax1.set_title('a) Gap ratio', fontsize=title_font)
-ax1.set_ylim([0, 0.3])
+ax1.set_ylim([0, 0.15])
 
 from matplotlib.lines import Line2D
 custom_lines = [Line2D([0], [0], marker='o', color='w', label='No impact',
@@ -430,17 +581,17 @@ ax2=fig.add_subplot(2, 2, 2)
 ax2.scatter(df['RI'], df[y_var], alpha=0.3, c=df['impacted'], cmap=cmap)
 ax2.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax2.set_title('b) Superstructure strength', fontsize=title_font)
-ax2.set_ylim([0, 0.3])
+ax2.set_ylim([0, 0.15])
 ax2.grid(True)
 
 ax3=fig.add_subplot(2, 2, 3)
 
 ax3.scatter(df['T_ratio'], df[y_var], alpha=0.3, c=df['impacted'], cmap=cmap)
 # ax3.scatter(df['T_ratio_e'], df[y_var])
-ax3.set_ylabel('Median loss ratio', fontsize=axis_font)
+ax3.set_ylabel('Peak story drift', fontsize=axis_font)
 ax3.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 ax3.set_title('c) Bearing period ratio', fontsize=title_font)
-ax3.set_ylim([0, 0.3])
+ax3.set_ylim([0, 0.15])
 ax3.grid(True)
 
 ax4=fig.add_subplot(2, 2, 4)
@@ -448,15 +599,109 @@ ax4=fig.add_subplot(2, 2, 4)
 ax4.scatter(df['zeta_e'], df[y_var], alpha=0.3, c=df['impacted'], cmap=cmap)
 ax4.set_xlabel(r'$\zeta_M$', fontsize=axis_font)
 ax4.set_title('d) Bearing damping', fontsize=title_font)
-ax4.set_ylim([0, 0.3])
+ax4.set_ylim([0, 0.15])
 ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
 
+#%% engineering data
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+# plt.close('all')
+fig = plt.figure(figsize=(13, 8))
+
+bins = pd.IntervalIndex.from_tuples([(0.2, 0.5), (0.5, 1.0), (1.0, 1.5), (1.5, 3.5)])
+labels=['tiny', 'small', 'okay', 'large']
+df['bin'] = pd.cut(df['gap_ratio'], bins=bins, labels=labels)
+
+
+ax = fig.add_subplot(2, 2, 1)
+import seaborn as sns
+sns.stripplot(data=df, x="max_drift", y="bin", orient="h", alpha=0.8, size=5,
+              hue='impacted', ax=ax, legend='brief', palette='seismic')
+sns.boxplot(y="bin", x= "max_drift", data=df,  showfliers=False,
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
+            width=0.6, ax=ax)
+
+ax.set_ylabel('$GR$ range', fontsize=axis_font)
+ax.set_xlabel('Peak interstory drift (PID)', fontsize=axis_font)
+plt.xlim([0.0, 0.15])
+
+#####
+bins = pd.IntervalIndex.from_tuples([(0.5, 0.75), (0.75, 1.0), (1.0, 1.5), (1.5, 2.25)])
+labels=['tiny', 'small', 'okay', 'large']
+df['bin'] = pd.cut(df['RI'], bins=bins, labels=labels)
+
+
+ax = fig.add_subplot(2, 2, 2)
+import seaborn as sns
+sns.stripplot(data=df, x="max_drift", y="bin", orient="h", size=5, alpha=0.8,
+              hue='impacted', ax=ax, legend='brief', palette='seismic')
+sns.boxplot(y="bin", x= "max_drift", data=df,  showfliers=False,
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
+            width=0.6, ax=ax)
+
+
+ax.set_ylabel('$R_y$ range', fontsize=axis_font)
+ax.set_xlabel('Peak interstory drift (PID)', fontsize=axis_font)
+plt.xlim([0.0, 0.15])
+
+
+
+#####
+bins = pd.IntervalIndex.from_tuples([(1.0, 2.0), (2.0, 3.0), (3.0, 4.0), (4.0, 5.0)])
+labels=['tiny', 'small', 'okay', 'large']
+df['bin'] = pd.cut(df['T_ratio'], bins=bins, labels=labels)
+
+
+ax = fig.add_subplot(2, 2, 3)
+import seaborn as sns
+sns.stripplot(data=df, x="max_accel", y="bin", orient="h", size=5, alpha=0.8,
+              hue='impacted', ax=ax, legend='brief', palette='seismic')
+sns.boxplot(y="bin", x= "max_accel", data=df,  showfliers=False,
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
+            width=0.6, ax=ax)
+
+
+ax.set_ylabel('$T_M/T_{fb}$ range', fontsize=axis_font)
+ax.set_xlabel('Peak floor acceleration (g)', fontsize=axis_font)
+plt.xlim([0.0, 5.0])
+
+#####
+bins = pd.IntervalIndex.from_tuples([(0.1, 0.14), (0.14, 0.18), (0.18, 0.22), (0.22, 0.25)])
+labels=['tiny', 'small', 'okay', 'large']
+df['bin'] = pd.cut(df['zeta_e'], bins=bins, labels=labels)
+
+
+ax = fig.add_subplot(2, 2, 4)
+import seaborn as sns
+sns.stripplot(data=df, x="max_velo", y="bin", orient="h", size=5, alpha=0.8,
+              hue='impacted', ax=ax, legend='brief', palette='seismic')
+sns.boxplot(y="bin", x= "max_velo", data=df,  showfliers=False,
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
+            width=0.6, ax=ax)
+
+
+ax.set_ylabel('$\zeta_M$ range', fontsize=axis_font)
+ax.set_xlabel('Peak floor velocity (in/s)', fontsize=axis_font)
+plt.xlim([25, 125.0])
+fig.tight_layout()
+plt.show()
+
+
+
 #%% weird pie plot
 def plot_pie(x, ax, r=1): 
     # radius for pieplot size on a scatterplot
+    from numpy import log
     patches, texts = ax.pie(x[['B_50%','C_50%','D_50%','E_50%']], 
            center=(x['gap_ratio'],x['RI']), radius=r, colors=plt.cm.Set2.colors)
     
@@ -466,7 +711,7 @@ def plot_pie(x, ax, r=1):
 fig, ax = plt.subplots(1, 1, figsize=(8, 8))
 
 
-df_mini = df[df['B_50%'].notnull()].head(200)
+df_mini = df.head(200)
 df_mini = df_mini[df_mini['gap_ratio'] < 2.5]
 df_mini = df_mini[df_mini['gap_ratio'] >0.5]
 df_pie = df_mini.copy()
@@ -487,17 +732,49 @@ _ = ax.yaxis.set_ticks(np.arange(0.5, 2.1, 0.5))
 _ = ax.xaxis.set_ticks(np.arange(0.5, 2.1, 0.5))
 # _ = ax.set_title('My')
 ax.set_frame_on(True)
-labels = ['Structure \& facade', 'Partitions \& lighting', 'MEP', 'Storage']
+labels = ['Structure \& facade', 'Flooring, ceiling, partitions, \& stairs', 'MEP', 'Storage']
 plt.legend(patch, labels, loc='lower right', fontsize=14)
 # plt.axis('equal')
 # plt.tight_layout()
 ax.grid()
 
+#%% stacked bars
+# TODO: you are here
+plt.close('all')
+
+labels=['<10\%', '10-90%', '>90\%']
+bins = pd.IntervalIndex.from_tuples([(-0.001, 0.1), (0.1, 0.9), (0.9, 1.0)])
+df['bin'] = pd.cut(df['replacement_freq'], bins=bins, labels=labels)
+
+df['B_frac'] = df['B_50%'] / df['total_cmp_cost']
+df['C_frac'] = df['C_50%'] / df['total_cmp_cost']
+df['D_frac'] = df['D_50%'] / df['total_cmp_cost']
+df['E_frac'] = df['E_50%'] / df['total_cmp_cost']
+
+df_stack_bars = df.groupby('bin')[[
+    'B_frac', 'C_frac', 'D_frac', 'E_frac']].mean()
+
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(1, 1, 1)
+
+risks = ['$<10$ \%', '$10-90$\%', '$>90$\%']
+ax.grid(visible=True, zorder=0)
+cmap = plt.cm.Dark2
+p1 = ax.bar(risks, df_stack_bars['B_frac'], width=0.35, 
+            label='Structure \& fa\c{c}ade', zorder=3, color=cmap(7))
+p1 = ax.bar(risks, df_stack_bars['C_frac'], width=0.35, 
+            label='Flooring, ceiling, partitions, \& stairs', zorder=3, color=cmap(5))
+p1 = ax.bar(risks, df_stack_bars['D_frac'], width=0.35, label='MEP', zorder=3, 
+            color=cmap(0))
+p1 = ax.bar(risks, df_stack_bars['E_frac'], width=0.35, label='Storage', zorder=3,
+            color=cmap(3))
+ax.set_ylabel("Percent loss", fontsize=axis_font)
+ax.set_xlabel('Replacement risk', fontsize=axis_font)
+
+ax.legend(fontsize=axis_font)
+plt.show()
 
 #%% impact effect
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
-warnings.filterwarnings("ignore", category=FutureWarning) 
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -580,6 +857,7 @@ title_font = 22
 subt_font = 18
 import matplotlib as mpl
 label_size = 18
+clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
@@ -637,7 +915,8 @@ plt.imshow(
 plt_density = 200
 cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.1, cmap='Blues', vmin=-1,
                   levels=np.linspace(0.1,1.0,num=10))
-plt.clabel(cs, fontsize=clabel_size)
+clabels = plt.clabel(cs, fontsize=clabel_size, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
 ax.scatter(df_hit[xvar][:plt_density],
             df_hit[yvar][:plt_density],
@@ -646,7 +925,7 @@ ax.scatter(df_hit[xvar][:plt_density],
 ax.scatter(df_miss[xvar][:plt_density],
             df_miss[yvar][:plt_density],
             s=40, c='azure', edgecolors='k', label='No impact')
-
+plt.legend(fontsize=axis_font)
 
 ax.set_xlim(0.3, 2.5)
 ax.set_title(r'Impact likelihood: $R_y = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
@@ -812,6 +1091,34 @@ ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 fig.tight_layout()
 plt.show()
 
+#%% unlabeled generic regression image
+'''
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(9, 6))
+
+Z = mdl_cost_miss.gpr.predict(X_plot)
+Z_hit_cond = Z.reshape(xx_pl.shape)
+
+cs = plt.contour(xx_pl, Z_hit_cond, yy_pl, linewidths=1.4, cmap='Spectral',
+                 levels=np.arange(0.5, 3.0, step=0.25))
+plt.scatter(df_miss[xvar], df_miss[cost_var], c=df_miss[yvar],
+            cmap='Spectral', alpha=0.5,
+          edgecolors='k')
+plt.clabel(cs, fontsize=label_size)
+# plt.xlabel(r'$X$', fontsize=axis_font)
+# plt.ylabel('Loss ratio', fontsize=axis_font)
+plt.axis('off')
+plt.ylim([0.0, 0.1])
+fig.tight_layout()
+'''
 #%% unconditioned models
 
 plt.rcParams["font.family"] = "serif"
@@ -911,7 +1218,8 @@ ax.scatter(df_miss[xvar], df_miss[cost_var], color=cmap(0.), alpha=0.5,
 ax.clabel(cs, fontsize=label_size)
 ax.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax.grid(visible=True)
-ax.set_ylim([0.0, 0.05])
+ax.set_ylim([0.0, 0.25])
+fig.tight_layout()
 # ax.set_xlim([0.7, 4.0])
 plt.show()
 
