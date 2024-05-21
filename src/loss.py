@@ -560,43 +560,81 @@ class Loss_Analysis:
         total_cmps = pd.concat([structural_cmp, nsc_cmp], ignore_index=True)
         self.components = total_cmps
         
-    def process_EDP(self):
+    def process_EDP(self, df_edp=None):
 
         # from ast import literal_eval
         # PID = literal_eval(self.PID)
         # PFV = literal_eval(self.PFV)
         # PFA = literal_eval(self.PFA)
         
-        PID = self.PID
-        PFV = self.PFV
-        PFA = self.PFA
-        # max_isol_disp = self.max_isol_disp
-        
-        PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
-        PID_names_2 = ['PID-'+str(fl+1)+'-2' for fl in range(len(PID))]
-        
-        PFA_names_1 = ['PFA-'+str(fl+1)+'-1' for fl in range(len(PFA))]
-        PFA_names_2 = ['PFA-'+str(fl+1)+'-2' for fl in range(len(PFA))]
-        
-        PFV_names_1 = ['PFV-'+str(fl+1)+'-1' for fl in range(len(PFV))]
-        PFV_names_2 = ['PFV-'+str(fl+1)+'-2' for fl in range(len(PFV))]
-        
-        import pandas as pd
-        all_edps = PFA + PFV + PID + PFA + PFV + PID
-        all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
-                     PFA_names_2 + PFV_names_2 + PID_names_2)
-        edp_df = pd.DataFrame([all_edps], columns = all_names)
-        
-        
-        edp_df.loc['Units'] = ['g' if edp.startswith('PFA') else
-                               'inps' if edp.startswith('PFV') else
-                               'rad' for edp in all_names]
-
-        edp_df["new"] = range(1,len(edp_df)+1)
-        edp_df.loc[edp_df.index=='Units', 'new'] = 0
-        edp_df = edp_df.sort_values("new").drop('new', axis=1)
-
-        self.edp = edp_df
+        if df_edp is None:
+            PID = self.PID
+            PFV = self.PFV
+            PFA = self.PFA
+            # max_isol_disp = self.max_isol_disp
+            
+            PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
+            PID_names_2 = ['PID-'+str(fl+1)+'-2' for fl in range(len(PID))]
+            
+            PFA_names_1 = ['PFA-'+str(fl+1)+'-1' for fl in range(len(PFA))]
+            PFA_names_2 = ['PFA-'+str(fl+1)+'-2' for fl in range(len(PFA))]
+            
+            PFV_names_1 = ['PFV-'+str(fl+1)+'-1' for fl in range(len(PFV))]
+            PFV_names_2 = ['PFV-'+str(fl+1)+'-2' for fl in range(len(PFV))]
+            
+            import pandas as pd
+            all_edps = PFA + PFV + PID + PFA + PFV + PID
+            all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
+                         PFA_names_2 + PFV_names_2 + PID_names_2)
+            edp_df = pd.DataFrame([all_edps], columns = all_names)
+            
+            
+            edp_df.loc['Units'] = ['g' if edp.startswith('PFA') else
+                                   'inps' if edp.startswith('PFV') else
+                                   'rad' for edp in all_names]
+    
+            edp_df["new"] = range(1,len(edp_df)+1)
+            edp_df.loc[edp_df.index=='Units', 'new'] = 0
+            edp_df = edp_df.sort_values("new").drop('new', axis=1)
+    
+            self.edp = edp_df
+        # made for validation mode, results in edp item being a df
+        else:
+            PID = df_edp['PID'].iloc[0]
+            PFV = df_edp['PFV'].iloc[0]
+            PFA = df_edp['PFA'].iloc[0]
+            
+            PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
+            PID_names_2 = ['PID-'+str(fl+1)+'-2' for fl in range(len(PID))]
+            
+            PFA_names_1 = ['PFA-'+str(fl+1)+'-1' for fl in range(len(PFA))]
+            PFA_names_2 = ['PFA-'+str(fl+1)+'-2' for fl in range(len(PFA))]
+            
+            PFV_names_1 = ['PFV-'+str(fl+1)+'-1' for fl in range(len(PFV))]
+            PFV_names_2 = ['PFV-'+str(fl+1)+'-2' for fl in range(len(PFV))]
+            
+            all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
+                         PFA_names_2 + PFV_names_2 + PID_names_2)
+            
+            import pandas as pd
+            pid_df = pd.DataFrame(df_edp['PID'].to_list())
+            pfv_df = pd.DataFrame(df_edp['PFV'].to_list())
+            pfa_df = pd.DataFrame(df_edp['PFA'].to_list())
+            
+            
+            
+            edp_df = pd.concat([pfa_df, pfv_df, pid_df, pfa_df, pfv_df, pid_df],
+                          axis=1)
+            edp_df.columns = all_names
+            edp_df.loc['Units'] = ['g' if edp.startswith('PFA') else
+                                   'inps' if edp.startswith('PFV') else
+                                   'rad' for edp in all_names]
+    
+            edp_df["new"] = range(1,len(edp_df)+1)
+            edp_df.loc[edp_df.index=='Units', 'new'] = 0
+            edp_df = edp_df.sort_values("new").drop('new', axis=1)
+    
+            self.edp = edp_df
     
     def estimate_damage(self, mode='generate', custom_fragility_db=None):
         
@@ -618,7 +656,6 @@ class Loss_Analysis:
         # if mode is validation, treat the dataset as a distribution
         elif mode=='validation':
             raw_demands = self.edp.transpose()
-            raw_demands.columns = ['Units', 'Value']
             raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
             raw_demands.index.names = ['type','loc','dir']
             
@@ -645,7 +682,7 @@ class Loss_Analysis:
         ###########################################################################
         # TODO: change validation? can do either deterministic or distro
         if mode=='validation':
-            PAL.demand.load_sample(raw_demands)
+            PAL.demand.load_sample(raw_demands.T)
             PAL.demand.calibrate_model(
                 {
                     "ALL": {

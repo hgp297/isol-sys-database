@@ -126,7 +126,7 @@ def make_design_space(res):
                                              res),
                                  np.linspace(0.5, 2.25,
                                              res),
-                                 np.linspace(2.0, 4.0,
+                                 np.linspace(2.0, 5.0,
                                              res),
                                  np.linspace(0.1, 0.25,
                                              res))
@@ -341,6 +341,7 @@ df['cmp_replace_cost_ratio'] = df['total_cmp_cost']/df['replacement_cost']
 df['median_cost_ratio'] = df_loss['cost_50%']/df['replacement_cost']
 df['cmp_cost_ratio'] = df_loss['cost_50%']/df['total_cmp_cost']
 
+# , but working in parallel (2x faster)
 df['replacement_time'] = df['bldg_area']/1000*365
 df['total_cmp_time'] = df_loss_max['time_l_50%']
 df['cmp_replace_time_ratio'] = df['total_cmp_time']/df['replacement_time']
@@ -702,8 +703,9 @@ plt.show()
 def plot_pie(x, ax, r=1): 
     # radius for pieplot size on a scatterplot
     from numpy import log
+    c_list = [plt.cm.Dark2(7), plt.cm.Dark2(5), plt.cm.Dark2(0), plt.cm.Dark2(3)]
     patches, texts = ax.pie(x[['B_50%','C_50%','D_50%','E_50%']], 
-           center=(x['gap_ratio'],x['RI']), radius=r, colors=plt.cm.Set2.colors)
+           center=(x['gap_ratio'],x['RI']), radius=r, colors=c_list)
     
     return(patches)
 
@@ -739,8 +741,7 @@ plt.legend(patch, labels, loc='lower right', fontsize=14)
 ax.grid()
 
 #%% stacked bars
-# TODO: you are here
-plt.close('all')
+# plt.close('all')
 
 labels=['<10\%', '10-90%', '>90\%']
 bins = pd.IntervalIndex.from_tuples([(-0.001, 0.1), (0.1, 0.9), (0.9, 1.0)])
@@ -824,7 +825,7 @@ plt.show()
 
 #%% impact prediction
 
-print('========== Fitting impact classification (GPC) ============')
+print('========== Fitting impact classification (GPC or KLR) ============')
 
 # prepare the problem
 mdl_impact = GP(df)
@@ -832,7 +833,7 @@ mdl_impact.set_covariates(covariate_list)
 mdl_impact.set_outcome('impacted', use_ravel=True)
 mdl_impact.test_train_split(0.2)
 
-mdl_impact.fit_gpc(kernel_name='rbf_iso')
+mdl_impact.fit_gpc(kernel_name='rbf_ard')
 
 mdl_impact.fit_kernel_logistic(kernel_name='rbf')
 
@@ -876,14 +877,14 @@ X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar,
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
-# # GPC impact prediction
-# Z = mdl_impact.gpc.predict_proba(X_plot)[:,1]
+# GPC impact prediction
+Z = mdl_impact.gpc.predict_proba(X_plot)[:,1]
 
 
-# kernel logistic impact prediction
-K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
-probs_imp = mdl_impact.log_reg_kernel.predict_proba(K_space)
-Z = probs_imp[:,1]
+# # kernel logistic impact prediction
+# K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+# probs_imp = mdl_impact.log_reg_kernel.predict_proba(K_space)
+# Z = probs_imp[:,1]
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -991,6 +992,7 @@ mdl_repl_miss.fit_ols_ridge()
 
 mdl_unconditioned.fit_gpr(kernel_name='rbf_iso')
 #%% plot no-impact regressions
+'''
 axis_font = 20
 subt_font = 18
 
@@ -1040,8 +1042,9 @@ ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 # ax.set_title('Median cost predictions given no impact (RBF kernel ridge)')
 fig.tight_layout()
 plt.show()
-
+'''
 #%% plot yes-impact regressions
+'''
 axis_font = 20
 subt_font = 18
 
@@ -1090,7 +1093,7 @@ ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 # ax.set_title('Median cost predictions given no impact (RBF kernel ridge)')
 fig.tight_layout()
 plt.show()
-
+'''
 #%% unlabeled generic regression image
 '''
 plt.rcParams["font.family"] = "serif"
@@ -1250,7 +1253,7 @@ yy = X_plot[yvar]
 
 K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
 
-Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+Z = predict_DV(X_plot, mdl_impact.gpc, 
                mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome='replacement_freq')
 
 
@@ -1268,7 +1271,10 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
-ax.scatter(df[xvar], df[yvar], df['replacement_freq'], c=df['replacement_freq'],
+df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) & 
+           (df['zeta_e']<=0.2) & (df['zeta_e']>=0.13)]
+
+ax.scatter(df_sc[xvar], df_sc[yvar], df_sc['replacement_freq'], c=df_sc['replacement_freq'],
            edgecolors='k', alpha = 0.7, cmap='Blues')
 
 xlim = ax.get_xlim()
@@ -1295,7 +1301,7 @@ yy = X_plot[yvar]
 
 K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
 
-Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+Z = predict_DV(X_plot, mdl_impact.gpc, 
                mdl_cost_hit.gpr, mdl_cost_miss.gpr, outcome='replacement_freq')
 
 
@@ -1313,7 +1319,10 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
-ax.scatter(df[xvar], df[yvar], df['replacement_freq'], c=df['replacement_freq'],
+df_sc = df[(df['gap_ratio']<=1.2) & (df['gap_ratio']>=0.8) & 
+           (df['RI']<=2.25) & (df['RI']>=1.8)]
+
+ax.scatter(df_sc[xvar], df_sc[yvar], df_sc['replacement_freq'], c=df_sc['replacement_freq'],
            edgecolors='k', alpha = 0.7, cmap='Blues')
 
 xlim = ax.get_xlim()
@@ -1402,7 +1411,7 @@ yy = X_plot[yvar]
 
 K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
 
-Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+Z = predict_DV(X_plot, mdl_impact.gpc, 
                mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome='replacement_freq')
 
 
@@ -1441,7 +1450,7 @@ yy = X_plot[yvar]
 
 K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
 
-Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+Z = predict_DV(X_plot, mdl_impact.gpc, 
                mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome='replacement_freq')
 
 
@@ -1495,7 +1504,7 @@ yy = X_plot[yvar]
 
 K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
 
-Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+Z = predict_DV(X_plot, mdl_impact.gpc, 
                mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome=cost_var)
 
 
@@ -1540,7 +1549,7 @@ yy = X_plot[yvar]
 
 K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
 
-Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+Z = predict_DV(X_plot, mdl_impact.gpc, 
                mdl_cost_hit.gpr, mdl_cost_miss.gpr, outcome=cost_var)
 
 
@@ -1600,7 +1609,7 @@ yy = X_plot[yvar]
 
 K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
 
-Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+Z = predict_DV(X_plot, mdl_impact.gpc, 
                mdl_repl_hit.gpr, mdl_repl_miss.gpr, outcome=time_var)
 
 
@@ -1645,7 +1654,7 @@ yy = X_plot[yvar]
 
 K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
 
-Z = predict_DV(X_plot, mdl_impact.log_reg_kernel, 
+Z = predict_DV(X_plot, mdl_impact.gpc, 
                mdl_cost_hit.gpr, mdl_cost_miss.gpr, outcome=time_var)
 
 
@@ -1677,3 +1686,889 @@ ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 #ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
+
+#%% dirty contours (presenting replacement risk for EMI)
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5])
+
+res = 100
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 5.0, fourth_var_set = 0.15)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fig, ax = plt.subplots(1, 1, figsize=(9,7))
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+prob_target = 0.1
+grid_repl = predict_DV(X_plot,
+                       mdl_impact.gpc,
+                       mdl_repl_hit.gpr,
+                       mdl_repl_miss.gpr,
+                       outcome='replacement_freq')
+
+Z = np.array(grid_repl)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+prob_list = [0.1]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.3, 1.5, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_cont)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 1.7, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+
+
+ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2.5,))
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) & 
+           (df['zeta_e']<=0.2) & (df['zeta_e']>=0.13)]
+
+sc = ax.scatter(df_sc[xvar],
+            df_sc[yvar],
+            c=df_sc['replacement_freq'], cmap='Blues',
+            s=20, edgecolors='k', linewidth=0.5)
+
+ax.grid(visible=True)
+ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+handles, labels = sc.legend_elements(prop="colors")
+legend2 = ax.legend(handles, labels, loc="lower right", title="\% replacement",
+                      fontsize=subt_font, title_fontsize=subt_font)
+
+fig.tight_layout()
+plt.show()
+
+#%% dirty contours replacement time and cost
+
+# TODO: you are here
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75])
+
+res = 100
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+ax = fig.add_subplot(1, 2, 1)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact.gpc,
+                       mdl_cost_hit.gpr,
+                       mdl_cost_miss.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+prob_list = [0.3, 0.2, 0.1]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.3, 1.5, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_cont)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 1.7, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+
+
+ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2.5,))
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) & 
+           (df['zeta_e']<=0.2) & (df['zeta_e']>=0.13)]
+
+sc = ax.scatter(df_sc[xvar],
+            df_sc[yvar],
+            c=df_sc[cost_var]*100, cmap='Blues',
+            s=20, edgecolors='k', linewidth=0.5)
+
+ax.grid(visible=True)
+ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+handles, labels = sc.legend_elements(prop="colors")
+legend2 = ax.legend(handles, labels, loc="lower right", title="\% component cost",
+                      fontsize=subt_font, title_fontsize=subt_font)
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0, 2.0])
+
+res = 100
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+ax = fig.add_subplot(1, 2, 2)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact.gpc,
+                       mdl_time_hit.gpr,
+                       mdl_time_miss.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+prob_list = [0.3, 0.2, 0.1]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.3, 1.5, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_cont)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 1.7, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+
+
+ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2.5,))
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) & 
+           (df['zeta_e']<=0.2) & (df['zeta_e']>=0.13)]
+
+sc = ax.scatter(df_sc[xvar],
+            df_sc[yvar],
+            c=df_sc[cost_var]*100, cmap='Blues',
+            s=20, edgecolors='k', linewidth=0.5)
+
+ax.grid(visible=True)
+ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+handles, labels = sc.legend_elements(prop="colors")
+legend2 = ax.legend(handles, labels, loc="lower right", title="\% component repair time",
+                      fontsize=subt_font, title_fontsize=subt_font)
+
+
+fig.tight_layout()
+plt.show()
+
+#%% Testing the design space
+import time
+
+res_des = 20
+X_space = make_design_space(res_des)
+#K_space = mdl.get_kernel(X_space, kernel_name='rbf', gamma=gam)
+
+# choice GPC
+# HOWEVER, SVC is poorly calibrated for probablities
+# consider using GP if computational resources allow, and GP looks good
+
+# choice GPR for all prediction model for richness. HOWEVER must keep resolution low
+t0 = time.time()
+space_repair_cost = predict_DV(X_space, 
+                               mdl_impact.gpc, 
+                               mdl_cost_hit.gpr, 
+                               mdl_cost_miss.gpr, 
+                               outcome=cost_var)
+tp = time.time() - t0
+print("GPC-GPR repair cost prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                           tp))
+
+t0 = time.time()
+space_downtime = predict_DV(X_space,
+                            mdl_impact.gpc,
+                            mdl_time_hit.gpr,
+                            mdl_time_miss.gpr,
+                            outcome=time_var)
+tp = time.time() - t0
+print("GPC-GPR downtime prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
+t0 = time.time()
+space_repl = predict_DV(X_space,
+                        mdl_impact.gpc,
+                        mdl_repl_hit.gpr,
+                        mdl_repl_miss.gpr,
+                        outcome='replacement_freq')
+tp = time.time() - t0
+print("GPC-GPR replacement prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                               tp))
+
+#%% Calculate upfront cost of data
+
+# TODO: normalize cost for building size
+
+def get_steel_coefs(df, steel_per_unit=1.25):
+    n_bays = df.num_bays
+    n_stories = df.num_stories
+    # ft
+    L_bldg = df.L_bldg
+    L_beam = df.L_bay
+    h_story = df.h_story
+    
+    # weights
+    W = df.W
+    Ws = df.W_s
+    
+    
+    all_beams = df.beam
+    all_cols = df.column
+    
+    # sum of per-length-weight of all floors
+    col_wt = [[float(member.split('X',1)[1]) for member in col_list] 
+                       for col_list in all_cols]
+    beam_wt = [[float(member.split('X',1)[1]) for member in beam_list] 
+                       for beam_list in all_beams]
+    col_all_wt = np.array(list(map(sum, col_wt)))
+    beam_all_wt = np.array(list(map(sum, beam_wt)))
+    
+    # find true steel costs
+    n_frames = 4
+    n_cols = 4*n_bays
+    
+    total_floor_col_length = np.array(n_cols*h_story, dtype=float)
+    total_floor_beam_length = np.array(L_beam * n_bays * n_frames, dtype=float)
+        
+    total_col_wt = col_all_wt*total_floor_col_length 
+    total_beam_wt = beam_all_wt*total_floor_beam_length
+    
+    bldg_wt = total_col_wt + total_beam_wt
+    
+    steel_cost = steel_per_unit*bldg_wt
+    bldg_sf = np.array(n_stories * L_bldg**2, dtype=float)
+    steel_cost_per_sf = steel_cost/bldg_sf
+    
+    # find design base shear as a feature
+    pi = 3.14159
+    g = 386.4
+    kM = (1/g)*(2*pi/df['T_m'])**2
+    S1 = 1.017
+    Dm = g*S1*df['T_m']/(4*pi**2*df['Bm'])
+    Vb = Dm * kM * Ws / 2
+    Vst = Vb*(Ws/W)**(1 - 2.5*df['zeta_e'])
+    Vs = np.array(Vst/df['RI']).reshape(-1,1)
+    
+    # linear regress cost as f(base shear)
+    from sklearn.linear_model import LinearRegression
+    reg = LinearRegression()
+    reg.fit(X=Vs, y=steel_cost_per_sf)
+    return({'coef':reg.coef_, 'intercept':reg.intercept_})
+
+def calc_upfront_cost(X_test, steel_coefs,
+                      land_cost_per_sqft=2837/(3.28**2),
+                      W=3037.5, Ws=2227.5):
+    
+    from scipy.interpolate import interp1d
+    zeta_ref = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    Bm_ref = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    interp_f = interp1d(zeta_ref, Bm_ref)
+    Bm = interp_f(X_test['zeta_e'])
+    
+    # estimate Tm
+    
+    from loads import estimate_period
+    
+    # current dummy structure: 4 bays, 4 stories
+    # 13 ft stories, 30 ft bays
+    X_query = X_test.copy()
+    X_query['superstructure_system'] = 'MF'
+    X_query['h_bldg'] = 4*13.0
+    X_query['T_fbe'] = X_query.apply(lambda row: estimate_period(row),
+                                                     axis='columns', result_type='expand')
+    
+    X_query['T_m'] = X_query['T_fbe'] * X_query['T_ratio']
+    
+    # calculate moat gap
+    pi = 3.14159
+    g = 386.4
+    S1 = 1.017
+    SaTm = S1/X_query['T_m']
+    moat_gap = X_query['gap_ratio'] * (g*(SaTm/Bm)*X_query['T_m']**2)/(4*pi**2)
+    
+    # calculate design base shear
+    kM = (1/g)*(2*pi/X_query['T_m'])**2
+    Dm = g*S1*X_query['T_m']/(4*pi**2*Bm)
+    Vb = Dm * kM * Ws / 2
+    Vst = Vb*(Ws/W)**(1 - 2.5*X_query['zeta_e'])
+    Vs = Vst/X_query['RI']
+    
+    # steel coefs now represent cost/sf as a function of Vs
+    steel_cost_per_sf = steel_coefs['intercept'] + steel_coefs['coef']*Vs
+    # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
+    
+    bldg_area = 4 * (30*4)**2
+    steel_cost = steel_cost_per_sf * bldg_area
+    land_area = (4*30*12.0 + moat_gap)**2
+    land_cost = land_cost_per_sqft/144.0 * land_area
+    
+    return({'total': steel_cost + land_cost,
+            'steel': steel_cost,
+            'land': land_cost})
+
+def is_pareto_efficient(costs, return_mask = True):
+    """
+    Find the pareto-efficient points
+    :param costs: An (n_points, n_costs) array
+    :param return_mask: True to return a mask
+    :return: An array of indices of pareto-efficient points.
+        If return_mask is True, this will be an (n_points, ) boolean array
+        Otherwise it will be a (n_efficient_points, ) integer array of indices.
+    """
+    is_efficient = np.arange(costs.shape[0])
+    n_points = costs.shape[0]
+    next_point_index = 0  # Next index in the is_efficient array to search for
+    while next_point_index<len(costs):
+        nondominated_point_mask = np.any(costs<costs[next_point_index], axis=1)
+        nondominated_point_mask[next_point_index] = True
+        is_efficient = is_efficient[nondominated_point_mask]  # Remove dominated points
+        costs = costs[nondominated_point_mask]
+        next_point_index = np.sum(nondominated_point_mask[:next_point_index])+1
+    if return_mask:
+        is_efficient_mask = np.zeros(n_points, dtype = bool)
+        is_efficient_mask[is_efficient] = True
+        return is_efficient_mask
+    else:
+        return is_efficient
+    
+
+#%% baseline predictions
+from scipy.stats import lognorm
+from math import log, exp
+
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+beta_drift = 0.25
+mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+                          columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
+baseline_repair_cost = predict_DV(X_baseline,
+                                      mdl_impact.gpc,
+                                      mdl_cost_hit.kr,
+                                      mdl_cost_miss.kr,
+                                      outcome=cost_var)[cost_var+'_pred'].item()
+baseline_downtime = predict_DV(X_baseline,
+                                      mdl_impact.gpc,
+                                      mdl_time_hit.kr,
+                                      mdl_time_miss.kr,
+                                      outcome=time_var)[time_var+'_pred'].item()
+
+
+baseline_repl_risk = predict_DV(X_baseline,
+                                      mdl_impact.gpc,
+                                      mdl_repl_hit.kr,
+                                      mdl_repl_miss.kr,
+                                      outcome='replacement_freq')['replacement_freq_pred'].item()
+
+uncut_baseline_cost = mdl_unconditioned.gpr.predict(X_baseline)
+
+#%% one single inverse design
+# sample building is 4 bay, 4 stories
+og_df = main_obj.doe_analysis.reset_index(drop=True)
+
+# take all 4bay/4stories building from db, calculate average max cost of cmps
+my_type = df_loss_max[(og_df['num_bays'] == 4) & (og_df['num_stories'] == 4)]
+
+nb = 4
+ns = 4
+bldg_area = (nb*30)**2 * (ns + 1)
+
+# assume $600/sf replacement
+n_worker_series = bldg_area/1000
+n_worker_parallel = n_worker_series/2
+replacement_cost = 600*bldg_area
+cmp_cost = my_type['cost_50%'].mean()
+
+# assume 2 years replacement, 1 worker per 1000 sf, but working in parallel (2x faster)
+# = (n_worker_parallel) * (365 * 2) = (n_worker_series / 2) * (365 * 2)
+# = (n_worker_series) * (365)
+replacement_time = bldg_area/1000*365
+cmp_time = my_type['time_l_50%'].mean()
+
+
+steel_price = 4.0
+coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
+
+# < 40% of cost of replacing all components
+percent_of_replacement = 0.2
+ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=percent_of_replacement]
+
+# <4 weeks for a team of 36
+dt_thresh = n_worker_parallel*28
+
+dt_thresh_ratio = dt_thresh / cmp_time
+ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh_ratio]
+
+repl_thresh = 0.1
+ok_repl = X_space.loc[space_repl['replacement_freq_pred']<=
+                      repl_thresh]
+
+X_design = X_space[np.logical_and.reduce((
+        X_space.index.isin(ok_cost.index), 
+        X_space.index.isin(ok_time.index),
+        X_space.index.isin(ok_repl.index)))]
+
+# manual filter?
+X_design = X_design[X_design['T_ratio']>3.0]
+
+
+# select best viable design
+upfront_costs = calc_upfront_cost(X_design, coef_dict)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+
+# least upfront cost of the viable designs
+best_design = X_design.loc[cheapest_design_idx]
+design_downtime = space_downtime.iloc[cheapest_design_idx].item()
+design_repair_cost = space_repair_cost.iloc[cheapest_design_idx].item()
+design_repl_risk = space_repl.iloc[cheapest_design_idx].item()
+
+# read out predictions
+print('==================================')
+print('            Predictions           ')
+print('==================================')
+print('======= Targets =======')
+print('Repair cost fraction:', f'{percent_of_replacement*100:,.2f}%')
+print('Repair time (days):', dt_thresh/n_worker_parallel)
+print('Replacement risk:', f'{repl_thresh*100:,.2f}%')
+
+
+print('======= Overall inverse design =======')
+print(best_design)
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Predicted median repair cost ratio: ',
+      f'{design_repair_cost*100:,.2f}%')
+print('Predicted median repair cost: ',
+      f'${design_repair_cost*cmp_cost:,.2f}')
+print('Predicted repair time (parallel): ',
+      f'{design_downtime*cmp_time/n_worker_parallel:,.2f}', 'days')
+print('Baseline repair time (parallel): ',
+      f'{design_downtime*cmp_time:,.2f}', 'worker-days')
+print('Predicted repair time ratio: ',
+      f'{design_downtime*100:,.2f}%')
+print('Predicted replacement risk: ',
+      f'{design_repl_risk:.2%}')
+
+baseline_upfront_cost_all = calc_upfront_cost(X_baseline, coef_dict)
+baseline_upfront_cost = baseline_upfront_cost_all['total'].item()
+print('======= Predicted baseline performance =======')
+print('Upfront cost of baseline design: ',
+      f'${baseline_upfront_cost:,.2f}')
+print('Baseline median repair cost ratio: ',
+      f'{baseline_repair_cost*100:,.2f}%')
+print('Baseline median repair cost: ',
+      f'${baseline_repair_cost*cmp_cost:,.2f}')
+print('Baseline repair time (parallel): ',
+      f'{baseline_downtime*cmp_time/n_worker_parallel:,.2f}', 'days')
+print('Baseline repair time (parallel): ',
+      f'{baseline_downtime*cmp_time:,.2f}', 'worker-days')
+print('Baseline repair time ratio: ',
+      f'{baseline_downtime*100:,.2f}%')
+print('Baseline replacement risk: ',
+      f'{baseline_repl_risk:.2%}')
+
+
+#%% pareto - doe
+
+from loads import define_gravity_loads
+config_dict = {
+    'S_1' : 1.017,
+    'k_ratio' : 10,
+    'Q': 0.06,
+    'num_frames' : 2,
+    'num_bays' : 4,
+    'num_stories' : 4,
+    'L_bay': 30.0,
+    'h_story': 13.0,
+    'isolator_system' : 'TFP',
+    'superstructure_system' : 'MF',
+    'S_s' : 2.2815
+}
+(W_seis, W_super, w_on_frame, P_on_leaning_column,
+       all_w_cases, all_plc_cases) = define_gravity_loads(config_dict)
+
+
+# remake X_plot in gap Ry
+X_plot = make_2D_plotting_space(mdl_impact.X, res)
+
+
+risk_thresh = 0.1
+
+all_costs = calc_upfront_cost(X_space, coef_dict, W=W_seis, Ws=W_super)
+constr_costs = all_costs['total']
+predicted_risk = space_repl['replacement_freq_pred'] #+ fs1_design
+# predicted_risk[predicted_risk < 0] = 0
+
+
+# acceptable_mask = predicted_risk < risk_thresh
+# X_acceptable = X_space[acceptable_mask]
+# acceptable_cost = constr_costs[acceptable_mask]
+# acceptable_risk = predicted_risk[acceptable_mask]
+
+pareto_array = np.array([constr_costs, predicted_risk]).transpose()
+# pareto_array = np.array([acceptable_cost, acceptable_risk]).transpose()
+
+t0 = time.time()
+pareto_mask = is_pareto_efficient(pareto_array)
+tp = time.time() - t0
+
+print("Culled %d points in %.3f s" % (pareto_array.shape[0], tp))
+
+X_pareto = X_space.iloc[pareto_mask].copy()
+risk_pareto = predicted_risk.iloc[pareto_mask]
+cost_pareto = constr_costs.iloc[pareto_mask]
+
+# X_pareto = X_acceptable.iloc[pareto_mask].copy()
+# risk_pareto = acceptable_risk.iloc[pareto_mask]
+# cost_pareto = acceptable_cost.iloc[pareto_mask]
+
+# -1 if predicted risk > allowable
+
+X_pareto['acceptable_risk'] = np.sign(risk_thresh - risk_pareto)
+X_pareto['predicted_risk'] = risk_pareto
+
+dom_idx = np.random.choice(len(pareto_array), len(pareto_array)//10, 
+                           replace = False)
+dominated_sample = np.array([pareto_array[i] for i in dom_idx])
+
+# plt.close('all')
+fig = plt.figure(figsize=(13, 10))
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 24
+subt_font = 18
+title_font = 26
+import matplotlib as mpl
+label_size = 20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+ax = fig.add_subplot(2, 2, 1)
+ax.scatter(risk_pareto, cost_pareto, marker='s', facecolors='none',
+            edgecolors='green', s=20.0, label='Pareto optimal designs')
+ax.scatter(risk_pareto, cost_pareto, s=1, color='black')
+ax.scatter(dominated_sample[:,1], dominated_sample[:,0], s=1, color='black',
+           label='Dominated designs')
+ax.set_xlabel('Predicted replacement risk', fontsize=axis_font)
+ax.set_ylabel('Construction cost', fontsize=axis_font)
+# ax.set_ylim([4.64e6, 4.75e6])
+ax.grid(True)
+ax.legend(fontsize=label_size)
+plt.title('a) Pareto front', fontsize=title_font)
+plt.show()
+
+
+x_var = 'gap_ratio'
+xx = X_plot[x_var]
+y_var = 'RI'
+yy = X_plot[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+cmap = plt.cm.Spectral_r
+ax1=fig.add_subplot(2, 2, 2)
+lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+sc = ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
+            c=X_pareto['predicted_risk'], s=20.0, cmap=cmap)
+
+# cbar = plt.colorbar(sc, ticks=[0, 0.2, 0.4])
+# cs = plt.contour(xx_pl, yy_pl, Z_GRy, linewidths=1.1, cmap='Blues', vmin=-1,
+#                   levels=lvls)
+# plt.clabel(cs, fontsize=clabel_size)
+ax1.set_xlim([0.5, 2.0])
+ax1.set_ylim([0.5, 2.25])
+ax1.set_xlabel('Gap ratio', fontsize=axis_font)
+ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
+ax1.grid(True)
+ax1.set_title(r'b) $T_M / T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=title_font)
+
+
+
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+cbaxes = inset_axes(ax1,  width="3%", height="20%", loc='lower right',
+                    bbox_to_anchor=(-0.05,0.5,1,1), bbox_transform=ax1.transAxes) 
+plt.colorbar(sc, cax=cbaxes, orientation='vertical')
+cbaxes.set_ylabel('Replacement risk', fontsize=axis_font)
+cbaxes.yaxis.set_ticks_position('left')
+
+
+'''
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var='T_ratio', y_var='zeta_e', 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+x_var = 'T_ratio'
+xx = X_plot[x_var]
+y_var = 'zeta_e'
+yy = X_plot[y_var]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+ax2=fig.add_subplot(1, 2, 2)
+plt.clabel(cs, fontsize=clabel_size)
+cs = plt.contour(xx_pl, yy_pl, Z_Tze, linewidths=1.1, cmap='Blues', vmin=-1,
+                 levels=lvls)
+plt.clabel(cs, fontsize=clabel_size)
+ax2.scatter(X_pareto['T_ratio'], X_pareto['zeta_e'], 
+            c=X_pareto['predicted_risk'],
+            edgecolors='k', s=20.0, cmap=plt.cm.Spectral_r)
+ax2.set_xlabel('T ratio', fontsize=axis_font)
+ax2.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax2.grid(True)
+ax2.set_title(r'b) $GR = 1.0$, $R_y = 2.0$', fontsize=axis_font)
+
+
+plt.savefig('./figures/pareto.eps')
+'''
+
+# 3D
+
+ax=fig.add_subplot(2, 2, 3, projection='3d')
+
+sc = ax.scatter(X_pareto['gap_ratio'], X_pareto['RI'], X_pareto['T_ratio'], 
+           c=X_pareto['predicted_risk'], alpha = 1, cmap=plt.cm.Spectral_r)
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax.set_xlim([0.3, 2.0])
+ax.set_zlabel(r'$T_M / T_{fb}$', fontsize=axis_font)
+ax.set_title(r'c) $\zeta_M$ not shown', fontsize=title_font)
+
+ax=fig.add_subplot(2, 2, 4, projection='3d')
+
+ax.scatter(X_pareto['gap_ratio'], X_pareto['RI'], X_pareto['zeta_e'], 
+           c=X_pareto['predicted_risk'], alpha = 1, cmap=plt.cm.Spectral_r)
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax.set_xlim([0.3, 2.0])
+ax.set_zlabel(r'$\zeta_M$', fontsize=axis_font)
+ax.set_title(r'd) $T_M/T_{fb}$ not shown', fontsize=title_font)
+# fig.colorbar(sc, ax=ax)
+fig.tight_layout(w_pad=0.0)
+# plt.savefig('./figures/pareto_full.pdf')
+plt.show()
+
+#%% full validation (IDA data)
+
+val_dir = '../../data/loss/'
+
+val_inv_file = 'tfp_mf_db_val_inverse_loss.pickle'
+baseline_file = 'tfp_mf_db_val_baseline_loss.pickle'
+
+main_obj_val = pd.read_pickle(val_dir+val_inv_file)
+df_val_inv = main_obj_val.loss_data.reset_index(drop=True)
+
+
+main_obj_val = pd.read_pickle(val_dir+baseline_file)
+df_base = main_obj_val.loss_data.reset_index(drop=True)

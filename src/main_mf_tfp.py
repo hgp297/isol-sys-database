@@ -263,14 +263,111 @@
 
 #%% calculate maximum pelicun losses
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
 
-main_obj.calc_cmp_max(main_obj.doe_analysis,
+# main_obj.calc_cmp_max(main_obj.doe_analysis,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_doe_loss_max.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+    
+#%% Validate loss targeted building
+
+# # 4 bay, 4 stories, targeted 20% cost fraction, 28 days, 10% replacement
+
+# from db import Database
+# pickle_path = '../data/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
+    
+# validation_path = '../data/validation/'
+
+# sample_dict = {
+#     'gap_ratio' : 1.13,
+#     'RI' : 1.39,
+#     'T_ratio': 3.04,
+#     'zeta_e': 0.15
+# }
+
+# design_df = pd.DataFrame(sample_dict, index=[0])
+
+# main_obj.prepare_idas(design_df)
+# main_obj.analyze_ida('ida_emi_pbe.csv')
+
+# import pickle
+# with open(validation_path+'tfp_mf_db_ida_emi.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+#%% calculate pelicun losses for a validation run
+
+from db import Database
+validation_path = '../data/validation/'
+
+import pandas as pd
+
+main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_baseline.pickle")
+df_val = main_obj.ida_results
+
+main_obj.validate_pelicun(main_obj.ida_results,
                 cmp_dir='../resource/loss/')
 
 import pickle
 loss_path = '../data/loss/'
-with open(loss_path+'tfp_mf_db_doe_loss_max.pickle', 'wb') as f:
+with open(loss_path+'tfp_mf_db_val_baseline_loss.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
+
+from db import Database
+validation_path = '../data/validation/'
+
+import pandas as pd
+
+main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_emi.pickle")
+df_val = main_obj.ida_results
+
+main_obj.validate_pelicun(main_obj.ida_results,
+                cmp_dir='../resource/loss/')
+
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'tfp_mf_db_val_inverse_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+
+
+#%% calculate pelicun losses for a validation run
+
+# validation_path = '../data/validation/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_baseline.pickle")
+# df_val = main_obj.ida_results
+
+# main_obj.run_pelicun(main_obj.ida_results, mode='validation',
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_valdet_baseline_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+# validation_path = '../data/validation/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_emi.pickle")
+# df_val = main_obj.ida_results
+
+# main_obj.validate_pelicun(main_obj.ida_results,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_valdet_inverse_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+    

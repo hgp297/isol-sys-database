@@ -750,7 +750,9 @@ class Database:
         loss_cmp_group = []
         col_list = []
         irr_list = []
-        
+        if mode=='validation':
+            IDA_list = []
+            
         for run_idx in db.index:
             print('========================================')
             print('Estimating loss for run index', run_idx+1)
@@ -769,7 +771,7 @@ class Database:
             
             [cmp, dmg, loss, loss_cmp, agg, 
              collapse_rate, irr_rate] = loss.estimate_damage(
-                 custom_fragility_db=additional_frag_db, mode=mode)
+                 custom_fragility_db=additional_frag_db, mode='generate')
             
             loss_summary = agg.describe([0.1, 0.5, 0.9])
             cost = loss_summary['repair_cost']['50%']
@@ -793,6 +795,9 @@ class Database:
             loss_cmp_group.append(loss_cmp)
             col_list.append(collapse_rate)
             irr_list.append(irr_rate)
+            
+            if mode=='validation':
+                IDA_list.append(run_data['ida_level'])
                  
         
         # concat list of df into one df
@@ -830,7 +835,9 @@ class Database:
         loss_df_data['replacement_freq'] = [x + y for x, y
                                             in zip(col_list, irr_list)]
         
-        
+        if mode=='validation':
+            loss_df_data['ida_level'] = IDA_list
+            
         # clean loss_by_group results=
         group_header = ['B_mean', 'B_std', 'B_min',
                        'B_25%', 'B_50%', 'B_75%', 'B_max',
@@ -858,6 +865,159 @@ class Database:
         group_df_data = pd.concat(all_rows, axis=1).T
         group_df_data.columns = group_header
         
+        self.loss_data = pd.concat([loss_df_data, group_df_data], axis=1)
+        
+    def validate_pelicun(self, db, cmp_dir='../resource/loss/'):
+        # run info
+        import pandas as pd
+        import numpy as np
+
+        # and import pelicun classes and methods
+        from pelicun.assessment import Assessment
+        from loss import Loss_Analysis
+
+        # get database
+        # initialize, no printing outputs, offset fixed with current components
+        PAL = Assessment({
+            "PrintLog": False, 
+            "Seed": 985,
+            "Verbose": False,
+            "DemandOffset": {"PFA": 0, "PFV": 0}
+        })
+
+        # generate structural components and join with NSCs
+        P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
+        
+        additional_frag_db = pd.read_csv(cmp_dir+'custom_component_fragilities.csv',
+                                          header=[0,1], index_col=0)
+        
+        # lab, health, ed, res, office, retail, warehouse, hotel
+        fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
+        
+        db = db.reset_index(drop=True)
+        
+        # estimate loss for set
+        all_losses = []
+        loss_cmp_group = []
+        col_list = []
+        irr_list = []
+        
+        ida_levels = db['ida_level'].unique().tolist()
+        
+        for lvl_i, lvl in enumerate(ida_levels):
+            df_lvl = db[db['ida_level'] == lvl]
+            
+            print('========================================')
+            print('Estimating loss for IDA level', lvl)
+            
+            # grab a representative row to calculate non EDP things
+            run_data = df_lvl.iloc[0]
+            
+            floors = run_data.num_stories
+            
+            bldg_usage = [fl_usage]*floors
+
+            loss = Loss_Analysis(run_data)
+            loss.nqe_sheets()
+            loss.normative_quantity_estimation(bldg_usage, P58_metadata)
+
+            # if validation, pass in the entire df
+            loss.process_EDP(df_edp=df_lvl)
+            
+            [cmp, dmg, loss, loss_cmp, agg, 
+             collapse_rate, irr_rate] = loss.estimate_damage(
+                 custom_fragility_db=additional_frag_db, mode='validation')
+                 
+            loss_summary = agg.describe([0.1, 0.5, 0.9])
+            cost = loss_summary['repair_cost']['50%']
+            time_l = loss_summary[('repair_time', 'parallel')]['50%']
+            time_u = loss_summary[('repair_time', 'sequential')]['50%']
+            
+            print('Median repair cost: ', 
+                  f'${cost:,.2f}')
+            print('Median lower bound repair time: ', 
+                  f'{time_l:,.2f}', 'worker-days')
+            print('Median upper bound repair time: ', 
+                  f'{time_u:,.2f}', 'worker-days')
+            print('Collapse frequency: ', 
+                  f'{collapse_rate:.2%}')
+            print('Irreparable RID frequency: ', 
+                  f'{irr_rate:.2%}')
+            print('Replacement frequency: ', 
+                  f'{collapse_rate+irr_rate:.2%}')
+            
+            all_losses.append(loss_summary)
+            loss_cmp_group.append(loss_cmp)
+            col_list.append(collapse_rate)
+            irr_list.append(irr_rate)
+            breakpoint()
+                 
+        
+        # concat list of df into one df
+        loss_df = pd.concat(all_losses)
+        group_df = pd.concat(loss_cmp_group)
+        
+        loss_header = ['cost_mean', 'cost_std', 'cost_min',
+                       'cost_10%', 'cost_50%', 'cost_90%', 'cost_max',
+                       'time_l_mean', 'time_l_std', 'time_l_min',
+                       'time_l_10%', 'time_l_50%', 'time_l_90%', 'time_l_max',
+                       'time_u_mean', 'time_u_std', 'time_u_min',
+                       'time_u_10%', 'time_u_50%', 'time_u_90%', 'time_u_max']
+        
+        
+        
+        all_rows = []
+        
+        for row_idx in range(len(loss_df)):
+            if row_idx % 8 == 0:
+                # get the block with current run, drop the 'Count'
+                run_df = loss_df[row_idx:row_idx+8]
+                run_df = run_df.transpose()
+                run_df = run_df.drop(columns=['count'])
+                new_row = pd.concat([run_df.iloc[0], 
+                                     run_df.iloc[1], 
+                                     run_df.iloc[2]])
+                
+                all_rows.append(new_row)
+                
+        loss_df_data = pd.concat(all_rows, axis=1).T
+        loss_df_data.columns = loss_header
+        
+        loss_df_data['collapse_freq'] = col_list
+        loss_df_data['irreparable_freq'] = irr_list
+        loss_df_data['replacement_freq'] = [x + y for x, y
+                                            in zip(col_list, irr_list)]
+        
+        loss_df_data['ida_level'] = ida_levels
+        
+        
+        # clean loss_by_group results=
+        group_header = ['B_mean', 'B_std', 'B_min',
+                       'B_25%', 'B_50%', 'B_75%', 'B_max',
+                       'C_mean', 'C_std', 'C_min',
+                       'C_25%', 'C_50%', 'C_75%', 'C_max',
+                       'D_mean', 'D_std', 'D_min',
+                       'D_25%', 'D_50%', 'D_75%', 'D_max',
+                       'E_mean', 'E_std', 'E_min',
+                       'E_25%', 'E_50%', 'E_75%', 'E_max']
+        
+        all_rows = []
+        
+        for row_idx in range(len(group_df)):
+            if row_idx % 8 == 0:
+                # get the block with current run, drop the 'Count'
+                run_df = group_df[row_idx:row_idx+8]
+                run_df = run_df.transpose()
+                run_df = run_df.drop(columns=['count'])
+                new_row = pd.concat([run_df.iloc[0], 
+                                     run_df.iloc[1], run_df.iloc[2], 
+                                     run_df.iloc[3]])
+                
+                all_rows.append(new_row)
+                
+        group_df_data = pd.concat(all_rows, axis=1).T
+        group_df_data.columns = group_header
+            
         self.loss_data = pd.concat([loss_df_data, group_df_data], axis=1)
         
     def calc_cmp_max(self, db,
