@@ -783,6 +783,19 @@ nrmse_hist = main_obj_doe.nrmse_hist
 theta = main_obj_doe.hyperparam_list
 
 
+change_array = np.diff(nrmse_hist)
+conv_array = np.abs(change_array) < 5e-4
+
+# when does conv_array hit 10 Trues in a row
+for conv_idx in range(10, len(conv_array)):
+    # getting Consecutive elements 
+    if all(conv_array[conv_idx-10:conv_idx]):
+        break
+
+rmse_hist = rmse_hist[:conv_idx]
+mae_hist = mae_hist[:conv_idx]
+nrmse_hist = nrmse_hist[:conv_idx]
+
 if kernel_name == 'rbf_iso':
     theta_vars = [r'$\kappa$', r'$\ell$', r'$\sigma_n^2$']
 else:
@@ -835,6 +848,10 @@ ax3.grid(True)
 # ax3.grid(True)
 # fig.tight_layout()
 # plt.savefig('./figures/convergence.eps')
+
+# limit DoE set to the converged set from above
+df_raw = df_doe.copy()
+df_doe = df_doe.head(conv_idx*batch_size + 50)
 
 #%%  dumb scatters
 

@@ -950,7 +950,6 @@ class Database:
             loss_cmp_group.append(loss_cmp)
             col_list.append(collapse_rate)
             irr_list.append(irr_rate)
-            breakpoint()
                  
         
         # concat list of df into one df

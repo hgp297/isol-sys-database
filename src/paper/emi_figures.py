@@ -121,15 +121,24 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
     return(X_plot)
 
 # hard-coded
-def make_design_space(res):
-    xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.5,
-                                             res),
-                                 np.linspace(0.5, 2.25,
-                                             res),
-                                 np.linspace(2.0, 5.0,
-                                             res),
-                                 np.linspace(0.1, 0.25,
-                                             res))
+def make_design_space(res, zeta_fix=None):
+    if zeta_fix is None:
+        xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.5,
+                                                 res),
+                                     np.linspace(0.5, 2.25,
+                                                 res),
+                                     np.linspace(2.0, 5.0,
+                                                 res),
+                                     np.linspace(0.1, 0.25,
+                                                 res))
+    else:
+        xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.5,
+                                                 res),
+                                     np.linspace(0.5, 2.25,
+                                                 res),
+                                     np.linspace(2.0, 5.0,
+                                                 res),
+                                     zeta_fix)    
                                  
     X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
                          'RI':yy.ravel(),
@@ -152,7 +161,7 @@ def make_design_space(res):
         # predictions that are somewhat moderate
         
 def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
-               outcome='cost_50%'):
+               outcome='cost_50%', return_var=False):
         
 #        # get points that are predicted impact from full dataset
 #        preds_imp = impact_pred_mdl.svc.predict(self.X)
@@ -189,18 +198,17 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
     
     # self.median_loss_pred = pd.concat([loss_pred_hit,loss_pred_miss], 
     #                                   axis=0).sort_index(ascending=True)
-    
-    return(expected_DV)
+    if return_var:
+        pass
+    else:
+        return(expected_DV)
 
 #%% collapse fragility def
-
+'''
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 
-# collapse as a probability
-from scipy.stats import lognorm
-from math import log, exp
 
 collapse_drift_def_mu_std = 0.1
 
@@ -264,11 +272,17 @@ ax.grid()
 # ax.legend(fontsize=label_size, loc='upper center')
 # plt.show()
 # plt.savefig('./figures/collapse_def.eps')
+'''
 
 #%% collapse fragility def
 import numpy as np
 from scipy.stats import norm
 inv_norm = norm.ppf(0.84)
+# collapse as a probability
+from scipy.stats import lognorm
+from math import log, exp
+
+
 x = np.linspace(0, 0.15, 200)
 mu = log(0.1)- 0.25*inv_norm
 sigma = 0.25;
@@ -328,8 +342,11 @@ ax.text(0.005, 0.19, r'RID = 0.007', fontsize=axis_font, color='red')
 ax.text(0.005, 0.87, r'RID = 0.013', fontsize=axis_font, color='red')
 ax.text(0.005, 0.53, r'RID = 0.010', fontsize=axis_font, color='red')
 
-ax.set_title('Replacement fragility definition', fontsize=axis_font)
+# ax.set_title('Replacement fragility definition', fontsize=axis_font)
 ax.grid()
+label_size = 16
+clabel_size = 12
+
 ax.legend(fontsize=label_size, loc='upper center')
 plt.show()
 #%% normalize DVs and prepare all variables
@@ -543,7 +560,95 @@ mdl_unconditioned.set_covariates(covariate_list)
 mdl_unconditioned.set_outcome(cost_var)
 mdl_unconditioned.test_train_split(0.2)
 
+#%% seaborn scatter with histogram: impact data
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+# plt.close('all')
+# Start with a square Figure.
+fig = plt.figure(figsize=(13, 6), layout='constrained')
+
+# Add a gridspec with two rows and two columns and a ratio of 1 to 4 between
+# the size of the marginal axes and the main axes in both directions.
+# Also adjust the subplot parameters for a square plot.
+gs = fig.add_gridspec(2, 4,  width_ratios=(5, 1, 5, 1), height_ratios=(1, 5),
+                      left=0.1, right=0.9, bottom=0.1, top=0.9,
+                      wspace=0., hspace=0.)
+# # Create the Axes.
+# fig = plt.figure(figsize=(13, 10))
+# ax1=fig.add_subplot(2, 2, 1)
+
+ax = fig.add_subplot(gs[1, 0])
+ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df_hit['T_ratio'], df_hit['zeta_e'], 'navy', 0.9, ax, ax_histx, ax_histy,
+             label='Impacted set')
+scatter_hist(df_miss['T_ratio'], df_miss['zeta_e'], 'orange', 0.3, ax, ax_histx, ax_histy,
+             label='Non-impact set')
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_e$', fontsize=axis_font)
+ax.set_xlim([1.0, 4.0])
+ax.set_ylim([0.1, 0.25])
+ax.legend(fontsize=label_size)
+
+ax = fig.add_subplot(gs[1, 2])
+ax_histx = fig.add_subplot(gs[0, 2], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 3], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df_init['T_ratio'], df_init['zeta_e'], 'navy', 0.9, ax, ax_histx, ax_histy)
+scatter_hist(df['T_ratio'], df['zeta_e'], 'orange', 0.3, ax, ax_histx, ax_histy)
+
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax.set_xlim([1.25, 5.0])
+ax.set_ylim([0.1, 0.25])
 #%%  dumb scatters
+from sklearn.linear_model import LogisticRegression
+clf = LogisticRegression(random_state=0).fit(
+    np.array(df['T_ratio']).reshape(-1, 1), np.array(df['impacted']))
+
+# plt.close('all')
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 22
+subt_font = 18
+label_size = 20
+title_font = 24
+
+from scipy.special import expit
+T_range = np.linspace(1.0, 5.0, 300)
+loss = expit(T_range * clf.coef_ + clf.intercept_).ravel()
+
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+y_var = 'impacted'
+fig = plt.figure(figsize=(13, 10))
+
+ax=fig.add_subplot(1, 1, 1)
+
+cmap = plt.cm.coolwarm
+sc = ax.scatter(df['T_ratio'], df[y_var], alpha=0.2, c=df['impacted'], cmap=cmap)
+plt.plot(T_range, loss, label="Logistic Regression Model", color="red", linewidth=3)
+ax.set_ylabel('Impacted', fontsize=axis_font)
+ax.set_xlabel(r'$T_M/ T_{fb}$', fontsize=axis_font)
+
+fig.tight_layout()
+plt.show()
+
+
+# plt.savefig('./figures/scatter.pdf')
+
+#%%  dumb scatters
+'''
 
 # plt.close('all')
 plt.rcParams["text.usetex"] = True
@@ -564,7 +669,7 @@ ax1=fig.add_subplot(2, 2, 1)
 
 cmap = plt.cm.coolwarm
 sc = ax1.scatter(df['gap_ratio'], df[y_var], alpha=0.2, c=df['impacted'], cmap=cmap)
-ax1.set_ylabel('Median loss ratio', fontsize=axis_font)
+ax1.set_ylabel('Peak story drift', fontsize=axis_font)
 ax1.set_xlabel(r'$GR$', fontsize=axis_font)
 ax1.set_title('a) Gap ratio', fontsize=title_font)
 ax1.set_ylim([0, 0.15])
@@ -605,7 +710,8 @@ ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
-
+# plt.savefig('./figures/scatter.pdf')
+'''
 #%% engineering data
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -694,18 +800,18 @@ sns.boxplot(y="bin", x= "max_velo", data=df,  showfliers=False,
 ax.set_ylabel('$\zeta_M$ range', fontsize=axis_font)
 ax.set_xlabel('Peak floor velocity (in/s)', fontsize=axis_font)
 plt.xlim([25, 125.0])
-fig.tight_layout()
+fig.tight_layout(h_pad=2.0)
 plt.show()
 
 
 
 #%% weird pie plot
+title_font=22
 def plot_pie(x, ax, r=1): 
     # radius for pieplot size on a scatterplot
-    from numpy import log
     c_list = [plt.cm.Dark2(7), plt.cm.Dark2(5), plt.cm.Dark2(0), plt.cm.Dark2(3)]
     patches, texts = ax.pie(x[['B_50%','C_50%','D_50%','E_50%']], 
-           center=(x['gap_ratio'],x['RI']), radius=r, colors=c_list)
+           center=(x['gap_ratio'],x['RI']), radius=x['r_bin'], colors=c_list)
     
     return(patches)
 
@@ -722,6 +828,12 @@ ax.scatter(x=df_pie['gap_ratio'], y=df_pie['RI'], s=0)
 # git min/max values for the axes
 # y_init = ax.get_ylim()
 # x_init = ax.get_xlim()
+# bins = pd.IntervalIndex.from_tuples([(0.0, 0.1), (0.1, 0.5), (0.5, 1.0), (1.0, 10.0)])
+bins = [0, 0.1, 0.5, 1.0, 10.0]
+labels=['tiny', 'small', 'okay', 'large']
+df_pie['cost_bin'] = pd.cut(df['cmp_cost_ratio'], bins=bins, labels=False)
+equiv = {0: 0.02, 1:0.03, 2:0.04, 3:0.05}
+df_pie["r_bin"] = df_pie["cost_bin"].map(equiv)
 df_pie.apply(lambda x : plot_pie(x, ax, r=0.04), axis=1)
 patch = plot_pie(df_pie.iloc[-1], ax, r=0.04)
 
@@ -937,6 +1049,93 @@ fig.tight_layout()
 plt.show()
 
 
+####
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 22
+title_font = 22
+subt_font = 18
+import matplotlib as mpl
+label_size = 18
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+# plt.close('all')
+# make grid and plot classification predictions
+
+fig, ax = plt.subplots(1, 1, figsize=(9,7))
+
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+# GPC impact prediction
+Z = mdl_impact.gpc.predict_proba(X_plot)[:,1]
+
+
+# # kernel logistic impact prediction
+# K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+# probs_imp = mdl_impact.log_reg_kernel.predict_proba(K_space)
+# Z = probs_imp[:,1]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_classif = Z.reshape(xx_pl.shape)
+
+# ax1.imshow(
+#         Z,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.Greys,
+#     )
+
+plt.imshow(
+        Z_classif,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.Blues,
+    )
+plt_density = 200
+cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.1, cmap='Blues', vmin=-1,
+                  levels=np.linspace(0.1,1.0,num=10))
+clabels = plt.clabel(cs, fontsize=clabel_size, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+ax.scatter(df_hit[xvar][:plt_density],
+            df_hit[yvar][:plt_density],
+            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Impacted')
+
+ax.scatter(df_miss[xvar][:plt_density],
+            df_miss[yvar][:plt_density],
+            s=40, c='azure', edgecolors='k', label='No impact')
+plt.legend(fontsize=axis_font)
+
+# ax.set_xlim(0.3, 2.5)
+ax.set_title(r'Impact likelihood: $R_y = 2.0$, $GR = 1.0$', fontsize=title_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+
+fig.tight_layout()
+plt.show()
+
 #%% fit regressions for impact / non-impact set
 
 # Fit conditioned DVs using kernel ridge
@@ -989,8 +1188,6 @@ mdl_time_miss.fit_ols_ridge()
 
 mdl_repl_hit.fit_ols_ridge()
 mdl_repl_miss.fit_ols_ridge()
-
-mdl_unconditioned.fit_gpr(kernel_name='rbf_iso')
 #%% plot no-impact regressions
 '''
 axis_font = 20
@@ -1131,9 +1328,9 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-# plt.close('all')
+plt.close('all')
 
-fig = plt.figure(figsize=(16, 7))
+fig = plt.figure(figsize=(14, 7))
 
 #################################
 xvar = 'RI'
@@ -1142,7 +1339,7 @@ yvar = 'gap_ratio'
 res = 75
 X_plot = make_2D_plotting_space(mdl_unconditioned.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            third_var_set = 3.0, fourth_var_set = 0.15)
+                            third_var_set = 2.0, fourth_var_set = 0.15)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
@@ -1164,9 +1361,10 @@ ax.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax.grid(visible=True)
 ax.plot(0.65, 0.01, color='red', label=r'$GR$')
 ax.legend(fontsize=axis_font, loc='center left')
-ax.set_ylabel('Median loss ratio', fontsize=axis_font)
-# ax.set_ylim([0.1, 0.5])
-# ax.set_xlim([0.3, 2.5])
+ax.set_ylabel('Median repair cost ratio', fontsize=axis_font)
+ax.set_title('a) Fit unconditioned models', fontsize=axis_font)
+ax.set_ylim([-.3, 3.5])
+ax.set_xlim([0.5, 2.25])
 plt.show()
 
 #################################
@@ -1189,6 +1387,9 @@ custom_lines = [Line2D([0], [0], marker='o', color='w', label='No impact',
 ax.legend(custom_lines, ['No impact', 'Impact'], fontsize=subt_font)
 ax.grid(True)
 
+ax.set_ylim([-.3, 3.5])
+ax.set_xlim([0.5, 2.25])
+ax.set_title('b) Two "classes" of response', fontsize=axis_font)
 #################################
 # plot conditioned fits
 cmap=plt.cm.coolwarm
@@ -1202,10 +1403,10 @@ cs = ax.contour(xx_pl, Z_hit_cond, yy_pl, linewidths=1.1, cmap='coolwarm',
 ax.scatter(df_hit[xvar], df_hit[cost_var], color=cmap(1.), alpha=0.5,
           edgecolors='k')
 ax.clabel(cs, fontsize=label_size)
-ax.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax.set_title('c) Conditioned fits', fontsize=axis_font)
+# ax.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax.grid(visible=True)
-# ax.set_ylim([0.1, 0.5])
-# ax.set_xlim([0.3, 2.5])
+ax.set_xlim([0.5, 2.25])
 plt.show()
 
 
@@ -1221,9 +1422,9 @@ ax.scatter(df_miss[xvar], df_miss[cost_var], color=cmap(0.), alpha=0.5,
 ax.clabel(cs, fontsize=label_size)
 ax.set_xlabel(r'$R_y$', fontsize=axis_font)
 ax.grid(visible=True)
-ax.set_ylim([0.0, 0.25])
+ax.set_ylim([0.0, 0.2])
 fig.tight_layout()
-# ax.set_xlim([0.7, 4.0])
+ax.set_xlim([0.5, 2.25])
 plt.show()
 
 #%% 3d surf for replacement risk
@@ -1234,7 +1435,7 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-# plt.close('all')
+plt.close('all')
 
 fig = plt.figure(figsize=(16, 7))
 
@@ -1271,8 +1472,7 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
-df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) & 
-           (df['zeta_e']<=0.2) & (df['zeta_e']>=0.13)]
+df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5)]
 
 ax.scatter(df_sc[xvar], df_sc[yvar], df_sc['replacement_freq'], c=df_sc['replacement_freq'],
            edgecolors='k', alpha = 0.7, cmap='Blues')
@@ -1285,7 +1485,7 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
-#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_zlabel('Replacement risk', fontsize=axis_font)
 ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
 
 #################################
@@ -1319,8 +1519,7 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
-df_sc = df[(df['gap_ratio']<=1.2) & (df['gap_ratio']>=0.8) & 
-           (df['RI']<=2.25) & (df['RI']>=1.8)]
+df_sc = df[(df['gap_ratio']<=1.2) & (df['gap_ratio']>=0.8)]
 
 ax.scatter(df_sc[xvar], df_sc[yvar], df_sc['replacement_freq'], c=df_sc['replacement_freq'],
            edgecolors='k', alpha = 0.7, cmap='Blues')
@@ -1333,9 +1532,12 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
-#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_zlabel('Replacement risk', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
+
+df_t = df[(df['gap_ratio']<=1.2) & (df['gap_ratio']>=0.8) & 
+           (df['T_ratio']>=3.0)]
 
 # #################################
 # xvar = 'gap_ratio'
@@ -1382,6 +1584,7 @@ fig.tight_layout()
 # ax.set_title('c) Replacement time (GPR)', fontsize=subt_font)
 
 # fig.tight_layout(w_pad=0.0)
+plt.show()
 
 #%% 2d contours for replacement
 
@@ -1709,7 +1912,7 @@ lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5])
 res = 100
 X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            third_var_set = 5.0, fourth_var_set = 0.15)
+                            third_var_set = 3.0, fourth_var_set = 0.15)
 
 xx = X_plot[xvar]
 yy = X_plot[yvar]
@@ -1805,7 +2008,7 @@ ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 handles, labels = sc.legend_elements(prop="colors")
-legend2 = ax.legend(handles, labels, loc="lower right", title="\% replacement",
+legend2 = ax.legend(handles, labels, loc="lower right", title="$p_r$",
                       fontsize=subt_font, title_fontsize=subt_font)
 
 fig.tight_layout()
@@ -1813,7 +2016,6 @@ plt.show()
 
 #%% dirty contours replacement time and cost
 
-# TODO: you are here
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -1923,7 +2125,7 @@ df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) &
 
 sc = ax.scatter(df_sc[xvar],
             df_sc[yvar],
-            c=df_sc[cost_var]*100, cmap='Blues',
+            c=df_sc[cost_var], cmap='Blues',
             s=20, edgecolors='k', linewidth=0.5)
 
 ax.grid(visible=True)
@@ -1932,7 +2134,7 @@ ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 handles, labels = sc.legend_elements(prop="colors")
-legend2 = ax.legend(handles, labels, loc="lower right", title="\% component cost",
+legend2 = ax.legend(handles, labels, loc="lower right", title="$c_r$",
                       fontsize=subt_font, title_fontsize=subt_font)
 
 #################################
@@ -2030,7 +2232,7 @@ df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) &
 
 sc = ax.scatter(df_sc[xvar],
             df_sc[yvar],
-            c=df_sc[cost_var]*100, cmap='Blues',
+            c=df_sc[cost_var], cmap='Blues',
             s=20, edgecolors='k', linewidth=0.5)
 
 ax.grid(visible=True)
@@ -2039,7 +2241,238 @@ ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 handles, labels = sc.legend_elements(prop="colors")
-legend2 = ax.legend(handles, labels, loc="lower right", title="\% component repair time",
+legend2 = ax.legend(handles, labels, loc="lower right", title="$t_r$",
+                      fontsize=subt_font, title_fontsize=subt_font)
+
+
+fig.tight_layout()
+plt.show()
+
+#%% dirty contours replacement time and cost
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75])
+
+res = 100
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 1.0)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+ax = fig.add_subplot(1, 2, 1)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact.gpc,
+                       mdl_cost_hit.gpr,
+                       mdl_cost_miss.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+# prob_list = [0.3, 0.2, 0.1]
+# from scipy.interpolate import RegularGridInterpolator
+# for j, prob_des in enumerate(prob_list):
+#     xq = np.linspace(0.3, 1.5, 200)
+    
+#     Ry_target = 1.0
+    
+#     interp = RegularGridInterpolator((y_pl, x_pl), Z_cont)
+#     pts = np.zeros((200,2))
+#     pts[:,1] = xq
+#     pts[:,0] = Ry_target
+    
+#     lq = interp(pts)
+    
+#     the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+#     theGapIdx = np.argmin(abs(lq - prob_des))
+    
+#     theGap = xq[theGapIdx]
+#     ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+#                 linewidth=2.0)
+#     ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+#     ax.text(theGap+0.05, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+#               fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+#     ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+    
+#     # Ry = 2.0
+#     Ry_target = 2.0
+#     pts[:,0] = Ry_target
+#     lq = interp(pts)
+    
+#     the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+#     theGapIdx = np.argmin(abs(lq - prob_des))
+    
+#     theGap = xq[theGapIdx]
+#     ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+#                 linewidth=2.0)
+#     ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+#     ax.text(theGap+0.05, 1.7, r'GR = '+f'{theGap:,.2f}', rotation=90,
+#               fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+#     ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+
+
+ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2.5,))
+
+# ax.set_xlim([0.3, 2.0])
+# ax.set_ylim([0.5, 2.25])
+
+df_sc = df[(df['gap_ratio']<=1.2) & (df['gap_ratio']>=0.8) & 
+           (df['RI']<=2.2) & (df['RI']>=1.8)]
+
+sc = ax.scatter(df_sc[xvar],
+            df_sc[yvar],
+            c=df_sc[cost_var], cmap='Blues',
+            s=20, edgecolors='k', linewidth=0.5)
+
+ax.grid(visible=True)
+ax.set_title(r'$GR = 1.0$ , $R_y = 2.0$', fontsize=title_font)
+ax.set_xlabel(r'$T_M / T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+
+handles, labels = sc.legend_elements(prop="colors")
+legend2 = ax.legend(handles, labels, loc="lower right", title="$c_r$",
+                      fontsize=subt_font, title_fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 100
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 1.0)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+ax = fig.add_subplot(1, 2, 2)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact.gpc,
+                       mdl_time_hit.gpr,
+                       mdl_time_miss.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+# prob_list = [0.3, 0.2, 0.1]
+# from scipy.interpolate import RegularGridInterpolator
+# for j, prob_des in enumerate(prob_list):
+#     xq = np.linspace(0.3, 1.5, 200)
+    
+#     Ry_target = 1.0
+    
+#     interp = RegularGridInterpolator((y_pl, x_pl), Z_cont)
+#     pts = np.zeros((200,2))
+#     pts[:,1] = xq
+#     pts[:,0] = Ry_target
+    
+#     lq = interp(pts)
+    
+#     the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+#     theGapIdx = np.argmin(abs(lq - prob_des))
+    
+#     theGap = xq[theGapIdx]
+#     ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+#                 linewidth=2.0)
+#     ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+#     ax.text(theGap+0.05, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+#               fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+#     ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+    
+#     # Ry = 2.0
+#     Ry_target = 2.0
+#     pts[:,0] = Ry_target
+#     lq = interp(pts)
+    
+#     the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+#     theGapIdx = np.argmin(abs(lq - prob_des))
+    
+#     theGap = xq[theGapIdx]
+#     ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+#                 linewidth=2.0)
+#     ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+#     ax.text(theGap+0.05, 1.7, r'GR = '+f'{theGap:,.2f}', rotation=90,
+#               fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+#     ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+
+
+ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2.5,))
+
+# ax.set_xlim([0.3, 2.0])
+# ax.set_ylim([0.5, 2.25])
+
+df_sc = df[(df['gap_ratio']<=1.2) & (df['gap_ratio']>=0.8) & 
+           (df['RI']<=2.2) & (df['RI']>=1.8)]
+
+sc = ax.scatter(df_sc[xvar],
+            df_sc[yvar],
+            c=df_sc[cost_var], cmap='Blues',
+            s=20, edgecolors='k', linewidth=0.5)
+
+ax.grid(visible=True)
+ax.set_title(r'$GR = 1.0$ , $R_y = 2.0$', fontsize=title_font)
+ax.set_xlabel(r'$T_M / T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+
+handles, labels = sc.legend_elements(prop="colors")
+legend2 = ax.legend(handles, labels, loc="lower right", title="$t_r$",
                       fontsize=subt_font, title_fontsize=subt_font)
 
 
@@ -2089,8 +2522,6 @@ print("GPC-GPR replacement prediction for %d inputs in %.3f s" % (X_space.shape[
                                                                tp))
 
 #%% Calculate upfront cost of data
-
-# TODO: normalize cost for building size
 
 def get_steel_coefs(df, steel_per_unit=1.25):
     n_bays = df.num_bays
@@ -2236,19 +2667,19 @@ mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF
 
 X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
                           columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
-baseline_repair_cost = predict_DV(X_baseline,
+baseline_repair_cost_pred = predict_DV(X_baseline,
                                       mdl_impact.gpc,
                                       mdl_cost_hit.kr,
                                       mdl_cost_miss.kr,
                                       outcome=cost_var)[cost_var+'_pred'].item()
-baseline_downtime = predict_DV(X_baseline,
+baseline_downtime_pred = predict_DV(X_baseline,
                                       mdl_impact.gpc,
                                       mdl_time_hit.kr,
                                       mdl_time_miss.kr,
                                       outcome=time_var)[time_var+'_pred'].item()
 
 
-baseline_repl_risk = predict_DV(X_baseline,
+baseline_repl_risk_pred = predict_DV(X_baseline,
                                       mdl_impact.gpc,
                                       mdl_repl_hit.kr,
                                       mdl_repl_miss.kr,
@@ -2337,7 +2768,7 @@ print('Predicted median repair cost: ',
       f'${design_repair_cost*cmp_cost:,.2f}')
 print('Predicted repair time (parallel): ',
       f'{design_downtime*cmp_time/n_worker_parallel:,.2f}', 'days')
-print('Baseline repair time (parallel): ',
+print('Predicted repair time (parallel): ',
       f'{design_downtime*cmp_time:,.2f}', 'worker-days')
 print('Predicted repair time ratio: ',
       f'{design_downtime*100:,.2f}%')
@@ -2350,21 +2781,45 @@ print('======= Predicted baseline performance =======')
 print('Upfront cost of baseline design: ',
       f'${baseline_upfront_cost:,.2f}')
 print('Baseline median repair cost ratio: ',
-      f'{baseline_repair_cost*100:,.2f}%')
+      f'{baseline_repair_cost_pred*100:,.2f}%')
 print('Baseline median repair cost: ',
-      f'${baseline_repair_cost*cmp_cost:,.2f}')
+      f'${baseline_repair_cost_pred*cmp_cost:,.2f}')
 print('Baseline repair time (parallel): ',
-      f'{baseline_downtime*cmp_time/n_worker_parallel:,.2f}', 'days')
+      f'{baseline_downtime_pred*cmp_time/n_worker_parallel:,.2f}', 'days')
 print('Baseline repair time (parallel): ',
-      f'{baseline_downtime*cmp_time:,.2f}', 'worker-days')
+      f'{baseline_downtime_pred*cmp_time:,.2f}', 'worker-days')
 print('Baseline repair time ratio: ',
-      f'{baseline_downtime*100:,.2f}%')
+      f'{baseline_downtime_pred*100:,.2f}%')
 print('Baseline replacement risk: ',
-      f'{baseline_repl_risk:.2%}')
+      f'{baseline_repl_risk_pred:.2%}')
 
+#%% sensitivity analysis to steel cost
+res_des = 30
 
-#%% pareto - doe
+X_space = make_design_space(res_des, zeta_fix=0.15)
 
+space_repair_cost = predict_DV(X_space, 
+                               mdl_impact.gpc, 
+                               mdl_cost_hit.gpr, 
+                               mdl_cost_miss.gpr, 
+                               outcome=cost_var)
+
+space_downtime = predict_DV(X_space,
+                            mdl_impact.gpc,
+                            mdl_time_hit.gpr,
+                            mdl_time_miss.gpr,
+                            outcome=time_var)
+
+space_repl = predict_DV(X_space,
+                        mdl_impact.gpc,
+                        mdl_repl_hit.gpr,
+                        mdl_repl_miss.gpr,
+                        outcome='replacement_freq')
+
+covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+kernel_name = 'rbf_iso'
+       
+#%%
 from loads import define_gravity_loads
 config_dict = {
     'S_1' : 1.017,
@@ -2383,6 +2838,256 @@ config_dict = {
        all_w_cases, all_plc_cases) = define_gravity_loads(config_dict)
 
 
+##### steel
+
+land_prices = np.arange(50.0, 400.0, 50.0)
+
+land_sens = np.zeros((len(land_prices), len(covariate_list)))
+
+coef_dict = get_steel_coefs(df, steel_per_unit=4)
+
+for land_idx, land_price in enumerate(land_prices):
+    
+    # print('Sensitivity analysis for land price:', land_price)
+    
+    # < 20% of cost of replacing all components
+    percent_of_replacement = 0.2
+    ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=percent_of_replacement]
+
+    # <4 weeks for a team of 36
+    dt_thresh = n_worker_parallel*28
+
+    dt_thresh_ratio = dt_thresh / cmp_time
+    ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh_ratio]
+
+    repl_thresh = 0.1
+    ok_repl = X_space.loc[space_repl['replacement_freq_pred']<=
+                          repl_thresh]
+
+    X_design = X_space[np.logical_and.reduce((
+            X_space.index.isin(ok_cost.index), 
+            X_space.index.isin(ok_time.index),
+            X_space.index.isin(ok_repl.index)))]
+
+
+
+    # select best viable design
+    upfront_costs = calc_upfront_cost(X_design, coef_dict, land_cost_per_sqft=land_price,
+                                      W=W_seis, Ws=W_super)
+    cheapest_design_idx = upfront_costs['total'].idxmin()
+    design_upfront_cost = upfront_costs['total'].min()
+
+    # least upfront cost of the viable designs
+    best_design = X_design.loc[cheapest_design_idx]
+    land_sens[land_idx,:] = np.array(best_design).T
+    
+
+##### steel
+
+steel_prices = np.arange(1.0, 11.0, 1.0)
+
+steel_sens = np.zeros((len(steel_prices), len(covariate_list)))
+
+for steel_idx, steel_price in enumerate(steel_prices):
+    
+    # print('Sensitivity analysis for steel price:', steel_price)
+    coef_dict = get_steel_coefs(df, steel_per_unit=steel_price)
+    
+    # < 20% of cost of replacing all components
+    percent_of_replacement = 0.2
+    ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=percent_of_replacement]
+
+    # <4 weeks for a team of 36
+    dt_thresh = n_worker_parallel*28
+
+    dt_thresh_ratio = dt_thresh / cmp_time
+    ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh_ratio]
+
+    repl_thresh = 0.1
+    ok_repl = X_space.loc[space_repl['replacement_freq_pred']<=
+                          repl_thresh]
+
+    X_design = X_space[np.logical_and.reduce((
+            X_space.index.isin(ok_cost.index), 
+            X_space.index.isin(ok_time.index),
+            X_space.index.isin(ok_repl.index)))]
+
+
+
+    # select best viable design
+    upfront_costs = calc_upfront_cost(X_design, coef_dict)
+    cheapest_design_idx = upfront_costs['total'].idxmin()
+    design_upfront_cost = upfront_costs['total'].min()
+
+    # least upfront cost of the viable designs
+    best_design = X_design.loc[cheapest_design_idx]
+    steel_sens[steel_idx,:] = np.array(best_design).T
+    
+##### replacement cost
+
+repair_costs = np.arange(0.05, 0.55, 0.05)
+
+repair_cost_sens = np.zeros((len(repair_costs), len(covariate_list)))
+coef_dict = get_steel_coefs(df, steel_per_unit=4)
+
+for cr_index, repair_cost in enumerate(repair_costs):
+    
+    # print('Sensitivity analysis for cost ratio:', repair_cost)
+    
+    # < 20% of cost of replacing all components
+    percent_of_replacement = repair_cost
+    ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=percent_of_replacement]
+
+    # remove threshold for downtime and risk
+    X_design = X_space[X_space.index.isin(ok_cost.index)]
+
+    # select best viable design
+    upfront_costs = calc_upfront_cost(X_design, coef_dict)
+    cheapest_design_idx = upfront_costs['total'].idxmin()
+    design_upfront_cost = upfront_costs['total'].min()
+
+    # least upfront cost of the viable designs
+    best_design = X_design.loc[cheapest_design_idx]
+    repair_cost_sens[cr_index,:] = np.array(best_design).T
+    
+    
+##### replacement downtime
+
+repair_times = np.arange(0.1, 1.1, 0.1)
+
+repair_time_sens = np.zeros((len(repair_times), len(covariate_list)))
+coef_dict = get_steel_coefs(df, steel_per_unit=4)
+
+for tr_index, repair_time in enumerate(repair_times):
+    
+    # print('Sensitivity analysis for time ratio:', repair_time)
+    
+    ok_time = X_space.loc[space_downtime[time_var+'_pred']<=repair_time]
+
+    # remove threshold for cost and risk
+    X_design = X_space[X_space.index.isin(ok_time.index)]
+
+    # select best viable design
+    upfront_costs = calc_upfront_cost(X_design, coef_dict)
+    cheapest_design_idx = upfront_costs['total'].idxmin()
+    design_upfront_cost = upfront_costs['total'].min()
+
+    # least upfront cost of the viable designs
+    best_design = X_design.loc[cheapest_design_idx]
+    repair_time_sens[tr_index,:] = np.array(best_design).T
+    
+##### replacement downtime
+
+replacement_risks = np.arange(0.05, 0.55, 0.05)
+
+risk_sens = np.zeros((len(replacement_risks), len(covariate_list)))
+coef_dict = get_steel_coefs(df, steel_per_unit=4)
+
+for pr_index, risk in enumerate(replacement_risks):
+    
+    # print('Sensitivity analysis for replacement risk:', risk)
+    
+    ok_risk = X_space.loc[space_repl['replacement_freq'+'_pred']<=risk]
+
+    # remove threshold for cost and risk
+    X_design = X_space[X_space.index.isin(ok_risk.index)]
+
+    # select best viable design
+    upfront_costs = calc_upfront_cost(X_design, coef_dict)
+    cheapest_design_idx = upfront_costs['total'].idxmin()
+    design_upfront_cost = upfront_costs['total'].min()
+
+    # least upfront cost of the viable designs
+    best_design = X_design.loc[cheapest_design_idx]
+    risk_sens[pr_index,:] = np.array(best_design).T
+    
+#%% sens plotting
+
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=20
+axis_font = 18
+subt_font = 18
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+fig = plt.figure(figsize=(14, 8))
+ax=fig.add_subplot(2, 3, 2)
+
+
+color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+baseline_ref = np.array([1.0, 2.0, 3.0, 0.15])
+
+plt_array = steel_sens/baseline_ref*100
+label = [r'$GR$', r'$R_y$', r'$T_M/T_{fb}$']
+for plt_idx in range(3):
+    ax.plot(steel_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
+            c=color[plt_idx], label=label[plt_idx])
+
+ax.set_xlabel(r'Steel cost per lb. (\$)', fontsize=axis_font)
+ax.set_ylabel(r'\% change', fontsize=axis_font)
+# ax.set_ylim([25, 200])
+# ax.legend(fontsize=label_size)
+ax.grid()
+
+ax=fig.add_subplot(2, 3, 4)
+plt_array = repair_cost_sens/baseline_ref*100
+for plt_idx in range(3):
+    ax.plot(repair_costs, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
+            c=color[plt_idx], label=label[plt_idx])
+ax.set_xlabel(r'Repair cost ratio targets', fontsize=axis_font)
+# ax.set_ylim([25, 200])
+ax.grid()
+
+ax=fig.add_subplot(2, 3, 5)
+plt_array = repair_time_sens/baseline_ref*100
+for plt_idx in range(3):
+    ax.plot(repair_times, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
+            c=color[plt_idx], label=label[plt_idx])
+ax.set_xlabel(r'Downtime ratio targets', fontsize=axis_font)
+
+ax.set_ylabel(r'\% change', fontsize=axis_font)
+# ax.set_ylim([25, 200])
+ax.grid()
+
+
+
+##
+
+ax=fig.add_subplot(2, 3, 6)
+plt_array = risk_sens/baseline_ref*100
+label = [r'$GR$', r'$R_y$', r'$T_M/T_{fb}$']
+for plt_idx in range(3):
+    ax.plot(replacement_risks, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
+            c=color[plt_idx], label=label[plt_idx])
+ax.set_xlabel(r'Replacement risk targets', fontsize=axis_font)
+# ax.set_ylim([25, 200])
+# ax.legend(fontsize=label_size)
+ax.grid()
+
+fig.tight_layout()
+plt.show()
+
+###
+ax=fig.add_subplot(2, 3, 3)
+plt_array = land_sens/baseline_ref*100
+label = [r'$GR$', r'$R_y$', r'$T_M/T_{fb}$']
+for plt_idx in range(3):
+    ax.plot(land_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
+            c=color[plt_idx], label=label[plt_idx])
+ax.set_xlabel(r'Land cost per sf. (\$)', fontsize=axis_font)
+# ax.set_ylim([25, 200])
+ax.legend(fontsize=label_size)
+ax.grid()
+
+fig.tight_layout()
+plt.show()
+
+#%% pareto - doe
+
 # remake X_plot in gap Ry
 X_plot = make_2D_plotting_space(mdl_impact.X, res)
 
@@ -2392,6 +3097,7 @@ risk_thresh = 0.1
 all_costs = calc_upfront_cost(X_space, coef_dict, W=W_seis, Ws=W_super)
 constr_costs = all_costs['total']
 predicted_risk = space_repl['replacement_freq_pred'] #+ fs1_design
+predicted_cost = space_repair_cost[cost_var+'_pred']
 # predicted_risk[predicted_risk < 0] = 0
 
 
@@ -2427,7 +3133,7 @@ dom_idx = np.random.choice(len(pareto_array), len(pareto_array)//10,
 dominated_sample = np.array([pareto_array[i] for i in dom_idx])
 
 # plt.close('all')
-fig = plt.figure(figsize=(13, 10))
+fig = plt.figure(figsize=(14, 6))
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -2447,7 +3153,7 @@ mpl.rcParams['ytick.labelsize'] = label_size
 #     origin="lower",
 #     cmap=plt.cm.Blues,
 # ) 
-ax = fig.add_subplot(2, 2, 1)
+ax = fig.add_subplot(1, 2, 1)
 ax.scatter(risk_pareto, cost_pareto, marker='s', facecolors='none',
             edgecolors='green', s=20.0, label='Pareto optimal designs')
 ax.scatter(risk_pareto, cost_pareto, s=1, color='black')
@@ -2455,7 +3161,7 @@ ax.scatter(dominated_sample[:,1], dominated_sample[:,0], s=1, color='black',
            label='Dominated designs')
 ax.set_xlabel('Predicted replacement risk', fontsize=axis_font)
 ax.set_ylabel('Construction cost', fontsize=axis_font)
-# ax.set_ylim([4.64e6, 4.75e6])
+# ax.set_xlim([-0.1, 0.7])
 ax.grid(True)
 ax.legend(fontsize=label_size)
 plt.title('a) Pareto front', fontsize=title_font)
@@ -2474,7 +3180,7 @@ y_pl = np.unique(yy)
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
 cmap = plt.cm.Spectral_r
-ax1=fig.add_subplot(2, 2, 2)
+ax1=fig.add_subplot(1, 2, 2)
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
 sc = ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
             c=X_pareto['predicted_risk'], s=20.0, cmap=cmap)
@@ -2484,7 +3190,7 @@ sc = ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'],
 #                   levels=lvls)
 # plt.clabel(cs, fontsize=clabel_size)
 ax1.set_xlim([0.5, 2.0])
-ax1.set_ylim([0.5, 2.25])
+ax1.set_ylim([0.45, 2.3])
 ax1.set_xlabel('Gap ratio', fontsize=axis_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax1.grid(True)
@@ -2499,7 +3205,8 @@ plt.colorbar(sc, cax=cbaxes, orientation='vertical')
 cbaxes.set_ylabel('Replacement risk', fontsize=axis_font)
 cbaxes.yaxis.set_ticks_position('left')
 
-
+fig.tight_layout(w_pad=0.0, h_pad=0.0)
+plt.show()
 '''
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var='T_ratio', y_var='zeta_e', 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
@@ -2531,7 +3238,7 @@ ax2.set_title(r'b) $GR = 1.0$, $R_y = 2.0$', fontsize=axis_font)
 
 
 plt.savefig('./figures/pareto.eps')
-'''
+
 
 # 3D
 
@@ -2544,6 +3251,9 @@ ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 # ax.set_xlim([0.3, 2.0])
 ax.set_zlabel(r'$T_M / T_{fb}$', fontsize=axis_font)
 ax.set_title(r'c) $\zeta_M$ not shown', fontsize=title_font)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
 
 ax=fig.add_subplot(2, 2, 4, projection='3d')
 
@@ -2554,21 +3264,588 @@ ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 # ax.set_xlim([0.3, 2.0])
 ax.set_zlabel(r'$\zeta_M$', fontsize=axis_font)
 ax.set_title(r'd) $T_M/T_{fb}$ not shown', fontsize=title_font)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
 # fig.colorbar(sc, ax=ax)
-fig.tight_layout(w_pad=0.0)
 # plt.savefig('./figures/pareto_full.pdf')
-plt.show()
 
-#%% full validation (IDA data)
+'''
+#%% filter design graphic
+# TODO: you are here
 
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 5))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2])
+
+res = 100
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+ax = fig.add_subplot(1, 4, 1)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_repl = predict_DV(X_plot,
+                       mdl_impact.gpc,
+                       mdl_repl_hit.gpr,
+                       mdl_repl_miss.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_repl)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+nm, lbl = cs.legend_elements()
+lbl = ['\% replacement']
+plt.legend(nm, lbl, title= '', fontsize= subt_font) 
+
+ax.clabel(cs, fontsize=clabel_size)
+
+ax.grid(visible=True)
+ax.set_title('Replacement risk$< 10.0\%$', fontsize=title_font)
+# ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2,))
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+#### cost now
+ax = fig.add_subplot(1, 4, 2)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+lvls=[-0.01, 0.1, 5.0]
+cs = ax.contourf(xx_pl, yy_pl, Z_cont, cmap='Greys', levels=lvls)
+cs = ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('black'),
+            linestyles=('--'),linewidths=(2,))
+ax.clabel(cs, fontsize=clabel_size, colors='black')
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact.gpc,
+                       mdl_cost_hit.gpr,
+                       mdl_cost_miss.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2])
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+
+nm, lbl = cs.legend_elements()
+lbl = ['Repair cost ratio']
+plt.legend(nm, lbl, title= '', fontsize= subt_font) 
+ax.clabel(cs, fontsize=clabel_size)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.2], colors=('red'),
+            linestyles=('-'),linewidths=(2,))
+ax2.clabel(cs, fontsize=clabel_size, colors='red')
+
+ax.grid(visible=True)
+ax.set_title('Repair cost $<20\%$ replacement', fontsize=title_font)
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+#### time now
+ax = fig.add_subplot(1, 4, 3)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+lvls=[-0.01, 0.2, 5.0]
+cs = ax.contourf(xx_pl, yy_pl, Z_cont, cmap='Greys', levels=lvls)
+cs = ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.2], colors=('black'),
+            linestyles=('--'),linewidths=(2,))
+ax.clabel(cs, fontsize=clabel_size, colors='black')
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact.gpc,
+                       mdl_time_hit.gpr,
+                       mdl_time_miss.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_cont = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3])
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+
+nm, lbl = cs.legend_elements()
+lbl = ['Repair time ratio']
+plt.legend(nm, lbl, title= '', fontsize= subt_font) 
+ax.clabel(cs, fontsize=clabel_size)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.203], colors=('red'),
+            linestyles=('-'),linewidths=(2,))
+ax2.clabel(cs, fontsize=clabel_size, colors='red')
+
+ax.grid(visible=True)
+ax.set_title('Repair time $<$ 2 weeks', fontsize=title_font)
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+#### final space
+ax = fig.add_subplot(1, 4, 4)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+lvls=[-0.01, 0.203, 5.0]
+cs = ax.contourf(xx_pl, yy_pl, Z_cont, cmap='Greys', levels=lvls)
+cs = ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.203], colors=('black'),
+            linestyles=('--'),linewidths=(2,))
+ax.clabel(cs, fontsize=clabel_size, colors='black')
+ax.set_title('Acceptable design space', fontsize=title_font)
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+
+fig.tight_layout()
+ax.text(1.2, 1.00, 'OK space',
+          fontsize=axis_font, color='green')
+#%% validation with lognormal fit EDPs
 val_dir = '../../data/loss/'
 
 val_inv_file = 'tfp_mf_db_val_inverse_loss.pickle'
 baseline_file = 'tfp_mf_db_val_baseline_loss.pickle'
 
 main_obj_val = pd.read_pickle(val_dir+val_inv_file)
-df_val_inv = main_obj_val.loss_data.reset_index(drop=True)
-
+val_ln_loss = main_obj_val.loss_data.reset_index(drop=True)
+val_ln_run = main_obj_val.ida_results.reset_index(drop=True)
 
 main_obj_val = pd.read_pickle(val_dir+baseline_file)
-df_base = main_obj_val.loss_data.reset_index(drop=True)
+base_ln_loss = main_obj_val.loss_data.reset_index(drop=True)
+base_ln_run = main_obj_val.ida_results.reset_index(drop=True)
+
+#%% full validation (IDA data)
+
+# TODO: validation was ran with changing component generation (distribution)
+# this may affect result in the sense that we eventually normalize by an estimated
+# total worth of building content (averaged)
+
+val_dir = '../../data/loss/'
+
+val_inv_file = 'tfp_mf_db_valdet_inverse_loss.pickle'
+baseline_file = 'tfp_mf_db_valdet_baseline_loss.pickle'
+
+main_obj_val = pd.read_pickle(val_dir+val_inv_file)
+val_loss = main_obj_val.loss_data.reset_index(drop=True)
+val_run = main_obj_val.ida_results.reset_index(drop=True)
+
+main_obj_val = pd.read_pickle(val_dir+baseline_file)
+base_loss = main_obj_val.loss_data.reset_index(drop=True)
+base_run = main_obj_val.ida_results.reset_index(drop=True)
+
+# collect means
+cost_var_ida = 'cost_50%'
+time_var_ida = 'time_l_50%'
+
+
+df_val = pd.concat([val_run, val_loss], axis=1)
+# df_val['max_drift'] = df_val[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+# df_val['collapse_probs'] = ln_dist.cdf(np.array(df_val['max_drift']))
+# df_val['repair_time'] = df[time_var]/n_worker_parallel
+
+df_base = pd.concat([base_run, base_loss], axis=1)
+# df_base['max_drift'] = df_base[["driftMax1", "driftMax2", "driftMax3"]].max(axis=1)
+# df_base['collapse_probs'] = ln_dist.cdf(np.array(df_base['max_drift']))
+# df_base['repair_time'] = df[time_var]/n_worker_parallel
+
+ida_levels = [1.0, 1.5, 2.0]
+validation_replacement = np.zeros((3,))
+baseline_replacement = np.zeros((3,))
+validation_cost  = np.zeros((3,))
+baseline_cost = np.zeros((3,))
+validation_downtime = np.zeros((3,))
+baseline_downtime = np.zeros((3,))
+
+for i, lvl in enumerate(ida_levels):
+    val_ida = val_loss[val_loss['ida_level']==lvl]
+    base_ida = base_loss[base_loss['ida_level']==lvl]
+    
+    validation_replacement[i] = val_ida['replacement_freq'].mean()
+    validation_downtime[i] = val_ida[time_var_ida].mean()/n_worker_parallel
+    validation_cost[i] = val_ida[cost_var_ida].mean()
+    
+    baseline_downtime[i] = base_ida[time_var_ida].mean()/n_worker_parallel
+    baseline_cost[i] = base_ida[cost_var_ida].mean()
+    baseline_replacement[i] = base_ida['replacement_freq'].mean()
+    
+
+print('==================================')
+print('   Validation results  (1.0 MCE)  ')
+print('==================================')
+
+inverse_cost = validation_cost[0]
+inverse_downtime = validation_downtime[0]
+inverse_replacement = validation_replacement[0]
+design_tested = df_val[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+design_specifics = df_val[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column']].iloc[0]
+
+print('====== INVERSE DESIGN ======')
+print('Average median repair cost: ',
+      f'${inverse_cost:,.2f}')
+print('Repair cost ratio: ', 
+      f'{inverse_cost/cmp_cost*100:,.3f}%')
+print('Average median repair time: ',
+      f'{inverse_downtime:,.2f}', 'days')
+print('Repair time ratio: ',
+      f'{inverse_downtime/cmp_time*100*n_worker_parallel:,.3f}%')
+print('Estimated replacement frequency: ',
+      f'{inverse_replacement:.2%}')
+print(design_tested)
+print(design_specifics)
+
+baseline_cost_mce = baseline_cost[0]
+baseline_downtime_mce = baseline_downtime[0]
+baseline_replacement_mce = baseline_replacement[0]
+design_tested = df_base[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+design_specifics = df_base[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column']].iloc[0]
+
+print('====== BASELINE DESIGN ======')
+print('Average median repair cost: ',
+      f'${baseline_cost_mce:,.2f}')
+print('Repair cost ratio: ', 
+      f'{baseline_cost_mce/cmp_cost*100:,.3f}%')
+print('Average median repair time: ',
+      f'{baseline_downtime_mce:,.2f}', 'days')
+print('Repair time ratio: ',
+      f'{baseline_downtime_mce/cmp_time*100*n_worker_parallel:,.3f}%')
+print('Estimated replacement frequency: ',
+      f'{baseline_replacement_mce:.2%}')
+print(design_tested)
+print(design_specifics)
+
+#%% MLE fragility curves
+def neg_log_likelihood_sum(params, im_l, no_a, no_c):
+    from scipy import stats
+    import numpy as np
+    sigma, beta = params
+    theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(im_l)
+    likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
+    log_likelihood = np.log(likelihood)
+    log_likelihood_sum = np.sum(log_likelihood)
+
+    return -log_likelihood_sum
+
+def mle_fit_collapse(ida_levels, pr_collapse):
+    from functools import partial
+    import numpy as np
+    from scipy import optimize
+    
+    im_log = np.log(ida_levels)
+    number_of_analyses = np.array([1000, 1000, 1000 ])
+    number_of_collapses = np.round(1000*pr_collapse)
+    
+    neg_log_likelihood_sum_partial = partial(
+        neg_log_likelihood_sum, im_l=im_log, no_a=number_of_analyses, no_c=number_of_collapses)
+    
+    
+    res = optimize.minimize(neg_log_likelihood_sum_partial, (1, 1), method="Nelder-Mead")
+    return res.x[0], res.x[1]
+
+
+from scipy.stats import norm
+f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+b_TOT = np.linalg.norm([0.2, 0.2, 0.2, 0.4])
+
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,validation_replacement)
+
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+p2 = f(xx_pr, theta_inv, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax1=fig.add_subplot(1, 2, 1)
+ax1.plot(xx_pr, p)
+# ax1.plot(xx_pr, p2)
+ax1.axhline(design_repl_risk, linestyle='--', color='black')
+ax1.axvline(1.0, linestyle='--', color='black')
+ax1.text(2.2, design_repl_risk+0.02, r'Predicted replacement risk',
+          fontsize=subt_font, color='black')
+ax1.text(0.6, 0.04, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='steelblue')
+# ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+ax1.set_ylabel('Replacement probability', fontsize=axis_font)
+# ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax1.set_title('Inverse design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [validation_replacement[i]], 
+              marker='x', markersize=15, color="red")
+ax1.grid()
+ax1.set_xlim([0, 4.0])
+ax1.set_ylim([0, 1.0])
+
+
+####
+theta_base, beta_base = mle_fit_collapse(ida_levels, baseline_replacement)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_base, beta_base)
+p2 = f(xx_pr, theta_base, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax4=fig.add_subplot(1, 2, 2)
+ax4.plot(xx_pr, p, label='Best lognormal fit')
+# ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
+ax4.axhline(baseline_repl_risk_pred, linestyle='--', color='black')
+ax4.axvline(1.0, linestyle='--', color='black')
+ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax4.text(2.2, baseline_repl_risk_pred+0.02, r'Predicted replacement risk',
+          fontsize=subt_font, color='black')
+ax4.text(0.6, 0.13, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='steelblue')
+# ax4.text(0.2, 0.2, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+
+# ax4.set_ylabel('Collapse probability', fontsize=axis_font)
+ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax4.set_title('Baseline design', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax4.plot([lvl], [baseline_replacement[i]], 
+              marker='x', markersize=15, color="red")
+ax4.grid()
+ax4.set_xlim([0, 4.0])
+ax4.set_ylim([0, 1.0])
+# ax4.legend(fontsize=subt_font-2, loc='center right')
+
+fig.tight_layout()
+# plt.savefig('./figures/fragility_curve.eps', dpi=1200, format='eps')
+plt.show()
+#%% cost validation distr
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+val_ida = val_loss[val_loss['ida_level']==1.0]
+base_ida = base_loss[base_loss['ida_level']==1.0]
+val_ida['repair_coef'] = val_ida[cost_var_ida]/cmp_cost
+base_ida['repair_coef'] = base_ida[cost_var_ida]/cmp_cost
+
+base_repl_cases = base_ida[base_ida[cost_var_ida] == replacement_cost].count()[cost_var_ida]
+inv_repl_cases = val_ida[val_ida[cost_var_ida] == replacement_cost].count()[cost_var_ida]
+print('Inverse runs requiring replacement:', inv_repl_cases)
+print('Baseline runs requiring replacement:', base_repl_cases)
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+df_dt = pd.DataFrame.from_dict(
+    data=dict(Inverse=val_ida['repair_coef'], Baseline=base_ida['repair_coef']),
+    orient='index',
+).T
+
+ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+ax.set_xlim(0, .75)
+meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
+                      markerfacecolor='navy')
+sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False)
+# # ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel(r'$c_r$', fontsize=axis_font)
+ax.axvline(design_repair_cost, ymin=0.5, ymax=1, linestyle='--', color='cornflowerblue')
+ax.axvline(baseline_repair_cost_pred, ymin=0.0, ymax=0.5, linestyle='--', color='lightsalmon')
+ax.grid(visible=True)
+
+custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
+                       , markerfacecolor='navy', markersize=10),
+                Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
+                Line2D([-1], [-1], color='lightsalmon', linestyle='--'),
+                ]
+
+ax.legend(custom_lines, ['Mean', 'Inverse predicted', 'Baseline predicted'], fontsize=subt_font)
+
+ax.text(.30, 0, u'0 replacements', fontsize=axis_font, color='red')
+ax.text(.55, 1, u'5 replacements \u2192', fontsize=axis_font, color='red')
+# ax.text(14.5, 1.45, r'14 days threshold', fontsize=axis_font, color='black')
+plt.show()
+
+#%% time validation distr
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+val_ida = val_loss[val_loss['ida_level']==1.0]
+base_ida = base_loss[base_loss['ida_level']==1.0]
+val_ida['repair_coef'] = val_ida[time_var_ida]/cmp_time
+base_ida['repair_coef'] = base_ida[time_var_ida]/cmp_time
+
+base_repl_cases = base_ida[base_ida[time_var_ida] == replacement_time].count()[time_var_ida]
+inv_repl_cases = val_ida[val_ida[time_var_ida] == replacement_time].count()[time_var_ida]
+print('Inverse runs requiring replacement:', inv_repl_cases)
+print('Baseline runs requiring replacement:', base_repl_cases)
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+df_dt = pd.DataFrame.from_dict(
+    data=dict(Inverse=val_ida['repair_coef'], Baseline=base_ida['repair_coef']),
+    orient='index',
+).T
+
+ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+ax.set_xlim(0, 1.50)
+meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
+                      markerfacecolor='navy')
+sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False)
+# # ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel(r'$t_r$', fontsize=axis_font)
+ax.axvline(design_downtime, ymin=0.5, ymax=1, linestyle='--', color='cornflowerblue')
+ax.axvline(baseline_downtime_pred, ymin=0.0, ymax=0.5, linestyle='--', color='lightsalmon')
+ax.grid(visible=True)
+
+custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
+                       , markerfacecolor='navy', markersize=10),
+                Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
+                Line2D([-1], [-1], color='lightsalmon', linestyle='--'),
+                ]
+
+ax.legend(custom_lines, ['Mean', 'Inverse predicted', 'Baseline predicted'], fontsize=subt_font)
+
+ax.text(.50, 0, u'0 replacements', fontsize=axis_font, color='red')
+ax.text(1.10, 1, u'5 replacements \u2192', fontsize=axis_font, color='red')
+# ax.text(14.5, 1.45, r'14 days threshold', fontsize=axis_font, color='black')
+plt.show()
+
+#%%
+
+mdl_repl_unconditioned = GP(df)
+mdl_repl_unconditioned.set_covariates(covariate_list)
+mdl_repl_unconditioned.set_outcome('replacement_freq')
+mdl_repl_unconditioned.test_train_split(0.2)
+mdl_unconditioned.fit_gpr(kernel_name='rbf_iso')
+
+#%%
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(9, 8))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'T_ratio'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_unconditioned.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+
+Z, fs1 = mdl_unconditioned.gpr.predict(X_plot, return_std=True)
+fs2 = fs1**2
+fs2_plot = fs2.reshape(xx_pl.shape)
+Z_unconditioned = Z.reshape(xx_pl.shape)
+
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, fs2_plot, cmap=plt.cm.Spectral_r,
+                       linewidth=0, antialiased=False,
+                       alpha=0.5)
+
+# ax.scatter(df[xvar], df[yvar], df['replacement_freq'],
+#            c=df['replacement_freq'], alpha=0.3,
+#            edgecolors='k')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.set_xlabel('$GR$', fontsize=axis_font)
+ax.set_ylabel('$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_zlabel('Replacement risk variance', fontsize=axis_font)
+
+fig.tight_layout()
