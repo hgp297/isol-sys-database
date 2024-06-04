@@ -143,7 +143,7 @@ pickle_path = '../data/'
 
 import pandas as pd
 
-main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
+main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
     
 validation_path = '../data/validation/'
 

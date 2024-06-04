@@ -203,7 +203,7 @@ ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
 ax.grid()
 # ax.legend(fontsize=label_size, loc='upper center')
 # plt.show()
-# plt.savefig('./figures/collapse_def.eps')
+plt.savefig('./figures/collapse_def.eps')
 
 #%% base-set data
 '''
@@ -808,7 +808,7 @@ batch_size = 5
 
 ax1=fig.add_subplot(1, 3, 1)
 ax1.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), rmse_hist)
-ax1.set_title(r'RMSE on test set', fontsize=axis_font)
+ax1.set_title(r'a) RMSE on test set', fontsize=axis_font)
 ax1.set_xlabel(r'Points added', fontsize=axis_font)
 ax1.set_ylabel(r'Error metric', fontsize=axis_font)
 # ax1.set_xlim([0, 140])
@@ -818,7 +818,7 @@ ax1.grid(True)
 
 ax2=fig.add_subplot(1, 3, 2)
 ax2.plot(np.arange(0, (len(rmse_hist))*batch_size, batch_size), nrmse_hist)
-ax2.set_title('NRMSE-LOOCV of training set', fontsize=axis_font)
+ax2.set_title('b) NRMSE-LOOCV of training set', fontsize=axis_font)
 ax2.set_xlabel('Points added', fontsize=axis_font)
 ax2.grid(True)
 
@@ -835,7 +835,7 @@ change_array = np.diff(nrmse_hist)
 conv_array = np.abs(change_array) < 1e-3
 ax3=fig.add_subplot(1, 3, 3)
 ax3.plot(np.arange(0, (len(change_array))*batch_size, batch_size), change_array)
-ax3.set_title('Relative change', fontsize=axis_font)
+ax3.set_title('c) Relative change in NRMSE', fontsize=axis_font)
 ax3.set_xlabel('Points added', fontsize=axis_font)
 ax3.grid(True)
 
@@ -846,8 +846,8 @@ ax3.grid(True)
 # ax3.set_title('Normalized hyperparameter convergence', fontsize=axis_font)
 # ax3.set_xlabel('Points added', fontsize=axis_font)
 # ax3.grid(True)
-# fig.tight_layout()
-# plt.savefig('./figures/convergence.eps')
+fig.tight_layout()
+plt.savefig('./figures/convergence.eps')
 
 # limit DoE set to the converged set from above
 df_raw = df_doe.copy()
@@ -915,7 +915,7 @@ ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
-# plt.savefig('./figures/scatter.pdf')
+plt.savefig('./figures/scatter.pdf')
 
 #%%
 
@@ -944,14 +944,15 @@ ax2.grid(True)
 plt.show()
 
 #%% seaborn scatter with histogram: DoE data
-def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy):
+def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
     # no labels
     ax_histx.tick_params(axis="x", labelbottom=False)
     ax_histy.tick_params(axis="y", labelleft=False)
 
     # the scatter plot:
     cmap = plt.cm.Blues
-    ax.scatter(x, y, alpha=alpha, edgecolors='black', s=25, facecolors=c)
+    ax.scatter(x, y, alpha=alpha, edgecolors='black', s=25, facecolors=c,
+               label=label)
 
     # now determine nice limits by hand:
     binwidth = 0.25
@@ -1006,12 +1007,15 @@ ax = fig.add_subplot(gs[1, 0])
 ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
 ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
 # Draw the scatter plot and marginals.
-scatter_hist(df_init['gap_ratio'], df_init['RI'], 'navy', 0.9, ax, ax_histx, ax_histy)
-scatter_hist(df_doe['gap_ratio'], df_doe['RI'], 'orange', 0.3, ax, ax_histx, ax_histy)
+scatter_hist(df_init['gap_ratio'], df_init['RI'], 'navy', 0.9, ax, ax_histx, ax_histy,
+             label='Initial set')
+scatter_hist(df_doe['gap_ratio'], df_doe['RI'], 'orange', 0.3, ax, ax_histx, ax_histy,
+             label='Points added by DoE')
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_xlim([0.0, 4.0])
 ax.set_ylim([0.5, 2.25])
+ax.legend(fontsize=label_size)
 
 ax = fig.add_subplot(gs[1, 2])
 ax_histx = fig.add_subplot(gs[0, 2], sharex=ax)
@@ -1044,7 +1048,7 @@ ax.set_ylim([0.1, 0.25])
 # ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 # ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 
-# plt.savefig('./figures/doe_hist.pdf')
+plt.savefig('./figures/doe_hist.pdf')
 
 # ax.set_xlim([0.5, 4.0])
 # ax.set_ylim([0.5, 2.25])
@@ -1258,7 +1262,7 @@ plt.show()
 
 #%% doe-set, gap_Ry plot
 X_plot = make_2D_plotting_space(mdl_doe.X, res,
-                                third_var_set = 3.0)
+                                third_var_set = 3.0, fourth_var_set=0.15)
 
 import time
 t0 = time.time()
@@ -1400,7 +1404,7 @@ plt.xlabel(r'$GR$', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.title(r'$MSE_w$ selection criterion', fontsize=axis_font)
 plt.grid(True)
-# plt.savefig('./figures/doe.pdf')
+plt.savefig('./figures/doe.pdf')
 
 #%% DoE effect plot
 
@@ -1416,15 +1420,19 @@ y_pl = np.unique(yy)
 
 
 
-# plt.close('all')
+plt.close('all')
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 22
+axis_font = 18
 subt_font = 18
 label_size = 24
 clabel_size = 16
 title_font = 24
+
+
+mpl.rcParams['xtick.labelsize'] = axis_font 
+mpl.rcParams['ytick.labelsize'] = axis_font  
 # first we show initial dataset
 
 
@@ -1461,13 +1469,26 @@ ax1=fig.add_subplot(2, 2, 1)
 
 cmap = plt.cm.Blues
 sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
-                 alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
+                 alpha=0.9, c=df_init['collapse_prob'], cmap='Reds', linewidth=0.5)
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+
+plt.imshow(
+        Z_init,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.Blues,
+    )
+
 cs = ax1.contour(xx_pl, yy_pl, Z_init, linewidths=1.1, cmap=cmap, vmin=-1)
-ax1.clabel(cs, fontsize=clabel_size)
+clabels = ax1.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 ax1.set_xlabel(r'$GR$', fontsize=axis_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax1.set_title('a) Collapse risk, pre-DoE', fontsize=title_font)
+ax1.set_title('a) Initial collapse risk, $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', 
+              fontsize=axis_font)
 ax1.set_xlim([0.5, 2.5])
 ax1.set_ylim([0.5, 2.25])
 ax1.grid()
@@ -1484,13 +1505,25 @@ Z_mse = mse_w.reshape(xx_pl.shape)
 ax2=fig.add_subplot(2, 2, 2)
 
 sc = ax2.scatter(df_doe['gap_ratio'][50:55,], df_doe['RI'][50:55,] , edgecolors='black',
-                 alpha=0.6, c=df_doe['collapse_prob'][50:55,], cmap=cmap)
+                 alpha=0.9, c=df_doe['collapse_prob'][50:55,], cmap='Reds')
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
-cs = ax2.contour(xx_pl, yy_pl, Z_mse, linewidths=1.1, cmap=cmap, vmin=-1)
-ax2.clabel(cs, fontsize=clabel_size)
+
+plt.imshow(
+        Z_mse,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.Greens,
+    )
+
+cs = ax2.contour(xx_pl, yy_pl, Z_mse, linewidths=1.1, cmap='Greens', vmin=-1)
+clabels = ax2.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 ax2.set_xlabel(r'$GR$', fontsize=axis_font)
 ax2.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax2.set_title(r'b) $MSE_w$ selection criterion, first batch', fontsize=title_font)
+ax2.set_title(r'b) $MSE_w$ selection criterion, first batch', fontsize=axis_font)
 ax2.set_xlim([0.5, 2.5])
 ax2.set_ylim([0.5, 2.25])
 ax2.grid()
@@ -1504,14 +1537,26 @@ ax3=fig.add_subplot(2, 2, 3)
 df_plot = df_doe.sample(n=400, random_state=985)
 
 
-sc = ax3.scatter(df_plot['gap_ratio'], df_plot['RI'], alpha=0.8, edgecolors='black', s=15,
-                 c=df_plot['collapse_prob'], cmap=cmap, vmax=0.5)
+sc = ax3.scatter(df_plot['gap_ratio'], df_plot['RI'], alpha=0.9, edgecolors='black', s=20,
+                 c=df_plot['collapse_prob'], cmap='Reds', linewidth=0.5)
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+
+plt.imshow(
+        Z_GRy,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.Blues,
+    )
+
 cs = ax3.contour(xx_pl, yy_pl, Z_GRy, linewidths=1.1, cmap=cmap, vmin=-0.5)
-ax3.clabel(cs, fontsize=clabel_size)
+clabels = ax3.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 ax3.set_xlabel(r'$GR$', fontsize=axis_font)
 ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax3.set_title('c) Collapse risk, post-DoE', fontsize=title_font)
+ax3.set_title('c) Final collapse risk, $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=axis_font)
 handles, labels = sc.legend_elements(prop="colors")
 legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Pr(collapse)",
                       fontsize=20, title_fontsize=24, edgecolor='black')
@@ -1538,24 +1583,36 @@ xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 #                   & (df_doe['RI'] > 1.75) & (df_doe['RI'] < 2.25)]
 
 df_plot = df_doe.sample(n=400, random_state=985)
-sc = ax4.scatter(df_plot['T_ratio'], df_plot['zeta_e'], alpha=0.8, edgecolors='black', s=15,
-                 c=df_plot['collapse_prob'], cmap=cmap, vmax=0.5)
+sc = ax4.scatter(df_plot['T_ratio'], df_plot['zeta_e'], alpha=0.9, edgecolors='black', s=20,
+                 c=df_plot['collapse_prob'], cmap='Reds', linewidth=0.5)
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
+
+plt.imshow(
+        Z_Tze,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.Blues,
+    )
+
 cs = ax4.contour(xx_pl, yy_pl, Z_Tze, linewidths=1.1, cmap=cmap, vmin=-0.5)
-ax4.clabel(cs, fontsize=clabel_size)
+clabels = ax4.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 ax4.set_xlabel(r'$T_M$ / $T_{fb}$', fontsize=axis_font)
 ax4.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 ax4.set_xlim([2.0, 5.0])
-ax4.set_title('d) Collapse risk, post-DoE', fontsize=title_font)
+ax4.set_title('d) Final collapse risk, $GR=1.0$, $R_y=2.0$', fontsize=axis_font)
 handles, labels = sc.legend_elements(prop="colors")
-legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Pr(collapse)",
+for ha in handles:
+    ha.set_markeredgecolor("black")
+legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Collapse probability",
                       fontsize=16, title_fontsize=16, edgecolor='black')
 ax4.grid()
 
-mpl.rcParams['xtick.labelsize'] = 30 
-mpl.rcParams['ytick.labelsize'] = 30  
 fig.tight_layout()
-# plt.savefig('./figures/doe_full.pdf')
+plt.savefig('./figures/doe_full.pdf')
 #%% pareto - doe
 
 # remake X_plot in gap Ry
@@ -1601,8 +1658,9 @@ dom_idx = np.random.choice(len(pareto_array), len(pareto_array)//10,
                            replace = False)
 dominated_sample = np.array([pareto_array[i] for i in dom_idx])
 
-# plt.close('all')
-fig = plt.figure(figsize=(13, 10))
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -1622,7 +1680,7 @@ mpl.rcParams['ytick.labelsize'] = label_size
 #     origin="lower",
 #     cmap=plt.cm.Blues,
 # ) 
-ax = fig.add_subplot(2, 2, 1)
+ax = fig.add_subplot(1, 3, 1)
 ax.scatter(risk_pareto, cost_pareto, marker='s', facecolors='none',
             edgecolors='green', s=20.0, label='Pareto optimal designs')
 ax.scatter(risk_pareto, cost_pareto, s=1, color='black')
@@ -1649,7 +1707,7 @@ y_pl = np.unique(yy)
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
 cmap = plt.cm.Spectral_r
-ax1=fig.add_subplot(2, 2, 2)
+ax1=fig.add_subplot(1, 3, 2)
 lvls = [0.025, 0.05, 0.10, 0.2, 0.3]
 sc = ax1.scatter(X_pareto['gap_ratio'], X_pareto['RI'], 
             c=X_pareto['predicted_risk'], s=20.0, cmap=cmap)
@@ -1659,7 +1717,7 @@ cs = plt.contour(xx_pl, yy_pl, Z_GRy, linewidths=1.1, cmap='Blues', vmin=-1,
                   levels=lvls)
 plt.clabel(cs, fontsize=clabel_size)
 ax1.set_xlim([0.5, 2.0])
-ax1.set_ylim([0.5, 2.25])
+ax1.set_ylim([0.4, 2.3])
 ax1.set_xlabel('Gap ratio', fontsize=axis_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax1.grid(True)
@@ -1675,7 +1733,7 @@ cbaxes.set_ylabel('Collapse risk', fontsize=axis_font)
 cbaxes.yaxis.set_ticks_position('left')
 
 
-'''
+
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var='T_ratio', y_var='zeta_e', 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 1.0, fourth_var_set = 2.0)
@@ -1691,47 +1749,53 @@ y_pl = np.unique(yy)
 # collapse predictions
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
-ax2=fig.add_subplot(1, 2, 2)
+ax2=fig.add_subplot(1, 3, 3)
 plt.clabel(cs, fontsize=clabel_size)
 cs = plt.contour(xx_pl, yy_pl, Z_Tze, linewidths=1.1, cmap='Blues', vmin=-1,
                  levels=lvls)
 plt.clabel(cs, fontsize=clabel_size)
-ax2.scatter(X_pareto['T_ratio'], X_pareto['zeta_e'], 
-            c=X_pareto['predicted_risk'],
-            edgecolors='k', s=20.0, cmap=plt.cm.Spectral_r)
-ax2.set_xlabel('T ratio', fontsize=axis_font)
+sc = ax2.scatter(X_pareto['T_ratio'], X_pareto['zeta_e'], 
+            c=X_pareto['predicted_risk'], s=20.0, cmap=plt.cm.Spectral_r)
+ax2.set_xlabel('$T_M/T_{fb}$', fontsize=axis_font)
 ax2.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 ax2.grid(True)
-ax2.set_title(r'b) $GR = 1.0$, $R_y = 2.0$', fontsize=axis_font)
+ax2.set_xlim([1.9, 4.5])
+ax2.set_ylim([0.095, 0.255])
+ax2.set_title(r'c) $GR = 1.0$, $R_y = 2.0$', fontsize=axis_font)
 
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+cbaxes = inset_axes(ax1,  width="3%", height="20%", loc='lower right',
+                    bbox_to_anchor=(-0.05,0.5,1,1), bbox_transform=ax2.transAxes) 
+plt.colorbar(sc, cax=cbaxes, orientation='vertical')
+cbaxes.set_ylabel('Collapse risk', fontsize=axis_font)
+cbaxes.yaxis.set_ticks_position('left')
+# plt.savefig('./figures/pareto.eps')
 
-plt.savefig('./figures/pareto.eps')
-'''
 
 # 3D
 
-ax=fig.add_subplot(2, 2, 3, projection='3d')
+# ax=fig.add_subplot(2, 2, 3, projection='3d')
 
-sc = ax.scatter(X_pareto['gap_ratio'], X_pareto['RI'], X_pareto['T_ratio'], 
-           c=X_pareto['predicted_risk'], alpha = 1, cmap=plt.cm.Spectral_r)
-ax.set_xlabel('Gap ratio', fontsize=axis_font)
-ax.set_ylabel(r'$R_y$', fontsize=axis_font)
-# ax.set_xlim([0.3, 2.0])
-ax.set_zlabel(r'$T_M / T_{fb}$', fontsize=axis_font)
-ax.set_title(r'c) $\zeta_M$ not shown', fontsize=title_font)
+# sc = ax.scatter(X_pareto['gap_ratio'], X_pareto['RI'], X_pareto['T_ratio'], 
+#            c=X_pareto['predicted_risk'], alpha = 1, cmap=plt.cm.Spectral_r)
+# ax.set_xlabel('Gap ratio', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+# # ax.set_xlim([0.3, 2.0])
+# ax.set_zlabel(r'$T_M / T_{fb}$', fontsize=axis_font)
+# ax.set_title(r'c) $\zeta_M$ not shown', fontsize=title_font)
 
-ax=fig.add_subplot(2, 2, 4, projection='3d')
+# ax=fig.add_subplot(2, 2, 4, projection='3d')
 
-ax.scatter(X_pareto['gap_ratio'], X_pareto['RI'], X_pareto['zeta_e'], 
-           c=X_pareto['predicted_risk'], alpha = 1, cmap=plt.cm.Spectral_r)
-ax.set_xlabel('Gap ratio', fontsize=axis_font)
-ax.set_ylabel(r'$R_y$', fontsize=axis_font)
-# ax.set_xlim([0.3, 2.0])
-ax.set_zlabel(r'$\zeta_M$', fontsize=axis_font)
-ax.set_title(r'd) $T_M/T_{fb}$ not shown', fontsize=title_font)
+# ax.scatter(X_pareto['gap_ratio'], X_pareto['RI'], X_pareto['zeta_e'], 
+#            c=X_pareto['predicted_risk'], alpha = 1, cmap=plt.cm.Spectral_r)
+# ax.set_xlabel('Gap ratio', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+# # ax.set_xlim([0.3, 2.0])
+# ax.set_zlabel(r'$\zeta_M$', fontsize=axis_font)
+# ax.set_title(r'd) $T_M/T_{fb}$ not shown', fontsize=title_font)
 # fig.colorbar(sc, ax=ax)
-fig.tight_layout(w_pad=0.0)
-# plt.savefig('./figures/pareto_full.pdf')
+fig.tight_layout(w_pad=0.2)
+plt.savefig('./figures/pareto_full.pdf')
 plt.show()
 
 
@@ -1951,19 +2015,20 @@ ax.set_xlim([2, 5])
 ax.set_zlim([0, 1])
 
 fig.tight_layout(w_pad=0.0)
-# plt.savefig('./figures/surf.pdf')
+plt.savefig('./figures/surf.pdf')
 # plt.show()
 
 #%% GP plots, highlight design targets
 
-# plt.close('all')
+plt.close('all')
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 title_font=20
 axis_font = 18
-subt_font = 18
-label_size = 16
+subt_font = 16
+label_size = 14
+clabel_size = 14
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
@@ -1973,7 +2038,7 @@ x_var = 'gap_ratio'
 y_var = 'RI'
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 2.0], y_bounds = [0.5, 2.25],
                             third_var_set = 2.0, fourth_var_set = 0.1)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -1985,23 +2050,24 @@ fmu_highlight = mdl_doe.gpr.predict(X_plot, return_std=False)
 
 Z_highlight = fmu_highlight.reshape(xx_pl.shape)
 
-fig = plt.figure(figsize=(9, 14))
+fig = plt.figure(figsize=(10, 14))
 ax=fig.add_subplot(3, 2, 1)
 
 # Plot the surface.
-cmap = plt.cm.magma
+cmap = plt.cm.Blues
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
 lvls = [0, 0.01, 0.025, 0.05, 0.075, 0.10, 0.15, 0.2, 0.3]
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
-ax.clabel(cs, fontsize=clabel_size)
-
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
+                vmin=-0.2, vmax=0.2)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.3, 1.5, 200)
+    xq = np.linspace(0.3, 2.0, 200)
     
     Ry_target = 1.0
     
@@ -2035,12 +2101,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
                 linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
-    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='steelblue')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap-.02, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
     
 
     
@@ -2048,7 +2114,7 @@ for j, prob_des in enumerate(prob_list):
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'a) $T_M/T_{fb} = 2.0$, $\zeta_M = 0.10$', fontsize=title_font)
-ax.set_xlim([0.3, 1.5])
+ax.set_xlim([0.3, 1.6])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2057,7 +2123,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 2.0], y_bounds = [0.5, 2.25],
                             third_var_set = 3.5, fourth_var_set = 0.1)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2072,18 +2138,20 @@ Z_highlight = fmu_highlight.reshape(xx_pl.shape)
 ax=fig.add_subplot(3, 2, 2)
 
 # Plot the surface.
-cmap = plt.cm.magma
+cmap = plt.cm.Blues
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
-ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
+                vmin=-0.2, vmax=0.2)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.3, 1.5, 200)
+    xq = np.linspace(0.3, 2.0, 200)
     
     Ry_target = 1.0
     
@@ -2117,17 +2185,17 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
                 linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
-    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='steelblue')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap-0.02, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
 
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'b) $T_M/T_{fb} = 3.5$, $\zeta_M = 0.10$', fontsize=title_font)
-ax.set_xlim([0.3, 1.5])
+ax.set_xlim([0.3, 1.6])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2136,7 +2204,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 2.0], y_bounds = [0.5, 2.25],
                             third_var_set = 2.0, fourth_var_set = 0.15)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2151,20 +2219,22 @@ Z_highlight = fmu_highlight.reshape(xx_pl.shape)
 ax=fig.add_subplot(3, 2, 3)
 
 # Plot the surface.
-cmap = plt.cm.magma
+cmap = plt.cm.Blues
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
-ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
+                vmin=-0.2, vmax=0.2)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.3, 1.5, 200)
+    xq = np.linspace(0.3, 2.0, 200)
     
-    Ry_target = 1.0
+    Ry_target = 1.5
     
     interp = RegularGridInterpolator((y_pl, x_pl), Z_highlight)
     pts = np.zeros((200,2))
@@ -2178,12 +2248,13 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    # ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='maroon',
-    #             linewidth=2.0)
-    # ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='maroon', linewidth=2.0)
-    # ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
-    #           fontsize=subt_font, color='maroon')
-    # ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='maroon')
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='black',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='black', linewidth=2.0)
+    ax.text(theGap, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='black')
     
     
     # Ry = 2.0
@@ -2196,12 +2267,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
                 linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
-    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='steelblue')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap-0.02, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
     
 
     
@@ -2209,7 +2280,7 @@ for j, prob_des in enumerate(prob_list):
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'c) $T_M/T_{fb} = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
-ax.set_xlim([0.3, 1.5])
+ax.set_xlim([0.3, 1.6])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2217,7 +2288,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 2.0], y_bounds = [0.5, 2.25],
                             third_var_set = 3.5, fourth_var_set = 0.15)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2232,18 +2303,20 @@ Z_highlight = fmu_highlight.reshape(xx_pl.shape)
 ax=fig.add_subplot(3, 2, 4)
 
 # Plot the surface.
-cmap = plt.cm.magma
+cmap = plt.cm.Blues
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
-ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
+                vmin=-0.2, vmax=0.2)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.3, 1.5, 200)
+    xq = np.linspace(0.3, 2.0, 200)
     
     Ry_target = 1.0
     
@@ -2277,12 +2350,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
                 linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
-    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='steelblue')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap-0.02, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
     
 
     
@@ -2290,7 +2363,7 @@ for j, prob_des in enumerate(prob_list):
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'd) $T_M/T_{fb} = 3.5$, $\zeta_M = 0.15$', fontsize=title_font)
-ax.set_xlim([0.3, 1.5])
+ax.set_xlim([0.3, 1.6])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2298,7 +2371,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 2.0], y_bounds = [0.5, 2.25],
                             third_var_set = 2.0, fourth_var_set = 0.20)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2313,18 +2386,20 @@ Z_highlight = fmu_highlight.reshape(xx_pl.shape)
 ax=fig.add_subplot(3, 2, 5)
 
 # Plot the surface.
-cmap = plt.cm.magma
+cmap = plt.cm.Blues
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
-ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
+                vmin=-0.2, vmax=0.2)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
 # draw lines for design targets
 
 prob_list = [0.025, 0.05, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.3, 1.5, 200)
+    xq = np.linspace(0.3, 2.0, 200)
     
     Ry_target = 1.0
     
@@ -2358,12 +2433,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
                 linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
-    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='steelblue')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap-0.02, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
     
 
     
@@ -2371,7 +2446,7 @@ for j, prob_des in enumerate(prob_list):
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'e) $T_M/T_{fb} = 2.0$, $\zeta_M = 0.20$', fontsize=title_font)
-ax.set_xlim([0.3, 1.5])
+ax.set_xlim([0.3, 1.6])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
@@ -2379,7 +2454,7 @@ ax.grid()
 
 X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            x_bounds = [0.3, 1.5], y_bounds = [0.5, 2.25],
+                            x_bounds = [0.3, 2.0], y_bounds = [0.5, 2.25],
                             third_var_set = 3.5, fourth_var_set = 0.2)
 xx = X_plot[x_var]
 yy = X_plot[y_var]
@@ -2394,19 +2469,21 @@ Z_highlight = fmu_highlight.reshape(xx_pl.shape)
 ax=fig.add_subplot(3, 2, 6)
 
 # Plot the surface.
-cmap = plt.cm.magma
+cmap = plt.cm.Blues
 # sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
 #                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
-cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap)
-ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
+                vmin=-0.2, vmax=0.2)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
 # draw lines for design targets
 
-prob_list = [0.025, 0.05, 0.1]
+prob_list = [0.025, 0.05]
 offset_list = [0.65, 0.5, 0.5]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.3, 1.5, 200)
+    xq = np.linspace(0.3, 2.0, 200)
     
     Ry_target = 1.0
     
@@ -2440,12 +2517,12 @@ for j, prob_des in enumerate(prob_list):
     theGapIdx = np.argmin(abs(lq - prob_des))
     
     theGap = xq[theGapIdx]
-    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='steelblue',
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
                 linewidth=2.0)
-    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='steelblue', linewidth=2.0)
-    ax.text(theGap, 1.25, r'GR = '+f'{theGap:,.2f}', rotation=90,
-              fontsize=subt_font, color='steelblue')
-    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='steelblue')
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap-0.02, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
     
 
     
@@ -2453,12 +2530,13 @@ for j, prob_des in enumerate(prob_list):
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_title(r'f) $T_M/T_{fb} = 3.5$, $\zeta_M = 0.20$', fontsize=title_font)
-ax.set_xlim([0.3, 1.5])
+ax.set_xlim([0.3, 1.6])
 ax.set_ylim([0.5, 2.25])
 ax.grid()
 
-fig.tight_layout()
+fig.tight_layout(w_pad=0.2)
 # plt.savefig('./figures/inverse_design_contours.eps')
+plt.savefig('./figures/inverse_design_contours.pdf')
 # plt.show()
 
 #%% impact histogram
@@ -2539,9 +2617,9 @@ def df_collapse(df, drift_mu_plus_std=0.1):
 
 val_dir = '../../data/validation/'
 
-val_10_file = 'tfp_mf_db_ida_10_iso.pickle'
-val_5_file = 'tfp_mf_db_ida_5_iso.pickle'
-val_2_file = 'tfp_mf_db_ida_2_5_iso.pickle'
+val_10_file = 'tfp_mf_db_ida_10.pickle'
+val_5_file = 'tfp_mf_db_ida_5.pickle'
+val_2_file = 'tfp_mf_db_ida_2_5.pickle'
 baseline_file = 'tfp_mf_db_ida_baseline.pickle'
 
 main_obj_val = pd.read_pickle(val_dir+val_10_file)
@@ -2659,6 +2737,8 @@ def mle_fit_collapse(ida_levels, pr_collapse):
 from scipy.stats import norm
 f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
 
+color = plt.cm.tab10(np.linspace(0, 1, 10))
+
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -2667,7 +2747,7 @@ label_size = 16
 title_font=20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-# plt.close('all')
+plt.close('all')
 
 fig = plt.figure(figsize=(13, 10))
 
@@ -2688,8 +2768,8 @@ ax1.axhline(0.1, linestyle='--', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
 ax1.text(2.2, 0.12, r'10\% collapse risk',
           fontsize=subt_font, color='black')
-ax1.text(0.25, 0.13, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color='blue')
+ax1.text(0.45, 0.13, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=color[0], bbox=dict(facecolor='white', edgecolor=color[0]))
 # ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
 #           fontsize=subt_font, color='orange')
 ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
@@ -2697,10 +2777,13 @@ ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
 
 ax1.set_ylabel('Collapse probability', fontsize=axis_font)
 # ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
-ax1.set_title('10\% design', fontsize=title_font)
+ax1.set_title('a) 10\% design', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
     ax1.plot([lvl], [val_10_collapse[i]], 
               marker='x', markersize=15, color="red")
+    val = val_10_collapse[i]
+    ax1.text(lvl+0.1, val, f'{val:,.4f}',
+              fontsize=subt_font, color='red')
 ax1.grid()
 ax1.set_xlim([0, 4.0])
 ax1.set_ylim([0, 1.0])
@@ -2722,17 +2805,20 @@ ax2.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 ax2.text(2.2, 0.07, r'5\% collapse risk',
           fontsize=subt_font, color='black')
-ax2.text(0.25, 0.08, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color='blue')
+ax2.text(0.45, 0.05, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=color[0], bbox=dict(facecolor='white', edgecolor=color[0]))
 # ax2.text(0.3, 0.17, f'{MCE_level_unc:,.4f}',
 #           fontsize=subt_font, color='orange')
 
 # ax2.set_ylabel('Collapse probability', fontsize=axis_font)
 # ax2.set_xlabel(r'Scale factor', fontsize=axis_font)
-ax2.set_title('5\% design', fontsize=title_font)
+ax2.set_title('b) 5\% design', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
     ax2.plot([lvl], [val_5_collapse[i]], 
               marker='x', markersize=15, color="red")
+    val = val_5_collapse[i]
+    ax2.text(lvl+0.1, val, f'{val:,.4f}',
+              fontsize=subt_font, color='red')
 ax2.grid()
 ax2.set_xlim([0, 4.0])
 ax2.set_ylim([0, 1.0])
@@ -2754,17 +2840,20 @@ ax3.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 ax3.text(2.2, 0.04, r'2.5\% collapse risk',
           fontsize=subt_font, color='black')
-ax3.text(0.3, 0.045, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color='blue')
+ax3.text(0.45, 0.04, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=color[0], bbox=dict(facecolor='white', edgecolor=color[0]))
 # ax3.text(0.25, 0.04, f'{MCE_level_unc:,.4f}',
 #           fontsize=subt_font, color='orange')
 
 ax3.set_ylabel('Collapse probability', fontsize=axis_font)
 ax3.set_xlabel(r'Scale factor', fontsize=axis_font)
-ax3.set_title('2.5\% design', fontsize=title_font)
+ax3.set_title('c) 2.5\% design', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
     ax3.plot([lvl], [val_2_collapse[i]], 
               marker='x', markersize=15, color="red")
+    val = val_2_collapse[i]
+    ax3.text(lvl+0.1, val, f'{val:,.4f}',
+              fontsize=subt_font, color='red')
 ax3.grid()
 ax3.set_xlim([0, 4.0])
 ax3.set_ylim([0, 1.0])
@@ -2781,29 +2870,35 @@ ax4=fig.add_subplot(2, 2, 4)
 ax4.plot(xx_pr, p, label='Best lognormal fit')
 # ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
 ax4.axhline(0.1, linestyle='--', color='black')
+ax4.axhline(baseline_risk, linestyle='--', color='steelblue')
+ax4.text(2.2, 0.01, r'GP predicted risk',
+          fontsize=subt_font, color='steelblue')
 ax4.axvline(1.0, linestyle='--', color='black')
 ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 ax4.text(2.2, 0.12, r'10\% collapse risk',
           fontsize=subt_font, color='black')
-ax4.text(0.25, 0.13, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color='blue')
+ax4.text(0.45, 0.03, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=color[0], bbox=dict(facecolor='white', edgecolor=color[0]))
 # ax4.text(0.2, 0.2, f'{MCE_level_unc:,.4f}',
 #           fontsize=subt_font, color='orange')
 
 # ax4.set_ylabel('Collapse probability', fontsize=axis_font)
 ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
-ax4.set_title('Baseline design', fontsize=title_font)
+ax4.set_title('d) Baseline design', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
     ax4.plot([lvl], [baseline_collapse[i]], 
               marker='x', markersize=15, color="red")
+    val = baseline_collapse[i]
+    ax4.text(lvl+0.1, val, f'{val:,.4f}',
+              fontsize=subt_font, color='red')
 ax4.grid()
 ax4.set_xlim([0, 4.0])
 ax4.set_ylim([0, 1.0])
 # ax4.legend(fontsize=subt_font-2, loc='center right')
 
 fig.tight_layout()
-# plt.savefig('./figures/fragility_curve.eps', dpi=1200, format='eps')
+plt.savefig('./figures/fragility_curve.eps', dpi=1200, format='eps')
 plt.show()
 
 from numpy import exp
@@ -3084,7 +3179,7 @@ ax.grid(visible=True)
 
 ax.text(0.08, 3.45, r'50\% collapse threshold, $\theta=0.078$', fontsize=axis_font, color='black')
 # ax.set_xscale("log")
-# plt.savefig('./figures/drift_box.pdf')
+plt.savefig('./figures/drift_box.pdf')
 plt.show()
 
 warnings.resetwarnings()
