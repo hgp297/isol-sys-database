@@ -383,7 +383,7 @@ for sens_idx, theta in enumerate(theta_mu_stds):
     from experiment import collapse_fragility
     df_doe[['max_drift',
         'collapse_prob']] = df_doe.apply(
-            lambda row: collapse_fragility(row, drift_at_mu_plus_std=theta), 
+            lambda row: collapse_fragility(row, mf_drift_mu_plus_std=theta), 
             axis='columns', result_type='expand')
            
     mdl_doe = GP(df_doe)
@@ -443,7 +443,7 @@ kernel_name = 'rbf_iso'
 
 df_doe[['max_drift',
     'collapse_prob']] = df_doe.apply(
-        lambda row: collapse_fragility(row, drift_at_mu_plus_std=drift_mu_std), 
+        lambda row: collapse_fragility(row, mf_drift_mu_plus_std=drift_mu_std), 
         axis='columns', result_type='expand')
        
 mdl_doe = GP(df_doe)
@@ -509,7 +509,7 @@ kernel_name = 'rbf_iso'
 
 df_doe[['max_drift',
     'collapse_prob']] = df_doe.apply(
-        lambda row: collapse_fragility(row, drift_at_mu_plus_std=drift_mu_std), 
+        lambda row: collapse_fragility(row, mf_drift_mu_plus_std=drift_mu_std), 
         axis='columns', result_type='expand')
        
 mdl_doe = GP(df_doe)

@@ -313,7 +313,7 @@ with open(validation_path+'tfp_mf_db_ida_2_5.pickle', 'wb') as f:
 # main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_baseline.pickle")
 # df_val = main_obj.ida_results
 
-# main_obj.run_pelicun(main_obj.ida_results, mode='validation',
+# main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
 #                 cmp_dir='../resource/loss/')
 
 # import pickle
@@ -328,7 +328,7 @@ with open(validation_path+'tfp_mf_db_ida_2_5.pickle', 'wb') as f:
 # main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_emi.pickle")
 # df_val = main_obj.ida_results
 
-# main_obj.run_pelicun(main_obj.ida_results, mode='validation',
+# main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
 #                 cmp_dir='../resource/loss/')
 
 # import pickle
@@ -343,7 +343,7 @@ with open(validation_path+'tfp_mf_db_ida_2_5.pickle', 'wb') as f:
 # main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_emi_unleashed.pickle")
 # df_val = main_obj.ida_results
 
-# main_obj.run_pelicun(main_obj.ida_results, mode='validation',
+# main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
 #                 cmp_dir='../resource/loss/')
 
 # import pickle

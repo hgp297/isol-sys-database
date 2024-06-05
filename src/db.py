@@ -395,7 +395,6 @@ class Database:
                   (i_run+1, len(all_designs)))
             bldg_result = run_nlth(design, gm_path)
             
-            # TODO: find a way to keep indices
             # if initial run, start the dataframe with headers
             if db_results is None:
                 db_results = pd.DataFrame(bldg_result).T
@@ -410,13 +409,16 @@ class Database:
         self.ops_analysis = db_results
         
         
-    def calculate_collapse(self, drift_mu_plus_std=0.1):
+    def calculate_collapse(self, mf_reference_drift=0.1, cbf_reference_drift=0.05):
         df = self.ops_analysis
         
         from experiment import collapse_fragility
         df[['max_drift',
-           'collapse_prob']] = df.apply(lambda row: collapse_fragility(row, drift_at_mu_plus_std=drift_mu_plus_std),
-                                                axis='columns', result_type='expand')
+           'collapse_prob']] = df.apply(
+               lambda row: collapse_fragility(
+                   row, mf_drift_mu_plus_std=mf_reference_drift,
+                   cbf_drift_90=cbf_reference_drift),
+               axis='columns', result_type='expand')
                                
         from numpy import log
         df['log_collapse_prob'] = log(df['collapse_prob'])
@@ -459,7 +461,6 @@ class Database:
     
     def prepare_pushover(self, design_df):
         import pandas as pd
-        import numpy as np
         
         config_dict = {
             'S_1' : 1.017,
@@ -715,11 +716,12 @@ class Database:
         # TODO: store ida depending on target
         self.ida_results = db_results
         
-    def run_pelicun(self, db, mode='generate',
+    # this runs Pelicun in the deterministic style. collect_IDA flag used if running
+    # validation IDAs
+    def run_pelicun(self, db, collect_IDA=False,
                     cmp_dir='../resource/loss/'):
         # run info
         import pandas as pd
-        import numpy as np
 
         # and import pelicun classes and methods
         from pelicun.assessment import Assessment
@@ -750,7 +752,7 @@ class Database:
         loss_cmp_group = []
         col_list = []
         irr_list = []
-        if mode=='validation':
+        if collect_IDA:
             IDA_list = []
             
         for run_idx in db.index:
@@ -796,7 +798,7 @@ class Database:
             col_list.append(collapse_rate)
             irr_list.append(irr_rate)
             
-            if mode=='validation':
+            if collect_IDA:
                 IDA_list.append(run_data['ida_level'])
                  
         
@@ -835,7 +837,7 @@ class Database:
         loss_df_data['replacement_freq'] = [x + y for x, y
                                             in zip(col_list, irr_list)]
         
-        if mode=='validation':
+        if collect_IDA:
             loss_df_data['ida_level'] = IDA_list
             
         # clean loss_by_group results=
@@ -867,10 +869,10 @@ class Database:
         
         self.loss_data = pd.concat([loss_df_data, group_df_data], axis=1)
         
+    # This runs Pelicun by fitting a lognormal distribution through the MCE EDPs
     def validate_pelicun(self, db, cmp_dir='../resource/loss/'):
         # run info
         import pandas as pd
-        import numpy as np
 
         # and import pelicun classes and methods
         from pelicun.assessment import Assessment
@@ -1023,7 +1025,6 @@ class Database:
                     cmp_dir='../resource/loss/'):
         # run info
         import pandas as pd
-        import numpy as np
 
         # and import pelicun classes and methods
         from pelicun.assessment import Assessment

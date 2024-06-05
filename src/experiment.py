@@ -159,7 +159,7 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     final_series = pd.concat([design, result_series])
     return(final_series)
     
-def collapse_fragility(run, drift_at_mu_plus_std=0.1):
+def collapse_fragility(run, mf_drift_mu_plus_std=0.1, cbf_drift_90=0.05):
     system = run.superstructure_system
     peak_drift = max(run.PID)
     n_stories = run.num_stories
@@ -169,7 +169,6 @@ def collapse_fragility(run, drift_at_mu_plus_std=0.1):
     from scipy.stats import lognorm
     from scipy.stats import norm
     
-    # TODO: change this for taller buildings
     # MF: set 84% collapse at 0.10 drift, 0.25 beta
     if system == 'MF':
         inv_norm = norm.ppf(0.84)
@@ -177,13 +176,13 @@ def collapse_fragility(run, drift_at_mu_plus_std=0.1):
             beta_drift = 0.25
         else:
             beta_drift = 0.35
-        mean_log_drift = exp(log(drift_at_mu_plus_std) - beta_drift*inv_norm) 
+        mean_log_drift = exp(log(mf_drift_mu_plus_std) - beta_drift*inv_norm) 
         
     # CBF: set 90% collapse at 0.05 drift, 0.55 beta
     else:
         inv_norm = norm.ppf(0.90)
         beta_drift = 0.55
-        mean_log_drift = exp(log(0.05) - beta_drift*inv_norm) 
+        mean_log_drift = exp(log(cbf_drift_90) - beta_drift*inv_norm) 
         
     ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
     collapse_prob = ln_dist.cdf(peak_drift)
@@ -305,7 +304,7 @@ def run_nlth(design,
     results_series = prepare_results(output_path, design, T_1, Tfb, run_status)
     return(results_series)
     
-
+# TODO: DoE has NOT been integrated for CBF
 def run_doe(prob_target, df_train, df_test, sample_bounds=None,
             batch_size=10, error_tol=0.15, maxIter=1000, conv_tol=1e-2,
             kernel='rbf_iso', doe_strat='balanced'):
@@ -492,7 +491,7 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
     
         ######################## DESIGN FOR DOE SET ###########################
         #
-        # Currently somewhat hardcoded for TFP-MF
+        # Currently hardcoded for TFP-MF
     
         # get first set of randomly generated params and merge with a buffer
         # amount of DoE found points (to account for failed designs)

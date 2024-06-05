@@ -719,7 +719,7 @@ collapse_drift_def_mu_std = 0.1
 from experiment import collapse_fragility
 df_doe[['max_drift',
    'collapse_prob']] = df_doe.apply(
-       lambda row: collapse_fragility(row, drift_at_mu_plus_std=collapse_drift_def_mu_std), 
+       lambda row: collapse_fragility(row, mf_drift_mu_plus_std=collapse_drift_def_mu_std), 
        axis='columns', result_type='expand')
 
 
@@ -2604,7 +2604,7 @@ def df_collapse(df, drift_mu_plus_std=0.1):
     df[['max_drift',
        'collapse_prob']] = df.apply(
            lambda row: collapse_fragility(
-               row, drift_at_mu_plus_std=drift_mu_plus_std), 
+               row, mf_drift_mu_plus_std=drift_mu_plus_std), 
            axis='columns', result_type='expand')
                            
     from numpy import log

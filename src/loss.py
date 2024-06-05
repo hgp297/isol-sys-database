@@ -680,7 +680,6 @@ class Loss_Analysis:
         ###########################################################################
         # DEMANDS
         ###########################################################################
-        # TODO: change validation? can do either deterministic or distro
         if mode=='validation':
             PAL.demand.load_sample(raw_demands.T)
             PAL.demand.calibrate_model(
@@ -720,9 +719,12 @@ class Loss_Analysis:
         demand_sample = PAL.demand.save_sample()
 
 
-        # TODO: this is structure system dependent
         # get residual drift estimates 
-        delta_y = 0.0075 # found from typical pushover curve for structure
+        superstructure_system = run.superstructure_system
+        if superstructure_system == 'MF':
+            delta_y = 0.0075 # found from typical pushover curve for structure
+        else:
+            delta_y = 0.005
         PID = demand_sample['PID']
 
         RID = PAL.demand.estimate_RID(PID, {'yield_drift': delta_y}) 
@@ -820,7 +822,6 @@ class Loss_Analysis:
         additional_fragility_db = additional_fragility_db[mask]
         
         
-        # TODO: change this section to the system-dependent drift values
         # add demand for the replacement criteria
         # irreparable damage
         # this is based on the default values in P58
@@ -831,12 +832,17 @@ class Loss_Analysis:
                             ('Demand','Unit')]] = [1, 
                                                     0, 
                                                     'Residual Interstory Drift Ratio',
-                                                    'rad']   
-
+                                                    'rad']
+        # reference for drifts in FEMA 356, Table C1-2
+        if superstructure_system=='MF':
+            irreparable_drift = 0.01
+        else:
+            irreparable_drift = 0.005
+            
         additional_fragility_db.loc[
             'excessiveRID', [('LS1','Family'),
                             ('LS1','Theta_0'),
-                            ('LS1','Theta_1')]] = ['lognormal', 0.01, 0.3]   
+                            ('LS1','Theta_1')]] = ['lognormal', irreparable_drift, 0.3]   
 
         additional_fragility_db.loc[
             'irreparable', [('Demand','Directional'),
@@ -881,10 +887,24 @@ class Loss_Analysis:
         # 3-story global collapse drift, lowered by 0.05 if nonlin dynamic anly
         from math import log, exp
         from scipy.stats import norm
-        drift_mu_plus_std = 0.1
-        inv_norm = norm.ppf(0.84)
-        beta_drift = 0.25
-        mean_log_drift = exp(log(drift_mu_plus_std) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+        
+        if superstructure_system == 'MF':
+            # MF: set 84% collapse at 0.10 drift, 0.25 beta
+            drift_mu_plus_std = 0.1
+            inv_norm = norm.ppf(0.84)
+            n_stories = run.num_stories
+            if n_stories < 4:
+                beta_drift = 0.25
+            else:
+                beta_drift = 0.35
+            # 0.9945 is inverse normCDF of 0.84
+            mean_log_drift = exp(log(drift_mu_plus_std) - beta_drift*inv_norm) 
+        else:
+            # CBF: set 90% collapse at 0.05 drift, 0.55 beta
+            inv_norm = norm.ppf(0.90)
+            beta_drift = 0.55
+            mean_log_drift = exp(log(0.05) - beta_drift*inv_norm) 
+            
         additional_fragility_db.loc[
             'collapse', [('Demand','Directional'),
                             ('Demand','Offset'),
@@ -1157,7 +1177,7 @@ class Loss_Analysis:
                 collapse_freq, irreparable_freq)
     
 #%% test
-'''
+
 # run info
 import pandas as pd
 import numpy as np
@@ -1182,7 +1202,7 @@ P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
 
 # data = pd.read_csv('../data/tfp_mf_db.csv')
 pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+main_obj = pd.read_pickle(pickle_path+"structural_db.pickle")
 data = main_obj.ops_analysis
 run = data.iloc[1]
 
@@ -1206,6 +1226,5 @@ additional_frag_db = pd.read_csv('../resource/loss/custom_component_fragilities.
 loss.process_EDP()
 [cmp, dmg, loss, loss_cmp, agg, 
  collapse_rate, irr_rate] = loss.estimate_damage(
-     custom_fragility_db=additional_frag_db, mode='maximize')
+     custom_fragility_db=additional_frag_db, mode='generate')
 
-'''
