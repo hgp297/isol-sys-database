@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(50)
+main_obj = Database(400)
 
 main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)
@@ -131,12 +131,12 @@ main_obj.scale_gms()
 
 #%% generate analyze database
 
-# main_obj.analyze_db('structural_db_uncalibrated_sheartab.csv', save_interval=5)
+main_obj.analyze_db('structural_db_mixed.csv', save_interval=5)
 
-# # Pickle the main object
-# import pickle
-# with open('../data/structural_db.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+# Pickle the main object
+import pickle
+with open('../data/structural_db_mixed.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 #%%
 # # plot distribution of parameters
