@@ -1,4 +1,7 @@
-BATCH OPTIONS
+#!/bin/bash
+
+####################
+# SBATCH OPTIONS
 ####################
 #SBATCH --job-name=isol_db             # job name for queue, default may be u$
 #SBATCH --partition=low                 # high/low/gpu, default if empty is low
