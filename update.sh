@@ -5,7 +5,7 @@ if [ $# -eq 1 ] && [ $1 = "t" ]
 then
     to=$from
     from="./"
-    echo "Synchronizing from local to tacc!"
+    echo "Synchronizing from local to TACC!"
     rsync -zarvm --include="/src/" \
 		--include="/resource/"\
 		--include="/resource/ground_motions/" \
