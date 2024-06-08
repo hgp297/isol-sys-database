@@ -1,0 +1,33 @@
+#!/bin/bash
+from=hgp297@stampede3.tacc.utexas.edu:/work2/05428/hgp297/stampede3/isol-sys-database/
+to="./data/"
+if [ $# -eq 1 ] && [ $1 = "t" ] 
+then
+    to=$from
+    from="./"
+    echo "Synchronizing from local to tacc!"
+    rsync -zarvm --include="/src/" \
+		--include="/resource/"\
+		--include="/resource/ground_motions/" \
+		--include="/resource/ground_motions/PEERNGARecords_Unscaled" \
+		--include="/resource/loss/" \
+		--include="/data/" \
+		--include="*.AT2" \
+		--include="*.g3" \
+        --include="*.csv" \
+        --include="update.sh" \
+        --include="*.py" \
+        --exclude="*" \
+		--exclude="/src/__pycache__/" \
+		--exclude="/data/*.pickle" \
+        "$from" "$to"
+else
+    echo "Synchronizing from tacc to local!"
+    rsync -zarvm --include "/data/*.pickle" \
+        --include="/data/*.csv" \
+		--include="/data/validation/" \
+		--include="/data/loss/" \
+		--include="/data/doe/" \
+        --exclude="*" \
+        "$from" "$to"
+fi
