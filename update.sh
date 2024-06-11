@@ -1,6 +1,6 @@
 #!/bin/bash
 from=hgp297@stampede3.tacc.utexas.edu:/work2/05428/hgp297/stampede3/isol-sys-database/
-to="./data/"
+to="./"
 if [ $# -eq 1 ] && [ $1 = "t" ] 
 then
     to=$from
@@ -18,6 +18,7 @@ then
         --include="*.csv" \
         --include="update.sh" \
         --include="*.py" \
+		--exclude="/src/main.py" \
         --exclude="*" \
 		--exclude="/src/__pycache__/" \
 		--exclude="/data/*.pickle" \
@@ -25,6 +26,8 @@ then
 else
     echo "Synchronizing from tacc to local!"
     rsync -zarvm --include "/data/*.pickle" \
+		--include="./isol_db_sbatch" \
+		--include="./update.sh" \
         --include="/data/*.csv" \
 		--include="/data/validation/" \
 		--include="/data/loss/" \
