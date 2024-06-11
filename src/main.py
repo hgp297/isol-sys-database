@@ -12,14 +12,14 @@
 
 ############################################################################
 
-from db import Database
+# from db import Database
 
-main_obj = Database(400)
+# main_obj = Database(4)
 
-main_obj.design_bearings(filter_designs=True)
-main_obj.design_structure(filter_designs=True)
+# main_obj.design_bearings(filter_designs=True)
+# main_obj.design_structure(filter_designs=True)
 
-main_obj.scale_gms()
+# main_obj.scale_gms()
 
 #%% troubleshoot
 
@@ -131,56 +131,51 @@ main_obj.scale_gms()
 
 #%% generate analyze database
 
-main_obj.analyze_db('structural_db_mixed.csv', save_interval=5)
+# main_obj.analyze_db('structural_db_mixed.csv', save_interval=5)
 
-# Pickle the main object
+# # Pickle the main object
+# import pickle
+# with open('../data/structural_db_mixed.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+#%% run pelicun
+
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed.pickle")
+
+# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_mixed_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+#%% calculate maximum pelicun losses
+
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
+
+main_obj.calc_cmp_max(main_obj.doe_analysis,
+                cmp_dir='../resource/loss/')
+
 import pickle
-with open('../data/structural_db_mixed.pickle', 'wb') as f:
+loss_path = '../data/loss/'
+with open(loss_path+'tfp_mf_db_doe_loss_max.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
 
-#%%
-# # plot distribution of parameters
+#%% calculate maximum pelicun losses
 
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig, axs = plt.subplots(2, 2, figsize=(13, 13))
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"structural_db_mixed.pickle")
 
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
-# import pandas as pd
-# df_plot = pd.concat([lrbs, tfps], axis=0)
+main_obj.calc_cmp_max(main_obj.ops_analysis,
+                cmp_dir='../resource/loss/')
 
-# sns.histplot(data=df_plot, x="Q", kde=True, 
-#               hue='isolator_system',ax=axs[0, 0])
-# sns.histplot(data=df_plot, x="k_ratio", kde=True, 
-#               hue='isolator_system',ax=axs[0, 1])
-# sns.histplot(data=df_plot, x="T_m", kde=True, 
-#               hue='isolator_system',ax=axs[1, 0])
-# sns.histplot(data=df_plot, x="zeta_e", kde=True, 
-#               hue='isolator_system',ax=axs[1, 1])
-
-# # plt.legend()
-# plt.show()
-
-#%%
-
-# # plot distribution of parameters
-
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig, axs = plt.subplots(1, 1, figsize=(9, 9))
-
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
-
-# lrbs['strain_ratio'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['t_r']
-# lrbs['dm_check'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['d_bearing']
-# lrbs['amp'] = lrbs['moat_ampli']
-# # import pandas as pd
-# # df_plot = pd.concat([lrbs, tfps], axis=0)
-
-# sns.histplot(data=lrbs, x="strain_ratio", kde=True, ax=axs)
-
-# plt.show()
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'structural_db_mixed_loss_max.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
