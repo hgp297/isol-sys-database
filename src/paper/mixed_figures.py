@@ -263,3 +263,98 @@ df['B_50%'].loc[mask] = df_loss_max['B_50%'].loc[mask]
 df['C_50%'].loc[mask] = df_loss_max['C_50%'].loc[mask]
 df['D_50%'].loc[mask] = df_loss_max['D_50%'].loc[mask]
 df['E_50%'].loc[mask] = df_loss_max['E_50%'].loc[mask]
+
+#%% engineering data
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+# plt.close('all')
+fig = plt.figure(figsize=(13, 8))
+
+bins = pd.IntervalIndex.from_tuples([(0.2, 0.5), (0.5, 1.0), (1.0, 1.5), (1.5, 3.5)])
+labels=['tiny', 'small', 'okay', 'large']
+df['bin'] = pd.cut(df['gap_ratio'], bins=bins, labels=labels)
+
+
+ax = fig.add_subplot(2, 2, 1)
+import seaborn as sns
+sns.stripplot(data=df, x="max_drift", y="bin", orient="h", alpha=0.8, size=5,
+              hue='impacted', ax=ax, legend='brief', palette='seismic')
+sns.boxplot(y="bin", x= "max_drift", data=df,  showfliers=False,
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
+            width=0.6, ax=ax)
+
+ax.set_ylabel('$GR$ range', fontsize=axis_font)
+ax.set_xlabel('Peak interstory drift (PID)', fontsize=axis_font)
+plt.xlim([0.0, 0.15])
+
+#####
+bins = pd.IntervalIndex.from_tuples([(0.5, 0.75), (0.75, 1.0), (1.0, 1.5), (1.5, 2.25)])
+labels=['tiny', 'small', 'okay', 'large']
+df['bin'] = pd.cut(df['RI'], bins=bins, labels=labels)
+
+
+ax = fig.add_subplot(2, 2, 2)
+import seaborn as sns
+sns.stripplot(data=df, x="max_drift", y="bin", orient="h", size=5, alpha=0.8,
+              hue='impacted', ax=ax, legend='brief', palette='seismic')
+sns.boxplot(y="bin", x= "max_drift", data=df,  showfliers=False,
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
+            width=0.6, ax=ax)
+
+
+ax.set_ylabel('$R_y$ range', fontsize=axis_font)
+ax.set_xlabel('Peak interstory drift (PID)', fontsize=axis_font)
+plt.xlim([0.0, 0.15])
+
+
+
+#####
+bins = pd.IntervalIndex.from_tuples([(1.0, 2.0), (2.0, 3.0), (3.0, 4.0), (4.0, 5.0)])
+labels=['tiny', 'small', 'okay', 'large']
+df['bin'] = pd.cut(df['T_ratio'], bins=bins, labels=labels)
+
+
+ax = fig.add_subplot(2, 2, 3)
+import seaborn as sns
+sns.stripplot(data=df, x="max_accel", y="bin", orient="h", size=5, alpha=0.8,
+              hue='impacted', ax=ax, legend='brief', palette='seismic')
+sns.boxplot(y="bin", x= "max_accel", data=df,  showfliers=False,
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
+            width=0.6, ax=ax)
+
+
+ax.set_ylabel('$T_M/T_{fb}$ range', fontsize=axis_font)
+ax.set_xlabel('Peak floor acceleration (g)', fontsize=axis_font)
+plt.xlim([0.0, 5.0])
+
+#####
+bins = pd.IntervalIndex.from_tuples([(0.1, 0.14), (0.14, 0.18), (0.18, 0.22), (0.22, 0.25)])
+labels=['tiny', 'small', 'okay', 'large']
+df['bin'] = pd.cut(df['zeta_e'], bins=bins, labels=labels)
+
+
+ax = fig.add_subplot(2, 2, 4)
+import seaborn as sns
+sns.stripplot(data=df, x="max_velo", y="bin", orient="h", size=5, alpha=0.8,
+              hue='impacted', ax=ax, legend='brief', palette='seismic')
+sns.boxplot(y="bin", x= "max_velo", data=df,  showfliers=False,
+            boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
+            width=0.6, ax=ax)
+
+
+ax.set_ylabel('$\zeta_M$ range', fontsize=axis_font)
+ax.set_xlabel('Peak floor velocity (in/s)', fontsize=axis_font)
+plt.xlim([25, 125.0])
+fig.tight_layout(h_pad=2.0)
+plt.show()
+
+#%%
+
+# TODO: plots that show difference between CBF & MF, LRB & TFP
