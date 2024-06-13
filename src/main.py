@@ -12,28 +12,16 @@
 
 ############################################################################
 
-# from db import Database
+from db import Database
 
-# main_obj = Database(4)
+main_obj = Database(400)
 
-# main_obj.design_bearings(filter_designs=True)
-# main_obj.design_structure(filter_designs=True)
+main_obj.design_bearings(filter_designs=True)
+main_obj.design_structure(filter_designs=True)
 
-# main_obj.scale_gms()
+main_obj.scale_gms()
 
 #%% troubleshoot
-
-# # cbf lrb
-# run = main_obj.retained_designs.loc[299]
-
-# # cbf tfp
-# run = main_obj.retained_designs.loc[714]
-
-# # mf lrb
-# run = main_obj.retained_designs.loc[704]
-
-# # mf tfp
-# run = main_obj.retained_designs.loc[68]
 
 # failed CBFs in 100 set: 10, 22, 38
 # 10 solved with smaller time step
@@ -43,9 +31,9 @@
 # solution ideas for 22: run through time-stepping loops, increase time-step
 # attempting a non-zero gravity spring for 22
 
-# # troubleshoot building
-# run = main_obj.retained_designs.iloc[22]
-# from building import Building
+# troubleshoot building
+run = main_obj.retained_designs.iloc[8]
+from building import Building
 
 # bldg = Building(run)
 # bldg.model_frame(convergence_mode=True)
@@ -97,19 +85,19 @@
 
 #%% pushover
 
-# bldg = Building(run)
-# bldg.model_frame()
-# bldg.apply_grav_load()
+bldg = Building(run)
+bldg.model_frame(convergence_mode=True)
+bldg.apply_grav_load()
 
-# T_1 = bldg.run_eigen()
+T_1 = bldg.run_eigen()
 
-# bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
+bldg.provide_damping(80, method='SP',
+                                  zeta=[0.05], modes=[1])
 
-# bldg.run_pushover(max_drift_ratio=0.1)
+bldg.run_pushover(max_drift_ratio=0.1)
 
-# from plot_structure import plot_pushover
-# plot_pushover(bldg)
+from plot_structure import plot_pushover
+plot_pushover(bldg)
 
 #%% dynamic run
 
@@ -154,28 +142,28 @@
 
 #%% calculate maximum pelicun losses
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
 
-main_obj.calc_cmp_max(main_obj.doe_analysis,
-                cmp_dir='../resource/loss/')
+# main_obj.calc_cmp_max(main_obj.doe_analysis,
+#                 cmp_dir='../resource/loss/')
 
-import pickle
-loss_path = '../data/loss/'
-with open(loss_path+'tfp_mf_db_doe_loss_max.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_doe_loss_max.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%% calculate maximum pelicun losses
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db_mixed.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed.pickle")
 
-main_obj.calc_cmp_max(main_obj.ops_analysis,
-                cmp_dir='../resource/loss/')
+# main_obj.calc_cmp_max(main_obj.ops_analysis,
+#                 cmp_dir='../resource/loss/')
 
-import pickle
-loss_path = '../data/loss/'
-with open(loss_path+'structural_db_mixed_loss_max.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_mixed_loss_max.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)

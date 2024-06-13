@@ -26,6 +26,7 @@ from doe import GP
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 warnings.filterwarnings("ignore", category=FutureWarning) 
+pd.options.mode.chained_assignment = None  
 
 plt.close('all')
 

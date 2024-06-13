@@ -833,7 +833,7 @@ class Loss_Analysis:
                                                     0, 
                                                     'Residual Interstory Drift Ratio',
                                                     'rad']
-        # reference for drifts in FEMA 356, Table C1-2
+        # reference for drifts in FEMA 356, Table C1-2, or FEMA P-58 Table C-1
         if superstructure_system=='MF':
             irreparable_drift = 0.01
         else:

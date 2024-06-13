@@ -285,7 +285,7 @@ df['bin'] = pd.cut(df['gap_ratio'], bins=bins, labels=labels)
 ax = fig.add_subplot(2, 2, 1)
 import seaborn as sns
 sns.stripplot(data=df, x="max_drift", y="bin", orient="h", alpha=0.8, size=5,
-              hue='impacted', ax=ax, legend='brief', palette='seismic')
+              hue='superstructure_system', ax=ax, legend='brief', palette='seismic')
 sns.boxplot(y="bin", x= "max_drift", data=df,  showfliers=False,
             boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
             width=0.6, ax=ax)
@@ -303,7 +303,7 @@ df['bin'] = pd.cut(df['RI'], bins=bins, labels=labels)
 ax = fig.add_subplot(2, 2, 2)
 import seaborn as sns
 sns.stripplot(data=df, x="max_drift", y="bin", orient="h", size=5, alpha=0.8,
-              hue='impacted', ax=ax, legend='brief', palette='seismic')
+              hue='superstructure_system', ax=ax, legend='brief', palette='seismic')
 sns.boxplot(y="bin", x= "max_drift", data=df,  showfliers=False,
             boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
             width=0.6, ax=ax)
@@ -324,7 +324,7 @@ df['bin'] = pd.cut(df['T_ratio'], bins=bins, labels=labels)
 ax = fig.add_subplot(2, 2, 3)
 import seaborn as sns
 sns.stripplot(data=df, x="max_accel", y="bin", orient="h", size=5, alpha=0.8,
-              hue='impacted', ax=ax, legend='brief', palette='seismic')
+              hue='superstructure_system', ax=ax, legend='brief', palette='seismic')
 sns.boxplot(y="bin", x= "max_accel", data=df,  showfliers=False,
             boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
             width=0.6, ax=ax)
@@ -343,7 +343,7 @@ df['bin'] = pd.cut(df['zeta_e'], bins=bins, labels=labels)
 ax = fig.add_subplot(2, 2, 4)
 import seaborn as sns
 sns.stripplot(data=df, x="max_velo", y="bin", orient="h", size=5, alpha=0.8,
-              hue='impacted', ax=ax, legend='brief', palette='seismic')
+              hue='superstructure_system', ax=ax, legend='brief', palette='seismic')
 sns.boxplot(y="bin", x= "max_velo", data=df,  showfliers=False,
             boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
             width=0.6, ax=ax)
