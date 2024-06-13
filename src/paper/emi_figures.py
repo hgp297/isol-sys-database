@@ -947,7 +947,7 @@ mdl_impact.set_outcome('impacted', use_ravel=True)
 mdl_impact.test_train_split(0.2)
 
 mdl_impact.fit_gpc(kernel_name='rbf_ard')
-
+mdl_impact.fit_svc(kernel_name='rbf')
 mdl_impact.fit_kernel_logistic(kernel_name='rbf')
 
 # predict the entire dataset
@@ -1155,6 +1155,21 @@ mdl_time_miss.fit_kernel_ridge(kernel_name='rbf')
 mdl_repl_hit.fit_kernel_ridge(kernel_name='rbf')
 mdl_repl_miss.fit_kernel_ridge(kernel_name='rbf')
 
+'''
+print('========== Fitting regressions (SVR) ============')
+
+# fit impacted set
+mdl_cost_hit.fit_svr()
+mdl_time_hit.fit_svr()
+
+# fit no impact set
+mdl_cost_miss.fit_svr()
+mdl_time_miss.fit_svr()
+
+
+mdl_repl_hit.fit_svr()
+mdl_repl_miss.fit_svr()
+'''
 
 print('========== Fitting regressions (GPR) ============')
 
@@ -1329,7 +1344,7 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(14, 7))
 
@@ -1436,7 +1451,7 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 7))
 
@@ -3013,7 +3028,7 @@ subt_font = 18
 label_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 fig = plt.figure(figsize=(14, 8))
 ax=fig.add_subplot(2, 3, 2)
 
@@ -3284,7 +3299,7 @@ label_size = 20
 clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 5))
 

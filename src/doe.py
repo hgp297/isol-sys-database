@@ -67,27 +67,27 @@ class GP:
         n_vars = self.X.shape[1]
         
         if kernel_name=='rbf_ard':
-            kernel = 1.0 * krn.RBF(np.ones(n_vars))
+            kernel_base = 1.0 * krn.RBF(np.ones(n_vars))
         elif kernel_name=='rbf_iso':
-            kernel = 1.0 * krn.RBF(1.0)
+            kernel_base = 1.0 * krn.RBF(1.0)
         elif kernel_name=='rq':
-            kernel = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
+            kernel_base = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
                                                     alpha=1.0)
         elif kernel_name == 'matern_iso':
-            kernel = 1.0 * krn.Matern(
+            kernel_base = 1.0 * krn.Matern(
                     length_scale=1.0, 
                     nu=1.5)
         elif kernel_name == 'matern_ard':
-            kernel = 1.0 * krn.Matern(
+            kernel_base = 1.0 * krn.Matern(
                     length_scale=np.ones(n_vars), 
                     nu=1.5)
 
         if noisy==True:
-            kernel = kernel + krn.WhiteKernel(noise_level=0.5)
+            kernel_obj = kernel_base + krn.WhiteKernel(noise_level=0.5)
         # pipeline to scale -> GPC
         gp_pipe = Pipeline([
                 ('scaler', StandardScaler()),
-                ('gpc', GaussianProcessClassifier(kernel=kernel,
+                ('gpc', GaussianProcessClassifier(kernel=kernel_obj,
                                                   warm_start=True,
                                                   random_state=985,
                                                   max_iter_predict=250))
@@ -164,7 +164,41 @@ class GP:
               %te_scr)
         
         self.log_reg_kernel = log_reg_pipe    
+    
+    # Train SVM classification
+    def fit_svc(self, neg_wt=1.0, kernel_name='rbf'):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.svm import SVC
+        from sklearn.model_selection import GridSearchCV
+        from sklearn.metrics.pairwise import rbf_kernel
         
+        # pipeline to scale -> SVC
+        wts = {0: neg_wt, 1:1.0}
+        sv_pipe = Pipeline([('scaler', StandardScaler()),
+                            ('svc', SVC(kernel=rbf_kernel, gamma='auto',
+                                        probability=True,
+                                        class_weight=wts))])
+        
+        # cross-validate several parameters
+        parameters = [
+            {'svc__C':[0.1, 1.0, 10.0, 100.0, 1000.0]}
+            ]
+        
+        svc_cv = GridSearchCV(sv_pipe, param_grid=parameters)
+        svc_cv.fit(self.X_train, self.y_train)
+        
+        # set pipeline to use CV params
+        sv_pipe.set_params(**svc_cv.best_params_)
+        sv_pipe.fit(self.X_train, self.y_train)
+        
+        print("The best SVC parameters are %s with a training score of %0.2f"
+              % (svc_cv.best_params_, svc_cv.best_score_))
+        
+        te_scr = sv_pipe.score(self.X_test, self.y_test)
+        print('SVC testing score: %0.2f' %te_scr)
+        self.svc = sv_pipe
+            
     def fit_gpr_mean_fcn(self, kernel_name):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
@@ -175,18 +209,18 @@ class GP:
         n_vars = self.X.shape[1]
         
         if kernel_name=='rbf_ard':
-            kernel = 1.0 * krn.RBF(np.ones(n_vars))
+            kernel_obj = 1.0 * krn.RBF(np.ones(n_vars))
         elif kernel_name=='rbf_iso':
-            kernel = 1.0 * krn.RBF(1.0)
+            kernel_obj = 1.0 * krn.RBF(1.0)
         elif kernel_name=='rq':
-            kernel = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
+            kernel_obj = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
                                                     alpha=1.0)
         elif kernel_name == 'matern_iso':
-            kernel = 1.0 * krn.Matern(
+            kernel_obj = 1.0 * krn.Matern(
                     length_scale=1.0, 
                     nu=1.5)
         elif kernel_name == 'matern_ard':
-            kernel = 1.0 * krn.Matern(
+            kernel_obj = 1.0 * krn.Matern(
                     length_scale=np.ones(n_vars), 
                     nu=1.5)
         
@@ -199,7 +233,7 @@ class GP:
         # pipeline to scale -> GPR
         gp_pipe = Pipeline([
                 ('scaler', StandardScaler()),
-                ('gpr', GaussianProcessRegressor(kernel=kernel,
+                ('gpr', GaussianProcessRegressor(kernel=kernel_obj,
                                                  random_state=985,
                                                  n_restarts_optimizer=10))
                 ])
@@ -229,31 +263,75 @@ class GP:
         n_vars = self.X.shape[1]
         
         if kernel_name=='rbf_ard':
-            kernel = 1.0 * krn.RBF(np.ones(n_vars))
+            kernel_base = 1.0 * krn.RBF(np.ones(n_vars))
         elif kernel_name=='rbf_iso':
-            kernel = 1.0 * krn.RBF(1.0)
-        elif kernel_name=='rq':
-            kernel = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
+            kernel_base = 1.0 * krn.RBF(1.0)
+        elif kernel_base=='rq':
+            kernel_base = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
                                                     alpha=1.0)
         elif kernel_name == 'matern_iso':
-            kernel = 1.0 * krn.Matern(
+            kernel_base = 1.0 * krn.Matern(
                     length_scale=1.0, 
                     nu=1.5)
         elif kernel_name == 'matern_ard':
-            kernel = 1.0 * krn.Matern(
+            kernel_base = 1.0 * krn.Matern(
                     length_scale=np.ones(n_vars), 
                     nu=1.5)
             
         if noise_bound is None:
             noise_bound = (1e-5, 1e1)
             
-        kernel = kernel + krn.WhiteKernel(noise_level=0.1, noise_level_bounds=noise_bound)
-        # kernel = kernel + 0.1**2 * krn.RBF(length_scale=0.1)
+        kernel_obj = kernel_base + krn.WhiteKernel(noise_level=0.1, noise_level_bounds=noise_bound)
+        
+        # pipeline to scale -> GPR
+        gp_pipe = Pipeline([
+                ('scaler', StandardScaler()),
+                ('gpr', GaussianProcessRegressor(kernel=kernel_obj,
+                                                 random_state=985,
+                                                 n_restarts_optimizer=10))
+                ])
+    
+        gp_pipe.fit(self.X, self.y)
+        
+        self.gpr = gp_pipe
+        
+    # Train GP regression
+    def fit_het_gpr(self, kernel_name, nugget_function=None, noise_bound=None):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.gaussian_process import GaussianProcessRegressor
+        import sklearn.gaussian_process.kernels as krn
+        
+        import numpy as np
+        n_vars = self.X.shape[1]
+        
+        if kernel_name=='rbf_ard':
+            kernel_base = 1.0 * krn.RBF(np.ones(n_vars))
+        elif kernel_name=='rbf_iso':
+            kernel_base = 1.0 * krn.RBF(1.0)
+        elif kernel_name=='rq':
+            kernel_base = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
+                                                    alpha=1.0)
+        elif kernel_name == 'matern_iso':
+            kernel_base = 1.0 * krn.Matern(
+                    length_scale=1.0, 
+                    nu=1.5)
+        elif kernel_name == 'matern_ard':
+            kernel_base = 1.0 * krn.Matern(
+                    length_scale=np.ones(n_vars), 
+                    nu=1.5)
+        
+        if noise_bound is None:
+            noise_bound = (1e-5, 1e1)
+            
+        kernel_obj = (kernel_base + 
+                  krn.WhiteKernel(noise_level=0.1, noise_level_bounds=noise_bound)*
+                  krn.Heteroscedastic_Variance(nugget_function))
             
         # pipeline to scale -> GPR
         gp_pipe = Pipeline([
                 ('scaler', StandardScaler()),
-                ('gpr', GaussianProcessRegressor(kernel=kernel,
+                ('gpr', GaussianProcessRegressor(kernel=kernel_obj,
                                                  random_state=985,
                                                  n_restarts_optimizer=10))
                 ])
@@ -289,7 +367,7 @@ class GP:
         
         self.kr = kr_pipe
     
-    '''
+    
     # Train SVM regression
     def fit_svr(self):
         from sklearn.pipeline import Pipeline
@@ -297,10 +375,11 @@ class GP:
         from sklearn.svm import SVR
         from sklearn.model_selection import GridSearchCV
         from numpy import logspace
+        from sklearn.metrics.pairwise import rbf_kernel
         
         # pipeline to scale -> SVR
         sv_pipe = Pipeline([('scaler', StandardScaler()),
-                            ('svr', SVR(kernel='rbf'))])
+                            ('svr', SVR(kernel=rbf_kernel))])
         
         # cross-validate several parameters
         parameters = [
@@ -320,7 +399,6 @@ class GP:
         sv_pipe.fit(self.X_train, self.y_train)
         
         self.svr = sv_pipe
-    '''
         
     # Train regular ridge regression
     def fit_ols_ridge(self):
@@ -790,10 +868,3 @@ class GP:
         e_cv2_cand = np.exp(numerator - denominator)
     '''
 
-# def logsumexp(x, a=None):
-#     import numpy as np
-#     c = x.max()
-#     if a is None:
-#         return c + np.log(np.sum(np.exp(x - c)))
-#     else:
-#         return c + np.log(np.sum(np.multiply(a, np.exp(x - c))))

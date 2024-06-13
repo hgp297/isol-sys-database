@@ -167,9 +167,9 @@ ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
 ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
 # Draw the scatter plot and marginals.
 scatter_hist(df_secondary['gap_ratio'], df_secondary['RI'], 'navy', 0.9, ax, ax_histx, ax_histy,
-             label='Initial set')
+             label='Replicated set')
 scatter_hist(df['gap_ratio'], df['RI'], 'orange', 0.3, ax, ax_histx, ax_histy,
-             label='DoE added')
+             label='Main set')
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 ax.set_xlim([0.0, 4.0])
@@ -195,8 +195,10 @@ mdl_var = GP(df_secondary)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_var.set_covariates(covariate_list)
 mdl_var.set_outcome('log_var_collapse_prob')
-mdl_var.fit_gpr(kernel_name='rbf_ard', noise_bound=(1e-5, 1e3))
+mdl_var.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-5, 1e3))
 mdl_var.fit_kernel_ridge(kernel_name='rbf')
+
+gp_obj = mdl_var.gpr._final_estimator
 
 #%%
 # make a generalized 2D plotting grid, defaulted to gap and Ry
@@ -251,7 +253,9 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
     X_plot = X_pl[all_vars]
                          
     return(X_plot)
+
 #%% 3d surf for var
+
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -259,7 +263,7 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 7))
 
@@ -277,6 +281,10 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 # var_est = mdl_var.gpr.predict(X_plot, return_std=False)
+# X_array = X_plot.to_numpy()
+# var_array = mdl_var.kr.predict(X_array).ravel()
+# var_diag = np.diag(var_array)
+
 var_est = mdl_var.kr.predict(X_plot)
 
 x_pl = np.unique(xx)
@@ -313,7 +321,7 @@ yvar = 'zeta_e'
 res = 75
 X_plot = make_2D_plotting_space(mdl_var.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            third_var_set = 1.0, fourth_var_set = 2.0)
+                            third_var_set = 1.0, fourth_var_set = 0.75)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
@@ -348,3 +356,14 @@ ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 ax.set_zlabel('$c^2(x)$', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
+
+#%%
+kr_obj = mdl_var.kr
+
+from doe import GP
+mdl_main = GP(df)
+covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+mdl_main.set_covariates(covariate_list)
+mdl_main.set_outcome('collapse_prob')
+mdl_main.fit_het_gpr(kernel_name='rbf_iso', nugget_function=mdl_var.kr)
+# %%
