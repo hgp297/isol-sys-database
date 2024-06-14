@@ -69,10 +69,12 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     outer_col_vel = outer_col_vel.drop(columns=['time'])
     
     ss_type = design['superstructure_system']
+    
+    # TODO: both systems sometimes have error and poorly recorded PFA/PFV
     if ss_type == 'MF':
         ok_thresh = 0.20
     else:
-        ok_thresh = 0.075
+        ok_thresh = 0.10
     # if run was OK, we collect true max values
     if run_status == 0:
         PID = np.maximum(inner_col_drift.abs().max(), 

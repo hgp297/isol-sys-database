@@ -332,6 +332,13 @@ def plot_pushover(run, data_dir='./outputs/pushover/'):
     isol_force = pd.read_csv(data_dir+'isolator_forces.csv', sep=' ', 
                                  header=None, names=force_columns)
     
+    # cut off problematic points
+    isol_disp = isol_disp.iloc[:-1]
+    isol_force = isol_force.iloc[:-1]
+    story_disp = story_disp.iloc[:-1]
+    base_shear = base_shear.iloc[:-1]
+    story_drift = story_drift.iloc[:-1]
+    
     # All hystereses
     isol_type = run.isolator_system
     if isol_type == 'LRB':

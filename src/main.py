@@ -23,18 +23,6 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
-# # cbf lrb
-# run = main_obj.retained_designs.loc[299]
-
-# # cbf tfp
-# run = main_obj.retained_designs.loc[714]
-
-# # mf lrb
-# run = main_obj.retained_designs.loc[704]
-
-# # mf tfp
-# run = main_obj.retained_designs.loc[68]
-
 # failed CBFs in 100 set: 10, 22, 38
 # 10 solved with smaller time step
 # 22 solved with strong ghosts + Broyden
@@ -43,27 +31,23 @@ main_obj.scale_gms()
 # solution ideas for 22: run through time-stepping loops, increase time-step
 # attempting a non-zero gravity spring for 22
 
-# # troubleshoot building
-# run = main_obj.retained_designs.iloc[22]
-# from building import Building
+# troubleshoot building
+run = main_obj.retained_designs.iloc[8]
+from building import Building
 
-# bldg = Building(run)
-# bldg.model_frame(convergence_mode=True)
-# bldg.apply_grav_load()
+bldg = Building(run)
+bldg.model_frame(convergence_mode=False)
+bldg.apply_grav_load()
 
-# T_1 = bldg.run_eigen()
+T_1 = bldg.run_eigen()
 
-# bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
+bldg.provide_damping(80, method='SP',
+                                  zeta=[0.05], modes=[1])
 
-# dt = 0.0005
-# ok = bldg.run_ground_motion(run.gm_selected, 
-#                         run.scale_factor*1.0, 
-#                         dt, T_end=60.0)
-
-# from experiment import run_nlth
-# res = run_nlth(troubleshoot_run)
-
+dt = 0.005
+ok = bldg.run_ground_motion(run.gm_selected, 
+                        run.scale_factor*1.0, 
+                        dt, T_end=60.0)
 
 #%%
 
@@ -98,7 +82,7 @@ main_obj.scale_gms()
 #%% pushover
 
 # bldg = Building(run)
-# bldg.model_frame()
+# bldg.model_frame(convergence_mode=True)
 # bldg.apply_grav_load()
 
 # T_1 = bldg.run_eigen()
@@ -113,8 +97,8 @@ main_obj.scale_gms()
 
 #%% dynamic run
 
-# from plot_structure import plot_dynamic
-# plot_dynamic(run)
+from plot_structure import plot_dynamic
+plot_dynamic(run)
 
 #%% ground motion spectrum
 
@@ -131,56 +115,51 @@ main_obj.scale_gms()
 
 #%% generate analyze database
 
-main_obj.analyze_db('structural_db_mixed.csv', save_interval=5)
+# main_obj.analyze_db('structural_db_mixed.csv', save_interval=5)
 
-# Pickle the main object
-import pickle
-with open('../data/structural_db_mixed.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# # Pickle the main object
+# import pickle
+# with open('../data/structural_db_mixed.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
-#%%
-# # plot distribution of parameters
+#%% run pelicun
 
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig, axs = plt.subplots(2, 2, figsize=(13, 13))
-
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
 # import pandas as pd
-# df_plot = pd.concat([lrbs, tfps], axis=0)
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed.pickle")
 
-# sns.histplot(data=df_plot, x="Q", kde=True, 
-#               hue='isolator_system',ax=axs[0, 0])
-# sns.histplot(data=df_plot, x="k_ratio", kde=True, 
-#               hue='isolator_system',ax=axs[0, 1])
-# sns.histplot(data=df_plot, x="T_m", kde=True, 
-#               hue='isolator_system',ax=axs[1, 0])
-# sns.histplot(data=df_plot, x="zeta_e", kde=True, 
-#               hue='isolator_system',ax=axs[1, 1])
+# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+#                 cmp_dir='../resource/loss/')
 
-# # plt.legend()
-# plt.show()
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_mixed_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
-#%%
+#%% calculate maximum pelicun losses
 
-# # plot distribution of parameters
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
 
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig, axs = plt.subplots(1, 1, figsize=(9, 9))
+# main_obj.calc_cmp_max(main_obj.doe_analysis,
+#                 cmp_dir='../resource/loss/')
 
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_doe_loss_max.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
-# lrbs['strain_ratio'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['t_r']
-# lrbs['dm_check'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['d_bearing']
-# lrbs['amp'] = lrbs['moat_ampli']
-# # import pandas as pd
-# # df_plot = pd.concat([lrbs, tfps], axis=0)
+#%% calculate maximum pelicun losses
 
-# sns.histplot(data=lrbs, x="strain_ratio", kde=True, ax=axs)
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed.pickle")
 
-# plt.show()
+# main_obj.calc_cmp_max(main_obj.ops_analysis,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_mixed_loss_max.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)

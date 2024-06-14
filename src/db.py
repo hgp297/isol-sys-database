@@ -350,7 +350,7 @@ class Database:
                    self.retained_designs['isolator_system'] == 'TFP'])))
         print('======================================')
         
-    def scale_gms(self, repeat=False):
+    def scale_gms(self, repeat=False, seed=985):
         
         
         # only scale motions that will be retained
@@ -359,9 +359,10 @@ class Database:
         # put many GMs on same design if testing record-to-record variance
         if repeat != False:
             all_des = all_des.loc[all_des.index.repeat(repeat)]
+            
         # set seed to ensure same GMs are selected
         from random import seed
-        seed(985)
+        seed(seed)
         
         # scale and select ground motion
         # TODO: this section is inefficient

@@ -2727,7 +2727,7 @@ class Building:
         ok = 0
 
         # Create the system of equation, a sparse solver with partial pivoting
-        ops.system('BandGeneral')
+        ops.system('UmfPack')
 
         # Create the constraint handler, the transformation method
         ops.constraints('Plain')
@@ -3077,6 +3077,7 @@ class Building:
             with open('../data/logs/nodes.log', 'w') as f:
                 for nd in node_log:
                     f.write(f'Node {nd}: {ops.nodeDOFs(nd)}\n')
+            f.close()
             # for nd in ops.getNodeTags():
             #     print(f'Node {nd}: {ops.nodeDOFs(nd)}')
                 

@@ -26,6 +26,7 @@ from doe import GP
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 warnings.filterwarnings("ignore", category=FutureWarning) 
+pd.options.mode.chained_assignment = None  
 
 plt.close('all')
 
@@ -870,7 +871,7 @@ df_stack_bars = df.groupby('bin')[[
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(1, 1, 1)
 
-risks = ['$<10$ \%', '$10-90$\%', '$>90$\%']
+risks = ['$<10\%$', '$10-90\%$', '$>90\%$']
 ax.grid(visible=True, zorder=0)
 cmap = plt.cm.Dark2
 p1 = ax.bar(risks, df_stack_bars['B_frac'], width=0.35, 
@@ -881,7 +882,7 @@ p1 = ax.bar(risks, df_stack_bars['D_frac'], width=0.35, label='MEP', zorder=3,
             color=cmap(0))
 p1 = ax.bar(risks, df_stack_bars['E_frac'], width=0.35, label='Storage', zorder=3,
             color=cmap(3))
-ax.set_ylabel("Percent loss", fontsize=axis_font)
+ax.set_ylabel("Percent component loss", fontsize=axis_font)
 ax.set_xlabel('Replacement risk', fontsize=axis_font)
 
 ax.legend(fontsize=axis_font)
@@ -946,7 +947,7 @@ mdl_impact.set_outcome('impacted', use_ravel=True)
 mdl_impact.test_train_split(0.2)
 
 mdl_impact.fit_gpc(kernel_name='rbf_ard')
-
+mdl_impact.fit_svc(kernel_name='rbf')
 mdl_impact.fit_kernel_logistic(kernel_name='rbf')
 
 # predict the entire dataset
@@ -1154,6 +1155,21 @@ mdl_time_miss.fit_kernel_ridge(kernel_name='rbf')
 mdl_repl_hit.fit_kernel_ridge(kernel_name='rbf')
 mdl_repl_miss.fit_kernel_ridge(kernel_name='rbf')
 
+'''
+print('========== Fitting regressions (SVR) ============')
+
+# fit impacted set
+mdl_cost_hit.fit_svr()
+mdl_time_hit.fit_svr()
+
+# fit no impact set
+mdl_cost_miss.fit_svr()
+mdl_time_miss.fit_svr()
+
+
+mdl_repl_hit.fit_svr()
+mdl_repl_miss.fit_svr()
+'''
 
 print('========== Fitting regressions (GPR) ============')
 
@@ -1328,7 +1344,7 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(14, 7))
 
@@ -1435,7 +1451,7 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 7))
 
@@ -3012,7 +3028,7 @@ subt_font = 18
 label_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 fig = plt.figure(figsize=(14, 8))
 ax=fig.add_subplot(2, 3, 2)
 
@@ -3283,7 +3299,7 @@ label_size = 20
 clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 5))
 
@@ -3801,7 +3817,7 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(9, 8))
 
