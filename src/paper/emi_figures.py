@@ -871,7 +871,7 @@ df_stack_bars = df.groupby('bin')[[
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(1, 1, 1)
 
-risks = ['$<10$ \%', '$10-90$\%', '$>90$\%']
+risks = ['$<10\%$', '$10-90\%$', '$>90\%$']
 ax.grid(visible=True, zorder=0)
 cmap = plt.cm.Dark2
 p1 = ax.bar(risks, df_stack_bars['B_frac'], width=0.35, 
@@ -882,7 +882,7 @@ p1 = ax.bar(risks, df_stack_bars['D_frac'], width=0.35, label='MEP', zorder=3,
             color=cmap(0))
 p1 = ax.bar(risks, df_stack_bars['E_frac'], width=0.35, label='Storage', zorder=3,
             color=cmap(3))
-ax.set_ylabel("Percent loss", fontsize=axis_font)
+ax.set_ylabel("Percent component loss", fontsize=axis_font)
 ax.set_xlabel('Replacement risk', fontsize=axis_font)
 
 ax.legend(fontsize=axis_font)
@@ -3817,7 +3817,7 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(9, 8))
 

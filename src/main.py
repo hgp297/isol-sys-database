@@ -35,23 +35,19 @@ main_obj.scale_gms()
 run = main_obj.retained_designs.iloc[8]
 from building import Building
 
-# bldg = Building(run)
-# bldg.model_frame(convergence_mode=True)
-# bldg.apply_grav_load()
+bldg = Building(run)
+bldg.model_frame(convergence_mode=False)
+bldg.apply_grav_load()
 
-# T_1 = bldg.run_eigen()
+T_1 = bldg.run_eigen()
 
-# bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
+bldg.provide_damping(80, method='SP',
+                                  zeta=[0.05], modes=[1])
 
-# dt = 0.0005
-# ok = bldg.run_ground_motion(run.gm_selected, 
-#                         run.scale_factor*1.0, 
-#                         dt, T_end=60.0)
-
-# from experiment import run_nlth
-# res = run_nlth(troubleshoot_run)
-
+dt = 0.005
+ok = bldg.run_ground_motion(run.gm_selected, 
+                        run.scale_factor*1.0, 
+                        dt, T_end=60.0)
 
 #%%
 
@@ -85,24 +81,24 @@ from building import Building
 
 #%% pushover
 
-bldg = Building(run)
-bldg.model_frame(convergence_mode=True)
-bldg.apply_grav_load()
+# bldg = Building(run)
+# bldg.model_frame(convergence_mode=True)
+# bldg.apply_grav_load()
 
-T_1 = bldg.run_eigen()
+# T_1 = bldg.run_eigen()
 
-bldg.provide_damping(80, method='SP',
-                                  zeta=[0.05], modes=[1])
+# bldg.provide_damping(80, method='SP',
+#                                   zeta=[0.05], modes=[1])
 
-bldg.run_pushover(max_drift_ratio=0.1)
+# bldg.run_pushover(max_drift_ratio=0.1)
 
-from plot_structure import plot_pushover
-plot_pushover(bldg)
+# from plot_structure import plot_pushover
+# plot_pushover(bldg)
 
 #%% dynamic run
 
-# from plot_structure import plot_dynamic
-# plot_dynamic(run)
+from plot_structure import plot_dynamic
+plot_dynamic(run)
 
 #%% ground motion spectrum
 

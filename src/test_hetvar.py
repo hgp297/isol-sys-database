@@ -359,11 +359,15 @@ fig.tight_layout()
 
 #%%
 kr_obj = mdl_var.kr
+var_est = mdl_var.kr.predict(X_plot)
+import copy
+kr_mod = copy.deepcopy(kr_obj)
+kr_only = kr_mod[-1:]._final_estimator
 
 from doe import GP
 mdl_main = GP(df)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_main.set_covariates(covariate_list)
 mdl_main.set_outcome('collapse_prob')
-mdl_main.fit_het_gpr(kernel_name='rbf_iso', nugget_function=mdl_var.kr)
+mdl_main.fit_het_gpr(kernel_name='rbf_iso', nugget_function=kr_only)
 # %%
