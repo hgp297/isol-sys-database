@@ -16,7 +16,6 @@ then
 		--include="*.AT2" \
 		--include="*.g3" \
         --include="*.csv" \
-        --include="update.sh" \
         --include="*.py" \
 		--exclude="/src/main.py" \
         --exclude="*" \
@@ -24,14 +23,7 @@ then
 		--exclude="/data/*.pickle" \
         "$from" "$to"
 else
+	to="./data"
     echo "Synchronizing from tacc to local!"
-    rsync -zarvm --include "/data/*.pickle" \
-		--include="./isol_db_sbatch" \
-		--include="./update.sh" \
-        --include="/data/*.csv" \
-		--include="/data/validation/" \
-		--include="/data/loss/" \
-		--include="/data/doe/" \
-        --exclude="*" \
-        "$from" "$to"
+    rsync -zarvm "${from}data/" "$to"
 fi
