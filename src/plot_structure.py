@@ -267,7 +267,7 @@ def plot_dynamic(run, data_dir='./outputs/'):
     plt.title('Global drift history')
     plt.xlabel('Time (s)')
     plt.ylabel('Drift ratio')
-    plt.ylim([-0.15, 0.15])
+    # plt.ylim([-0.15, 0.15])
     plt.grid(True)
     
     PID = story_drift.abs().max().tolist()
