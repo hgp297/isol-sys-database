@@ -3092,56 +3092,68 @@ class Building:
         cbf_drift_limit = 0.10
         mf_drift_limit = 0.20
         
+        # if good collapse, halt. if non-convergent collapse, discard and retry
         if superstructure_system == 'MF':
             collapse_status = determine_collapse(outer_col_nds, h_story, mf_drift_limit)
         else:
             collapse_status = determine_collapse(outer_col_nds, h_story, cbf_drift_limit)
         
-        if collapse_status:
+        if collapse_status == 'collapse':
             ok = 0
             print('Collapse occurred (MF drift 0.2 | CBF drift 0.1).')
+        elif collapse_status == 'non-convergence':
+            ok = -3
+            t_final = ops.getTime()
+            tp = time.time() - t0
+            minutes = tp//60
+            seconds = tp - 60*minutes
+            print('Drift is beyond convergence. Ending...')
+            print('Ground motion done. End time: %.4f s' % t_final)
+            print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
+            ops.wipe()
+            return(ok)
             
+        # If analysis failed reasonably
         if ok != 0:
             ops.analysis('Transient')
             curr_time = ops.getTime()
             print("Convergence issues at time: ", curr_time)
-            
-            # # print nodes to see constraints
-            node_log = ops.getNodeTags()
-                
-            with open('../data/logs/nodes.log', 'w') as f:
-                for nd in node_log:
-                    f.write(f'Node {nd}: {ops.nodeDOFs(nd)}\n')
-            f.close()
+            # The analysis will be time-controlled and is done for the remaining time
                 
             if superstructure_system == 'MF':
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):
                     curr_time     = ops.getTime()
                     ok = ops.analyze(1, dt_transient)
-                    
-                    # check for collapse first
-                    collapse_status = determine_collapse(
-                        outer_col_nds, h_story, mf_drift_limit)
-                    if collapse_status:
-                        print('Collapse triggered.')
-                        ok = 0
-                        break
-                    else:
-                        ok = -1
                         
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, mf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print("Trying Newton with line search ...")
                         ops.algorithm('NewtonLineSearch')
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
-                        collapse_status = determine_collapse(
-                            outer_col_nds, h_story, cbf_drift_limit)
-                        if collapse_status:
-                            ok = 0
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, mf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print('Trying Broyden ... ')
                         algorithmTypeDynamic = 'Broyden'
                         ops.algorithm(algorithmTypeDynamic)
@@ -3149,12 +3161,17 @@ class Building:
                         if ok == 0:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
-                        
-                        collapse_status = determine_collapse(
-                            outer_col_nds, h_story, cbf_drift_limit)
-                        if collapse_status:
-                            ok = 0
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, mf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print('Trying BFGS ... ')
                         algorithmTypeDynamic = 'BFGS'
                         ops.algorithm(algorithmTypeDynamic)
@@ -3162,10 +3179,6 @@ class Building:
                         if ok == 0:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
-                        collapse_status = determine_collapse(
-                            outer_col_nds, h_story, cbf_drift_limit)
-                        if collapse_status:
-                            ok = 0
             else:
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):
@@ -3175,12 +3188,15 @@ class Building:
                     if ok != 0:
                         collapse_status = determine_collapse(
                             outer_col_nds, h_story, cbf_drift_limit)
-                        if collapse_status:
+                        if collapse_status == 'collapse':
                             print('Collapse triggered.')
                             ok = 0
                             break
-                        else:
-                            ok = -1
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
+                        
                         print("Trying Newton with line search ...")
                         ops.algorithm('NewtonLineSearch')
                         ok = ops.analyze(1, dt_transient)
@@ -3188,15 +3204,16 @@ class Building:
                             print("That worked. Back to KrylovNewton")
                             ops.algorithm('KrylovNewton')
                     if ok != 0:
-                        # check for collapse first
                         collapse_status = determine_collapse(
                             outer_col_nds, h_story, cbf_drift_limit)
-                        if collapse_status:
+                        if collapse_status == 'collapse':
                             print('Collapse triggered.')
                             ok = 0
                             break
-                        else:
-                            ok = -1
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print('Trying Broyden ... ')
                         ops.algorithm('Broyden')
                         ok = ops.analyze(1, dt_transient)
@@ -3204,15 +3221,16 @@ class Building:
                             print("That worked. Back to KrylovNewton")
                             ops.algorithm('KrylovNewton')
                     if ok != 0:
-                        # check for collapse first
                         collapse_status = determine_collapse(
                             outer_col_nds, h_story, cbf_drift_limit)
-                        if collapse_status:
+                        if collapse_status == 'collapse':
                             print('Collapse triggered.')
                             ok = 0
                             break
-                        else:
-                            ok = -1
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print('Trying BFGS ... ')
                         ops.algorithm('BFGS')
                         ok = ops.analyze(1, dt_transient)
@@ -3222,12 +3240,14 @@ class Building:
                     if ok != 0:
                         collapse_status = determine_collapse(
                             outer_col_nds, h_story, cbf_drift_limit)
-                        if collapse_status:
+                        if collapse_status == 'collapse':
                             print('Collapse triggered.')
                             ok = 0
                             break
-                        else:
-                            ok = -1
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         curr_time     = ops.getTime()
                         print("Trying KrylovNewton with 1/5 dt for 10 steps ...")
                         ops.algorithm('KrylovNewton')
@@ -3237,12 +3257,14 @@ class Building:
                     if ok != 0:
                         collapse_status = determine_collapse(
                             outer_col_nds, h_story, cbf_drift_limit)
-                        if collapse_status:
+                        if collapse_status == 'collapse':
                             print('Collapse triggered.')
                             ok = 0
                             break
-                        else:
-                            ok = -1
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         curr_time     = ops.getTime()
                         print("Trying KrylovNewton with 1/10 dt for 10 steps ...")
                         ops.algorithm('KrylovNewton')
@@ -3251,7 +3273,7 @@ class Building:
                             print("That worked. Back to regular dt.")
                     if ok != 0:
                         print('CBF convergence loop exhausted. Ending run...')
-            '''              
+            '''
             else:
                 ok = 0
                 curr_time     = ops.getTime()
@@ -3476,7 +3498,12 @@ def determine_collapse(nds, h_story, drift_limit):
     disp_array = np.array([ops.nodeDisp(node, 1) 
                                for node in nds])
     drift_array = np.abs(np.diff(disp_array)/(h_story*12.0))
-    return np.any(drift_array > drift_limit)
+    if np.any(drift_array > drift_limit):
+        return 'collapse'
+    elif np.any(drift_array > 1.5):
+        return 'non-convergence'
+    else:
+        return 'okay'
     
     
 def bot_gp_coord(nd, L_bay, h_story, offset=0.25):
