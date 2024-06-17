@@ -381,7 +381,8 @@ class Database:
         
     def analyze_db(self, output_str, save_interval=10,
                    data_path='../data/',
-                   gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
+                   gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/',
+                   output_path='./outputs/'):
         
         from experiment import run_nlth
         import pandas as pd
@@ -394,7 +395,7 @@ class Database:
             i_run = all_designs.index.get_loc(index)
             print('========= Run %d of %d ==========' % 
                   (i_run+1, len(all_designs)))
-            bldg_result = run_nlth(design, gm_path)
+            bldg_result = run_nlth(design=design, gm_path=gm_path, output_path=output_path)
             
             # if initial run, start the dataframe with headers
             if db_results is None:

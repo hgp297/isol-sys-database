@@ -1,18 +1,3 @@
-import argparse
-
-parser = argparse.ArgumentParser(
-    description='Create db with seed, size, then run.')
-parser.add_argument('size', metavar='N', type=int, nargs='1',
-                    help='the number of points in the db object')
-parser.add_argument('seed', metavar='s', type=int, nargs='1',
-                    help='the seed that the db object will use')
-parser.add_argument('--sum', dest='accumulate', action='store_const',
-                    const=sum, default=max,
-                    help='sum the integers (default: find the max)')
-
-args = parser.parse_args()
-args.generate_db(args.N, args.s)
-
 def generate_db(num, seed):
     from db import Database
     main_obj = Database(n_points=num, seed=seed)
@@ -23,3 +8,15 @@ def generate_db(num, seed):
     import pickle
     with open('../data/structural_db_seed_'+str(seed)+'.pickle', 'wb') as f:
         pickle.dump(main_obj, f)
+        
+import argparse
+
+parser = argparse.ArgumentParser(
+    description='Create db with seed, size, then run.')
+parser.add_argument('size', metavar='N', type=int, nargs=1,
+                    help='the number of points in the db object')
+parser.add_argument('seed', metavar='s', type=int, nargs=1,
+                    help='the seed that the db object will use')
+
+args = parser.parse_args()
+generate_db(args.size, args.seed)
