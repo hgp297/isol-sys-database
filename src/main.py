@@ -31,8 +31,8 @@ main_obj.scale_gms()
 # solution ideas for 22: run through time-stepping loops, increase time-step
 # attempting a non-zero gravity spring for 22
 
-# # troubleshoot building (400 set: 8 and 200)
-# run = main_obj.retained_designs.iloc[200]
+# troubleshoot building (400 set: 8 and 200)
+# run = main_obj.retained_designs.iloc[0]
 # from building import Building
 
 # bldg = Building(run)
@@ -115,11 +115,11 @@ main_obj.scale_gms()
 
 #%% generate analyze database
 
-main_obj.analyze_db('structural_db_mixed_improved.csv', save_interval=5)
+main_obj.analyze_db('structural_db_mixed_tol.csv', save_interval=5)
 
 # Pickle the main object
 import pickle
-with open('../data/structural_db_mixed_improved.pickle', 'wb') as f:
+with open('../data/structural_db_mixed_tol.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
 
 #%% run pelicun

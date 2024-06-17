@@ -3014,7 +3014,7 @@ class Building:
             
             # Convergence Test: tolerance
             testTypeDynamic     = 'EnergyIncr'
-            tolDynamic = 1e-3
+            tolDynamic = 1e-8
             
             # Newmark-integrator gamma parameter (also HHT)
             newmarkGamma = 0.5
@@ -3035,7 +3035,7 @@ class Building:
             
             # Convergence Test: tolerance
             testTypeDynamic     = 'NormDispIncr'
-            tolDynamic = 1e-5
+            tolDynamic = 1e-8
             
             # Newmark-integrator gamma parameter (also HHT)
             newmarkGamma = 0.5
@@ -3400,7 +3400,6 @@ class Building:
         seconds = tp - 60*minutes
         print('Ground motion done. End time: %.4f s' % t_final)
         print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
-        
         ops.wipe()
         
         return(ok)
@@ -3498,7 +3497,7 @@ def determine_collapse(nds, h_story, drift_limit):
     disp_array = np.array([ops.nodeDisp(node, 1) 
                                for node in nds])
     drift_array = np.abs(np.diff(disp_array)/(h_story*12.0))
-    if np.any(drift_array > drift_limit):
+    if np.any(drift_array > drift_limit) and np.all(drift_array < 1.5):
         return 'collapse'
     elif np.any(drift_array > 1.5):
         return 'non-convergence'
