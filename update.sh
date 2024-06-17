@@ -12,6 +12,7 @@ then
 		--include="/resource/ground_motions/PEERNGARecords_Unscaled" \
 		--include="/resource/loss/" \
 		--include="isol_db_sbatch" \
+		--include="/src/taskfile" \
 		--include="/data/" \
 		--include="*.AT2" \
 		--include="*.g3" \
