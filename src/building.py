@@ -3272,6 +3272,23 @@ class Building:
                         if ok == 0:
                             print("That worked. Back to regular dt.")
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
+                        curr_time     = ops.getTime()
+                        print("Trying KrylovNewton with 1/100 dt for 10 steps ...")
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(10, dt_transient/100.0)
+                        if ok == 0:
+                            print("That worked. Back to regular dt.")
+                    if ok != 0:
                         print('CBF convergence loop exhausted. Ending run...')
             '''
             else:
