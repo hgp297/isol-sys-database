@@ -379,6 +379,7 @@ class Database:
         
         self.retained_designs = all_des
         
+    # TODO: change outputs
     def analyze_db(self, output_str, save_interval=10,
                    data_path='../data/',
                    gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/',
@@ -682,6 +683,7 @@ class Database:
         
         self.ida_df = pd.concat([ida_df, ida_gms], axis=1)
         
+    # TODO: parallelize this
     def analyze_ida(self, output_str, save_interval=10,
                    data_path='../data/validation/',
                    gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
