@@ -12,14 +12,14 @@
 
 ############################################################################
 
-from db import Database
+# from db import Database
 
-main_obj = Database(400)
+# main_obj = Database(400)
 
-main_obj.design_bearings(filter_designs=True)
-main_obj.design_structure(filter_designs=True)
+# main_obj.design_bearings(filter_designs=True)
+# main_obj.design_structure(filter_designs=True)
 
-main_obj.scale_gms()
+# main_obj.scale_gms()
 
 #%% troubleshoot
 
@@ -115,26 +115,26 @@ main_obj.scale_gms()
 
 #%% generate analyze database
 
-main_obj.analyze_db('structural_db_mixed_tol.csv', save_interval=5)
+# main_obj.analyze_db('structural_db_mixed_tol.csv', save_interval=5)
 
-# Pickle the main object
-import pickle
-with open('../data/structural_db_mixed_tol.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# # Pickle the main object
+# import pickle
+# with open('../data/structural_db_mixed_tol.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%% run pelicun
 
-# import pandas as pd
-# pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed.pickle")
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
 
-# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
-#                 cmp_dir='../resource/loss/')
+main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+                cmp_dir='../resource/loss/')
 
-# import pickle
-# loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_mixed_loss.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'structural_db_mixed_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 #%% calculate maximum pelicun losses
 
@@ -152,14 +152,14 @@ with open('../data/structural_db_mixed_tol.pickle', 'wb') as f:
 
 #%% calculate maximum pelicun losses
 
-# import pandas as pd
-# pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed.pickle")
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
 
-# main_obj.calc_cmp_max(main_obj.ops_analysis,
-#                 cmp_dir='../resource/loss/')
+main_obj.calc_cmp_max(main_obj.ops_analysis,
+                cmp_dir='../resource/loss/')
 
-# import pickle
-# loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_mixed_loss_max.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'structural_db_mixed_loss_max.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)

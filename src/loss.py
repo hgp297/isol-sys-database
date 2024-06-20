@@ -1178,53 +1178,53 @@ class Loss_Analysis:
     
 #%% test
 
-# run info
-import pandas as pd
-import numpy as np
+# # run info
+# import pandas as pd
+# import numpy as np
 
-idx = pd.IndexSlice
-pd.options.display.max_rows = 30
+# idx = pd.IndexSlice
+# pd.options.display.max_rows = 30
 
-# and import pelicun classes and methods
-from pelicun.assessment import Assessment
+# # and import pelicun classes and methods
+# from pelicun.assessment import Assessment
 
-# get database
-# initialize, no printing outputs, offset fixed with current components
-PAL = Assessment({
-    "PrintLog": False, 
-    "Seed": 985,
-    "Verbose": False,
-    "DemandOffset": {"PFA": 0, "PFV": 0}
-})
+# # get database
+# # initialize, no printing outputs, offset fixed with current components
+# PAL = Assessment({
+#     "PrintLog": False, 
+#     "Seed": 985,
+#     "Verbose": False,
+#     "DemandOffset": {"PFA": 0, "PFV": 0}
+# })
 
-# generate structural components and join with NSCs
-P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
+# # generate structural components and join with NSCs
+# P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
 
-# data = pd.read_csv('../data/tfp_mf_db.csv')
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db.pickle")
-data = main_obj.ops_analysis
-run = data.iloc[1]
-
-
-floors = run.num_stories
-area = run.L_bldg**2 # sq ft
-
-# lab, health, ed, res, office, retail, warehouse, hotel
-fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
-bldg_usage = [fl_usage]*floors
-
-area_usage = np.array(fl_usage)*area
-
-loss = Loss_Analysis(run)
-loss.nqe_sheets()
-loss.normative_quantity_estimation(bldg_usage, P58_metadata)
+# # data = pd.read_csv('../data/tfp_mf_db.csv')
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db.pickle")
+# data = main_obj.ops_analysis
+# run = data.iloc[1]
 
 
-additional_frag_db = pd.read_csv('../resource/loss/custom_component_fragilities.csv',
-                                  header=[0,1], index_col=0)
-loss.process_EDP()
-[cmp, dmg, loss, loss_cmp, agg, 
- collapse_rate, irr_rate] = loss.estimate_damage(
-     custom_fragility_db=additional_frag_db, mode='generate')
+# floors = run.num_stories
+# area = run.L_bldg**2 # sq ft
+
+# # lab, health, ed, res, office, retail, warehouse, hotel
+# fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
+# bldg_usage = [fl_usage]*floors
+
+# area_usage = np.array(fl_usage)*area
+
+# loss = Loss_Analysis(run)
+# loss.nqe_sheets()
+# loss.normative_quantity_estimation(bldg_usage, P58_metadata)
+
+
+# additional_frag_db = pd.read_csv('../resource/loss/custom_component_fragilities.csv',
+#                                   header=[0,1], index_col=0)
+# loss.process_EDP()
+# [cmp, dmg, loss, loss_cmp, agg, 
+#  collapse_rate, irr_rate] = loss.estimate_damage(
+#      custom_fragility_db=additional_frag_db, mode='generate')
 

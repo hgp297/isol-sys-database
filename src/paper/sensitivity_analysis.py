@@ -24,6 +24,11 @@ from doe import GP
 import pandas as pd
 pd.options.mode.chained_assignment = None  
 
+# old setting to achieve old plots
+# zeta = 0.15
+# theta_reference = 0.10
+# steel price at 4.0 default
+
 #%%
 # make a generalized 2D plotting grid, defaulted to gap and Ry
 # grid is based on the bounds of input data
@@ -86,7 +91,7 @@ def make_design_space(res):
                                              res),
                                  np.linspace(2.0, 5.0,
                                              res),
-                                 0.15)
+                                 0.25)
                                  
     X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
                          'RI':yy.ravel(),
@@ -362,7 +367,7 @@ covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 
 kernel_name = 'rbf_iso'
 
-steel_price = 4.0
+steel_price = 2.0
 coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
 
 design_res = 20
@@ -437,7 +442,7 @@ for sens_idx, theta in enumerate(theta_mu_stds):
     
 #%% sensitivity to steel cost
 
-drift_mu_std = 0.06
+drift_mu_std = 0.1
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 kernel_name = 'rbf_iso'
 
@@ -503,7 +508,7 @@ for steel_idx, steel_price in enumerate(steel_prices):
     
 #%% sensitivity to land cost
 
-drift_mu_std = 0.06
+drift_mu_std = 0.1
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 kernel_name = 'rbf_iso'
 
@@ -521,13 +526,13 @@ fmu_design = mdl_doe.gpr.predict(X_design_cand, return_std=False)
 
 
 
-land_prices = np.arange(50.0, 400.0, 50.0)
+land_prices = np.arange(50.0, 550.0, 50.0)
 
 land_sens_10 = np.zeros((len(land_prices), len(covariate_list)))
 land_sens_5 = np.zeros((len(land_prices), len(covariate_list)))
 land_sens_2_5 = np.zeros((len(land_prices), len(covariate_list)))
 
-coef_dict = get_steel_coefs(df_doe, steel_per_unit=4.0)
+coef_dict = get_steel_coefs(df_doe, steel_per_unit=2.0)
 # baseline is $250/sqft
 for land_idx, land_price in enumerate(land_prices):
     
@@ -604,13 +609,13 @@ ax.text(0.07, 0.1, 'This study',
 ax.set_xlabel(r'$\theta$', fontsize=axis_font)
 ax.set_ylabel(r'Predicted collapse risk', fontsize=axis_font)
 ax.set_title('Baseline collapse sensitivity', fontsize=title_font)
-# ax.set_ylim([25, 200])
+# ax.set_ylim([25, 225])
 # ax.legend(fontsize=label_size)
 ax.grid()
 fig.tight_layout()
 plt.savefig('./figures/baseline_sensitivity.pdf')
 #%%
-
+'''
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -643,7 +648,7 @@ for plt_idx in range(3):
 ax.set_xlabel(r'$\theta$', fontsize=axis_font)
 ax.set_ylabel(r'\% change', fontsize=axis_font)
 ax.set_title('10\% collapse', fontsize=title_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 # ax.legend(fontsize=label_size)
 ax.grid()
 
@@ -654,7 +659,7 @@ for plt_idx in range(3):
             c=color[plt_idx], label=label[plt_idx])
 ax.set_xlabel(r'$\theta$', fontsize=axis_font)
 ax.set_title('5\% collapse', fontsize=title_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.grid()
 
 ax=fig.add_subplot(3, 3, 3)
@@ -664,7 +669,7 @@ for plt_idx in range(3):
             c=color[plt_idx], label=label[plt_idx])
 ax.set_xlabel(r'$\theta$', fontsize=axis_font)
 ax.set_title('2.5\% collapse', fontsize=title_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.grid()
 
 
@@ -679,7 +684,7 @@ for plt_idx in range(3):
             c=color[plt_idx], label=label[plt_idx])
 ax.set_ylabel(r'\% change', fontsize=axis_font)
 ax.set_xlabel(r'Land cost per ft$^2$ (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 # 
 ax.grid()
 
@@ -689,7 +694,7 @@ for plt_idx in range(3):
     ax.plot(land_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 ax.set_xlabel(r'Land cost per ft$^2$ (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.legend(fontsize=label_size)
 ax.grid()
 
@@ -699,7 +704,7 @@ for plt_idx in range(3):
     ax.plot(land_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 ax.set_xlabel(r'Land cost per ft$^2$ (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.grid()
 
 ##
@@ -712,7 +717,7 @@ for plt_idx in range(3):
             c=color[plt_idx], label=label[plt_idx])
 ax.set_ylabel(r'\% change', fontsize=axis_font)
 ax.set_xlabel(r'Steel cost per lb (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 # ax.legend(fontsize=label_size)
 ax.grid()
 
@@ -722,7 +727,7 @@ for plt_idx in range(3):
     ax.plot(steel_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 ax.set_xlabel(r'Steel cost per lb (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.grid()
 
 ax=fig.add_subplot(3, 3, 9)
@@ -731,12 +736,12 @@ for plt_idx in range(3):
     ax.plot(steel_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 ax.set_xlabel(r'Steel cost per lb (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.grid()
 
 fig.tight_layout()
 plt.savefig('./figures/sensitivity.pdf')
-
+'''
 #%%
 
 plt.rcParams["text.usetex"] = True
@@ -762,7 +767,11 @@ color = plt.cm.Set1(np.linspace(0, 1, 10))
 
 baseline_ref = np.array([1.0, 2.0, 3.0, 0.15])
 
-plt_array = collapse_sens_10/baseline_ref*100
+ref_10 = np.array([0.6, 2.25, 2.16, 0.25])
+ref_5 = np.array([0.6, 2.25, 2.79, 0.25])
+ref_2_5 = np.array([0.6, 2.25, 3.10, 0.25])
+
+plt_array = collapse_sens_10/ref_10*100
 label = [r'$GR$', r'$R_y$', r'$T_M/T_{fb}$']
 for plt_idx in range(3):
     ax.plot(mean_log_drift, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
@@ -771,28 +780,28 @@ for plt_idx in range(3):
 # ax.set_xlabel(r'$\theta$', fontsize=axis_font)
 ax.set_ylabel(r'\% change', fontsize=axis_font)
 ax.set_title('10\% collapse', fontsize=title_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 # ax.legend(fontsize=label_size)
 ax.grid()
 
 ax=fig.add_subplot(4, 3, 2)
-plt_array = collapse_sens_5/baseline_ref*100
+plt_array = collapse_sens_5/ref_5*100
 for plt_idx in range(3):
     ax.plot(mean_log_drift, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 ax.set_xlabel(r'a) $\theta$', fontsize=axis_font)
 ax.set_title('5\% collapse', fontsize=title_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.grid()
 
 ax=fig.add_subplot(4, 3, 3)
-plt_array = collapse_sens_2_5/baseline_ref*100
+plt_array = collapse_sens_2_5/ref_2_5*100
 for plt_idx in range(3):
     ax.plot(mean_log_drift, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 # ax.set_xlabel(r'$\theta$', fontsize=axis_font)
 ax.set_title('2.5\% collapse', fontsize=title_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.grid()
 
 
@@ -800,66 +809,67 @@ ax.grid()
 ##
 
 ax=fig.add_subplot(4, 3, 4)
-plt_array = land_sens_10/baseline_ref*100
+plt_array = land_sens_10/ref_10*100
 label = [r'$GR$', r'$R_y$', r'$T_M/T_{fb}$']
 for plt_idx in range(3):
     ax.plot(land_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 ax.set_ylabel(r'\% change', fontsize=axis_font)
 # ax.set_xlabel(r'Land cost per ft$^2$ (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 # 
 ax.grid()
 
 ax=fig.add_subplot(4, 3, 5)
-plt_array = land_sens_5/baseline_ref*100
+plt_array = land_sens_5/ref_5*100
 for plt_idx in range(3):
     ax.plot(land_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 ax.set_xlabel(r'b) Land cost per ft$^2$ (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
-ax.legend(fontsize=label_size)
+ax.set_ylim([25, 225])
+
 ax.grid()
 
 ax=fig.add_subplot(4, 3, 6)
-plt_array = land_sens_2_5/baseline_ref*100
+plt_array = land_sens_2_5/ref_2_5*100
 for plt_idx in range(3):
     ax.plot(land_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 # ax.set_xlabel(r'Land cost per ft$^2$ (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
+ax.legend(fontsize=label_size)
 ax.grid()
 
 ##
 
 ax=fig.add_subplot(4, 3, 7)
-plt_array = steel_sens_10/baseline_ref*100
+plt_array = steel_sens_10/ref_10*100
 label = [r'$GR$', r'$R_y$', r'$T_M/T_{fb}$']
 for plt_idx in range(3):
     ax.plot(steel_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 ax.set_ylabel(r'\% change', fontsize=axis_font)
 # ax.set_xlabel(r'Steel cost per lb (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 # ax.legend(fontsize=label_size)
 ax.grid()
 
 ax=fig.add_subplot(4, 3, 8)
-plt_array = steel_sens_5/baseline_ref*100
+plt_array = steel_sens_5/ref_5*100
 for plt_idx in range(3):
     ax.plot(steel_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 ax.set_xlabel(r'c) Steel cost per lb (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.grid()
 
 ax=fig.add_subplot(4, 3, 9)
-plt_array = steel_sens_2_5/baseline_ref*100
+plt_array = steel_sens_2_5/ref_2_5*100
 for plt_idx in range(3):
     ax.plot(steel_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 # ax.set_xlabel(r'Steel cost per lb (\$)', fontsize=axis_font)
-ax.set_ylim([25, 200])
+ax.set_ylim([25, 225])
 ax.grid()
 
 ax = fig.add_subplot(4, 1, 4)
@@ -872,11 +882,13 @@ ax.text(0.07, 0.13, 'This study',
           fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
 ax.set_xlabel(r'$\theta$', fontsize=axis_font)
 ax.set_ylabel(r'Predicted \% collapse', fontsize=axis_font)
-ax.set_title('d) Baseline collapse sensitivity', fontsize=axis_font)
-# ax.set_ylim([25, 200])
+ax.set_title(
+    'd) Baseline collapse sensitivity: $GR=1.0$, $R_y=2.0$, $T_M/T_{fb}=3.0$, $\zeta_M=0.15$', 
+    fontsize=axis_font)
+ax.set_ylim([0, 0.5])
 # ax.legend(fontsize=label_size)
 ax.grid()
-plt.setp(ax, yticks=np.arange(0.05, 0.45, step=0.1))
+plt.setp(ax, yticks=np.arange(0.05, 0.5, step=0.1))
 
 fig.tight_layout()
 plt.savefig('./figures/sensitivity_tall.pdf')

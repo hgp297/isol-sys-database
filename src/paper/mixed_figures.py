@@ -355,6 +355,448 @@ plt.xlim([25, 125.0])
 fig.tight_layout(h_pad=2.0)
 plt.show()
 
-#%%
+#%% seaborn scatter with histogram: Structural data
+def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
+    # no labels
+    ax_histx.tick_params(axis="x", labelbottom=False)
+    ax_histy.tick_params(axis="y", labelleft=False)
 
-# TODO: plots that show difference between CBF & MF, LRB & TFP
+    # the scatter plot:
+    cmap = plt.cm.Blues
+    ax.scatter(x, y, alpha=alpha, edgecolors='black', s=25, facecolors=c,
+               label=label)
+
+    # now determine nice limits by hand:
+    binwidth = 0.25
+    xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+    lim = (int(xymax/binwidth) + 1) * binwidth
+
+    bins = np.arange(-lim, lim + binwidth, binwidth)
+    
+    if y.name == 'zeta_e':
+        binwidth = 0.02
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_y = np.arange(-lim, lim + binwidth, binwidth)
+    elif y.name == 'RI':
+        binwidth = 0.15
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_y = np.arange(-lim, lim + binwidth, binwidth)
+    else:
+        bin_y = bins
+        
+    if x.name == 'Q':
+        binwidth = 0.01
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_x = np.arange(-lim, lim + binwidth, binwidth)
+    else:
+        bin_x = bins
+    ax_histx.hist(x, bins=bin_x, alpha = 0.5, weights=np.ones(len(x)) / len(x),
+                  facecolor = c, edgecolor='navy', linewidth=0.5)
+    ax_histy.hist(y, bins=bin_y, orientation='horizontal', alpha = 0.5, weights=np.ones(len(x)) / len(x),
+                  facecolor = c, edgecolor='navy', linewidth=0.5)
+    
+df_cbf = df[df['superstructure_system'] == 'CBF']
+df_mf = df[df['superstructure_system'] == 'MF']
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+plt.close('all')
+# Start with a square Figure.
+fig = plt.figure(figsize=(13, 6), layout='constrained')
+
+# Add a gridspec with two rows and two columns and a ratio of 1 to 4 between
+# the size of the marginal axes and the main axes in both directions.
+# Also adjust the subplot parameters for a square plot.
+gs = fig.add_gridspec(2, 4,  width_ratios=(5, 1, 5, 1), height_ratios=(1, 5),
+                      left=0.1, right=0.9, bottom=0.1, top=0.9,
+                      wspace=0., hspace=0.)
+# # Create the Axes.
+# fig = plt.figure(figsize=(13, 10))
+# ax1=fig.add_subplot(2, 2, 1)
+
+ax = fig.add_subplot(gs[1, 0])
+ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df_cbf['T_ratio'], df_cbf['zeta_e'], 'navy', 0.9, ax, ax_histx, ax_histy,
+             label='CBF')
+scatter_hist(df_mf['T_ratio'], df_mf['zeta_e'], 'orange', 0.3, ax, ax_histx, ax_histy,
+             label='MF')
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_e$', fontsize=axis_font)
+ax.set_xlim([1.0, 12.0])
+ax.set_ylim([0.1, 0.25])
+ax.legend(fontsize=label_size)
+
+ax = fig.add_subplot(gs[1, 2])
+ax_histx = fig.add_subplot(gs[0, 2], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 3], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df_cbf['T_ratio'], df_cbf['zeta_e'], 'navy', 0.9, ax, ax_histx, ax_histy)
+scatter_hist(df_mf['T_ratio'], df_mf['zeta_e'], 'orange', 0.3, ax, ax_histx, ax_histy)
+
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax.set_xlim([1.0, 12.0])
+ax.set_ylim([0.1, 0.25])
+
+#####################
+
+df_tfp = df[df['isolator_system'] == 'TFP']
+df_lrb = df[df['isolator_system'] == 'LRB']
+
+# plt.close('all')
+# Start with a square Figure.
+fig = plt.figure(figsize=(13, 6), layout='constrained')
+
+# Add a gridspec with two rows and two columns and a ratio of 1 to 4 between
+# the size of the marginal axes and the main axes in both directions.
+# Also adjust the subplot parameters for a square plot.
+gs = fig.add_gridspec(2, 4,  width_ratios=(5, 1, 5, 1), height_ratios=(1, 5),
+                      left=0.1, right=0.9, bottom=0.1, top=0.9,
+                      wspace=0., hspace=0.)
+# # Create the Axes.
+# fig = plt.figure(figsize=(13, 10))
+# ax1=fig.add_subplot(2, 2, 1)
+
+ax = fig.add_subplot(gs[1, 0])
+ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+# Draw the scatter plot and df_tfp.
+scatter_hist(df_tfp['Q'], df_tfp['k_ratio'], 'navy', 0.9, ax, ax_histx, ax_histy,
+             label='TFP')
+scatter_hist(df_lrb['Q'], df_lrb['k_ratio'], 'orange', 0.3, ax, ax_histx, ax_histy,
+             label='LRB')
+ax.set_xlabel(r'$Q / W$', fontsize=axis_font)
+ax.set_ylabel(r'$k_1 / k_2$', fontsize=axis_font)
+ax.set_xlim([0.04, 0.125])
+ax.set_ylim([4, 18])
+ax.legend(fontsize=label_size)
+
+ax = fig.add_subplot(gs[1, 2])
+ax_histx = fig.add_subplot(gs[0, 2], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 3], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df_tfp['Q'], df_tfp['k_ratio'], 'navy', 0.9, ax, ax_histx, ax_histy)
+scatter_hist(df_lrb['Q'], df_lrb['k_ratio'], 'orange', 0.3, ax, ax_histx, ax_histy)
+
+ax.set_xlabel(r'$Q / W$', fontsize=axis_font)
+ax.set_ylabel(r'$k_1 / k_2$', fontsize=axis_font)
+ax.set_xlim([0.04, 0.125])
+ax.set_ylim([4, 18])
+
+
+#%% 3d surf for replacement risk - structure
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+
+ax.scatter(df_cbf[xvar], df_cbf[yvar], df_cbf['replacement_freq'], color=color[0],
+           edgecolors='k', alpha = 0.7, label='CBF')
+ax.scatter(df_mf[xvar], df_mf[yvar], df_mf['replacement_freq'], color=color[1],
+           edgecolors='k', alpha = 0.7, label='MF')
+
+ax.legend(fontsize=label_size)
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Replacement risk', fontsize=axis_font)
+
+#################################
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+ax.scatter(df_cbf[xvar], df_cbf[yvar], df_cbf['replacement_freq'], color=color[0],
+           edgecolors='k', alpha = 0.7, label='CBF')
+ax.scatter(df_mf[xvar], df_mf[yvar], df_mf['replacement_freq'], color=color[1],
+           edgecolors='k', alpha = 0.7, label='MF')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Replacement risk', fontsize=axis_font)
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+fig.tight_layout()
+
+#%% 3d surf for replacement risk - bearing
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+#################################
+xvar = 'Q'
+yvar = 'k_ratio'
+
+color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+
+ax.scatter(df_tfp[xvar], df_tfp[yvar], df_tfp['replacement_freq'], color=color[2],
+           edgecolors='k', alpha = 0.7, label='TFP')
+ax.scatter(df_lrb[xvar], df_lrb[yvar], df_lrb['replacement_freq'], color=color[3],
+           edgecolors='k', alpha = 0.7, label='LRB')
+
+ax.legend(fontsize=label_size)
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.set_xlabel('$Q/W$', fontsize=axis_font)
+ax.set_ylabel('$k_1/k_2$', fontsize=axis_font)
+ax.set_zlabel('Replacement risk', fontsize=axis_font)
+
+#################################
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+ax.scatter(df_tfp[xvar], df_tfp[yvar], df_tfp['replacement_freq'], color=color[2],
+           edgecolors='k', alpha = 0.7, label='TFP')
+ax.scatter(df_lrb[xvar], df_lrb[yvar], df_lrb['replacement_freq'], color=color[3],
+           edgecolors='k', alpha = 0.7, label='LRB')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Replacement risk', fontsize=axis_font)
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+fig.tight_layout()
+
+#%% 3d surf for repair cost - structure
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+
+ax.scatter(df_cbf[xvar], df_cbf[yvar], df_cbf[cost_var], color=color[0],
+           edgecolors='k', alpha = 0.7, label='CBF')
+ax.scatter(df_mf[xvar], df_mf[yvar], df_mf[cost_var], color=color[1],
+           edgecolors='k', alpha = 0.7, label='MF')
+
+ax.legend(fontsize=label_size)
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Replacement cost', fontsize=axis_font)
+
+#################################
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+ax.scatter(df_cbf[xvar], df_cbf[yvar], df_cbf[cost_var], color=color[0],
+           edgecolors='k', alpha = 0.7, label='CBF')
+ax.scatter(df_mf[xvar], df_mf[yvar], df_mf[cost_var], color=color[1],
+           edgecolors='k', alpha = 0.7, label='MF')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Replacement cost', fontsize=axis_font)
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+fig.tight_layout()
+
+#%% 3d surf for repair cost - bearing
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+#################################
+xvar = 'Q'
+yvar = 'k_ratio'
+
+color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+
+ax.scatter(df_tfp[xvar], df_tfp[yvar], df_tfp[cost_var], color=color[2],
+           edgecolors='k', alpha = 0.7, label='TFP')
+ax.scatter(df_lrb[xvar], df_lrb[yvar], df_lrb[cost_var], color=color[3],
+           edgecolors='k', alpha = 0.7, label='LRB')
+
+ax.legend(fontsize=label_size)
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.set_xlabel('$Q/W$', fontsize=axis_font)
+ax.set_ylabel('$k_1/k_2$', fontsize=axis_font)
+ax.set_zlabel('Replacement cost ratio', fontsize=axis_font)
+
+#################################
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+ax.scatter(df_tfp[xvar], df_tfp[yvar], df_tfp[cost_var], color=color[2],
+           edgecolors='k', alpha = 0.7, label='TFP')
+ax.scatter(df_lrb[xvar], df_lrb[yvar], df_lrb[cost_var], color=color[3],
+           edgecolors='k', alpha = 0.7, label='LRB')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Replacement cost ratio', fontsize=axis_font)
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+fig.tight_layout()
+
+#%%  variable testing
+
+print('========= stats for repair cost ==========')
+from sklearn import preprocessing
+
+X = df[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
+y = df[cost_var].ravel()
+
+scaler = preprocessing.StandardScaler().fit(X)
+X_scaled = scaler.transform(X)
+
+from sklearn.feature_selection import r_regression,f_regression
+
+r_results = r_regression(X_scaled,y)
+print("Pearson's R test: k_ratio, T_ratio, zeta, Q, Ry, GR")
+print(r_results)
+
+
+f_statistic, p_values = f_regression(X_scaled, y)
+f_results = r_regression(X,y)
+print("F test: k_ratio, T_ratio zeta, Q, Ry, GR")
+print("F-statistics:", f_statistic)
+print("P-values:", p_values)
+
+print('========= stats for replacement_risk ==========')
+from sklearn import preprocessing
+
+X = df[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
+y = df['replacement_freq'].ravel()
+
+scaler = preprocessing.StandardScaler().fit(X)
+X_scaled = scaler.transform(X)
+
+from sklearn.feature_selection import r_regression,f_regression
+
+r_results = r_regression(X_scaled,y)
+print("Pearson's R test: k_ratio, T_ratio, zeta, Q, Ry, GR")
+print(r_results)
+
+
+f_statistic, p_values = f_regression(X_scaled, y)
+f_results = r_regression(X,y)
+print("F test: k_ratio, T_ratio, zeta, Q, Ry, GR")
+print("F-statistics:", f_statistic)
+print("P-values:", p_values)
