@@ -20,7 +20,7 @@ pwd
 date
 
 # load pylauncher
-module load python3
+module load python
 module load pylauncher
 
 # move all file from $WORK to $SCRATCH
