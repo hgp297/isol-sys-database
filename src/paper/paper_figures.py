@@ -115,15 +115,25 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
     return(X_plot)
 
 # hard-coded
-def make_design_space(res):
-    xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.5,
-                                             res),
-                                 np.linspace(0.5, 2.25,
-                                             res),
-                                 np.linspace(2.0, 5.0,
-                                             res),
-                                 np.linspace(0.1, 0.25,
-                                             res))
+def make_design_space(res, fix_zeta=None):
+    if fix_zeta is None:
+        xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.5,
+                                                 res),
+                                     np.linspace(0.5, 2.25,
+                                                 res),
+                                     np.linspace(2.0, 5.0,
+                                                 res),
+                                     np.linspace(0.1, 0.25,
+                                                 res))
+    else:
+        xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.5,
+                                                 res),
+                                     np.linspace(0.5, 2.25,
+                                                 res),
+                                     np.linspace(2.0, 5.0,
+                                                 res),
+                                     fix_zeta)
+            
                                  
     X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
                          'RI':yy.ravel(),
@@ -203,7 +213,7 @@ ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
 ax.grid()
 # ax.legend(fontsize=label_size, loc='upper center')
 # plt.show()
-plt.savefig('./figures/collapse_def.eps')
+# plt.savefig('./figures/collapse_def.eps')
 
 #%% base-set data
 '''
@@ -748,7 +758,7 @@ df_doe['gap_ratio'] = (df_doe['constructed_moat']*4*pi**2)/ \
 print('% impact of DoE set:', sum(df_doe['impacted'])/df_doe.shape[0])
 print('average drift:', df_doe['max_drift'].mean())
 
-df_init = df_doe.head(100)
+df_init = df_doe.head(50)
 
 from loads import define_gravity_loads
 config_dict = {
@@ -825,7 +835,6 @@ ax2.grid(True)
 from numpy import exp
 all_hyperparams = exp(theta)
 
-# TODO: hardcoded removal of outlier
 all_hyperparams = np.delete(all_hyperparams, 1, axis=0)
 
 max_thetas = all_hyperparams.max(axis=0)
@@ -847,7 +856,7 @@ ax3.grid(True)
 # ax3.set_xlabel('Points added', fontsize=axis_font)
 # ax3.grid(True)
 fig.tight_layout()
-plt.savefig('./figures/convergence.eps')
+# plt.savefig('./figures/convergence.eps')
 
 # limit DoE set to the converged set from above
 df_raw = df_doe.copy()
@@ -915,7 +924,7 @@ ax4.grid(True)
 
 fig.tight_layout()
 plt.show()
-plt.savefig('./figures/scatter.pdf')
+# plt.savefig('./figures/scatter.pdf')
 
 #%%
 
@@ -1048,7 +1057,7 @@ ax.set_ylim([0.1, 0.25])
 # ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 # ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 
-plt.savefig('./figures/doe_hist.pdf')
+# plt.savefig('./figures/doe_hist.pdf')
 
 # ax.set_xlim([0.5, 4.0])
 # ax.set_ylim([0.5, 2.25])
@@ -1089,6 +1098,12 @@ print('Upfront cost of selected design: ',
 print('Predicted collapse risk: ',
       f'{baseline_risk:.2%}')
 print(X_baseline)
+T_fbe = 0.925
+Bm = np.interp(X_baseline['zeta_e'], zetaRef, BmRef)
+dm = g*1.017*X_baseline['T_ratio']*0.925/(4*pi**2*Bm)*X_baseline['gap_ratio']
+dm_val = dm.iloc[0]
+print('Displacement capacity:',
+      dm_val)
 
 design_res = 20
 X_design_cand = make_design_space(design_res)
@@ -1132,7 +1147,11 @@ print('Land cost of selected design, ',
 print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
 print(best_design)
-
+T_fbe = 0.925
+Bm = np.interp(best_design['zeta_e'], zetaRef, BmRef)
+dm = g*1.017*best_design['T_ratio']*0.925/(4*pi**2*Bm)*best_design['gap_ratio']
+print('Displacement capacity:',
+      dm)
 
 risk_thresh = 0.05
 space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
@@ -1163,7 +1182,11 @@ print('Land cost of selected design, ',
 print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
 print(best_design)
-
+T_fbe = 0.925
+Bm = np.interp(best_design['zeta_e'], zetaRef, BmRef)
+dm = g*1.017*best_design['T_ratio']*0.925/(4*pi**2*Bm)*best_design['gap_ratio']
+print('Displacement capacity:',
+      dm)
 
 risk_thresh = 0.025
 space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
@@ -1194,7 +1217,11 @@ print('Land cost of selected design, ',
 print('Predicted collapse risk: ',
       f'{design_collapse_risk:.2%}')
 print(best_design)
-
+T_fbe = 0.925
+Bm = np.interp(best_design['zeta_e'], zetaRef, BmRef)
+dm = g*1.017*best_design['T_ratio']*0.925/(4*pi**2*Bm)*best_design['gap_ratio']
+print('Displacement capacity:',
+      dm)
 
 
 #%% doe-set, Tm_zeta plot
@@ -1257,7 +1284,7 @@ plt.ylim([0.1, 0.25])
 plt.xlabel('T ratio', fontsize=axis_font)
 plt.ylabel(r'$\zeta_M$', fontsize=axis_font)
 plt.grid(True)
-plt.title('Collapse risk using post DoE points', fontsize=axis_font)
+plt.title('Collapse probability using post DoE points', fontsize=axis_font)
 plt.show()
 
 #%% doe-set, gap_Ry plot
@@ -1316,7 +1343,7 @@ plt.ylim([0.5, 2.25])
 plt.xlabel('Gap ratio', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.grid(True)
-plt.title('Collapse risk using post-DOE points', fontsize=axis_font)
+plt.title('Collapse probability using post-DOE points', fontsize=axis_font)
 plt.show()
 
 
@@ -1404,7 +1431,7 @@ plt.xlabel(r'$GR$', fontsize=axis_font)
 plt.ylabel(r'$R_y$', fontsize=axis_font)
 plt.title(r'$MSE_w$ selection criterion', fontsize=axis_font)
 plt.grid(True)
-plt.savefig('./figures/doe.pdf')
+# plt.savefig('./figures/doe.pdf')
 
 #%% DoE effect plot
 
@@ -1487,7 +1514,7 @@ clabels = ax1.clabel(cs, fontsize=clabel_size)
 [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 ax1.set_xlabel(r'$GR$', fontsize=axis_font)
 ax1.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax1.set_title('a) Initial collapse risk, $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', 
+ax1.set_title('a) Initial collapse probability, $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', 
               fontsize=axis_font)
 ax1.set_xlim([0.5, 2.5])
 ax1.set_ylim([0.5, 2.25])
@@ -1556,7 +1583,7 @@ clabels = ax3.clabel(cs, fontsize=clabel_size)
 [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 ax3.set_xlabel(r'$GR$', fontsize=axis_font)
 ax3.set_ylabel(r'$R_y$', fontsize=axis_font)
-ax3.set_title('c) Final collapse risk, $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=axis_font)
+ax3.set_title('c) Final collapse probability, $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=axis_font)
 handles, labels = sc.legend_elements(prop="colors")
 legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Pr(collapse)",
                       fontsize=20, title_fontsize=24, edgecolor='black')
@@ -1602,8 +1629,8 @@ clabels = ax4.clabel(cs, fontsize=clabel_size)
 [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 ax4.set_xlabel(r'$T_M$ / $T_{fb}$', fontsize=axis_font)
 ax4.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
-ax4.set_xlim([2.0, 5.0])
-ax4.set_title('d) Final collapse risk, $GR=1.0$, $R_y=2.0$', fontsize=axis_font)
+ax4.set_xlim([2.0, 4.75])
+ax4.set_title('d) Final collapse probability, $GR=1.0$, $R_y=2.0$', fontsize=axis_font)
 handles, labels = sc.legend_elements(prop="colors")
 for ha in handles:
     ha.set_markeredgecolor("black")
@@ -1612,7 +1639,7 @@ legend2 = ax2.legend(handles, labels, loc="lower right", title=r"Collapse probab
 ax4.grid()
 
 fig.tight_layout()
-plt.savefig('./figures/doe_full.pdf')
+# plt.savefig('./figures/doe_full.pdf')
 #%% pareto - doe
 
 # remake X_plot in gap Ry
@@ -1660,15 +1687,15 @@ dominated_sample = np.array([pareto_array[i] for i in dom_idx])
 
 plt.close('all')
 
-fig = plt.figure(figsize=(16, 7))
+fig = plt.figure(figsize=(17, 7))
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 24
+axis_font = 26
 subt_font = 18
 title_font = 26
 import matplotlib as mpl
-label_size = 20
+label_size = 24
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 # plt.imshow(
@@ -1686,7 +1713,7 @@ ax.scatter(risk_pareto, cost_pareto, marker='s', facecolors='none',
 ax.scatter(risk_pareto, cost_pareto, s=1, color='black')
 ax.scatter(dominated_sample[:,1], dominated_sample[:,0], s=1, color='black',
            label='Dominated designs')
-ax.set_xlabel('Predicted collapse risk', fontsize=axis_font)
+ax.set_xlabel('Predicted collapse probability', fontsize=axis_font)
 ax.set_ylabel('Construction cost', fontsize=axis_font)
 # ax.set_ylim([4.64e6, 4.75e6])
 ax.grid(True)
@@ -1727,9 +1754,9 @@ ax1.set_title(r'b) $T_M / T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=title_font)
 
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 cbaxes = inset_axes(ax1,  width="3%", height="20%", loc='lower right',
-                    bbox_to_anchor=(-0.05,0.5,1,1), bbox_transform=ax1.transAxes) 
+                    bbox_to_anchor=(-0.12,0.5,1,1), bbox_transform=ax1.transAxes) 
 plt.colorbar(sc, cax=cbaxes, orientation='vertical')
-cbaxes.set_ylabel('Collapse risk', fontsize=axis_font)
+cbaxes.set_ylabel('Pr(collapse)', fontsize=axis_font)
 cbaxes.yaxis.set_ticks_position('left')
 
 
@@ -1765,9 +1792,9 @@ ax2.set_title(r'c) $GR = 1.0$, $R_y = 2.0$', fontsize=axis_font)
 
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 cbaxes = inset_axes(ax1,  width="3%", height="20%", loc='lower right',
-                    bbox_to_anchor=(-0.05,0.5,1,1), bbox_transform=ax2.transAxes) 
+                    bbox_to_anchor=(-0.12,0.5,1,1), bbox_transform=ax2.transAxes) 
 plt.colorbar(sc, cax=cbaxes, orientation='vertical')
-cbaxes.set_ylabel('Collapse risk', fontsize=axis_font)
+cbaxes.set_ylabel('Pr(collapse)', fontsize=axis_font)
 cbaxes.yaxis.set_ticks_position('left')
 # plt.savefig('./figures/pareto.eps')
 
@@ -1795,7 +1822,7 @@ cbaxes.yaxis.set_ticks_position('left')
 # ax.set_title(r'd) $T_M/T_{fb}$ not shown', fontsize=title_font)
 # fig.colorbar(sc, ax=ax)
 fig.tight_layout(w_pad=0.2)
-plt.savefig('./figures/pareto_full.pdf')
+# plt.savefig('./figures/pareto_full.pdf')
 plt.show()
 
 
@@ -1899,7 +1926,7 @@ ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density],
 
 ax.set_xlabel(r'$T_M/ T_{fb}$', fontsize=axis_font, linespacing=0.5)
 ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font, linespacing=1.0)
-ax.set_zlabel(r'Collapse risk', fontsize=axis_font, linespacing=3.0)
+ax.set_zlabel(r'Collapse probability', fontsize=axis_font, linespacing=3.0)
 ax.set_title(r'$GR = 0.5$', fontsize=title_font)
 ax.set_xlim([2, 5])
 ax.set_zlim([0, 1])
@@ -1936,7 +1963,7 @@ ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density],
 
 ax.set_xlabel(r'$T_M/ T_{fb}$', fontsize=axis_font, linespacing=0.5)
 ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font, linespacing=1.0)
-ax.set_zlabel(r'Collapse risk', fontsize=axis_font, linespacing=3.0)
+ax.set_zlabel(r'Collapse probability', fontsize=axis_font, linespacing=3.0)
 ax.set_title(r'$GR = 0.75$', fontsize=title_font)
 ax.set_xlim([2, 5])
 ax.set_zlim([0, 1])
@@ -1972,7 +1999,7 @@ ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density],
 
 ax.set_xlabel(r'$T_M/ T_{fb}$', fontsize=axis_font, linespacing=0.5)
 ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font, linespacing=1.0)
-ax.set_zlabel(r'Collapse risk', fontsize=axis_font, linespacing=3.0)
+ax.set_zlabel(r'Collapse probability', fontsize=axis_font, linespacing=3.0)
 ax.set_title(r'$GR = 1.0$', fontsize=title_font)
 ax.set_xlim([2, 5])
 ax.set_zlim([0, 1])
@@ -2009,13 +2036,13 @@ ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density],
 
 ax.set_xlabel(r'$T_M/ T_{fb}$', fontsize=axis_font, linespacing=0.5)
 ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font, linespacing=1.0)
-ax.set_zlabel(r'Collapse risk', fontsize=axis_font, linespacing=3.0)
+ax.set_zlabel(r'Collapse probability', fontsize=axis_font, linespacing=3.0)
 ax.set_title(r'$GR = 2.0$', fontsize=title_font)
 ax.set_xlim([2, 5])
 ax.set_zlim([0, 1])
 
 fig.tight_layout(w_pad=0.0)
-plt.savefig('./figures/surf.pdf')
+# plt.savefig('./figures/surf.pdf')
 # plt.show()
 
 #%% GP plots, highlight design targets
@@ -2055,8 +2082,6 @@ ax=fig.add_subplot(3, 2, 1)
 
 # Plot the surface.
 cmap = plt.cm.Blues
-# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
-#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
 lvls = [0, 0.01, 0.025, 0.05, 0.075, 0.10, 0.15, 0.2, 0.3]
 cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
                 vmin=-0.2, vmax=0.2)
@@ -2139,8 +2164,6 @@ ax=fig.add_subplot(3, 2, 2)
 
 # Plot the surface.
 cmap = plt.cm.Blues
-# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
-#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
 cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
                 vmin=-0.2, vmax=0.2)
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2220,8 +2243,6 @@ ax=fig.add_subplot(3, 2, 3)
 
 # Plot the surface.
 cmap = plt.cm.Blues
-# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
-#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
 cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
                 vmin=-0.2, vmax=0.2)
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2304,8 +2325,6 @@ ax=fig.add_subplot(3, 2, 4)
 
 # Plot the surface.
 cmap = plt.cm.Blues
-# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
-#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
 cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
                 vmin=-0.2, vmax=0.2)
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2387,8 +2406,6 @@ ax=fig.add_subplot(3, 2, 5)
 
 # Plot the surface.
 cmap = plt.cm.Blues
-# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
-#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
 cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
                 vmin=-0.2, vmax=0.2)
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2470,8 +2487,6 @@ ax=fig.add_subplot(3, 2, 6)
 
 # Plot the surface.
 cmap = plt.cm.Blues
-# sc = ax1.scatter(df_init['gap_ratio'], df_init['RI'], edgecolors='black',
-#                  alpha=0.6, c=df_init['collapse_prob'], cmap=cmap)
 cs = ax.contour(xx_pl, yy_pl, Z_highlight, levels=lvls,  linewidths=1.1, cmap=cmap,
                 vmin=-0.2, vmax=0.2)
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2536,7 +2551,7 @@ ax.grid()
 
 fig.tight_layout(w_pad=0.2)
 # plt.savefig('./figures/inverse_design_contours.eps')
-plt.savefig('./figures/inverse_design_contours.pdf')
+# plt.savefig('./figures/inverse_design_contours.pdf')
 # plt.show()
 
 #%% impact histogram
@@ -2766,7 +2781,7 @@ ax1.plot(xx_pr, p)
 # ax1.plot(xx_pr, p2)
 ax1.axhline(0.1, linestyle='--', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
-ax1.text(2.2, 0.12, r'10\% collapse risk',
+ax1.text(2.2, 0.12, r'10\% collapse probability',
           fontsize=subt_font, color='black')
 ax1.text(0.45, 0.13, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=color[0], bbox=dict(facecolor='white', edgecolor=color[0]))
@@ -2803,7 +2818,7 @@ ax2.axhline(0.05, linestyle='--', color='black')
 ax2.axvline(1.0, linestyle='--', color='black')
 ax2.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax2.text(2.2, 0.07, r'5\% collapse risk',
+ax2.text(2.2, 0.07, r'5\% collapse probability',
           fontsize=subt_font, color='black')
 ax2.text(0.45, 0.05, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=color[0], bbox=dict(facecolor='white', edgecolor=color[0]))
@@ -2838,7 +2853,7 @@ ax3.axhline(0.025, linestyle='--', color='black')
 ax3.axvline(1.0, linestyle='--', color='black')
 ax3.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax3.text(2.2, 0.04, r'2.5\% collapse risk',
+ax3.text(2.2, 0.04, r'2.5\% collapse probability',
           fontsize=subt_font, color='black')
 ax3.text(0.45, 0.04, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=color[0], bbox=dict(facecolor='white', edgecolor=color[0]))
@@ -2876,7 +2891,7 @@ ax4.text(2.2, 0.01, r'GP predicted risk',
 ax4.axvline(1.0, linestyle='--', color='black')
 ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax4.text(2.2, 0.12, r'10\% collapse risk',
+ax4.text(2.2, 0.12, r'10\% collapse probability',
           fontsize=subt_font, color='black')
 ax4.text(0.45, 0.03, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=color[0], bbox=dict(facecolor='white', edgecolor=color[0]))
@@ -2898,7 +2913,7 @@ ax4.set_ylim([0, 1.0])
 # ax4.legend(fontsize=subt_font-2, loc='center right')
 
 fig.tight_layout()
-plt.savefig('./figures/fragility_curve.eps', dpi=1200, format='eps')
+# plt.savefig('./figures/fragility_curve.eps', dpi=1200, format='eps')
 plt.show()
 
 from numpy import exp
@@ -3117,7 +3132,7 @@ ax = sns.stripplot(data=df_mce, orient='h', palette='coolwarm',
 
 sns.boxplot(data=df_mce, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
             width=0.4)
-ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_ylabel('Target probability', fontsize=axis_font)
 ax.set_xlabel('Collapse probability', fontsize=axis_font)
 ax.axvline(0.10, linestyle='--', color='black')
 ax.grid(visible=True)
@@ -3172,14 +3187,15 @@ ax = sns.stripplot(data=df_mce, orient='h', palette='coolwarm',
 ax.set_xlim(0, 0.2)
 sns.boxplot(data=df_mce, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
             width=0.4)
-ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_ylabel('Target probability', fontsize=axis_font)
 ax.set_xlabel('Max drift', fontsize=axis_font)
 ax.axvline(0.078, linestyle='--', color='black')
 ax.grid(visible=True)
 
 ax.text(0.08, 3.45, r'50\% collapse threshold, $\theta=0.078$', fontsize=axis_font, color='black')
 # ax.set_xscale("log")
-plt.savefig('./figures/drift_box.pdf')
+fig.tight_layout()
+# plt.savefig('./figures/drift_box.pdf')
 plt.show()
 
 warnings.resetwarnings()
