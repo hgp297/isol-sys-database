@@ -392,6 +392,13 @@ class Database:
         all_designs = all_designs.reset_index()
         db_results = None
         
+        import os
+        import shutil
+        
+        if os.path.exists(output_path):
+            shutil.rmtree(output_path)
+        os.makedirs(output_path)
+        
         for index, design in all_designs.iterrows():
             i_run = all_designs.index.get_loc(index)
             print('========= Run %d of %d ==========' % 
@@ -406,7 +413,7 @@ class Database:
                                        sort=False)
                 
             if (len(db_results)%save_interval == 0):
-                db_results.to_csv(data_path+'temp_save.csv', index=False)
+                db_results.to_csv(output_path+'temp_save.csv', index=False)
         
         db_results.to_csv(data_path+output_str, index=False)
         self.ops_analysis = db_results
