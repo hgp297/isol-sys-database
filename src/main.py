@@ -21,33 +21,6 @@
 
 # main_obj.scale_gms()
 
-#%% troubleshoot
-
-# failed CBFs in 100 set: 10, 22, 38
-# 10 solved with smaller time step
-# 22 solved with strong ghosts + Broyden
-# 38 solved with smaller time step, without convergence adds
-
-# solution ideas for 22: run through time-stepping loops, increase time-step
-# attempting a non-zero gravity spring for 22
-
-# troubleshoot building (400 set: 8 and 200)
-# run = main_obj.retained_designs.iloc[0]
-# from building import Building
-
-# bldg = Building(run)
-# bldg.model_frame(convergence_mode=False)
-# bldg.apply_grav_load()
-
-# T_1 = bldg.run_eigen()
-
-# bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
-
-# dt = 0.005
-# ok = bldg.run_ground_motion(run.gm_selected, 
-#                         run.scale_factor*1.0, 
-#                         dt, T_end=60.0)
 
 #%%
 
@@ -124,17 +97,17 @@
 
 #%% run pelicun
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
 
-main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
-                cmp_dir='../resource/loss/')
+# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+#                 cmp_dir='../resource/loss/')
 
-import pickle
-loss_path = '../data/loss/'
-with open(loss_path+'structural_db_mixed_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_mixed_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%% calculate maximum pelicun losses
 
@@ -152,14 +125,29 @@ with open(loss_path+'structural_db_mixed_loss.pickle', 'wb') as f:
 
 #%% calculate maximum pelicun losses
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
 
-main_obj.calc_cmp_max(main_obj.ops_analysis,
-                cmp_dir='../resource/loss/')
+# main_obj.calc_cmp_max(main_obj.ops_analysis,
+#                 cmp_dir='../resource/loss/')
 
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_mixed_loss_max.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+#%% database gen in parallel
+from db import Database
+num = 4
+seed = 105
+main_obj = Database(n_points=num, seed=seed)
+main_obj.design_bearings(filter_designs=True)
+main_obj.design_structure(filter_designs=True)
+main_obj.scale_gms()
+output_dir = './outputs/seed_'+str(seed)+'_output/'
+main_obj.analyze_db('structural_db_seed_'+str(seed)+'.csv', save_interval=5,
+                    output_path=output_dir)
 import pickle
-loss_path = '../data/loss/'
-with open(loss_path+'structural_db_mixed_loss_max.pickle', 'wb') as f:
+with open('../data/structural_db_seed_'+str(seed)+'.pickle', 'wb') as f:
     pickle.dump(main_obj, f)

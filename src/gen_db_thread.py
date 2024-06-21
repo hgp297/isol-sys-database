@@ -4,7 +4,7 @@ def generate_db(num, seed):
     main_obj.design_bearings(filter_designs=True)
     main_obj.design_structure(filter_designs=True)
     main_obj.scale_gms()
-    output_dir = './outputs/seed_'+str(seed)+'output/'
+    output_dir = './outputs/seed_'+str(seed)+'_output/'
     main_obj.analyze_db('structural_db_seed_'+str(seed)+'.csv', save_interval=5,
                         output_path=output_dir)
     import pickle
