@@ -1,2 +1,2 @@
-import pylauncher3 as launcher
+import pylauncher as launcher
 launcher.ClassicLauncher('taskfile')
