@@ -296,7 +296,7 @@ class GP:
         self.gpr = gp_pipe
         
     # Train GP regression
-    def fit_het_gpr(self, kernel_name, nugget_function=None, noise_bound=None):
+    def fit_het_gpr(self, kernel_name, X_fit, dual_coef, rbf_gamma, noise_bound=None):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.gaussian_process import GaussianProcessRegressor
@@ -308,7 +308,7 @@ class GP:
         if kernel_name=='rbf_ard':
             kernel_base = 1.0 * krn.RBF(np.ones(n_vars))
         elif kernel_name=='rbf_iso':
-            kernel_base = 1.0 * krn.RBF(1.0)
+            kernel_base = 1.0 * krn.RBF(1.0, length_scale_bounds=(1e-8, 1e8))
         elif kernel_name=='rq':
             kernel_base = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
                                                     alpha=1.0)
@@ -322,11 +322,13 @@ class GP:
                     nu=1.5)
         
         if noise_bound is None:
-            noise_bound = (1e-5, 1e1)
+            noise_bound = (1e-5, 1e5)
             
         kernel_obj = (kernel_base + 
                   krn.WhiteKernel(noise_level=0.1, noise_level_bounds=noise_bound)*
-                  krn.Heteroscedastic_Variance(nugget_function))
+                  krn.Heteroscedastic_Variance(X_fit=X_fit, 
+                                               dual_coef=dual_coef, 
+                                               rbf_gamma=rbf_gamma))
             
         # pipeline to scale -> GPR
         gp_pipe = Pipeline([
@@ -338,7 +340,7 @@ class GP:
     
         gp_pipe.fit(self.X, self.y)
         
-        self.gpr = gp_pipe
+        self.gpr_het = gp_pipe
         
     def fit_kernel_ridge(self, kernel_name='rbf'):
         from sklearn.pipeline import Pipeline
@@ -353,7 +355,7 @@ class GP:
         from numpy import logspace
         parameters = [
             {'kr__alpha':[0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0],
-             'kr__gamma':logspace(-3, 3, 7)}
+             'kr__gamma':logspace(-5, 3, 9)}
             ]
         
         kr_cv = GridSearchCV(kr_pipe, param_grid=parameters)

@@ -16,7 +16,6 @@ import sys
 # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(1, '../')
 
-import pickle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -100,8 +99,10 @@ df_stack.rename(columns={'collapse_prob_r':'var_collapse_prob'}, inplace=True)
 from numpy import log
 df_stack['log_var_collapse_prob'] = log(df_stack['var_collapse_prob'])
 
-#%%
 df_secondary = df_stack.iloc[::11, :]
+#%%
+'''
+
 
 def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
     # no labels
@@ -187,7 +188,7 @@ ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 ax.set_xlim([1.25, 5.0])
 ax.set_ylim([0.1, 0.25])
-
+'''
 #%% fit secondary GP
 
 from doe import GP
@@ -255,7 +256,7 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
     return(X_plot)
 
 #%% 3d surf for var
-
+'''
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -356,18 +357,256 @@ ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 ax.set_zlabel('$c^2(x)$', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
-
+'''
 #%%
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_var.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+
 kr_obj = mdl_var.kr
 var_est = mdl_var.kr.predict(X_plot)
 import copy
 kr_mod = copy.deepcopy(kr_obj)
-kr_only = kr_mod[-1:]._final_estimator
 
+scaler_fit = kr_mod[0]
+kr_only = kr_mod[-1:]._final_estimator
+X_fit_var = kr_only.X_fit_
+dual_coef_var = kr_only.dual_coef_
+alpha_kr = kr_only.alpha
+gamma_kr = kr_only.gamma
+
+a_check = kr_only._get_kernel
+
+X_plot_scaled = scaler_fit.transform(X_plot)
+
+from sklearn.metrics.pairwise import rbf_kernel
+K_fit = rbf_kernel(X_fit_var, X_fit_var, gamma=kr_only.gamma)
+
+y_check = mdl_var.kr.predict(mdl_var.X)
+y_test = K_fit @ dual_coef_var
+
+K_pr = rbf_kernel(X_plot_scaled, X_fit_var, gamma=kr_only.gamma)
+y_pr = K_pr @ dual_coef_var
+
+from numpy import diag, exp
+var_est = exp(y_pr.ravel())
+kernel_replicate = diag(exp(y_pr.ravel()))
+
+
+# %%
 from doe import GP
 mdl_main = GP(df)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_main.set_covariates(covariate_list)
 mdl_main.set_outcome('collapse_prob')
-mdl_main.fit_het_gpr(kernel_name='rbf_iso', nugget_function=kr_only)
-# %%
+
+mdl_main.fit_het_gpr(kernel_name='rbf_iso', 
+                     X_fit=X_fit_var, dual_coef=dual_coef_var, 
+                     rbf_gamma=gamma_kr, noise_bound=(1e-8, 1e0))
+
+#%% 3d surf for main var
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_main.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+prob_collapse, prob_std = mdl_main.gpr_het.predict(X_plot, return_std=True)
+gpr_het_only = mdl_main.gpr_het[-1:]._final_estimator
+a = gpr_het_only.kernel_.k1(X_fit_var, X_fit_var)
+ka = gpr_het_only.kernel_.k1
+b = gpr_het_only.kernel_.k2(X_fit_var, X_fit_var)
+kb = gpr_het_only.kernel_.k2
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = prob_std.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, np.log(Z_surf), cmap='Blues',
+                        linewidth=0, antialiased=False, alpha=0.6)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+# ax.scatter(df_secondary[xvar], df_secondary[yvar], df_secondary['log_var_collapse_prob'],
+#            edgecolors='k', alpha = 0.7)
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('$\sigma(x)$', fontsize=axis_font)
+ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_main.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 0.75)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+
+prob_collapse, prob_std = mdl_main.gpr_het.predict(X_plot, return_std=True)
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = prob_std.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, np.log(Z_surf), cmap='Blues',
+                        linewidth=0, antialiased=False, alpha=0.6)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('$\sigma(x)$', fontsize=axis_font)
+ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+
+# %% baseline
+'''
+from doe import GP
+mdl_base = GP(df)
+covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+mdl_base.set_covariates(covariate_list)
+mdl_base.set_outcome('collapse_prob')
+
+mdl_base.fit_gpr(kernel_name='rbf_iso')
+
+#%% 3d surf for main var
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_base.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+prob_collapse, prob_std = mdl_base.gpr.predict(X_plot, return_std=True)
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = prob_std.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, np.log(Z_surf), cmap='Blues',
+                        linewidth=0, antialiased=False, alpha=0.6)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+# ax.scatter(df_secondary[xvar], df_secondary[yvar], df_secondary['log_var_collapse_prob'],
+#            edgecolors='k', alpha = 0.7)
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('$\sigma(x)$', fontsize=axis_font)
+ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_base.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+prob_collapse, prob_std = mdl_base.gpr.predict(X_plot, return_std=True)
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = prob_std.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, np.log(Z_surf), cmap='Blues',
+                        linewidth=0, antialiased=False, alpha=0.6)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('$\sigma(x)$', fontsize=axis_font)
+ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+'''

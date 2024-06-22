@@ -70,7 +70,6 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     
     ss_type = design['superstructure_system']
     
-    # TODO: both systems sometimes have error and poorly recorded PFA/PFV
     if ss_type == 'MF':
         ok_thresh = 0.20
     else:
@@ -190,8 +189,6 @@ def collapse_fragility(run, mf_drift_mu_plus_std=0.1, cbf_drift_90=0.05):
     collapse_prob = ln_dist.cdf(peak_drift)
     
     return(peak_drift, collapse_prob)
-    
-# TODO: run pushover
 
 # run the experiment, GM name and scale factor must be baked into design
 

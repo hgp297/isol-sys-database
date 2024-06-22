@@ -365,7 +365,6 @@ class Database:
         seed(seed)
         
         # scale and select ground motion
-        # TODO: this section is inefficient
         from gms import scale_ground_motion
         import time
         t0 = time.time()
@@ -379,7 +378,6 @@ class Database:
         
         self.retained_designs = all_des
         
-    # TODO: change outputs
     def analyze_db(self, output_str, save_interval=10,
                    data_path='../data/',
                    gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/',
@@ -568,6 +566,7 @@ class Database:
         
         self.pushover_design = work_df
         
+    # TODO: write design for CBF, LRB
     def prepare_idas(self, design_df, levels=[1.0, 1.5, 2.0]):
         
         import pandas as pd
