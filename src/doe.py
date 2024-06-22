@@ -325,7 +325,7 @@ class GP:
             noise_bound = (1e-5, 1e5)
             
         kernel_obj = (kernel_base + 
-                  krn.WhiteKernel(noise_level=0.1, noise_level_bounds=noise_bound)*
+                  1.0*
                   krn.Heteroscedastic_Variance(X_fit=X_fit, 
                                                dual_coef=dual_coef, 
                                                rbf_gamma=rbf_gamma))
