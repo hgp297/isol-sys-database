@@ -322,7 +322,7 @@ class GP:
                     nu=1.5)
         
         if noise_bound is None:
-            noise_bound = (1e-5, 1e5)
+            noise_bound = (1e-8, 1e8)
             
         kernel_obj = (kernel_base + 
                   1.0*

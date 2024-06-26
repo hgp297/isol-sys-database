@@ -99,11 +99,15 @@ df_stack.rename(columns={'collapse_prob_r':'var_collapse_prob'}, inplace=True)
 from numpy import log
 df_stack['log_var_collapse_prob'] = log(df_stack['var_collapse_prob'])
 
+df_stack['gid'] = (df_stack.groupby(['S_1']).cumcount()==0).astype(int)
+df_stack['gid'] = df_stack['gid'].cumsum()
+df_stack = df_stack.join(df_stack.groupby(['gid'])['collapse_prob'].mean(), on='gid', rsuffix='_r')
+df_stack.rename(columns={'collapse_prob_r':'mean_collapse_prob'}, inplace=True)
+
 df_secondary = df_stack.iloc[::11, :]
+df_secondary = df_secondary.drop(columns=['gid'])
 #%%
 '''
-
-
 def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
     # no labels
     ax_histx.tick_params(axis="x", labelbottom=False)
@@ -196,10 +200,10 @@ mdl_var = GP(df_secondary)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_var.set_covariates(covariate_list)
 mdl_var.set_outcome('log_var_collapse_prob')
-mdl_var.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-5, 1e3))
+# mdl_var.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-5, 1e3))
 mdl_var.fit_kernel_ridge(kernel_name='rbf')
 
-gp_obj = mdl_var.gpr._final_estimator
+# gp_obj = mdl_var.gpr._final_estimator
 
 #%%
 # make a generalized 2D plotting grid, defaulted to gap and Ry
@@ -274,7 +278,7 @@ fig = plt.figure(figsize=(16, 7))
 xvar = 'gap_ratio'
 yvar = 'RI'
 
-res = 75
+res = 15
 X_plot = make_2D_plotting_space(mdl_var.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 3.0, fourth_var_set = 0.15)
@@ -319,7 +323,7 @@ ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
 xvar = 'T_ratio'
 yvar = 'zeta_e'
 
-res = 75
+res = 15
 X_plot = make_2D_plotting_space(mdl_var.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 1.0, fourth_var_set = 0.75)
@@ -362,54 +366,34 @@ fig.tight_layout()
 xvar = 'gap_ratio'
 yvar = 'RI'
 
-res = 75
+res = 15
 X_plot = make_2D_plotting_space(mdl_var.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 3.0, fourth_var_set = 0.15)
 
 kr_obj = mdl_var.kr
-var_est = mdl_var.kr.predict(X_plot)
-import copy
-kr_mod = copy.deepcopy(kr_obj)
 
-scaler_fit = kr_mod[0]
-kr_only = kr_mod[-1:]._final_estimator
+scaler_fit = kr_obj[0]
+kr_only = kr_obj[-1:]._final_estimator
 X_fit_var = kr_only.X_fit_
 dual_coef_var = kr_only.dual_coef_
 alpha_kr = kr_only.alpha
 gamma_kr = kr_only.gamma
 
-a_check = kr_only._get_kernel
-
-X_plot_scaled = scaler_fit.transform(X_plot)
-
-from sklearn.metrics.pairwise import rbf_kernel
-K_fit = rbf_kernel(X_fit_var, X_fit_var, gamma=kr_only.gamma)
-
-y_check = mdl_var.kr.predict(mdl_var.X)
-y_test = K_fit @ dual_coef_var
-
-K_pr = rbf_kernel(X_plot_scaled, X_fit_var, gamma=kr_only.gamma)
-y_pr = K_pr @ dual_coef_var
-
-from numpy import diag, exp
-var_est = exp(y_pr.ravel())
-kernel_replicate = diag(exp(y_pr.ravel()))
-
-
 # %%
+df['mean_collapse_prob'] = df['collapse_prob']
+df = pd.concat([df, df_secondary], axis=0)
 from doe import GP
 mdl_main = GP(df)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 mdl_main.set_covariates(covariate_list)
-mdl_main.set_outcome('collapse_prob')
+mdl_main.set_outcome('mean_collapse_prob')
 
 mdl_main.fit_het_gpr(kernel_name='rbf_iso', 
                      X_fit=X_fit_var, dual_coef=dual_coef_var, 
-                     rbf_gamma=gamma_kr, noise_bound=(1e-8, 1e0))
+                     rbf_gamma=gamma_kr)
 
 #%% 3d surf for main var
-
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -421,42 +405,79 @@ mpl.rcParams['ytick.labelsize'] = label_size
 
 fig = plt.figure(figsize=(16, 7))
 
-
+from sklearn.metrics.pairwise import rbf_kernel
+from numpy import diag, exp
 
 #################################
 xvar = 'gap_ratio'
 yvar = 'RI'
 
-res = 75
+res = 25
 X_plot = make_2D_plotting_space(mdl_main.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 3.0, fourth_var_set = 0.15)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
-prob_collapse, prob_std = mdl_main.gpr_het.predict(X_plot, return_std=True)
+
+main_scaler = mdl_main.gpr_het[0]
+kr_only = kr_obj[-1:]._final_estimator
+var_scaler = kr_obj[0]
+
+dual_coef_var = kr_only.dual_coef_
+
 gpr_het_only = mdl_main.gpr_het[-1:]._final_estimator
 a = gpr_het_only.kernel_.k1(X_fit_var, X_fit_var)
 ka = gpr_het_only.kernel_.k1
 b = gpr_het_only.kernel_.k2(X_fit_var, X_fit_var)
 kb = gpr_het_only.kernel_.k2
+X_fit_main = gpr_het_only.X_train_
+y_fit_main = gpr_het_only.y_train_
 
-X_tr_sc = scaler_fit.transform(mdl_main.X)
+rbf_const = np.exp(ka.k1.theta)
+rbf_lengthscale = np.exp(ka.k2.theta)
+nugget_const = np.exp(kb.k1.theta)
 
-# TODO: the problem here is that the kernel will return 0 if X != X'
-# try manually implementing the predictions
+X_pred = main_scaler.transform(X_plot)
 
-kl = ka(X_tr_sc)
-kr = kb(X_tr_sc, X_fit_var)
+ks = gpr_het_only.kernel_.k1(X_pred, X_fit_main)
+kss = gpr_het_only.kernel_.k1(X_pred)
+from scipy.linalg import cho_solve, cholesky, solve_triangular
+kk = gpr_het_only.kernel_.k1(X_fit_main)
+n = X_fit_main.shape[0]
+
+scale_main_X_var = var_scaler.transform(X_fit_main)
+K_pr = rbf_kernel(scale_main_X_var, X_fit_var, gamma=kr_only.gamma)
+y_pr = K_pr @ dual_coef_var
+cs = diag(exp(y_pr.ravel()))
+
+R_approx = kk + nugget_const*np.diag(np.full(n,1/n)) @ cs
+L = cholesky(kk + nugget_const*np.diag(np.full(n,1/n)) @ cs, lower=True)
+alpha = cho_solve(
+    (L, True),
+    y_fit_main,
+    check_finite=False,
+)
+
+y_pred = ks @ alpha
+
+V = solve_triangular(
+    L, ks.T, lower=True, check_finite=False
+)
+y_var = np.diag(kss).copy()
+y_var -= np.einsum("ij,ji->i", V.T, V)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
-Z_surf = prob_std.reshape(xx_pl.shape)
+
+prob_collapse, prob_std = mdl_main.gpr_het.predict(X_plot, return_std=True)
+
+Z_surf = prob_collapse.reshape(xx_pl.shape)
 
 ax=fig.add_subplot(1, 2, 1, projection='3d')
-surf = ax.plot_surface(xx_pl, yy_pl, np.log(Z_surf), cmap='Blues',
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
                         linewidth=0, antialiased=False, alpha=0.6)
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
@@ -468,27 +489,15 @@ ax.zaxis.pane.fill = False
 xlim = ax.get_xlim()
 ylim = ax.get_ylim()
 zlim = ax.get_zlim()
-cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='x', offset=xlim[0], cmap='Blues_r')
-cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='y', offset=ylim[1], cmap='Blues')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
-ax.set_zlabel('$\sigma(x)$', fontsize=axis_font)
-ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+ax.set_zlabel('$y(x)$', fontsize=axis_font)
+ax.set_title('Home-cooked', fontsize=subt_font)
 
 #################################
-xvar = 'T_ratio'
-yvar = 'zeta_e'
-
-res = 75
-X_plot = make_2D_plotting_space(mdl_main.X, res, x_var=xvar, y_var=yvar, 
-                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            third_var_set = 1.0, fourth_var_set = 0.75)
-xx = X_plot[xvar]
-yy = X_plot[yvar]
-
-
-prob_collapse, prob_std = mdl_main.gpr_het.predict(X_plot, return_std=True)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -497,7 +506,7 @@ xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 Z_surf = prob_std.reshape(xx_pl.shape)
 
 ax=fig.add_subplot(1, 2, 2, projection='3d')
-surf = ax.plot_surface(xx_pl, yy_pl, np.log(Z_surf), cmap='Blues',
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
                         linewidth=0, antialiased=False, alpha=0.6)
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
@@ -506,17 +515,16 @@ ax.zaxis.pane.fill = False
 xlim = ax.get_xlim()
 ylim = ax.get_ylim()
 zlim = ax.get_zlim()
-cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='x', offset=xlim[0], cmap='Blues_r')
-cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='y', offset=ylim[1], cmap='Blues')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
-ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
-ax.set_zlabel('$\sigma(x)$', fontsize=axis_font)
-ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('$y(x)$', fontsize=axis_font)
+ax.set_title('Using GPR', fontsize=subt_font)
 fig.tight_layout()
-
 #%% 3d surf for main var
-
+'''
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -534,7 +542,7 @@ fig = plt.figure(figsize=(16, 7))
 xvar = 'gap_ratio'
 yvar = 'RI'
 
-res = 75
+res = 15
 X_plot = make_2D_plotting_space(mdl_main.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 3.0, fourth_var_set = 0.15)
@@ -575,7 +583,7 @@ ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
 xvar = 'T_ratio'
 yvar = 'zeta_e'
 
-res = 75
+res = 15
 X_plot = make_2D_plotting_space(mdl_main.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 1.0, fourth_var_set = 0.75)
@@ -612,9 +620,9 @@ ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 ax.set_zlabel('$\sigma(x)$', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
-
-# %% baseline
 '''
+# %% baseline
+
 from doe import GP
 mdl_base = GP(df)
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
@@ -642,7 +650,7 @@ fig = plt.figure(figsize=(16, 7))
 xvar = 'gap_ratio'
 yvar = 'RI'
 
-res = 75
+res = 15
 X_plot = make_2D_plotting_space(mdl_base.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 3.0, fourth_var_set = 0.15)
@@ -655,10 +663,10 @@ x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
-Z_surf = prob_std.reshape(xx_pl.shape)
+Z_surf = prob_collapse.reshape(xx_pl.shape)
 
 ax=fig.add_subplot(1, 2, 1, projection='3d')
-surf = ax.plot_surface(xx_pl, yy_pl, np.log(Z_surf), cmap='Blues',
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
                         linewidth=0, antialiased=False, alpha=0.6)
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
@@ -670,19 +678,19 @@ ax.zaxis.pane.fill = False
 xlim = ax.get_xlim()
 ylim = ax.get_ylim()
 zlim = ax.get_zlim()
-cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='x', offset=xlim[0], cmap='Blues_r')
-cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='y', offset=ylim[1], cmap='Blues')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
-ax.set_zlabel('$\sigma(x)$', fontsize=axis_font)
+ax.set_zlabel('$y(x)$', fontsize=axis_font)
 ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
 
 #################################
 xvar = 'T_ratio'
 yvar = 'zeta_e'
 
-res = 75
+res = 15
 X_plot = make_2D_plotting_space(mdl_base.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 3.0, fourth_var_set = 0.15)
@@ -695,10 +703,10 @@ x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
-Z_surf = prob_std.reshape(xx_pl.shape)
+Z_surf = prob_collapse.reshape(xx_pl.shape)
 
 ax=fig.add_subplot(1, 2, 2, projection='3d')
-surf = ax.plot_surface(xx_pl, yy_pl, np.log(Z_surf), cmap='Blues',
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
                         linewidth=0, antialiased=False, alpha=0.6)
 ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
@@ -707,12 +715,53 @@ ax.zaxis.pane.fill = False
 xlim = ax.get_xlim()
 ylim = ax.get_ylim()
 zlim = ax.get_zlim()
-cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='x', offset=xlim[0], cmap='Blues_r')
-cset = ax.contour(xx_pl, yy_pl, np.log(Z_surf), zdir='y', offset=ylim[1], cmap='Blues')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
-ax.set_zlabel('$\sigma(x)$', fontsize=axis_font)
+ax.set_zlabel('$y(x)$', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
-'''
+
+#%% reproduce main
+
+gpr_only = mdl_base.gpr[-1:]._final_estimator
+a = gpr_only.kernel_.k1(X_fit_var, X_fit_var)
+ka = gpr_only.kernel_.k1
+b = gpr_only.kernel_.k2(X_fit_var)
+kb = gpr_only.kernel_.k2
+X_fit_main = gpr_only.X_train_
+y_fit_main = gpr_only.y_train_
+scaler_fit = mdl_base.gpr[0]
+rbf_const = np.exp(ka.k1.theta)
+rbf_lengthscale = np.exp(ka.k2.theta)
+nugget_const = np.exp(kb.theta)
+
+X_pred = scaler_fit.transform(X_plot)
+
+ks = gpr_only.kernel_.k1(X_pred, X_fit_main)
+kss = gpr_only.kernel_.k1(X_pred)
+from scipy.linalg import cho_solve, cholesky, solve_triangular
+kk = gpr_only.kernel_.k1(X_fit_main, X_fit_main)
+kn = gpr_only.kernel_.k2(X_fit_main)
+n = X_fit_main.shape[0]
+
+R_approx = kk + nugget_const*np.diag(np.full(n,1/n))
+L = cholesky(kk + kn, lower=True)
+alpha = cho_solve(
+    (L, True),
+    y_fit_main,
+    check_finite=False,
+)
+
+y_pred = ks @ alpha
+
+V = solve_triangular(
+    L, ks.T, lower=True, check_finite=False
+)
+y_var = kss.copy() - V.T @ V
+y_var = np.diag(y_var)
+y_var = y_var**0.5
+
+y_correct, y_var_correct = mdl_base.gpr.predict(X_plot, return_std=True)
