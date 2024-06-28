@@ -760,7 +760,7 @@ fig.tight_layout()
 print('========= stats for repair cost ==========')
 from sklearn import preprocessing
 
-X = df[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
+X = df[['k_ratio', 'T_ratio_e', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
 y = df[cost_var].ravel()
 
 scaler = preprocessing.StandardScaler().fit(X)
@@ -775,14 +775,14 @@ print(r_results)
 
 f_statistic, p_values = f_regression(X_scaled, y)
 f_results = r_regression(X,y)
-print("F test: k_ratio, T_ratio zeta, Q, Ry, GR")
+print("F test: k_ratio, T_ratio, zeta, Q, Ry, GR")
 print("F-statistics:", f_statistic)
 print("P-values:", p_values)
 
 print('========= stats for replacement_risk ==========')
 from sklearn import preprocessing
 
-X = df[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
+X = df[['k_ratio', 'T_ratio_e', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
 y = df['replacement_freq'].ravel()
 
 scaler = preprocessing.StandardScaler().fit(X)

@@ -296,11 +296,12 @@ class GP:
         self.gpr = gp_pipe
         
     # Train GP regression
-    def fit_het_gpr(self, kernel_name, X_fit, dual_coef, rbf_gamma, noise_bound=None):
+    def fit_het_gpr(self, kernel_name, mdl_var, noise_bound=None):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.gaussian_process import GaussianProcessRegressor
         import sklearn.gaussian_process.kernels as krn
+        from sklearn.model_selection import GridSearchCV
         
         import numpy as np
         n_vars = self.X.shape[1]
@@ -308,7 +309,8 @@ class GP:
         if kernel_name=='rbf_ard':
             kernel_base = 1.0 * krn.RBF(np.ones(n_vars))
         elif kernel_name=='rbf_iso':
-            kernel_base = 1.0 * krn.RBF(1.0, length_scale_bounds=(1e-8, 1e8))
+            kernel_base = krn.ConstantKernel(1e-3, (1e-8, 1e3)) * krn.RBF(
+                1.0, length_scale_bounds=(1e-8, 1e8))
         elif kernel_name=='rq':
             kernel_base = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
                                                     alpha=1.0)
@@ -324,19 +326,45 @@ class GP:
         if noise_bound is None:
             noise_bound = (1e-8, 1e8)
             
-        kernel_obj = (kernel_base + 
-                  1.0*
-                  krn.Heteroscedastic_Variance(X_fit=X_fit, 
-                                               dual_coef=dual_coef, 
-                                               rbf_gamma=rbf_gamma))
+        # kernel_obj = (kernel_base + 
+        #           1.0*
+        #           krn.Heteroscedastic_Variance(X_fit=X_fit, 
+        #                                        dual_coef=dual_coef, 
+        #                                        rbf_gamma=rbf_gamma))
+        
+        kernel_obj = kernel_base + krn.WhiteKernel(noise_level=0.01, 
+                                                    noise_level_bounds=noise_bound)
+        # kernel_obj = kernel_base
+        
+        # # pass in secondary model, predict diagonal het-noise
+        n = self.X.shape[0]
+        var_est = mdl_var.kr.predict(self.X)
+        a_inv_cs_diag = np.exp(var_est.ravel())/n + 1e-3
+        
+        # breakpoint()
             
         # pipeline to scale -> GPR
         gp_pipe = Pipeline([
                 ('scaler', StandardScaler()),
                 ('gpr', GaussianProcessRegressor(kernel=kernel_obj,
+                                                 alpha = a_inv_cs_diag,
                                                  random_state=985,
                                                  n_restarts_optimizer=10))
                 ])
+        
+        # cross-validate several parameters
+        # parameters = {'gpr__alpha':np.logspace(-1,7,9)}
+        
+        # breakpoint()
+        # gpr_cv = GridSearchCV(gp_pipe, param_grid=parameters)
+        # gpr_cv.fit(self.X, self.y)
+        
+        # # set pipeline to use CV params
+        # gp_pipe.set_params(**gpr_cv.best_params_)
+        # gp_pipe.fit(self.X, self.y)
+        
+        # print("The best GPR parameters are %s"
+        #       % (gpr_cv.best_params_))
     
         gp_pipe.fit(self.X, self.y)
         
