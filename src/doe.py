@@ -279,7 +279,7 @@ class GP:
                     nu=1.5)
             
         if noise_bound is None:
-            noise_bound = (1e-5, 1e1)
+            noise_bound = (1e-8, 1e1)
             
         kernel_obj = kernel_base + krn.WhiteKernel(noise_level=0.1, noise_level_bounds=noise_bound)
         
