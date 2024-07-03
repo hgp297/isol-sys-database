@@ -154,7 +154,7 @@ def lead_plug_cover(S_tshim_array, H, d_r, t_r):
 '''
 
 '''    
-def design_LRB_old(param_df):
+def design_LRB_legacy(param_df):
     
     # read in parameters
     T_m = param_df['T_m']
@@ -502,7 +502,7 @@ def design_LRB(param_df):
     
     # edge cases where k_M*D_m < Q_L
     if k_2 < 0:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_m, k_M, zeta_m, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_m, k_M, Q, zeta_m, D_m, 1)
     
     # required area of lead per bearing
     f_y_Pb = 1.5 # ksi, shear yield strength
@@ -562,7 +562,7 @@ def design_LRB(param_df):
     
     # if nonsense n_layers reach, stop calculations now (to be discarded)
     if n_layers < 1:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)
     # if too many layers, try a lower S_pad
     elif n_layers > 60:
         S_pad_trial = 0.75*S_pad_trial
@@ -680,9 +680,9 @@ def design_LRB(param_df):
     # buckling loads and pressure check
     # displacement
     if moat_ampli*D_m/d_r > 1.0:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)
     if lam_strain > 3.0:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)
     # buckling load
     if P_estimate/P_crit > 1.0:
         flag = 1
@@ -694,10 +694,10 @@ def design_LRB(param_df):
         flag = 1
     # number of bearings too much 
     if N_lb > (n_bays+1)**2:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)
     
     return(d_r, d_Pb, t_r, t, n_layers, N_lb, S_pad, S_2, T_e, 
-           k_e_norm, zeta_loop, D_m, flag)
+           k_e_norm, Q, zeta_loop, D_m, flag)
 
 # perform one iteration of TFP design to return a damping coefficient
 def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
@@ -873,7 +873,7 @@ def design_TFP(param_df, mu_1=None):
     zeta_loop  = W_e/(2*pi*k_e*D_m**2)
     T_e = 2*pi*(1/(g*k_e))**0.5
     
-    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_loop, D_m)
+    return(mu_1, mu_2, R_1, R_2, T_e, k_e, Q, zeta_loop, D_m)
 
 
 def design_TFP_legacy(param_df):

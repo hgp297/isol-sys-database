@@ -524,7 +524,7 @@ def run_doe(prob_target, df_train, df_test, sample_bounds=None,
                                                         axis='columns', result_type='expand')
                              
                 try:
-                    all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),
+                    all_tfp_designs = work_df.apply(lambda row: ds.design_TFP_legacy(row),
                                                    axis='columns', result_type='expand')
                 except:
                     continue

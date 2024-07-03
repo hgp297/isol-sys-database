@@ -352,8 +352,8 @@ class Building:
               (self.num_bays, self.num_stories, self.D_m))
         print('Moat amplification = %.2f | Ry = %.2f' % 
               (self.moat_ampli, self.RI))
-        print('Tm = %.2f s | Q = %.2f | k_ratio = %.2f' %
-              (self.T_m, self.Q, self.k_ratio))
+        print('Tm = %.2f s | zeta = %.2f | k_ratio = %.2f' %
+              (self.T_m, self.zeta_e, self.k_ratio))
         
         if self.superstructure_system == 'MF':
             self.model_moment_frame()

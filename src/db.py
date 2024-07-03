@@ -173,7 +173,7 @@ class Database:
         # attempt to design all TFPs
         if df_tfp.shape[0] > 0:
             t0 = time.time()
-            all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP(row),
+            all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP_legacy(row),
                                            axis='columns', result_type='expand')
             
             all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
@@ -206,7 +206,7 @@ class Database:
         # attempt to design all LRBs
         if df_lrb.shape[0] > 0:
             t0 = time.time()
-            all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row),
+            all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB_legacy(row),
                                            axis='columns', result_type='expand')
             
             
@@ -524,7 +524,7 @@ class Database:
             return
         
         all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
-                                   'T_e', 'k_e', 'zeta_e', 'D_m']
+                                   'T_e', 'k_e', 'Q', 'zeta_e', 'D_m']
         
         tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
                                           (all_tfp_designs['R_1'] <= 50.0) &
@@ -1324,7 +1324,7 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
                                        axis='columns', result_type='expand')
         
         all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
-                                   'T_e', 'k_e', 'zeta_loop', 'D_m']
+                                   'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m']
         
         if filter_designs == False:
             tfp_designs = all_tfp_designs
@@ -1359,7 +1359,7 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
         
         all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
                                    'N_lb', 'S_pad', 'S_2',
-                                   'T_e', 'k_e', 'zeta_loop', 'D_m', 'buckling_fail']
+                                   'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m', 'buckling_fail']
         
         if filter_designs == False:
             lrb_designs = all_lrb_designs
