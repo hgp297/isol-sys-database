@@ -614,7 +614,7 @@ class Database:
                                        (all_tfps['zeta_loop'] <= 0.27)]
             
             
-            # TODO: this still fails if Tm is say <3.0
+            # TODO: this still fails if Tm is say <3.0 (not robust, check legacy)
             # retry if design didn't work
             if tfp_designs.shape[0] == 0:
                 all_tfps, lrb_designs = design_bearing_util(
@@ -684,8 +684,8 @@ class Database:
         ida_df.columns = work_df.columns
         
         self.ida_df = pd.concat([ida_df, ida_gms], axis=1)
-    '''    
-    def old_ida(self, design_df, levels=[1.0, 1.5, 2.0]):
+      
+    def prepare_ida_legacy(self, design_df, levels=[1.0, 1.5, 2.0]):
         
         import pandas as pd
         import numpy as np
@@ -730,7 +730,7 @@ class Database:
                                                 axis='columns', result_type='expand')
                      
         try:
-            all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),
+            all_tfp_designs = work_df.apply(lambda row: ds.design_TFP_legacy(row),
                                            axis='columns', result_type='expand')
         except:
             print('Bearing design failed.')
@@ -789,16 +789,17 @@ class Database:
         ida_base.columns = ['gm_selected', 'scale_factor', 'sa_avg']
         ida_base = ida_base.reset_index(drop=True)
         
-        
-        ida_gms = pd.DataFrame(columns=['gm_selected', 'scale_factor', 'sa_avg'])
-        
+        ida_gms = None
         # prepare the sets of ida levels
         for lvl in levels:
             ida_level = ida_base[['scale_factor', 'sa_avg']].copy()
             ida_level = ida_level*lvl
             ida_level['ida_level'] = lvl
             ida_level['gm_selected'] = ida_base['gm_selected']
-            ida_gms = pd.concat([ida_gms, ida_level], axis=0)
+            if ida_gms is None:
+                ida_gms = ida_level.copy()
+            else:
+                ida_gms = pd.concat([ida_gms, ida_level], axis=0)
             
         ida_gms = ida_gms.reset_index(drop=True)
         
@@ -806,7 +807,7 @@ class Database:
         ida_df.columns = work_df.columns
         
         self.ida_df = pd.concat([ida_df, ida_gms], axis=1)
-    ''' 
+    
     # TODO: parallelize this
     def analyze_ida(self, output_str, save_interval=10,
                    data_path='../data/validation/',

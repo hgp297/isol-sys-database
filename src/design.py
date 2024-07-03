@@ -787,7 +787,7 @@ def iterate_on_Q_tfp(Q_guess, mu_1, S_1, T_m, zeta_target, rho_k):
     return(err)
     
 
-# TODO: remember you broke inverse design
+# TODO: remove legacy version
 def design_TFP(param_df, mu_1=None):
     
     # read in parameters
@@ -873,8 +873,8 @@ def design_TFP(param_df, mu_1=None):
     
     return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_loop, D_m)
 
-'''
-def design_TFP_old(param_df):
+
+def design_TFP_legacy(param_df):
     
     # read in parameters
     T_m = param_df['T_m']
@@ -1040,7 +1040,7 @@ def design_TFP_old(param_df):
         T_e = 2*pi*(1/(g*k_e))**0.5
     
     return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_loop, D_m)
-'''
+
 
 def get_properties(shape):
     # if (len(shape) == 0):
