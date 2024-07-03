@@ -22,6 +22,7 @@ def get_layout(n_bays):
     num_rb = num_bearings - num_lb
     return(int(num_lb), int(num_rb))
 
+'''
 # perform one iteration of LRB design to return a damping coefficient
 def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
     
@@ -51,6 +52,7 @@ def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
     err = (zeta_loop - zeta_guess)**2
     
     return(err)
+'''
 
 # from specified parameters, find the height that converges on lead height
 # (and rubber height) that achieves the k_1 specified
