@@ -579,7 +579,6 @@ class Database:
         
         config_dict = {
             'S_1' : 1.017,
-            'k_ratio' : 15,
             'L_bldg': 120.0,
             'h_bldg': 52.0,
             'num_frames' : 2,
@@ -587,17 +586,16 @@ class Database:
             'num_stories' : 4,
             'L_bay': 30.0,
             'h_story': 13.0,
-            'isolator_system' : 'LRB',
-            'superstructure_system' : 'CBF',
             'S_s' : 2.2815
         }
         
         work_df = pd.DataFrame(config_dict, index=[0])
+        work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
+                            axis=1)
+        
         from loads import estimate_period
         work_df['T_fbe'] = estimate_period(work_df.iloc[0])
         
-        work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
-                            axis=1)
         
         import design as ds
         from loads import define_lateral_forces, define_gravity_loads
@@ -608,7 +606,7 @@ class Database:
         
         all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=False)
         
-        if config_dict['isolator_system'] == 'TFP':
+        if work_df['isolator_system'].item() == 'TFP':
             # keep the designs that look sensible
             tfp_designs = all_tfps.loc[(all_tfps['R_1'] >= 10.0) &
                                        (all_tfps['R_1'] <= 50.0) &
@@ -655,7 +653,7 @@ class Database:
         mf_designs, cbf_designs = design_structure_util(
             work_df, filter_designs=True)
         
-        if config_dict['superstructure_system'] == 'MF':
+        if work_df['superstructure_system'].item() == 'MF':
             work_df = mf_designs.copy()
         else:
             work_df = cbf_designs.copy()
