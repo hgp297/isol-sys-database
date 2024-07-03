@@ -22,7 +22,8 @@ class Database:
     # to account for harder LRB designs being discarded
     
     def __init__(self, n_points=400, seed=985, n_buffer=15,
-                 struct_sys_list=['MF', 'CBF'], isol_wts=[1,3]):
+                 struct_sys_list=['MF', 'CBF'], isol_sys_list=['TFP','LRB'],
+                 isol_wts=[1,3]):
         
         from scipy.stats import qmc
         import numpy as np
@@ -57,7 +58,8 @@ class Database:
             'moat_ampli' : [0.5, 1.2],
             'RI' : [0.5, 2.25],
             'L_bldg': [75.0, 250.0],
-            'h_bldg': [30.0, 100.0]
+            'h_bldg': [30.0, 100.0],
+            'zeta_m': [0.1, 0.25]
         }
 
         # create array of limits, then run LHS
@@ -110,7 +112,7 @@ class Database:
         random.seed(seed)
         
         # upweigh LRBs to ensure fair split
-        isol_sys_list = ['TFP', 'LRB']
+        # isol_sys_list = ['TFP', 'LRB']
         # isol_wts = [1, 3]
         
         structs = random.choices(struct_sys_list, k=self.n_generated)
