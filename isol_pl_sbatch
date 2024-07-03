@@ -1,0 +1,35 @@
+#!/bin/bash
+
+####################
+# SBATCH OPTIONS
+####################
+#SBATCH   -p skx				# see Stampede3 queues for guide (skx/skx-dev/icx...)
+#SBATCH   -J isol_db 			# job name for queue
+#SBATCH   -o isol_db.out		# standard out file, no default
+#SBATCH   -e isol_db.err		# error file	
+#SBATCH   -n 4 					# total tasks	
+#SBATCH   -N 1					# total nodes
+#SBATCH   -t 2:00:00 			# hours:minutes:seconds
+#SBATCH   -A DS-TracyBecker		# allocation name
+
+####################
+# What to run
+####################
+
+pwd
+date
+
+# load pylauncher
+module load python
+module load pylauncher
+
+# move all file from $WORK to $SCRATCH
+cp -rf ./* $SCRATCH/isol-sys-database/
+
+# cd into scratch
+cd $SCRATCH/isol-sys-database/src/
+
+pwd
+
+# launch the taskfile
+python3 ./classic_launcher.py

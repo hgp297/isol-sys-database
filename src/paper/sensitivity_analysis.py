@@ -837,7 +837,7 @@ for plt_idx in range(3):
             c=color[plt_idx], label=label[plt_idx])
 # ax.set_xlabel(r'Land cost per ft$^2$ (\$)', fontsize=axis_font)
 ax.set_ylim([25, 225])
-ax.legend(fontsize=label_size)
+# ax.legend(fontsize=label_size)
 ax.grid()
 
 ##
@@ -869,6 +869,7 @@ for plt_idx in range(3):
     ax.plot(steel_prices, plt_array[:,plt_idx], marker='s', markeredgecolor='black', 
             c=color[plt_idx], label=label[plt_idx])
 # ax.set_xlabel(r'Steel cost per lb (\$)', fontsize=axis_font)
+ax.legend(fontsize=label_size-2, loc='upper left')
 ax.set_ylim([25, 225])
 ax.grid()
 

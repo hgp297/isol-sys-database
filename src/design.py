@@ -22,6 +22,7 @@ def get_layout(n_bays):
     num_rb = num_bearings - num_lb
     return(int(num_lb), int(num_rb))
 
+'''
 # perform one iteration of LRB design to return a damping coefficient
 def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
     
@@ -46,11 +47,12 @@ def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
     k_1 = rho_k * k_2
     D_y = Q_L/(k_1 - k_2)
     
-    zeta_E = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
+    zeta_loop = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
     
-    err = (zeta_E - zeta_guess)**2
+    err = (zeta_loop - zeta_guess)**2
     
     return(err)
+'''
 
 # from specified parameters, find the height that converges on lead height
 # (and rubber height) that achieves the k_1 specified
@@ -93,6 +95,7 @@ def iterate_bearing_height(tr_guess, D_m, k_M, Q_L, rho_k, N_lb, S_des=15.0):
     
     return(err)
 
+'''
 def large_strain_bearing(tr_old, A_delta, D_m, k_M, Q_L, rho_k, N_lb_old,
                          S_des=15.0, gam_max = 3.0):
     # required tr to stay under strain limit
@@ -148,8 +151,10 @@ def lead_plug_cover(S_tshim_array, H, d_r, t_r):
     # loss_fcn = p1 + p2 
     loss_fcn = (h - H)**2
     return loss_fcn
-    
-def design_LRB(param_df):
+'''
+
+'''    
+def design_LRB_old(param_df):
     
     # read in parameters
     T_m = param_df['T_m']
@@ -200,36 +205,34 @@ def design_LRB(param_df):
     
     flag = 0
     
-    '''
-    import numpy as np
-    # try to achieve strain ratio < 300%
-    # requires additional design of shims
-    if lam_strain > 3.0:
-        t_r, N_lb, H = large_strain_bearing(t_r, moat_ampli, D_m, k_M, Q_L, rho_k, 
-                                          N_lb, S_des=15.0, gam_max = 3.0)
+    # import numpy as np
+    # # try to achieve strain ratio < 300%
+    # # requires additional design of shims
+    # if lam_strain > 3.0:
+    #     t_r, N_lb, H = large_strain_bearing(t_r, moat_ampli, D_m, k_M, Q_L, rho_k, 
+    #                                       N_lb, S_des=15.0, gam_max = 3.0)
     
-        from scipy.optimize import minimize
-        S_t_init = np.array([15, 0.13])
-        S_t_bnds = ((15., 40.), (0.079, 0.125))
+    #     from scipy.optimize import minimize
+    #     S_t_init = np.array([15, 0.13])
+    #     S_t_bnds = ((15., 40.), (0.079, 0.125))
         
-        G_r = 0.060 # ksi, shear modulus
-        A_r = k_2 * t_r / (G_r * N_lb)
-        d_r = (4*(A_r + A_Pb)/pi)**(0.5)
+    #     G_r = 0.060 # ksi, shear modulus
+    #     A_r = k_2 * t_r / (G_r * N_lb)
+    #     d_r = (4*(A_r + A_Pb)/pi)**(0.5)
         
-        from scipy.optimize import basinhopping
-        minimizer_kwargs={'args':(H, d_r, t_r),'bounds':S_t_bnds}
-        res = basinhopping(lead_plug_cover, S_t_init, minimizer_kwargs=minimizer_kwargs)
+    #     from scipy.optimize import basinhopping
+    #     minimizer_kwargs={'args':(H, d_r, t_r),'bounds':S_t_bnds}
+    #     res = basinhopping(lead_plug_cover, S_t_init, minimizer_kwargs=minimizer_kwargs)
         
-        # res = minimize(lead_plug_cover, S_t_init, bounds=S_t_bnds,
-        #                 args=(H, d_r, t_r))
+    #     # res = minimize(lead_plug_cover, S_t_init, bounds=S_t_bnds,
+    #     #                 args=(H, d_r, t_r))
         
-        S_tshim = res.x
-        # if res.fun > 2.0:
-        #     flag = 1
+    #     S_tshim = res.x
+    #     # if res.fun > 2.0:
+    #     #     flag = 1
             
-        S_pad_trial = S_tshim[0]
-        t_shim = S_tshim[1]
-    '''
+    #     S_pad_trial = S_tshim[0]
+    #     t_shim = S_tshim[1]
     
     # converge on t_r necessary to achieve rho_k
     # if this succeeds, no guesswork is necessary on shims and layers
@@ -255,7 +258,7 @@ def design_LRB(param_df):
     k_e = (Q_L + k_2*D_m)/D_m
     T_e = 2*pi*(W_tot/(g*k_e))**0.5
     W_e = 4*Q_L*(D_m - D_y)
-    zeta_E = W_e/(2*pi*k_e*D_m**2)
+    zeta_loop = W_e/(2*pi*k_e*D_m**2)
     lam_strain = (moat_ampli*D_m)/t_r
     #################################################
     # buckling checks
@@ -281,7 +284,7 @@ def design_LRB(param_df):
     
     # if nonsense n_layers reach, stop calculations now (to be discarded)
     if n_layers < 1:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     # if too many layers, try a lower S_pad
     elif n_layers > 60:
         S_pad_trial = 0.75*S_pad_trial
@@ -399,9 +402,9 @@ def design_LRB(param_df):
     # buckling loads and pressure check
     # displacement
     if moat_ampli*D_m/d_r > 1.0:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     if lam_strain > 3.0:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     # buckling load
     if P_estimate/P_crit > 1.0:
         flag = 1
@@ -413,12 +416,288 @@ def design_LRB(param_df):
         flag = 1
     # number of bearings too much 
     if N_lb > (n_bays+1)**2:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     
     return(d_r, d_Pb, t_r, t, n_layers, N_lb, S_pad, S_2, T_e, 
-           k_e_norm, zeta_E, D_m, flag)
+           k_e_norm, zeta_loop, D_m, flag)
+'''
+# perform one iteration of LRB design to return a damping coefficient
+def iterate_on_Q(Q_guess, S_1, T_m, zeta_target, rho_k, W_tot):
     
+    from numpy import interp
+    g  = 386.4
+    pi = 3.14159
+    
+    # from ASCE Ch. 17, get damping multiplier
+    zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    
+    B_m      = interp(zeta_target, zetaRef, BmRef)
+    
+    # design displacement
+    D_m = g*S_1*T_m/(4*pi**2*B_m)
+    k_M = (2*pi/T_m)**2 * (W_tot/g)
+    
+    # from Q, zeta, and T_m
+    Q_L = Q_guess*W_tot
+    k_2 = (k_M*D_m - Q_L)/D_m
+    
+    # yielding force
+    k_1 = rho_k * k_2
+    D_y = Q_L/(k_1 - k_2)
+    
+    zeta_loop = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
+    
+    err = (zeta_loop - zeta_target)**2
+    
+    return(err)   
 
+def design_LRB(param_df):
+    
+    # read in parameters
+    T_m = param_df['T_m']
+    S_1 = param_df['S_1']
+    zeta_m = param_df['zeta_e']
+    # Q = param_df['Q']
+    rho_k = param_df['k_ratio']
+    n_bays = param_df['num_bays']
+    W_tot = param_df ['W']
+    moat_ampli = param_df['moat_ampli']
+    
+    # number of LRBs vs non LRBs
+    N_lb, N_sl = get_layout(n_bays)
+    
+    # converge design on Q
+    # design will achieve T_m, Q, rho_k as specified
+    from scipy.optimize import minimize_scalar
+    res = minimize_scalar(iterate_on_Q, args=(S_1, T_m, zeta_m, rho_k, W_tot),
+                          bounds=(0.01, 0.15), method='bounded')
+   
+    Q = res.x
+    Q_L = Q * W_tot
+    
+    from numpy import interp
+    g  = 386.4
+    pi = 3.14159
+    
+    # from ASCE Ch. 17, get damping multiplier
+    zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    
+    B_m      = interp(zeta_m, zetaRef, BmRef)
+    
+    # design displacement
+    D_m = g*S_1*T_m/(4*pi**2*B_m)
+    k_M = (2*pi/T_m)**2 * (W_tot/g)
+    
+    # from Q, zeta, and T_m
+    k_2 = (k_M*D_m - Q_L)/D_m
+    
+    # yielding force
+    k_1 = rho_k * k_2
+    D_y = Q_L/(k_1 - k_2)
+    
+    # need to ensure that using guess Q, we still achieve zeta
+    zeta_loop = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
+    
+    # edge cases where k_M*D_m < Q_L
+    if k_2 < 0:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_m, k_M, zeta_m, D_m, 1)
+    
+    # required area of lead per bearing
+    f_y_Pb = 1.5 # ksi, shear yield strength
+    A_Pb = (Q_L/f_y_Pb) / N_lb # in^2
+    d_Pb = (4*A_Pb/pi)**(0.5)
+    
+    flag = 0
+    
+    # converge on t_r necessary to achieve rho_k
+    # if this succeeds, no guesswork is necessary on shims and layers
+    S_pad_trial = 20.0
+    from scipy.optimize import minimize_scalar
+    res = minimize_scalar(iterate_bearing_height,
+                          args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
+                          bounds=(0.01, 1e3), method='bounded')
+    t_r = res.x
+    t_shim = 0.13
+    
+    # 60 psi rubber
+    # select thickness
+    
+    G_r = 0.060 # ksi, shear modulus
+    A_r = k_2 * t_r / (G_r * N_lb)
+    d_r = (4*(A_r + A_Pb)/pi)**(0.5)
+    
+    # yielding force
+    k_1 = rho_k * k_2
+    D_y = Q_L/(k_1 - k_2)
+    
+    # final values
+    k_e = (Q_L + k_2*D_m)/D_m
+    T_e = 2*pi*(W_tot/(g*k_e))**0.5
+    W_e = 4*Q_L*(D_m - D_y)
+    zeta_loop = W_e/(2*pi*k_e*D_m**2)
+    lam_strain = (moat_ampli*D_m)/t_r
+    #################################################
+    # buckling checks
+    #################################################
+    
+    # assume small strain G is 75% larger
+    G_ss = 1.75*G_r
+    # incompressibility
+    K_inc = 290 # ksi
+    
+    # shape factor (circular)
+    a = d_Pb/2
+    # b = d_r/2
+    b_s = (d_r - 0.5)/2
+    
+    # try for shape factor of 15
+    # S_pad_trial = 30.0
+    # t_pad_req = (b_s - a)/(2*S_pad_trial)
+    t_pad_req = b_s/(2*S_pad_trial)
+    
+    from math import floor
+    n_layers = floor(t_r/t_pad_req)
+    
+    # if nonsense n_layers reach, stop calculations now (to be discarded)
+    if n_layers < 1:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
+    # if too many layers, try a lower S_pad
+    elif n_layers > 60:
+        S_pad_trial = 0.75*S_pad_trial
+        t_pad_req = b_s/(2*S_pad_trial)
+        n_layers = floor(t_r/t_pad_req)
+    
+    n_shims = n_layers - 1
+    t = t_r/n_layers
+    
+    # assume shim is half inch less than rubber diameter
+    # buckling values are calculated for rubber area overlapping with shims
+    # the following values are annular
+    
+    I = pi/4 * (b_s**4 - a**4)
+    A = pi*(b_s**2 - a**2)
+    h = t_r + n_shims*t_shim # 3.5mm shims
+    # S_pad = (b_s - a)/(2*t)
+    S_pad = b_s/(2*t)
+    eta = a/b_s
+    th = (48*G_ss/K_inc)**(0.5)*S_pad/(1 - eta)
+    
+    # modified Bessel functions
+    from scipy.special import kv, i1, iv, i0
+    
+    #################################################
+    # compressive behavior
+    #################################################
+    
+    # # shape factor adjusts for annular shape
+    # from math import log
+    # lam = (b**2 + a**2 - ((b**2 - a**2)/(log(b/a))))/((b - a)**2)
+    # E_pc = 6*lam*G_ss*S_pad**2
+    
+    # this seems to adjusts for incompressibility but is ad hoc
+    # E_c = (E_pc*K_inc)/(E_pc + K_inc) 
+    
+    # full solution from Kelly & Konstantinidis
+    C1p = ((1/((12*G_ss/K_inc)**0.5*(1 + eta)*S_pad)) * 
+           (kv(0, th) - kv(0, eta*th)) / 
+           (i0(th)*kv(0, eta*th) - i0(eta*th)*kv(0, th)))
+    
+    C2p = ((1/((12*G_ss/K_inc)**0.5*(1 + eta)*S_pad)) * 
+           (i0(th) - i0(eta*th)) / 
+           (i0(th)*kv(0, eta*th) - i0(eta*th)*kv(0, th)))
+    
+    E_c = (K_inc*(1 + C1p*(iv(1, th) - eta*iv(1,eta*th)) +
+                  C2p*(kv(1, th) - eta*kv(1, eta*th))))
+    
+    # rough vertical capacity of bearing (no buckling yet)
+    E_Pb = 2000 # ksi
+    P_vert = E_c * A_r + E_Pb * A_Pb
+    
+    #################################################
+    # bending behavior
+    #################################################
+    
+    # from Kelly & Konstantinidis
+    # first calculate the incompressible case
+    
+    # for an annular pad
+    # this is equivalent to pi*G/8 *(b**2 - a**2)**3/t**2
+    EI_eff_inc = 2*G_ss*S_pad**2*I*(1 + eta)**2/(1 + eta**2)
+    
+    
+    
+    B1p = (4/(th*(1 - eta**4)) * 
+            (-kv(1, eta*th) + eta*kv(1,th)) / 
+            (i1(eta*th)*kv(1, th) - i1(th)*kv(1,eta*th)))
+    
+    B2p = (4/(th*(1 - eta**4)) * 
+            (i1(eta*th) - eta*i1(th)) / 
+            (i1(eta*th)*kv(1, th) - i1(th)*kv(1,eta*th)))
+    
+    EI_comp_ratio = (K_inc/(2*G_ss*S_pad**2) * 
+                      (1 + eta**2)/((1 + eta)**2) * 
+                      (1 - B1p*(iv(2, th) - eta**2*iv(2, eta*th)) +
+                      B2p*(kv(2, th) - eta**2*kv(2, eta*th))))
+    
+    EI_eff_comp = EI_eff_inc * EI_comp_ratio
+    
+    # global buckling check, uses EI_s = 1/3 E_c I h/tr
+    # full unsimplified equation
+    P_S = G_ss*A*h/t_r
+    
+    # # is this specific to circular only?
+    # P_E = pi**2/(h**2)/3*E_c*I*h/t_r
+    
+    # annular
+    P_E = pi**2*EI_eff_comp*h/t_r/(h**2)
+    
+    # full solution critical load
+    P_crit = (-P_S + (P_S**2 + 4*P_S*P_E)**0.5)/2
+    
+    # # truncated solution for sqrt(P_S P_E) assuming that S > 5
+    # P_crit = pi**2*G_ss*(b_s**2 - a**2)**2/(2*(2**0.5)*t_r*t)
+    
+    # # already accounts for A_s effective shear area
+    # P_crit = pi/t_r * ((E_c * I/3)*G_ss*A)**(0.5)
+    
+    # this includes diaphragm, which is accurate representation of load above LRB
+    w_floor = param_df['w_fl'] # k/ft
+    L_bay = param_df['L_bay'] # ft
+    P_estimate = sum(w_floor)*L_bay
+    pressure_estimate = P_estimate/(pi*b_s**2)
+    
+    # normalize stiffness by weight
+    k_e_norm = k_e/W_tot
+    
+    # # shortcut for circular bearing (pressure solution)
+    # # compare the strength with an equivalent circular bearing
+    # p_crit_compare = P_crit/(pi*b_s**2)
+    S_2 = 2*b_s/t_r
+    p_crit_circ = G_ss*pi*S_pad*S_2/(2*2**0.5)
+    
+    # buckling loads and pressure check
+    # displacement
+    if moat_ampli*D_m/d_r > 1.0:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
+    if lam_strain > 3.0:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
+    # buckling load
+    if P_estimate/P_crit > 1.0:
+        flag = 1
+    # compression load
+    if P_estimate/P_vert > 1.0:
+        flag = 1
+    # critical pressure (S2 solution)
+    if pressure_estimate/p_crit_circ > 1:
+        flag = 1
+    # number of bearings too much 
+    if N_lb > (n_bays+1)**2:
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
+    
+    return(d_r, d_Pb, t_r, t, n_layers, N_lb, S_pad, S_2, T_e, 
+           k_e_norm, zeta_loop, D_m, flag)
 
 # perform one iteration of TFP design to return a damping coefficient
 def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
@@ -459,14 +738,145 @@ def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
     b = 1/(2*R_2)
     k_e = (mu_2 + b*(D_m - u_a))/D_m
     W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
-    zeta_E   = W_e/(2*pi*k_e*D_m**2)
+    zeta_loop   = W_e/(2*pi*k_e*D_m**2)
     
-    err = (zeta_E - zeta_guess)**2
+    err = (zeta_loop - zeta_guess)**2
     
     return(err)
 
-# TODO: split this method into generate vs. inverse design
-def design_TFP(param_df):
+def iterate_on_Q_tfp(Q_guess, mu_1, S_1, T_m, zeta_target, rho_k):
+    from numpy import interp
+    g  = 386.4
+    pi = 3.14159
+    
+    # from ASCE Ch. 17, get damping multiplier
+    zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    
+    # from T_m, zeta_M, S_1
+    B_m = interp(zeta_target, zetaRef, BmRef)
+    D_m = g*S_1*T_m/(4*pi**2*B_m)
+    
+    # specify sliders
+    h_1 = 1.0
+    h_2 = 4.0
+    
+    k_M = (2*pi/T_m)**2 * (1/g)
+    
+    u_y = 0.01
+    
+    k_0 = mu_1/u_y
+    
+    # from Q and D_m
+    k_2 = (k_M*D_m - Q_guess)/D_m
+    R_2 = 1/(2*k_2) + h_2
+    
+    # from rho_k
+    u_a = Q_guess/(k_2*(rho_k-1))
+    k_a = rho_k*k_2
+    mu_2 = u_a*k_a
+    R_1 = u_a/(2*(mu_2-mu_1)) + h_1
+    
+    # effective design values
+    a = 1/(2*R_1)
+    b = 1/(2*R_2)
+    k_e = (mu_2 + b*(D_m - u_a))/D_m
+    W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
+    zeta_loop   = W_e/(2*pi*k_e*D_m**2)
+    
+    err = (zeta_loop - zeta_target)**2
+    
+    return(err)
+    
+
+# TODO: remove legacy version
+def design_TFP(param_df, mu_1=None):
+    
+    # read in parameters
+    T_m = param_df['T_m']
+    S_1 = param_df['S_1']
+    zeta_m = param_df['zeta_e']
+    rho_k = param_df['k_ratio']
+    
+    # guess
+    import random
+    
+    from numpy import interp
+    g  = 386.4
+    pi = 3.14159
+    
+    # from ASCE Ch. 17, get damping multiplier
+    zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    
+    # from T_m, zeta_M, S_1
+    B_m = interp(zeta_m, zetaRef, BmRef)
+    D_m = g*S_1*T_m/(4*pi**2*B_m)
+    
+    k_M = (2*pi/T_m)**2 * (1/g)
+    
+    # specify sliders
+    h_1 = 1.0
+    h_2 = 4.0
+    
+    if mu_1 is None:
+        mu_1 = random.uniform(0.02, 0.05)
+    
+    # converge design on damping
+    # design will achieve T_m, Q, rho_k as specified
+    from scipy.optimize import minimize_scalar
+    res = minimize_scalar(iterate_on_Q_tfp, args=(mu_1, S_1, T_m, zeta_m, rho_k),
+                             bounds=(0.01, 0.20), method='bounded')
+
+    Q = res.x
+
+    # finish design on converged damping
+    from numpy import interp
+    g  = 386.4
+    pi = 3.14159
+    
+    # from ASCE Ch. 17, get damping multiplier
+    zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    
+    # from T_m, zeta_M, S_1
+    B_m = interp(zeta_m, zetaRef, BmRef)
+    D_m = g*S_1*T_m/(4*pi**2*B_m)
+    
+    k_M = (2*pi/T_m)**2 * (1/g)
+    
+    # specify sliders
+    h_1 = 1.0
+    h_2 = 4.0
+    
+    # W_m = zeta_M*(2*pi*k_M*D_m**2)
+    
+    u_y = 0.01
+    
+    k_0 = mu_1/u_y
+    
+    # from Q and D_m
+    k_2 = (k_M*D_m - Q)/D_m
+    R_2 = 1/(2*k_2) + h_2
+    
+    # from rho_k
+    u_a = Q/(k_2*(rho_k-1))
+    k_a = rho_k*k_2
+    mu_2 = u_a*k_a
+    R_1 = u_a/(2*(mu_2-mu_1)) + h_1
+    
+    # effective design values
+    a = 1/(2*R_1)
+    b = 1/(2*R_2)
+    k_e = (mu_2 + b*(D_m - u_a))/D_m
+    W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
+    zeta_loop  = W_e/(2*pi*k_e*D_m**2)
+    T_e = 2*pi*(1/(g*k_e))**0.5
+    
+    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_loop, D_m)
+
+
+def design_TFP_legacy(param_df):
     
     # read in parameters
     T_m = param_df['T_m']
@@ -555,12 +965,11 @@ def design_TFP(param_df):
             # effective design values
             k_e = (mu_2.real + k_2*(D_m - u_a.real))/D_m
             W_e = 4*(mu_2.real - k_2*u_a)*D_m - 4*(k_1-k_2)*u_a.real**2 - 4*(k_0 - k_1)*u_y**2
-            zeta_E   = W_e/(2*pi*k_e*D_m**2)
+            zeta_loop   = W_e/(2*pi*k_e*D_m**2)
             T_e      = 2*pi/((k_e/(1/g))**(1/2))
             
             k_a = mu_2 / u_a
             
-            # TODO: store k_ratio_e and Q somehow
             k_ratio_e = k_a/k_2
             
             mu_bad = any(coeff < 0.01 for coeff in [mu_1, mu_2]) or any(iscomplex([mu_1, mu_2]))
@@ -573,7 +982,7 @@ def design_TFP(param_df):
             mu_1 = mu_1.real
             mu_2 = mu_2.real
             u_a = u_a.real
-            zeta_E = zeta_E.real
+            zeta_loop = zeta_loop.real
         
     else:
         rho_k = param_df['k_ratio']
@@ -629,10 +1038,11 @@ def design_TFP(param_df):
         b = 1/(2*R_2)
         k_e = (mu_2 + b*(D_m - u_a))/D_m
         W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
-        zeta_E   = W_e/(2*pi*k_e*D_m**2)
+        zeta_loop   = W_e/(2*pi*k_e*D_m**2)
         T_e = 2*pi*(1/(g*k_e))**0.5
     
-    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_E, D_m)
+    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_loop, D_m)
+
 
 def get_properties(shape):
     # if (len(shape) == 0):

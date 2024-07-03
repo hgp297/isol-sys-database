@@ -157,7 +157,7 @@ sample_dict = {
 
 design_df = pd.DataFrame(sample_dict, index=[0])
 
-main_obj.prepare_idas(design_df)
+main_obj.prepare_ida_legacy(design_df)
 main_obj.analyze_ida('ida_10.csv')
 
 import pickle
@@ -174,7 +174,7 @@ sample_dict = {
 
 design_df = pd.DataFrame(sample_dict, index=[0])
 
-main_obj.prepare_idas(design_df)
+main_obj.prepare_ida_legacy(design_df)
 main_obj.analyze_ida('ida_5.csv')
 
 import pickle
@@ -191,7 +191,7 @@ sample_dict = {
 
 design_df = pd.DataFrame(sample_dict, index=[0])
 
-main_obj.prepare_idas(design_df)
+main_obj.prepare_ida_legacy(design_df)
 main_obj.analyze_ida('ida_2_5.csv')
 
 import pickle

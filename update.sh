@@ -12,6 +12,7 @@ then
 		--include="/resource/ground_motions/PEERNGARecords_Unscaled" \
 		--include="/resource/loss/" \
 		--include="isol_db_sbatch" \
+		--include="isol_pl_sbatch" \
 		--include="/src/taskfile" \
 		--include="/data/" \
 		--include="*.AT2" \
@@ -26,5 +27,11 @@ then
 else
 	to="./data"
     echo "Synchronizing from tacc to local!"
-    rsync -zarvm "${from}data/" "$to"
+    rsync -zarvm --include "/data/*.pickle" \
+        --include="/data/*.csv" \
+		--include="/data/validation/" \
+		--include="/data/loss/" \
+		--include="/data/doe/" \
+        --exclude="*" \
+        "$from" "$to"
 fi
