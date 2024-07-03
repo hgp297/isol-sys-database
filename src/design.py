@@ -46,9 +46,9 @@ def iterate_LRB(zeta_guess, S_1, T_m, Q_L, rho_k, W_tot):
     k_1 = rho_k * k_2
     D_y = Q_L/(k_1 - k_2)
     
-    zeta_E = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
+    zeta_loop = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
     
-    err = (zeta_E - zeta_guess)**2
+    err = (zeta_loop - zeta_guess)**2
     
     return(err)
 
@@ -256,7 +256,7 @@ def design_LRB_old(param_df):
     k_e = (Q_L + k_2*D_m)/D_m
     T_e = 2*pi*(W_tot/(g*k_e))**0.5
     W_e = 4*Q_L*(D_m - D_y)
-    zeta_E = W_e/(2*pi*k_e*D_m**2)
+    zeta_loop = W_e/(2*pi*k_e*D_m**2)
     lam_strain = (moat_ampli*D_m)/t_r
     #################################################
     # buckling checks
@@ -282,7 +282,7 @@ def design_LRB_old(param_df):
     
     # if nonsense n_layers reach, stop calculations now (to be discarded)
     if n_layers < 1:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     # if too many layers, try a lower S_pad
     elif n_layers > 60:
         S_pad_trial = 0.75*S_pad_trial
@@ -400,9 +400,9 @@ def design_LRB_old(param_df):
     # buckling loads and pressure check
     # displacement
     if moat_ampli*D_m/d_r > 1.0:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     if lam_strain > 3.0:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     # buckling load
     if P_estimate/P_crit > 1.0:
         flag = 1
@@ -414,10 +414,10 @@ def design_LRB_old(param_df):
         flag = 1
     # number of bearings too much 
     if N_lb > (n_bays+1)**2:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     
     return(d_r, d_Pb, t_r, t, n_layers, N_lb, S_pad, S_2, T_e, 
-           k_e_norm, zeta_E, D_m, flag)
+           k_e_norm, zeta_loop, D_m, flag)
 '''
 # perform one iteration of LRB design to return a damping coefficient
 def iterate_on_Q(Q_guess, S_1, T_m, zeta_target, rho_k, W_tot):
@@ -444,9 +444,9 @@ def iterate_on_Q(Q_guess, S_1, T_m, zeta_target, rho_k, W_tot):
     k_1 = rho_k * k_2
     D_y = Q_L/(k_1 - k_2)
     
-    zeta_E = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
+    zeta_loop = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
     
-    err = (zeta_E - zeta_target)**2
+    err = (zeta_loop - zeta_target)**2
     
     return(err)   
 
@@ -455,7 +455,7 @@ def design_LRB(param_df):
     # read in parameters
     T_m = param_df['T_m']
     S_1 = param_df['S_1']
-    zeta_m = param_df['zeta_m']
+    zeta_m = param_df['zeta_e']
     # Q = param_df['Q']
     rho_k = param_df['k_ratio']
     n_bays = param_df['num_bays']
@@ -496,7 +496,7 @@ def design_LRB(param_df):
     D_y = Q_L/(k_1 - k_2)
     
     # need to ensure that using guess Q, we still achieve zeta
-    zeta_E = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
+    zeta_loop = (4*Q_L*(D_m - D_y)) / (2*pi*k_M*D_m**2)
     
     # edge cases where k_M*D_m < Q_L
     if k_2 < 0:
@@ -534,7 +534,7 @@ def design_LRB(param_df):
     k_e = (Q_L + k_2*D_m)/D_m
     T_e = 2*pi*(W_tot/(g*k_e))**0.5
     W_e = 4*Q_L*(D_m - D_y)
-    zeta_E = W_e/(2*pi*k_e*D_m**2)
+    zeta_loop = W_e/(2*pi*k_e*D_m**2)
     lam_strain = (moat_ampli*D_m)/t_r
     #################################################
     # buckling checks
@@ -560,7 +560,7 @@ def design_LRB(param_df):
     
     # if nonsense n_layers reach, stop calculations now (to be discarded)
     if n_layers < 1:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     # if too many layers, try a lower S_pad
     elif n_layers > 60:
         S_pad_trial = 0.75*S_pad_trial
@@ -678,9 +678,9 @@ def design_LRB(param_df):
     # buckling loads and pressure check
     # displacement
     if moat_ampli*D_m/d_r > 1.0:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     if lam_strain > 3.0:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     # buckling load
     if P_estimate/P_crit > 1.0:
         flag = 1
@@ -692,10 +692,10 @@ def design_LRB(param_df):
         flag = 1
     # number of bearings too much 
     if N_lb > (n_bays+1)**2:
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_E, D_m, 1)
+        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, zeta_loop, D_m, 1)
     
     return(d_r, d_Pb, t_r, t, n_layers, N_lb, S_pad, S_2, T_e, 
-           k_e_norm, zeta_E, D_m, flag)
+           k_e_norm, zeta_loop, D_m, flag)
 
 # perform one iteration of TFP design to return a damping coefficient
 def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
@@ -736,9 +736,9 @@ def iterate_TFP(zeta_guess, mu_1, S_1, T_m, Q, rho_k):
     b = 1/(2*R_2)
     k_e = (mu_2 + b*(D_m - u_a))/D_m
     W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
-    zeta_E   = W_e/(2*pi*k_e*D_m**2)
+    zeta_loop   = W_e/(2*pi*k_e*D_m**2)
     
-    err = (zeta_E - zeta_guess)**2
+    err = (zeta_loop - zeta_guess)**2
     
     return(err)
 
@@ -780,20 +780,20 @@ def iterate_on_Q_tfp(Q_guess, mu_1, S_1, T_m, zeta_target, rho_k):
     b = 1/(2*R_2)
     k_e = (mu_2 + b*(D_m - u_a))/D_m
     W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
-    zeta_E   = W_e/(2*pi*k_e*D_m**2)
+    zeta_loop   = W_e/(2*pi*k_e*D_m**2)
     
-    err = (zeta_E - zeta_target)**2
+    err = (zeta_loop - zeta_target)**2
     
     return(err)
     
 
 # TODO: remember you broke inverse design
-def design_TFP(param_df):
+def design_TFP(param_df, mu_1=None):
     
     # read in parameters
     T_m = param_df['T_m']
     S_1 = param_df['S_1']
-    zeta_m = param_df['zeta_m']
+    zeta_m = param_df['zeta_e']
     rho_k = param_df['k_ratio']
     
     # guess
@@ -817,7 +817,8 @@ def design_TFP(param_df):
     h_1 = 1.0
     h_2 = 4.0
     
-    mu_1 = random.uniform(0.02, 0.05)
+    if mu_1 is None:
+        mu_1 = random.uniform(0.02, 0.05)
     
     # converge design on damping
     # design will achieve T_m, Q, rho_k as specified
@@ -867,10 +868,10 @@ def design_TFP(param_df):
     b = 1/(2*R_2)
     k_e = (mu_2 + b*(D_m - u_a))/D_m
     W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
-    zeta_E  = W_e/(2*pi*k_e*D_m**2)
+    zeta_loop  = W_e/(2*pi*k_e*D_m**2)
     T_e = 2*pi*(1/(g*k_e))**0.5
-        
-    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_E, D_m)
+    
+    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_loop, D_m)
 
 '''
 def design_TFP_old(param_df):
@@ -962,7 +963,7 @@ def design_TFP_old(param_df):
             # effective design values
             k_e = (mu_2.real + k_2*(D_m - u_a.real))/D_m
             W_e = 4*(mu_2.real - k_2*u_a)*D_m - 4*(k_1-k_2)*u_a.real**2 - 4*(k_0 - k_1)*u_y**2
-            zeta_E   = W_e/(2*pi*k_e*D_m**2)
+            zeta_loop   = W_e/(2*pi*k_e*D_m**2)
             T_e      = 2*pi/((k_e/(1/g))**(1/2))
             
             k_a = mu_2 / u_a
@@ -979,7 +980,7 @@ def design_TFP_old(param_df):
             mu_1 = mu_1.real
             mu_2 = mu_2.real
             u_a = u_a.real
-            zeta_E = zeta_E.real
+            zeta_loop = zeta_loop.real
         
     else:
         rho_k = param_df['k_ratio']
@@ -1035,10 +1036,10 @@ def design_TFP_old(param_df):
         b = 1/(2*R_2)
         k_e = (mu_2 + b*(D_m - u_a))/D_m
         W_e = 4*(mu_2 - b*u_a)*D_m - 4*(a-b)*u_a**2 - 4*(k_0 -a)*u_y**2
-        zeta_E   = W_e/(2*pi*k_e*D_m**2)
+        zeta_loop   = W_e/(2*pi*k_e*D_m**2)
         T_e = 2*pi*(1/(g*k_e))**0.5
     
-    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_E, D_m)
+    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_loop, D_m)
 '''
 
 def get_properties(shape):
