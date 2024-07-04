@@ -27,7 +27,7 @@ def ida_run_row(row_num, run_case_str):
 
     import json
     input_path = './inputs/'
-    with open(input_path+run_case_str) as f: 
+    with open(input_path+run_case_str+'.in') as f: 
         data = f.read() 
     design_dict = json.loads(data)
     
