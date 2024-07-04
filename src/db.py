@@ -572,7 +572,7 @@ class Database:
         
         self.pushover_design = work_df
         
-    def prepare_idas(self, design_df, levels=[1.0, 1.5, 2.0]):
+    def prepare_idas(self, design_dict, levels=[1.0, 1.5, 2.0]):
         
         import pandas as pd
         import numpy as np
@@ -590,7 +590,7 @@ class Database:
         }
         
         work_df = pd.DataFrame(config_dict, index=[0])
-        work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
+        work_df = pd.concat([work_df, design_dict.set_index(work_df.index)], 
                             axis=1)
         
         from loads import estimate_period
@@ -614,8 +614,6 @@ class Database:
                                        (all_tfps['zeta_loop'] <= 0.27)]
             
             
-            # TODO: this still fails if Tm is say <3.0 (not robust, check legacy)
-            # retry if design didn't work
             if tfp_designs.shape[0] == 0:
                 all_tfps, lrb_designs = design_bearing_util(
                     work_df, filter_designs=False, mu_1_force=0.06)
@@ -634,7 +632,6 @@ class Database:
             work_df = tfp_designs.copy()
             
         else:
-            # TODO: not robust, therefore needs system selector
             lrb_designs = all_lrbs.loc[(all_lrbs['d_bearing'] >=
                                                3*all_lrbs['d_lead']) &
                                               (all_lrbs['d_bearing'] <=
@@ -1470,3 +1467,113 @@ def design_structure_util(df_in, filter_designs=True):
         
     return mf_designs, cbf_designs
     
+def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0]):
+    
+    import pandas as pd
+    import numpy as np
+    
+    config_dict = {
+        'S_1' : 1.017,
+        'L_bldg': 120.0,
+        'h_bldg': 52.0,
+        'num_frames' : 2,
+        'num_bays' : 4,
+        'num_stories' : 4,
+        'L_bay': 30.0,
+        'h_story': 13.0,
+        'S_s' : 2.2815
+    }
+    
+    work_df = pd.DataFrame(config_dict, index=[0])
+    work_df = pd.concat([work_df, design_dict.set_index(work_df.index)], 
+                        axis=1)
+    
+    from loads import estimate_period
+    work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+    
+    from gms import scale_ground_motion
+    
+    work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+    work_df['moat_ampli'] = work_df['gap_ratio']
+    
+    all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=False)
+    
+    if work_df['isolator_system'].item() == 'TFP':
+        # keep the designs that look sensible
+        tfp_designs = all_tfps.loc[(all_tfps['R_1'] >= 10.0) &
+                                   (all_tfps['R_1'] <= 50.0) &
+                                   (all_tfps['R_2'] <= 190.0) &
+                                   (all_tfps['zeta_loop'] <= 0.27)]
+        
+        
+        # TODO: this still fails if Tm is say <3.0 (not robust, check legacy)
+        # retry if design didn't work
+        if tfp_designs.shape[0] == 0:
+            all_tfps, lrb_designs = design_bearing_util(
+                work_df, filter_designs=False, mu_1_force=0.06)
+            
+            # keep the designs that look sensible
+            tfp_designs = all_tfps.loc[(all_tfps['R_1'] >= 10.0) &
+                                       (all_tfps['R_1'] <= 50.0) &
+                                       (all_tfps['R_2'] <= 190.0) &
+                                       (all_tfps['zeta_loop'] <= 0.27)]
+        
+        # retry if design didn't work
+        if tfp_designs.shape[0] == 0:
+            print('Bearing design failed')
+            return
+        
+        work_df = tfp_designs.copy()
+        
+    else:
+        # TODO: not robust, therefore needs system selector
+        lrb_designs = all_lrbs.loc[(all_lrbs['d_bearing'] >=
+                                           3*all_lrbs['d_lead']) &
+                                          (all_lrbs['d_bearing'] <=
+                                           6*all_lrbs['d_lead']) &
+                                          (all_lrbs['d_lead'] <= 
+                                            all_lrbs['t_r']) &
+                                          (all_lrbs['t_r'] > 4.0) &
+                                          (all_lrbs['t_r'] < 35.0) &
+                                          (all_lrbs['buckling_fail'] == 0) &
+                                          (all_lrbs['zeta_loop'] <= 0.27)]
+        
+        lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
+        
+        work_df = lrb_designs.copy()
+    
+    mf_designs, cbf_designs = design_structure_util(
+        work_df, filter_designs=True)
+    
+    if work_df['superstructure_system'].item() == 'MF':
+        work_df = mf_designs.copy()
+    else:
+        work_df = cbf_designs.copy()
+    
+    
+    gm_series, sf_series, sa_avg = scale_ground_motion(work_df.iloc[0], return_list=True)
+    ida_base = pd.concat([gm_series, sf_series], axis=1)
+    ida_base['sa_avg'] = sa_avg
+    ida_base.columns = ['gm_selected', 'scale_factor', 'sa_avg']
+    ida_base = ida_base.reset_index(drop=True)
+    
+    ida_gms = None
+    
+    # prepare the sets of ida levels
+    for lvl in levels:
+        ida_level = ida_base[['scale_factor', 'sa_avg']].copy()
+        ida_level = ida_level*lvl
+        ida_level['ida_level'] = lvl
+        ida_level['gm_selected'] = ida_base['gm_selected']
+        if ida_gms is None:
+            ida_gms = ida_level.copy()
+        else:
+            ida_gms = pd.concat([ida_gms, ida_level], axis=0)
+        
+    ida_gms = ida_gms.reset_index(drop=True)
+    
+    ida_df = pd.DataFrame(np.repeat(work_df.values, ida_gms.shape[0], axis=0))
+    ida_df.columns = work_df.columns
+    
+    ida_df = pd.concat([ida_df, ida_gms], axis=1)
+    return(ida_df)
