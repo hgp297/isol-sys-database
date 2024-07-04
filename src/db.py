@@ -645,6 +645,11 @@ class Database:
             
             lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
             
+            # retry if design didn't work
+            if lrb_designs.shape[0] == 0:
+                print('Bearing design failed')
+                return
+            
             work_df = lrb_designs.copy()
         
         mf_designs, cbf_designs = design_structure_util(
