@@ -113,6 +113,10 @@ def scale_ground_motion(input_df, return_list=False,
 
     import numpy as np
     
+    # if running IDA mode, keep a numpy seed to ensure same validation
+    if return_list:
+        np.random.seed(985)
+    
     # Select earthquakes that are least severely scaled
     # This section ensures no more than 3 motions per event
     for earthquake in uniq_EQs:
