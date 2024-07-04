@@ -1,6 +1,6 @@
 # past results
 */ground_motions/
-*/inputs/
+./tfp_mf/inputs/
 */output/
 */outputs/
 /tfp_mf/data/

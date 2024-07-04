@@ -13,8 +13,7 @@
 
 ############################################################################
 
-# TODO: it is clunky to pass in design dict from command line without scripting
-def ida_run_row(row_num, run_case_str, design_dict):
+def ida_run_row(row_num, run_case_str):
     
     # design_dict = {
     #     'gap_ratio' : 0.6,
@@ -26,6 +25,12 @@ def ida_run_row(row_num, run_case_str, design_dict):
     #     'k_ratio' : 15
     # }
 
+    import json
+    input_path = './inputs/'
+    with open(input_path+run_case_str) as f: 
+        data = f.read() 
+    design_dict = json.loads(data)
+    
     # use db to prepare all IDA runs, then grab the assigned row
     from db import prepare_ida_util
     import pandas as pd
@@ -66,15 +71,12 @@ def ida_run_row(row_num, run_case_str, design_dict):
     
     
 import argparse
-import json
 parser = argparse.ArgumentParser(
     description='Create db with IDA ready to run, then run one row of the IDA df.')
 parser.add_argument('idx', metavar='i', type=int, nargs='?',
                     help='Index of the IDA df to be ran')
 parser.add_argument('run_case', metavar='s', type=str, nargs='?',
                     help='String of run case to help organize output file')
-parser.add_argument('design', metavar='d', type=json.loads, nargs='?',
-                    help='A dictionary-like string of the design. See sample taskfile for formatting.')
 
 args = parser.parse_args()
-ida_run_row(args.idx, args.run_case, args.design)
+ida_run_row(args.idx, args.run_case)

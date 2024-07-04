@@ -1,1 +1,1 @@
-python3 val_ida_thread.py 1 '{"gap_ratio":0.6,"RI":2.25,"T_ratio":5.0,"zeta_e":0.25,"isolator_system":"LRB","superstructure_system":"CBF","k_ratio":15}'
+python val_ida_thread.py 1 "val_test_run" '{"gap_ratio":0.6,"RI":2.25,"T_ratio":5.0,"zeta_e":0.25,"isolator_system":"LRB","superstructure_system":"CBF","k_ratio":15}'
