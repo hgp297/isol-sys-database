@@ -1490,7 +1490,8 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0]):
     }
     
     work_df = pd.DataFrame(config_dict, index=[0])
-    work_df = pd.concat([work_df, design_dict.set_index(work_df.index)], 
+    design_df = pd.DataFrame(design_dict, index=[0])
+    work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
                         axis=1)
     
     from loads import estimate_period
