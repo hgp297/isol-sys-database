@@ -13,13 +13,8 @@
 
 ############################################################################
 
-# def ida_run_row(row_num, design_dict):
-#     print('The row number is:', row_num)
-#     print('The design is:')
-#     print(design_dict)
-#     print('The object has attribute:', design_dict['apple'])
-    
-def ida_run_row(row_num, design_dict):
+# TODO: it is clunky to pass in design dict from command line without scripting
+def ida_run_row(row_num, run_case_str, design_dict):
     
     # design_dict = {
     #     'gap_ratio' : 0.6,
@@ -36,10 +31,10 @@ def ida_run_row(row_num, design_dict):
     import pandas as pd
     ida_df = prepare_ida_util(design_dict)
     
-    assert row_num <= len(ida_df)
+    assert row_num <= len(ida_df)-1
     
     # prepare the output path
-    output_path = './outputs/row_'+str(row_num)+'_output/'
+    output_path = './outputs/'+run_case_str+'/row_'+str(row_num)+'_output/'
     import os
     import shutil
     if os.path.exists(output_path):
@@ -56,9 +51,13 @@ def ida_run_row(row_num, design_dict):
     db_results = pd.DataFrame(bldg_result).T
     
     # store the csv results
-    data_path = '../data/validation/'
-    output_str = 'row_'+str(row_num)+'.csv'
-    db_results.to_csv(data_path+output_str, index=False)
+    data_path = '../data/validation/'+run_case_str+'/'
+    output_str = 'row_'+str(row_num)
+    db_results.to_csv(data_path+output_str+'.csv', index=False)
+    
+    import pickle
+    with open(data_path+output_str+'.pickle', 'wb') as f:
+        pickle.dump(db_results, f)
     
     
 import argparse
@@ -67,8 +66,10 @@ parser = argparse.ArgumentParser(
     description='Create db with IDA ready to run, then run one row of the IDA df.')
 parser.add_argument('idx', metavar='i', type=int, nargs='?',
                     help='Index of the IDA df to be ran')
+parser.add_argument('run_case', metavar='s', type=str, nargs='?',
+                    help='String of run case to help organize output file')
 parser.add_argument('design', metavar='d', type=json.loads, nargs='?',
                     help='A dictionary-like string of the design. See sample taskfile for formatting.')
 
 args = parser.parse_args()
-ida_run_row(args.idx, args.design)
+ida_run_row(args.idx, args.run_case, args.design)
