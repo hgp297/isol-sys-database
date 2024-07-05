@@ -32,7 +32,6 @@ def ida_run_row(row_num, run_case_str):
     design_dict = json.loads(data)
     
     # use db to prepare all IDA runs, then grab the assigned row
-    # TODO: ida_df is not staying constant
     from db import prepare_ida_util
     import pandas as pd
     ida_df = prepare_ida_util(design_dict)
