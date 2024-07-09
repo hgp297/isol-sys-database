@@ -720,7 +720,8 @@ class Loss_Analysis:
 
 
         # get residual drift estimates 
-        superstructure_system = run.superstructure_system
+        breakpoint()
+        superstructure_system = self.superstructure_system
         if superstructure_system == 'MF':
             delta_y = 0.0075 # found from typical pushover curve for structure
         else:
@@ -892,7 +893,7 @@ class Loss_Analysis:
             # MF: set 84% collapse at 0.10 drift, 0.25 beta
             drift_mu_plus_std = 0.1
             inv_norm = norm.ppf(0.84)
-            n_stories = run.num_stories
+            n_stories = self.num_stories
             if n_stories < 4:
                 beta_drift = 0.25
             else:

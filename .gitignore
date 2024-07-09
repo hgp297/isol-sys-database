@@ -8,6 +8,7 @@
 /testing/motions/
 /outputs/
 /data/
+/taccdata/
 *.svg
 *.eps
 *.pptx

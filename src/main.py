@@ -49,59 +49,59 @@
 
 #%% run pelicun
 
-# import pandas as pd
-# pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"structural_db_parallel.pickle")
 
-# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
-#                 cmp_dir='../resource/loss/')
+main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+                cmp_dir='../resource/loss/')
 
-# import pickle
-# loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_mixed_loss.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'structural_db_parallel_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 
 #%% calculate maximum pelicun losses
 
-# import pandas as pd
-# pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"structural_db_parallel.pickle")
 
-# main_obj.calc_cmp_max(main_obj.ops_analysis,
-#                 cmp_dir='../resource/loss/')
+main_obj.calc_cmp_max(main_obj.ops_analysis,
+                cmp_dir='../resource/loss/')
 
-# import pickle
-# loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_mixed_loss_max.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'structural_db_parallel_max_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 
 
 #%% validate design
 
-from db import Database
-pickle_path = '../data/'
+# from db import Database
+# pickle_path = '../data/'
 
-import pandas as pd
+# import pandas as pd
 
-main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
+# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
     
-validation_path = '../data/validation/'
+# validation_path = '../data/validation/'
 
-# TODO: is there a way to pipe this straight from GP? and organize depending on target
-sample_dict = {
-    'gap_ratio' : 0.6,
-    'RI' : 2.25,
-    'T_ratio': 2.16,
-    'zeta_e': 0.25
-}
+# # TODO: is there a way to pipe this straight from GP? and organize depending on target
+# sample_dict = {
+#     'gap_ratio' : 0.6,
+#     'RI' : 2.25,
+#     'T_ratio': 2.16,
+#     'zeta_e': 0.25
+# }
 
-design_df = pd.DataFrame(sample_dict, index=[0])
+# design_df = pd.DataFrame(sample_dict, index=[0])
 
-main_obj.prepare_idas(design_df)
-main_obj.analyze_ida('ida_10.csv')
+# main_obj.prepare_idas(design_df)
+# main_obj.analyze_ida('ida_10.csv')
 
-import pickle
-with open(validation_path+'tfp_mf_db_ida_10.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# with open(validation_path+'tfp_mf_db_ida_10.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
