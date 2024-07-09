@@ -12,6 +12,7 @@
 
 ############################################################################
 
+# TODO: package inverse design/ML models into this
 class Database:
     
     # sets up the problem by generating building specifications

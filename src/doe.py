@@ -26,7 +26,7 @@ class GP:
     # sets up prediction variable
     def set_outcome(self, outcome_var, use_ravel=False):
         if use_ravel:
-            self.y = self._raw_data[outcome_var].ravel()
+            self.y = self._raw_data[[outcome_var]].values.ravel()
         else:
             self.y = self._raw_data[[outcome_var]]
         
@@ -64,7 +64,7 @@ class GP:
         import sklearn.gaussian_process.kernels as krn
         
         import numpy as np
-        n_vars = self.X.shape[1]
+        n_vars = self.X_train.shape[1]
         
         if kernel_name=='rbf_ard':
             kernel_base = 1.0 * krn.RBF(np.ones(n_vars))
@@ -93,10 +93,14 @@ class GP:
                                                   max_iter_predict=250))
                 ])
     
-        gp_pipe.fit(self.X, self.y)
-        tr_scr = gp_pipe.score(self.X, self.y)
-        print("The GP training score is %0.2f"
+        gp_pipe.fit(self.X_train, self.y_train)
+        tr_scr = gp_pipe.score(self.X_train, self.y_train)
+        print("The GP training score is %0.3f"
               %tr_scr)
+        
+        te_scr = gp_pipe.score(self.X_test, self.y_test)
+        print("The GP testing score is %0.3f"
+              %te_scr)
         
         self.gpc = gp_pipe
         
@@ -123,7 +127,10 @@ class GP:
         from sklearn.preprocessing import StandardScaler
             
         # pipeline to scale -> logistic
-        wts = {0: neg_wt, 1:1.0}
+        if neg_wt == False:
+            wts = None
+        else:
+            wts = {0: neg_wt, 1:1.0}
         
         if kernel_name=='rbf':
             from sklearn.metrics.pairwise import rbf_kernel
@@ -156,11 +163,11 @@ class GP:
         C = log_reg_pipe._final_estimator.C_
         tr_scr = log_reg_pipe.score(K_train, self.y_train)
         
-        print('The best logistic C value is %f with a training score of %0.2f'
+        print('The best logistic C value is %f with a training score of %0.3f'
               % (C, tr_scr))
         
         te_scr = log_reg_pipe.score(K_test, self.y_test)
-        print('Kernel logistic testing score: %0.2f'
+        print('Kernel logistic testing score: %0.3f'
               %te_scr)
         
         self.log_reg_kernel = log_reg_pipe    
@@ -174,7 +181,10 @@ class GP:
         from sklearn.metrics.pairwise import rbf_kernel
         
         # pipeline to scale -> SVC
-        wts = {0: neg_wt, 1:1.0}
+        if neg_wt == False:
+            wts = None
+        else:
+            wts = {0: neg_wt, 1:1.0}
         sv_pipe = Pipeline([('scaler', StandardScaler()),
                             ('svc', SVC(kernel=rbf_kernel, gamma='auto',
                                         probability=True,
@@ -192,12 +202,78 @@ class GP:
         sv_pipe.set_params(**svc_cv.best_params_)
         sv_pipe.fit(self.X_train, self.y_train)
         
-        print("The best SVC parameters are %s with a training score of %0.2f"
+        print("The best SVC parameters are %s with a training score of %0.3f"
               % (svc_cv.best_params_, svc_cv.best_score_))
         
         te_scr = sv_pipe.score(self.X_test, self.y_test)
-        print('SVC testing score: %0.2f' %te_scr)
+        print('SVC testing score: %0.3f' %te_scr)
         self.svc = sv_pipe
+       
+    # Train random forest classification
+    def fit_rf(self):
+        from sklearn.ensemble import RandomForestClassifier
+        
+        mdl_rf = RandomForestClassifier(n_estimators=20, random_state=985)
+        mdl_rf.fit(self.X_train, self.y_train)
+        
+        tr_scr = mdl_rf.score(self.X_train, self.y_train)
+        print("The random forest training score is %0.3f"
+              %tr_scr)
+        
+        te_scr = mdl_rf.score(self.X_test, self.y_test)
+        print("The random forest testing score is %0.3f"
+              %te_scr)
+        self.rf = mdl_rf
+    
+    # fit decision tree classification
+    def fit_dt(self):
+        from sklearn import tree
+        
+        mdl_dt = tree.DecisionTreeClassifier(max_depth=3, random_state=985)
+        mdl_dt.fit(self.X_train, self.y_train)
+        
+        tr_scr = mdl_dt.score(self.X_train, self.y_train)
+        print("The decision tree training score is %0.3f"
+              %tr_scr)
+        
+        te_scr = mdl_dt.score(self.X_test, self.y_test)
+        print("The decision tree testing score is %0.3f"
+              %te_scr)
+        
+        # tree.plot_tree(mdl_dt)
+        self.dt = mdl_dt
+        
+    def fit_ensemble(self):
+        from sklearn.ensemble import BaggingClassifier
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.ensemble import AdaBoostClassifier
+        from sklearn.tree import DecisionTreeClassifier
+        from sklearn.ensemble import GradientBoostingClassifier
+
+        
+        # mdl_en = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), 
+        #                             n_estimators=100)
+        
+        # mdl_en = BaggingClassifier(estimator=DecisionTreeClassifier(max_depth=1),
+        #                             n_estimators=20, random_state=985)
+        
+        # mdl_en = GradientBoostingClassifier(n_estimators=100, learning_rate=1.0, 
+        #                                     max_depth=1, random_state=985)
+        
+        mdl_en = RandomForestClassifier(n_estimators=20, random_state=985)
+        
+        print('Current ensembling method is', str(type(mdl_en)).split('.')[-1])
+        
+        mdl_en.fit(self.X_train, self.y_train)
+        
+        tr_scr = mdl_en.score(self.X_train, self.y_train)
+        print("The ensemble training score is %0.3f"
+              %tr_scr)
+        
+        te_scr = mdl_en.score(self.X_test, self.y_test)
+        print("The ensemble testing score is %0.3f"
+              %te_scr)
+        self.ensemble_model = mdl_en
             
     def fit_gpr_mean_fcn(self, kernel_name):
         from sklearn.pipeline import Pipeline
