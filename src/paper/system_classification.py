@@ -40,7 +40,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_mixed_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_parallel_loss.pickle")
 
 # with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
 #     main_obj = pickle.load(picklefile)
@@ -54,7 +54,7 @@ df_raw = df_raw.reset_index(drop=True)
 from scipy import stats
 df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 10].copy()
 
-df = df.drop(columns=['index'])
+# df = df.drop(columns=['index'])
 # df = df_whole.head(100).copy()
 
 df['max_drift'] = df.PID.apply(max)
@@ -77,7 +77,7 @@ df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
 
 df_loss = main_obj.loss_data
 
-max_obj = pd.read_pickle("../../data/loss/structural_db_mixed_loss_max.pickle")
+max_obj = pd.read_pickle("../../data/loss/structural_db_parallel_max_loss.pickle")
 df_loss_max = max_obj.max_loss
 
 #%% normalize DVs and prepare all variables
@@ -257,15 +257,26 @@ ax=fig.add_subplot(1, 2, 1)
 
 xx = X_plot[xvar]
 yy = X_plot[yvar]
-Z = clf_struct.ensemble_model.predict(X_plot)
+Z = clf_struct.gpc.predict(X_plot)
+
 lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 
+Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 Z_classif = Z_numbered.reshape(xx_pl.shape)
 
-plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+plt.imshow(
+        Z_classif,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.coolwarm_r,
+    )
 
 ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
            edgecolors='k', alpha = 1.0, label='CBF')
@@ -295,15 +306,26 @@ ax=fig.add_subplot(1, 2, 2)
 
 xx = X_plot[xvar]
 yy = X_plot[yvar]
-Z = clf_isol.ensemble_model.predict(X_plot)
+Z = clf_isol.gpc.predict(X_plot)
+
 lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 
+Z_numbered = clf_isol.gpc.predict_proba(X_plot)[:,1]
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 Z_classif = Z_numbered.reshape(xx_pl.shape)
 
-plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+plt.imshow(
+        Z_classif,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.coolwarm_r,
+    )
 
 ax.scatter(df_lrb[xvar], df_lrb[yvar], color=color[0],
            edgecolors='k', alpha = 1.0, label='LRB')

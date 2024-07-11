@@ -415,7 +415,7 @@ class GP:
         # # pass in secondary model, predict diagonal het-noise
         n = self.X.shape[0]
         var_est = mdl_var.kr.predict(self.X)
-        a_inv_cs_diag = np.exp(var_est.ravel())/n + 1e-3
+        a_inv_cs_diag = np.exp(var_est.ravel())/n
         
         # breakpoint()
             

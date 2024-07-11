@@ -720,7 +720,6 @@ class Loss_Analysis:
 
 
         # get residual drift estimates 
-        breakpoint()
         superstructure_system = self.superstructure_system
         if superstructure_system == 'MF':
             delta_y = 0.0075 # found from typical pushover curve for structure

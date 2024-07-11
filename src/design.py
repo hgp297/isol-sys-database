@@ -680,6 +680,7 @@ def design_LRB(param_df):
     # buckling loads and pressure check
     # displacement
     if moat_ampli*D_m/d_r > 1.0:
+        # TODO: can be helped by reducing N_lb
         return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)
     if lam_strain > 3.0:
         return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)

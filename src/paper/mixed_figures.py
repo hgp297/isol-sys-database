@@ -40,7 +40,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_mixed_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_parallel_loss.pickle")
 
 # with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
 #     main_obj = pickle.load(picklefile)
@@ -54,7 +54,7 @@ df_raw = df_raw.reset_index(drop=True)
 from scipy import stats
 df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 10].copy()
 
-df = df.drop(columns=['index'])
+# df = df.drop(columns=['index'])
 # df = df_whole.head(100).copy()
 
 df['max_drift'] = df.PID.apply(max)
@@ -77,7 +77,7 @@ df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
 
 df_loss = main_obj.loss_data
 
-max_obj = pd.read_pickle("../../data/loss/structural_db_mixed_loss_max.pickle")
+max_obj = pd.read_pickle("../../data/loss/structural_db_parallel_max_loss.pickle")
 df_loss_max = max_obj.max_loss
 
 #%%
@@ -356,8 +356,10 @@ df_lrb = df[df['isolator_system'] == 'LRB']
 df_cbf = df[df['superstructure_system'] == 'CBF']
 df_mf = df[df['superstructure_system'] == 'MF']
 
+df_no_impact = df[df['impacted'] == 0]
+
 #%% engineering data
-'''
+
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 20
@@ -847,14 +849,16 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
 fig.tight_layout()
-'''
+
 #%%  variable testing
 
 print('========= stats for repair cost ==========')
 from sklearn import preprocessing
 
-X = df[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
-y = df[cost_var].ravel()
+df_test = df_no_impact.copy()
+
+X = df_test[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
+y = df_test[cost_var].ravel()
 
 scaler = preprocessing.StandardScaler().fit(X)
 X_scaled = scaler.transform(X)
@@ -874,8 +878,8 @@ print(["%.4f" % member for member in p_values])
 print('========= stats for replacement_risk ==========')
 from sklearn import preprocessing
 
-X = df[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
-y = df['replacement_freq'].ravel()
+X = df_test[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
+y = df_test['replacement_freq'].ravel()
 
 scaler = preprocessing.StandardScaler().fit(X)
 X_scaled = scaler.transform(X)
