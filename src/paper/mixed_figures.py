@@ -480,17 +480,29 @@ def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
         lim = (int(xymax/binwidth) + 1) * binwidth
         
         bin_y = np.arange(-lim, lim + binwidth, binwidth)
+        
     elif y.name == 'RI':
         binwidth = 0.15
         xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
         lim = (int(xymax/binwidth) + 1) * binwidth
         
         bin_y = np.arange(-lim, lim + binwidth, binwidth)
-    else:
-        bin_y = bins
+        
+    elif y.name=='T_ratio' or y.name=='T_ratio_e' or 'k_ratio':
+        binwidth = 1.0
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_y = np.arange(-lim, lim + binwidth, binwidth)
         
     if x.name == 'Q':
         binwidth = 0.01
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_x = np.arange(-lim, lim + binwidth, binwidth)
+    elif x.name == 'T_ratio' or x.name=='T_ratio_e':
+        binwidth = 1.0
         xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
         lim = (int(xymax/binwidth) + 1) * binwidth
         

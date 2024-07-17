@@ -117,9 +117,9 @@ df_mf = df_no_impact[df_no_impact['superstructure_system'] == 'MF']
 print('========= stats for repair cost ==========')
 from sklearn import preprocessing
 
-df_test = df_no_impact.copy()
+df_test = df_mf.copy()
 
-X = df_test[['gap_ratio', 'RI', 'T_ratio', 'k_ratio', 'zeta_e' ,'Q']]
+X = df_test[['gap_ratio', 'RI', 'T_ratio_e', 'k_ratio', 'zeta_e' ,'Q']]
 y = df_test[cost_var].ravel()
 
 scaler = preprocessing.StandardScaler().fit(X)
@@ -138,7 +138,7 @@ print(["%.4f" % member for member in r_results])
 # print(["%.4f" % member for member in p_values])
 
 print('========= stats for repair time ==========')
-X = df_test[['gap_ratio', 'RI', 'T_ratio', 'k_ratio', 'zeta_e' ,'Q']]
+X = df_test[['gap_ratio', 'RI', 'T_ratio_e', 'k_ratio', 'zeta_e' ,'Q']]
 y = df_test[time_var].ravel()
 
 scaler = preprocessing.StandardScaler().fit(X)
