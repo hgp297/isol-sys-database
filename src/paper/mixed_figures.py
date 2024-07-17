@@ -358,6 +358,12 @@ df_mf = df[df['superstructure_system'] == 'MF']
 
 df_no_impact = df[df['impacted'] == 0]
 
+# it is currently critical that we remove the non-impact-but-collapse cases
+# these points result in high residual leading to poor regression
+
+# remove outlier point
+from scipy import stats
+df_no_impact = df_no_impact[np.abs(stats.zscore(df_no_impact['cmp_cost_ratio'])) < 10].copy()
 #%% engineering data
 
 plt.rcParams["font.family"] = "serif"
@@ -850,51 +856,6 @@ ax.zaxis.pane.fill = False
 
 fig.tight_layout()
 
-#%%  variable testing
-
-print('========= stats for repair cost ==========')
-from sklearn import preprocessing
-
-df_test = df_no_impact.copy()
-
-X = df_test[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
-y = df_test[cost_var].ravel()
-
-scaler = preprocessing.StandardScaler().fit(X)
-X_scaled = scaler.transform(X)
-
-from sklearn.feature_selection import r_regression,f_regression
-
-r_results = r_regression(X_scaled,y)
-print("Pearson's R test: k_ratio, T_ratio, zeta, Q, Ry, GR")
-print(["%.4f" % member for member in r_results])
-
-f_statistic, p_values = f_regression(X_scaled, y)
-print("F test: k_ratio, T_ratio, zeta, Q, Ry, GR")
-print(["%.4f" % member for member in f_statistic])
-print("P-values: k_ratio, T_ratio, zeta, Q, Ry, GR")
-print(["%.4f" % member for member in p_values])
-
-print('========= stats for replacement_risk ==========')
-from sklearn import preprocessing
-
-X = df_test[['k_ratio', 'T_ratio', 'zeta_e', 'Q', 'RI', 'gap_ratio']]
-y = df_test['replacement_freq'].ravel()
-
-scaler = preprocessing.StandardScaler().fit(X)
-X_scaled = scaler.transform(X)
-
-from sklearn.feature_selection import r_regression,f_regression
-
-r_results = r_regression(X_scaled,y)
-print("Pearson's R test: k_ratio, T_ratio, zeta, Q, Ry, GR")
-print(["%.4f" % member for member in r_results])
-
-f_statistic, p_values = f_regression(X_scaled, y)
-print("F test: k_ratio, T_ratio, zeta, Q, Ry, GR")
-print(["%.4f" % member for member in f_statistic])
-print("P-values: k_ratio, T_ratio, zeta, Q, Ry, GR")
-print(["%.4f" % member for member in p_values])
 
 #%% ml training
 
@@ -902,13 +863,14 @@ covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 
 # make prediction objects for impacted and non-impacted datasets
 df_hit = df[df['impacted'] == 1]
+df_miss = df[df['impacted'] == 0]
+
 mdl_cost_hit = GP(df_hit)
 mdl_cost_hit.set_covariates(covariate_list)
 mdl_cost_hit.set_outcome(cost_var)
 mdl_cost_hit.test_train_split(0.2)
 
-df_miss = df[df['impacted'] == 0]
-mdl_cost_miss = GP(df_miss)
+mdl_cost_miss = GP(df_no_impact)
 mdl_cost_miss.set_covariates(covariate_list)
 mdl_cost_miss.set_outcome(cost_var)
 mdl_cost_miss.test_train_split(0.2)
@@ -918,7 +880,7 @@ mdl_time_hit.set_covariates(covariate_list)
 mdl_time_hit.set_outcome(time_var)
 mdl_time_hit.test_train_split(0.2)
 
-mdl_time_miss = GP(df_miss)
+mdl_time_miss = GP(df_no_impact)
 mdl_time_miss.set_covariates(covariate_list)
 mdl_time_miss.set_outcome(time_var)
 mdl_time_miss.test_train_split(0.2)
@@ -928,7 +890,7 @@ mdl_repl_hit.set_covariates(covariate_list)
 mdl_repl_hit.set_outcome('replacement_freq')
 mdl_repl_hit.test_train_split(0.2)
 
-mdl_repl_miss = GP(df_miss)
+mdl_repl_miss = GP(df_no_impact)
 mdl_repl_miss.set_covariates(covariate_list)
 mdl_repl_miss.set_outcome('replacement_freq')
 mdl_repl_miss.test_train_split(0.2)
@@ -1099,7 +1061,7 @@ ax.scatter(df_miss[xvar][:plt_density],
             s=40, c='azure', edgecolors='k', label='No impact')
 plt.legend(fontsize=axis_font)
 
-ax.set_xlim(0.3, 2.5)
+ax.set_xlim(0.3, 2.0)
 ax.set_title(r'Impact likelihood: $R_y = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
@@ -1187,7 +1149,7 @@ ax.scatter(df_miss[xvar][:plt_density],
             s=40, c='azure', edgecolors='k', label='No impact')
 plt.legend(fontsize=axis_font)
 
-# ax.set_xlim(0.3, 2.5)
+# ax.set_xlim(0.3, 2.0)
 ax.set_title(r'Impact likelihood: $R_y = 2.0$, $GR = 1.0$', fontsize=title_font)
 ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
 ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
@@ -1262,6 +1224,117 @@ mdl_time_miss.fit_ols_ridge()
 
 mdl_repl_hit.fit_ols_ridge()
 mdl_repl_miss.fit_ols_ridge()
+
+#%%
+mdl_cost_miss.fit_gpr_mean_fcn(kernel_name='rbf_iso')
+#%% 3d surf for cost ratio - non impact set
+
+# TODO: here
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = mdl_cost_miss.gpr.predict(X_plot)
+# Z, stdev = mdl_cost_miss.predict_gpr_mean_fcn(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_miss[xvar], df_miss[yvar], df_miss[cost_var], c=df_miss[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+ax.set_zlim([0.0, 0.1])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+
+Z = mdl_cost_miss.gpr.predict(X_plot)
+# Z, stdev = mdl_cost_miss.predict_gpr_mean_fcn(X_plot)
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_miss[xvar], df_miss[yvar], df_miss[cost_var], c=df_miss[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+ax.set_zlim([0.0, 0.1])
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
 
 #%% 2d contours for replacement
 
@@ -1632,7 +1705,7 @@ clabels = ax.clabel(cs, fontsize=clabel_size)
 prob_list = [0.3, 0.2, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.4, 1.5, 200)
+    xq = np.linspace(0.4, 2.0, 200)
     
     Ry_target = 1.0
     
@@ -1739,7 +1812,7 @@ clabels = ax.clabel(cs, fontsize=clabel_size)
 prob_list = [0.3, 0.2, 0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.4, 1.5, 200)
+    xq = np.linspace(0.4, 2.0, 200)
     
     Ry_target = 1.0
     
@@ -1864,7 +1937,7 @@ clabels = ax.clabel(cs, fontsize=clabel_size)
 prob_list = [0.1]
 from scipy.interpolate import RegularGridInterpolator
 for j, prob_des in enumerate(prob_list):
-    xq = np.linspace(0.4, 1.5, 200)
+    xq = np.linspace(0.4, 2.0, 200)
     
     Ry_target = 1.0
     

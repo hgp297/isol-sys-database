@@ -342,7 +342,7 @@ class GP:
             kernel_base = 1.0 * krn.RBF(np.ones(n_vars))
         elif kernel_name=='rbf_iso':
             kernel_base = 1.0 * krn.RBF(1.0)
-        elif kernel_base=='rq':
+        elif kernel_name=='rq':
             kernel_base = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
                                                     alpha=1.0)
         elif kernel_name == 'matern_iso':
@@ -355,7 +355,7 @@ class GP:
                     nu=1.5)
             
         if noise_bound is None:
-            noise_bound = (1e-8, 1e1)
+            noise_bound = (1e-8, 1e2)
             
         kernel_obj = kernel_base + krn.WhiteKernel(noise_level=0.1, noise_level_bounds=noise_bound)
         

@@ -1102,8 +1102,8 @@ T_fbe = 0.925
 Bm = np.interp(X_baseline['zeta_e'], zetaRef, BmRef)
 dm = g*1.017*X_baseline['T_ratio']*0.925/(4*pi**2*Bm)*X_baseline['gap_ratio']
 dm_val = dm.iloc[0]
-print('Displacement capacity:',
-      dm_val)
+print('Displacement capacity (cm):',
+      dm_val*2.54)
 
 design_res = 20
 X_design_cand = make_design_space(design_res)
@@ -1150,8 +1150,8 @@ print(best_design)
 T_fbe = 0.925
 Bm = np.interp(best_design['zeta_e'], zetaRef, BmRef)
 dm = g*1.017*best_design['T_ratio']*0.925/(4*pi**2*Bm)*best_design['gap_ratio']
-print('Displacement capacity:',
-      dm)
+print('Displacement capacity (cm):',
+      dm*2.54)
 
 risk_thresh = 0.05
 space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
@@ -1185,8 +1185,8 @@ print(best_design)
 T_fbe = 0.925
 Bm = np.interp(best_design['zeta_e'], zetaRef, BmRef)
 dm = g*1.017*best_design['T_ratio']*0.925/(4*pi**2*Bm)*best_design['gap_ratio']
-print('Displacement capacity:',
-      dm)
+print('Displacement capacity (cm):',
+      dm*2.54)
 
 risk_thresh = 0.025
 space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
@@ -1220,8 +1220,8 @@ print(best_design)
 T_fbe = 0.925
 Bm = np.interp(best_design['zeta_e'], zetaRef, BmRef)
 dm = g*1.017*best_design['T_ratio']*0.925/(4*pi**2*Bm)*best_design['gap_ratio']
-print('Displacement capacity:',
-      dm)
+print('Displacement capacity (cm):',
+      dm*2.54)
 
 
 #%% doe-set, Tm_zeta plot
