@@ -105,7 +105,11 @@ df['E_50%'].loc[mask] = df_loss_max['E_50%'].loc[mask]
 
 
 #%% subsets
-df_no_impact = df[df['impacted'] == 0]
+df_miss = df[df['impacted'] == 0]
+# remove outlier point
+from scipy import stats
+df_no_impact = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) < 10].copy()
+df_outlier = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) > 10].copy()
 
 df_tfp = df_no_impact[df_no_impact['isolator_system'] == 'TFP']
 df_lrb = df_no_impact[df_no_impact['isolator_system'] == 'LRB']
@@ -119,26 +123,20 @@ from sklearn import preprocessing
 
 df_test = df_mf.copy()
 
-X = df_test[['gap_ratio', 'RI', 'T_ratio_e', 'k_ratio', 'zeta_e' ,'Q']]
+X = df_test[['gap_ratio', 'RI', 'T_ratio', 'k_ratio', 'zeta_e' ,'Q']]
 y = df_test[cost_var].ravel()
 
 scaler = preprocessing.StandardScaler().fit(X)
 X_scaled = scaler.transform(X)
 
-from sklearn.feature_selection import r_regression, f_regression
+from sklearn.feature_selection import r_regression
 
 r_results = r_regression(X_scaled,y)
 print("Pearson's R test: GR, Ry, T_ratio, k_ratio, zeta, Q")
 print(["%.4f" % member for member in r_results])
 
-# f_statistic, p_values = f_regression(X_scaled, y)
-# print("F test: GR, Ry, T_ratio, k_ratio, zeta, Q")
-# print(["%.4f" % member for member in f_statistic])
-# print("P-values: GR, Ry, T_ratio, k_ratio, zeta, Q")
-# print(["%.4f" % member for member in p_values])
-
 print('========= stats for repair time ==========')
-X = df_test[['gap_ratio', 'RI', 'T_ratio_e', 'k_ratio', 'zeta_e' ,'Q']]
+X = df_test[['gap_ratio', 'RI', 'T_ratio', 'k_ratio', 'zeta_e' ,'Q']]
 y = df_test[time_var].ravel()
 
 scaler = preprocessing.StandardScaler().fit(X)
@@ -148,8 +146,28 @@ r_results = r_regression(X_scaled,y)
 print("Pearson's R test: GR, Ry, T_ratio, k_ratio, zeta, Q")
 print(["%.4f" % member for member in r_results])
 
-# f_statistic, p_values = f_regression(X_scaled, y)
-# print("F test: GR, Ry, T_ratio, k_ratio, zeta, Q")
-# print(["%.4f" % member for member in f_statistic])
-# print("P-values: GR, Ry, T_ratio, k_ratio, zeta, Q")
-# print(["%.4f" % member for member in p_values])
+#%% Tfbe regression
+
+plt.close('all')
+
+df_cbf = df[df['superstructure_system'] == 'CBF']
+df_mf = df[df['superstructure_system'] == 'MF']
+
+cmap = plt.cm.tab10
+
+fig, ax = plt.subplots(1, 1, figsize=(8,6))
+ax.scatter(df_cbf['h_bldg'], df_cbf['T_fb'], alpha=0.7, color=cmap(1), label='CBF')
+ax.scatter(df_mf['h_bldg'], df_mf['T_fb'], alpha=0.7, color=cmap(0), label='MF')
+
+hnx = np.linspace(20, 120, 200)
+tfbe_mf = 1.4*0.028*(hnx)**(0.8)
+tfbe_cbf = 1.4*0.02*(hnx)**(0.75)
+
+ax.plot(hnx, tfbe_mf, color=cmap(0), label=r'$C_u T_a$: MF')
+ax.plot(hnx, tfbe_cbf, color=cmap(1), label=r'$C_u T_a$: CBF')
+
+ax.set_ylabel("$T_{fb}$ (s)", fontsize=axis_font)
+ax.set_xlabel('$h_n$ (ft)', fontsize=axis_font)
+
+ax.set_xlim([30, 100])
+ax.legend()

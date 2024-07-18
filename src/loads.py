@@ -111,7 +111,7 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
 def get_Ct(frame_type):
     return {
         'MF': 0.028,
-        'CBF' : 0.03,
+        'CBF' : 0.02,
         'BRB' : 0.03, 
         'SW' : 0.02
     }.get(frame_type, 0.02)

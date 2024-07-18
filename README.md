@@ -16,7 +16,7 @@ The database is utilized to generate inverse design targeting specific structura
 
 ## Dependencies
 
-A comprehensive ```.yaml``` file containing the below dependencies is available for virtual environment setup (in Conda). However, it is derived directly from my working environment and includes some personal software, such as the Spyder IDA. Please remove these as necessary.
+A comprehensive ```.yaml``` file containing the below dependencies is available for virtual environment setup (in Conda). However, it is derived directly from my working environment and includes some personal software, such as the Spyder IDE. Please remove these as necessary.
 
 * Structural software:
 	* OpenSeesPy 3.4.0
