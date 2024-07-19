@@ -196,8 +196,8 @@ df_mf_max = df_loss_max[df['superstructure_system'] == 'MF']
 cmap = plt.cm.tab10
 
 fig, ax = plt.subplots(1, 1, figsize=(8,6))
-ax.scatter(df_cbf['Vs'], df_cbf_max['B_50%'], alpha=0.7, color=cmap(1), label='CBF')
-ax.scatter(df_mf['Vs'], df_mf_max['B_50%'], alpha=0.7, color=cmap(0), label='MF')
+ax.scatter(df_cbf['Vs'], df_cbf_max['B_50%'], alpha=0.5, color=cmap(1), label='CBF')
+ax.scatter(df_mf['Vs'], df_mf_max['B_50%'], alpha=0.5, color=cmap(0), label='MF')
 
 ax.set_ylabel("Structural component cost (\$)", fontsize=axis_font)
 ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)
@@ -313,6 +313,8 @@ df['steel_cost'] = df.apply(
            steel_per_unit=1.25),
        axis='columns', result_type='expand')
 
+df['steel_cost_per_sf'] = df['steel_cost'] / df['bldg_area']
+
 #%% steel weight calc plot
 
 # plt.close('all')
@@ -324,10 +326,201 @@ df_mf = df[df['superstructure_system'] == 'MF']
 cmap = plt.cm.tab10
 
 fig, ax = plt.subplots(1, 1, figsize=(8,6))
-ax.scatter(df_cbf['Vs'], df_cbf['steel_cost'], alpha=0.7, color=cmap(1), label='CBF')
-ax.scatter(df_mf['Vs'], df_mf['steel_cost'], alpha=0.7, color=cmap(0), label='MF')
+ax.scatter(df_cbf['Vs'], df_cbf['steel_cost'], alpha=0.5, color=cmap(1), label='CBF')
+ax.scatter(df_mf['Vs'], df_mf['steel_cost'], alpha=0.5, color=cmap(0), label='MF')
 
 ax.set_ylabel("Steel cost (\$)", fontsize=axis_font)
 ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)
 
 ax.legend()
+
+#%% two loss metrics
+
+# plt.close('all')
+
+df_cbf = df[df['superstructure_system'] == 'CBF']
+df_mf = df[df['superstructure_system'] == 'MF']
+
+df_cbf_max = df_loss_max[df['superstructure_system'] == 'CBF']
+df_mf_max = df_loss_max[df['superstructure_system'] == 'MF']
+
+cmap = plt.cm.tab10
+
+fig, ax = plt.subplots(1, 1, figsize=(8,6))
+ax.scatter(df_cbf['steel_cost'], df_cbf_max['B_50%'], alpha=0.5, color=cmap(1), label='CBF')
+ax.scatter(df_mf['steel_cost'], df_mf_max['B_50%'], alpha=0.5, color=cmap(0), label='MF')
+
+ax.set_ylabel("Structural component cost (\$)", fontsize=axis_font)
+ax.set_xlabel('Steel cost (\$)', fontsize=axis_font)
+
+ax.legend()
+
+#%% area normalization
+
+# plt.close('all')
+
+df_cbf = df[df['superstructure_system'] == 'CBF']
+df_mf = df[df['superstructure_system'] == 'MF']
+
+
+cmap = plt.cm.tab10
+
+fig, ax = plt.subplots(1, 1, figsize=(8,6))
+ax.scatter(df_cbf['bldg_area'], df_cbf['Vs'], alpha=0.5, color=cmap(1), label='CBF')
+ax.scatter(df_mf['bldg_area'], df_mf['Vs'], alpha=0.5, color=cmap(0), label='MF')
+
+ax.set_xlabel("Building area (sq ft)", fontsize=axis_font)
+ax.set_ylabel('$V_s$ (kip)', fontsize=axis_font)
+
+ax.legend()
+
+#%% regressions of cost
+
+# linear regress cost as f(base shear)
+from sklearn.linear_model import LinearRegression
+reg_mf = LinearRegression()
+reg_mf.fit(X=df_mf[['Vs']], y=df_mf[['steel_cost']])
+
+reg_cbf = LinearRegression()
+reg_cbf.fit(X=df_cbf[['Vs']], y=df_cbf[['steel_cost']])
+
+reg_dict = {
+    'mf':reg_mf,
+    'cbf':reg_cbf
+    }
+#%% calculate cost of new point
+
+def calc_upfront_cost(X, config_dict, steel_cost_dict,
+                      land_cost_per_sqft=2837/(3.28**2)):
+    
+    from scipy.interpolate import interp1d
+    zeta_ref = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    Bm_ref = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    interp_f = interp1d(zeta_ref, Bm_ref)
+    Bm = interp_f(X['zeta_e'])
+    
+    # estimate Tm
+    config_df = pd.DataFrame(config_dict, index=[0])
+    from loads import estimate_period, define_gravity_loads
+    W_and_loads = config_df.apply(lambda row: define_gravity_loads(row),
+                                            axis='columns', result_type='expand')
+    
+    # order of outputs are below
+    # W_seis, W_super, w_on_frame, P_on_leaning_column, all_w_cases, all_plc_cases
+    W_seis = W_and_loads.iloc[0][0]
+    W_super = W_and_loads.iloc[0][1]
+    
+    # perform calculation for both MF and CBF
+    X_query = X.copy()
+    X_query['h_bldg'] = config_dict['num_stories'] * config_dict['h_story']
+    
+    # estimate periods
+    X_mf = X_query.copy()
+    X_mf['superstructure_system'] = 'MF'
+    X_mf['T_fbe'] = X_mf.apply(lambda row: estimate_period(row),
+                                                     axis='columns', result_type='expand')
+    
+    X_cbf = X_query.copy()
+    X_cbf['superstructure_system'] = 'CBF'
+    X_cbf['h_bldg'] = config_dict['num_stories'] * config_dict['h_story']
+    X_cbf['T_fbe'] = X_cbf.apply(lambda row: estimate_period(row),
+                                                     axis='columns', result_type='expand')
+    
+    
+    X_query['T_fbe_mf'] = X_mf['T_fbe']
+    X_query['T_fbe_cbf'] = X_cbf['T_fbe']
+    
+    X_query['T_m_mf'] = X_query['T_fbe_mf'] * X_query['T_ratio']
+    X_query['T_m_cbf'] = X_query['T_fbe_cbf'] * X_query['T_ratio']
+    
+    # calculate moat gap
+    pi = 3.14159
+    g = 386.4
+    SaTm_mf = config_dict['S_1']/X_query['T_m_mf']
+    moat_gap_mf = X_query['gap_ratio'] * (g*(SaTm_mf/Bm)*X_query['T_m_mf']**2)/(4*pi**2)
+    
+    # calculate design base shear
+    kM_mf = (1/g)*(2*pi/X_query['T_m_mf'])**2
+    Dm_mf = g*config_dict['S_1']*X_query['T_m_mf']/(4*pi**2*Bm)
+    Vb_mf = Dm_mf * kM_mf * W_super / 2
+    Vst_mf = Vb_mf*(W_super/W_seis)**(1 - 2.5*X_query['zeta_e'])
+    Vs_mf = Vst_mf/X_query['RI']
+    
+    # regression was done for steel cost ~ Vs
+    reg_mf = steel_cost_dict['mf']
+    steel_cost_mf = reg_mf.intercept_.item() + reg_mf.coef_.item()*Vs_mf
+    
+    L_bldg = config_dict['L_bay']*config_dict['num_bays']
+    land_area_mf = (L_bldg*12.0 + moat_gap_mf)**2
+    land_cost_mf = land_cost_per_sqft/144.0 * land_area_mf
+    
+    # repeat for cbf
+    # calculate moat gap
+    pi = 3.14159
+    g = 386.4
+    SaTm_cbf = config_dict['S_1']/X_query['T_m_cbf']
+    moat_gap_cbf = X_query['gap_ratio'] * (g*(SaTm_cbf/Bm)*X_query['T_m_cbf']**2)/(4*pi**2)
+    
+    # calculate design base shear
+    kM_cbf = (1/g)*(2*pi/X_query['T_m_cbf'])**2
+    Dm_cbf = g*config_dict['S_1']*X_query['T_m_cbf']/(4*pi**2*Bm)
+    Vb_cbf = Dm_cbf * kM_cbf * W_super / 2
+    Vst_cbf = Vb_cbf*(W_super/W_seis)**(1 - 2.5*X_query['zeta_e'])
+    Vs_cbf = Vst_cbf/X_query['RI']
+    
+    # regression was done for steel cost ~ Vs
+    reg_cbf = steel_cost_dict['cbf']
+    steel_cost_cbf = reg_cbf.intercept_.item() + reg_cbf.coef_.item()*Vs_cbf
+    
+    L_bldg = config_dict['L_bay']*config_dict['num_bays']
+    land_area_cbf = (L_bldg*12.0 + moat_gap_cbf)**2
+    land_cost_cbf = land_cost_per_sqft/144.0 * land_area_cbf
+    
+    return({'total_mf': steel_cost_mf + land_cost_mf,
+            'steel_mf': steel_cost_mf,
+            'land_mf': land_cost_mf,
+           'total_cbf': steel_cost_cbf + land_cost_cbf,
+           'steel_cbf': steel_cost_cbf,
+           'land_cbf': land_cost_cbf})
+
+def make_design_space(res, zeta_fix=None):
+    if zeta_fix is None:
+        xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.5,
+                                                 res),
+                                     np.linspace(0.5, 2.25,
+                                                 res),
+                                     np.linspace(2.0, 5.0,
+                                                 res),
+                                     np.linspace(0.1, 0.25,
+                                                 res))
+    else:
+        xx, yy, uu, vv = np.meshgrid(np.linspace(0.6, 1.5,
+                                                 res),
+                                     np.linspace(0.5, 2.25,
+                                                 res),
+                                     np.linspace(2.0, 5.0,
+                                                 res),
+                                     zeta_fix)    
+                                 
+    X_space = pd.DataFrame({'gap_ratio':xx.ravel(),
+                         'RI':yy.ravel(),
+                         'T_ratio':uu.ravel(),
+                         'zeta_e':vv.ravel()})
+
+    return(X_space)
+
+#%%
+res_des = 20
+X_space = make_design_space(res_des)
+
+config_dict = {
+    'num_stories': 4,
+    'h_story': 13.0,
+    'num_bays': 4,
+    'num_frames': 2,
+    'S_s': 2.2815,
+    'L_bay': 30.0,
+    'S_1': 1.017
+    }
+
+cost_dict = calc_upfront_cost(X_space, config_dict=config_dict, steel_cost_dict=reg_dict)
