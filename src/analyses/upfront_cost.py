@@ -224,7 +224,7 @@ def moment_frame_cost(df, steel_per_unit=1.25):
     # col_all_wt = np.array(list(map(sum, col_wt)))
     # beam_all_wt = np.array(list(map(sum, beam_wt)))
     
-    # find true steel costs
+    # only 2 lateral frames
     n_frames = 4
     n_cols = 4*n_bays
     
@@ -239,13 +239,13 @@ def moment_frame_cost(df, steel_per_unit=1.25):
     steel_cost = steel_per_unit*bldg_wt
     return(steel_cost)
 
-# TODO: this does not include gravity frames
 def braced_frame_cost(df, brace_db, steel_per_unit=1.25):
     n_bays = df.num_bays
     
     # ft
     L_beam = df.L_bay
     h_story = df.h_story
+    n_stories = df.num_stories
     
     from math import atan, cos
     theta = atan(h_story/(L_beam/2))
@@ -264,6 +264,7 @@ def braced_frame_cost(df, brace_db, steel_per_unit=1.25):
     brace_wt = [brace_db.loc[brace_db['AISC_Manual_Label'] == brace_name]['W'].item() 
                     for brace_name in all_braces]
     
+    # only 2 lateral frames
     n_frames = 4
     
     # in CBF, only count the big frames
@@ -272,12 +273,24 @@ def braced_frame_cost(df, brace_db, steel_per_unit=1.25):
     floor_col_length = np.array(n_cols*h_story, dtype=float)
     floor_beam_length = np.array(L_beam * n_braced * n_frames, dtype=float)
     floor_brace_length = np.array(L_brace * n_braced * n_frames, dtype=float)
-        
+    
+    n_every_col = 4*n_bays
+    full_frame_col_length = np.array(n_every_col*h_story, dtype=float)
+    full_frame_beam_length = np.array(L_beam * n_bays * n_frames, dtype=float)
+    grav_col_length = full_frame_col_length - floor_col_length
+    grav_beam_length = full_frame_beam_length - floor_beam_length
+    
+    # assume W14x120 grav columns, W16x31 beams
+    grav_col_wt = np.repeat(120.0, n_stories)*grav_col_length
+    grav_beam_wt = np.repeat(31.0, n_stories)*grav_beam_length
+    
     floor_col_wt = col_wt*floor_col_length 
     floor_beam_wt = beam_wt*floor_beam_length
     floor_brace_wt = brace_wt*floor_brace_length
     
-    bldg_wt = sum(floor_col_wt) + sum(floor_beam_wt) + sum(floor_brace_wt)
+    bldg_wt = (sum(floor_col_wt) + sum(floor_beam_wt) + sum(floor_brace_wt) +
+               sum(grav_col_wt) + sum(grav_beam_wt))
+    
     steel_cost = steel_per_unit*bldg_wt
     
     return(steel_cost)
