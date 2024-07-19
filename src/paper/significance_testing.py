@@ -148,7 +148,7 @@ print(["%.4f" % member for member in r_results])
 
 #%% Tfbe regression
 
-plt.close('all')
+# plt.close('all')
 
 df_cbf = df[df['superstructure_system'] == 'CBF']
 df_mf = df[df['superstructure_system'] == 'MF']
