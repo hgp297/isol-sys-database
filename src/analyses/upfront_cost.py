@@ -381,7 +381,7 @@ from sklearn.linear_model import LinearRegression
 reg_mf = LinearRegression(fit_intercept=False)
 reg_mf.fit(X=df_mf[['Vs']], y=df_mf[['steel_cost']])
 
-reg_cbf = LinearRegression()
+reg_cbf = LinearRegression(fit_intercept=False)
 reg_cbf.fit(X=df_cbf[['Vs']], y=df_cbf[['steel_cost']])
 
 reg_dict = {
