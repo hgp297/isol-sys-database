@@ -378,7 +378,7 @@ ax.legend()
 
 # linear regress cost as f(base shear)
 from sklearn.linear_model import LinearRegression
-reg_mf = LinearRegression()
+reg_mf = LinearRegression(fit_intercept=False)
 reg_mf.fit(X=df_mf[['Vs']], y=df_mf[['steel_cost']])
 
 reg_cbf = LinearRegression()
@@ -448,7 +448,10 @@ def calc_upfront_cost(X, config_dict, steel_cost_dict,
     
     # regression was done for steel cost ~ Vs
     reg_mf = steel_cost_dict['mf']
-    steel_cost_mf = reg_mf.intercept_.item() + reg_mf.coef_.item()*Vs_mf
+    try:
+        steel_cost_mf = reg_mf.intercept_.item() + reg_mf.coef_.item()*Vs_mf
+    except:
+        steel_cost_mf = reg_mf.intercept_ + reg_mf.coef_.item()*Vs_mf    
     
     L_bldg = config_dict['L_bay']*config_dict['num_bays']
     land_area_mf = (L_bldg*12.0 + moat_gap_mf)**2
@@ -470,8 +473,11 @@ def calc_upfront_cost(X, config_dict, steel_cost_dict,
     
     # regression was done for steel cost ~ Vs
     reg_cbf = steel_cost_dict['cbf']
-    steel_cost_cbf = reg_cbf.intercept_.item() + reg_cbf.coef_.item()*Vs_cbf
-    
+    try:
+        steel_cost_cbf = reg_cbf.intercept_.item() + reg_cbf.coef_.item()*Vs_cbf
+    except:
+        steel_cost_cbf = reg_cbf.intercept_ + reg_cbf.coef_.item()*Vs_cbf
+        
     L_bldg = config_dict['L_bay']*config_dict['num_bays']
     land_area_cbf = (L_bldg*12.0 + moat_gap_cbf)**2
     land_cost_cbf = land_cost_per_sqft/144.0 * land_area_cbf
@@ -481,7 +487,9 @@ def calc_upfront_cost(X, config_dict, steel_cost_dict,
             'land_mf': land_cost_mf,
            'total_cbf': steel_cost_cbf + land_cost_cbf,
            'steel_cbf': steel_cost_cbf,
-           'land_cbf': land_cost_cbf})
+           'land_cbf': land_cost_cbf,
+           'Vs_cbf': Vs_cbf,
+           'Vs_mf': Vs_mf})
 
 def make_design_space(res, zeta_fix=None):
     if zeta_fix is None:
@@ -510,13 +518,13 @@ def make_design_space(res, zeta_fix=None):
     return(X_space)
 
 #%%
-res_des = 20
+res_des = 5
 X_space = make_design_space(res_des)
 
 config_dict = {
-    'num_stories': 4,
+    'num_stories': 3,
     'h_story': 13.0,
-    'num_bays': 4,
+    'num_bays': 3,
     'num_frames': 2,
     'S_s': 2.2815,
     'L_bay': 30.0,
@@ -524,3 +532,23 @@ config_dict = {
     }
 
 cost_dict = calc_upfront_cost(X_space, config_dict=config_dict, steel_cost_dict=reg_dict)
+
+#%% area normalization
+
+# plt.close('all')
+
+cmap = plt.cm.tab10
+
+fig, ax = plt.subplots(1, 1, figsize=(8,6))
+ax.scatter(cost_dict['Vs_cbf'], cost_dict['steel_cbf'], alpha=0.5, color=cmap(1), label='CBF-design')
+ax.scatter(cost_dict['Vs_mf'], cost_dict['steel_mf'], alpha=0.5, color=cmap(0), label='MF-design')
+
+ax.scatter(df_cbf['Vs'], df_cbf['steel_cost'], 
+           alpha=0.5, color=cmap(1), marker='^', label='CBF-data')
+ax.scatter(df_mf['Vs'], df_mf['steel_cost'], 
+           alpha=0.5, color=cmap(0), marker='^', label='MF-data')
+
+ax.set_ylabel("Upfront cost (\$)", fontsize=axis_font)
+ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)
+
+ax.legend()
