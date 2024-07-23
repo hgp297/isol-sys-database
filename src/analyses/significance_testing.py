@@ -106,10 +106,11 @@ df['E_50%'].loc[mask] = df_loss_max['E_50%'].loc[mask]
 
 #%% subsets
 df_miss = df[df['impacted'] == 0]
+
 # remove outlier point
 from scipy import stats
-df_no_impact = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) < 10].copy()
-df_outlier = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) > 10].copy()
+df_no_impact = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) < 5].copy()
+df_outlier = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) > 5].copy()
 
 df_tfp = df_no_impact[df_no_impact['isolator_system'] == 'TFP']
 df_lrb = df_no_impact[df_no_impact['isolator_system'] == 'LRB']
@@ -121,7 +122,7 @@ df_mf = df_no_impact[df_no_impact['superstructure_system'] == 'MF']
 print('========= stats for repair cost ==========')
 from sklearn import preprocessing
 
-df_test = df_mf.copy()
+df_test = df_lrb.copy()
 
 X = df_test[['gap_ratio', 'RI', 'T_ratio', 'k_ratio', 'zeta_e' ,'Q']]
 y = df_test[cost_var].ravel()
@@ -145,19 +146,18 @@ X_scaled = scaler.transform(X)
 r_results = r_regression(X_scaled,y)
 print("Pearson's R test: GR, Ry, T_ratio, k_ratio, zeta, Q")
 print(["%.4f" % member for member in r_results])
-
 #%% Tfbe regression
 
-# plt.close('all')
+plt.close('all')
 
-df_cbf = df[df['superstructure_system'] == 'CBF']
-df_mf = df[df['superstructure_system'] == 'MF']
+df_cbf_tfbe = df[df['superstructure_system'] == 'CBF']
+df_mf_tfbe = df[df['superstructure_system'] == 'MF']
 
 cmap = plt.cm.tab10
 
 fig, ax = plt.subplots(1, 1, figsize=(8,6))
-ax.scatter(df_cbf['h_bldg'], df_cbf['T_fb'], alpha=0.7, color=cmap(1), label='CBF')
-ax.scatter(df_mf['h_bldg'], df_mf['T_fb'], alpha=0.7, color=cmap(0), label='MF')
+ax.scatter(df_cbf_tfbe['h_bldg'], df_cbf_tfbe['T_fb'], alpha=0.7, color=cmap(1), label='CBF')
+ax.scatter(df_mf_tfbe['h_bldg'], df_mf_tfbe['T_fb'], alpha=0.7, color=cmap(0), label='MF')
 
 hnx = np.linspace(20, 120, 200)
 tfbe_mf = 1.4*0.028*(hnx)**(0.8)
@@ -171,3 +171,229 @@ ax.set_xlabel('$h_n$ (ft)', fontsize=axis_font)
 
 ax.set_xlim([30, 100])
 ax.legend()
+
+
+#%% 1d regression: structure, cost
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 8))
+
+from sklearn import linear_model
+regr = linear_model.LinearRegression()
+
+ax = fig.add_subplot(2, 3, 1)
+xvar = 'RI'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("$R_y$", fontsize=axis_font)
+ax.set_ylabel('Cost ratio', fontsize=axis_font)
+ax.legend()
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 2)
+xvar = 'gap_ratio'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("$GR$", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 3)
+xvar = 'T_ratio'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("$T_M/T_{fb}$", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 4)
+xvar = 'zeta_e'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("$\zeta_e$", fontsize=axis_font)
+ax.set_ylabel('Cost ratio', fontsize=axis_font)
+ax.legend()
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 5)
+xvar = 'k_ratio'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("$k_1/k_2$", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 6)
+xvar = 'Q'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("$Q$", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+fig.tight_layout()
+
+#%% 1d regression, bearing, cost
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+
+fig = plt.figure(figsize=(16, 8))
+
+from sklearn import linear_model
+regr = linear_model.LinearRegression()
+
+ax = fig.add_subplot(2, 3, 1)
+xvar = 'RI'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_lrb[xvar], df_lrb['cmp_cost_ratio'], alpha=0.7, color=cmap(2), label='LRB')
+regr.fit(df_lrb[[xvar]], df_lrb[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(2), linewidth=3)
+
+ax.scatter(df_tfp[xvar], df_tfp['cmp_cost_ratio'], alpha=0.7, color=cmap(3), label='TFP')
+regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
+ax.set_xlabel("$R_y$", fontsize=axis_font)
+ax.set_ylabel('Cost ratio', fontsize=axis_font)
+ax.legend()
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 2)
+xvar = 'gap_ratio'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_lrb[xvar], df_lrb['cmp_cost_ratio'], alpha=0.7, color=cmap(2), label='LRB')
+regr.fit(df_lrb[[xvar]], df_lrb[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(2), linewidth=3)
+
+ax.scatter(df_tfp[xvar], df_tfp['cmp_cost_ratio'], alpha=0.7, color=cmap(3), label='TFP')
+regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
+ax.set_xlabel("$GR$", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 3)
+xvar = 'T_ratio'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_lrb[xvar], df_lrb['cmp_cost_ratio'], alpha=0.7, color=cmap(2), label='LRB')
+regr.fit(df_lrb[[xvar]], df_lrb[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(2), linewidth=3)
+
+ax.scatter(df_tfp[xvar], df_tfp['cmp_cost_ratio'], alpha=0.7, color=cmap(3), label='TFP')
+regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
+ax.set_xlabel("$T_M/T_{fb}$", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 4)
+xvar = 'zeta_e'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_lrb[xvar], df_lrb['cmp_cost_ratio'], alpha=0.7, color=cmap(2), label='LRB')
+regr.fit(df_lrb[[xvar]], df_lrb[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(2), linewidth=3)
+
+ax.scatter(df_tfp[xvar], df_tfp['cmp_cost_ratio'], alpha=0.7, color=cmap(3), label='TFP')
+regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
+ax.set_xlabel("$\zeta_e$", fontsize=axis_font)
+ax.set_ylabel('Cost ratio', fontsize=axis_font)
+ax.legend()
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 5)
+xvar = 'k_ratio'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_lrb[xvar], df_lrb['cmp_cost_ratio'], alpha=0.7, color=cmap(2), label='LRB')
+regr.fit(df_lrb[[xvar]], df_lrb[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(2), linewidth=3)
+
+ax.scatter(df_tfp[xvar], df_tfp['cmp_cost_ratio'], alpha=0.7, color=cmap(3), label='TFP')
+regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
+ax.set_xlabel("$k_1/k_2$", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 6)
+xvar = 'Q'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_lrb[xvar], df_lrb['cmp_cost_ratio'], alpha=0.7, color=cmap(2), label='LRB')
+regr.fit(df_lrb[[xvar]], df_lrb[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(2), linewidth=3)
+
+ax.scatter(df_tfp[xvar], df_tfp['cmp_cost_ratio'], alpha=0.7, color=cmap(3), label='TFP')
+regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
+ax.set_xlabel("$Q$", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+fig.tight_layout()
+

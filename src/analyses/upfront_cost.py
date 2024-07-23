@@ -52,7 +52,7 @@ df_raw = df_raw.reset_index(drop=True)
 
 # remove the singular outlier point
 from scipy import stats
-df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 10].copy()
+df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 5].copy()
 
 # df = df.drop(columns=['index'])
 # df = df_whole.head(100).copy()
@@ -175,7 +175,7 @@ df_no_impact = df[df['impacted'] == 0]
 
 # remove the singular outlier point
 from scipy import stats
-df_no_impact = df_no_impact[np.abs(stats.zscore(df_no_impact['cmp_cost_ratio'])) < 10].copy()
+df_no_impact = df_no_impact[np.abs(stats.zscore(df_no_impact['cmp_cost_ratio'])) < 5].copy()
 
 df_tfp = df_no_impact[df_no_impact['isolator_system'] == 'TFP']
 df_lrb = df_no_impact[df_no_impact['isolator_system'] == 'LRB']
@@ -533,20 +533,20 @@ config_dict = {
 
 cost_dict = calc_upfront_cost(X_space, config_dict=config_dict, steel_cost_dict=reg_dict)
 
-#%% area normalization
+#%% 
 
 # plt.close('all')
 
 cmap = plt.cm.tab10
 
 fig, ax = plt.subplots(1, 1, figsize=(8,6))
-ax.scatter(cost_dict['Vs_cbf'], cost_dict['steel_cbf'], alpha=0.5, color=cmap(1), label='CBF-design')
-ax.scatter(cost_dict['Vs_mf'], cost_dict['steel_mf'], alpha=0.5, color=cmap(0), label='MF-design')
+ax.scatter(cost_dict['Vs_cbf'], cost_dict['steel_cbf'], color=cmap(1), label='CBF-design')
+ax.scatter(cost_dict['Vs_mf'], cost_dict['steel_mf'], color=cmap(0), label='MF-design')
 
 ax.scatter(df_cbf['Vs'], df_cbf['steel_cost'], 
-           alpha=0.5, color=cmap(1), marker='^', label='CBF-data')
+           alpha=0.3, color=cmap(1), marker='^', label='CBF-data')
 ax.scatter(df_mf['Vs'], df_mf['steel_cost'], 
-           alpha=0.5, color=cmap(0), marker='^', label='MF-data')
+           alpha=0.3, color=cmap(0), marker='^', label='MF-data')
 
 ax.set_ylabel("Upfront cost (\$)", fontsize=axis_font)
 ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)

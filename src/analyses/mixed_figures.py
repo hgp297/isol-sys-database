@@ -52,7 +52,7 @@ df_raw = df_raw.reset_index(drop=True)
 
 # remove the singular outlier point
 from scipy import stats
-df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 10].copy()
+df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 5].copy()
 
 # df = df.drop(columns=['index'])
 # df = df_whole.head(100).copy()
@@ -363,7 +363,7 @@ df_no_impact = df[df['impacted'] == 0]
 
 # remove outlier point
 from scipy import stats
-df_no_impact = df_no_impact[np.abs(stats.zscore(df_no_impact['cmp_cost_ratio'])) < 10].copy()
+df_no_impact = df_no_impact[np.abs(stats.zscore(df_no_impact['cmp_cost_ratio'])) < 5].copy()
 #%% engineering data
 
 plt.rcParams["font.family"] = "serif"

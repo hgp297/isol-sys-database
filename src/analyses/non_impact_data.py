@@ -52,7 +52,7 @@ df_raw = df_raw.reset_index(drop=True)
 
 # remove the singular outlier point
 from scipy import stats
-df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 10].copy()
+df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 5].copy()
 
 # df = df.drop(columns=['index'])
 # df = df_whole.head(100).copy()
@@ -171,11 +171,11 @@ df['E_50%'].loc[mask] = df_loss_max['E_50%'].loc[mask]
 
 #%% subsets
 
-df_no_impact = df[df['impacted'] == 0]
+df_miss = df[df['impacted'] == 0]
 
 # remove the singular outlier point
 from scipy import stats
-df_no_impact = df_no_impact[np.abs(stats.zscore(df_no_impact['cmp_cost_ratio'])) < 10].copy()
+df_no_impact = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) < 5].copy()
 
 df_tfp = df_no_impact[df_no_impact['isolator_system'] == 'TFP']
 df_lrb = df_no_impact[df_no_impact['isolator_system'] == 'LRB']
@@ -230,7 +230,7 @@ sns.boxplot(y="bin", x= "max_drift", data=df_no_impact,  showfliers=False,
 
 ax.set_ylabel('$R_y$ range', fontsize=axis_font)
 ax.set_xlabel('Peak interstory drift (PID)', fontsize=axis_font)
-plt.xlim([0.0, 0.15])
+# plt.xlim([0.0, 0.15])
 
 
 
