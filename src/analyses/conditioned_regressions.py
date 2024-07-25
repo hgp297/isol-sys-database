@@ -212,6 +212,16 @@ df_mf_lrb = df_lrb[df_lrb['superstructure_system'] == 'MF']
 df_cbf_tfp = df_tfp[df_tfp['superstructure_system'] == 'CBF']
 df_cbf_lrb = df_lrb[df_lrb['superstructure_system'] == 'CBF']
 
+
+df_mf_tfp_i = df_mf_tfp[df_mf_tfp['impacted'] == 1]
+df_mf_tfp_o = df_mf_tfp[df_mf_tfp['impacted'] == 0]
+df_mf_lrb_i = df_mf_lrb[df_mf_lrb['impacted'] == 1]
+df_mf_lrb_o = df_mf_lrb[df_mf_lrb['impacted'] == 0]
+
+df_cbf_tfp_i = df_cbf_tfp[df_cbf_tfp['impacted'] == 1]
+df_cbf_tfp_o = df_cbf_tfp[df_cbf_tfp['impacted'] == 0]
+df_cbf_lrb_i = df_cbf_lrb[df_cbf_lrb['impacted'] == 1]
+df_cbf_lrb_o = df_cbf_lrb[df_cbf_lrb['impacted'] == 0]
 #%%
 cmap = plt.cm.tab20
 
@@ -254,60 +264,200 @@ ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], alpha=0.5, marker='o', color=cmap
 ax.set_xlabel("$T_M/T_{fb}$", fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 
-#%%
-'''
-#%% subsets
-
-df_miss = df[df['impacted'] == 0]
-
-# remove the singular outlier point
-from scipy import stats
-df_no_impact = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) < 5].copy()
-
-df_tfp_miss = df_no_impact[df_no_impact['isolator_system'] == 'TFP']
-df_lrb_miss = df_no_impact[df_no_impact['isolator_system'] == 'LRB']
-df_cbf_miss = df_no_impact[df_no_impact['superstructure_system'] == 'CBF']
-df_mf_miss = df_no_impact[df_no_impact['superstructure_system'] == 'MF']
-
-df_hit = df[df['impacted'] == 1]
-
-df_tfp_hit = df_hit[df_hit['isolator_system'] == 'TFP']
-df_lrb_hit = df_hit[df_hit['isolator_system'] == 'LRB']
-df_cbf_hit = df_hit[df_hit['superstructure_system'] == 'CBF']
-df_mf_hit = df_hit[df_hit['superstructure_system'] == 'MF']
-
-#%% system selector
+#%% system classification model 
+# goal: Pr[sys|X]
 # consider: replacement freq, num_stories, num_bays, repair cost
+
+print('======= system classification ========')
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
-clf_struct = GP(df)
+clf_sys = GP(df)
+clf_sys.set_covariates(covariate_list)
+clf_sys.set_outcome('system', use_ravel=False)
+clf_sys.test_train_split(0.2)
 
-clf_struct.set_covariates(covariate_list)
-clf_struct.set_outcome('superstructure_system', use_ravel=False)
-clf_struct.test_train_split(0.2)
-clf_struct.fit_gpc(kernel_name='rbf_iso')
+clf_sys.fit_gpc(kernel_name='rbf_iso')
+y_pred = clf_sys.gpc.predict(clf_sys.X_test)
+y_prob = clf_sys.gpc.predict_proba(clf_sys.X_test)
+y_test = clf_sys.y_test
 
-#%% fit regressions for impact / non-impact set
-mdl_cost_mf = GP(df_mf_hit)
-mdl_cost_mf.set_covariates(covariate_list)
-mdl_cost_mf.set_outcome(cost_var)
-mdl_cost_mf.test_train_split(0.2)
+# output is alphabetical? CBF-LRB, CBF-TFP, MF-LRB, MF-TFP
 
-mdl_cost_cbf = GP(df_cbf_hit)
-mdl_cost_cbf.set_covariates(covariate_list)
-mdl_cost_cbf.set_outcome(cost_var)
-mdl_cost_cbf.test_train_split(0.2)
+#%% impact classification model
+# goal: Pr[impact|sys=sys]
 
-print('========== Fitting regressions (GPR) ============')
+# for each system, make separate impact classification model
+mdl_impact_cbf_lrb = GP(df_cbf_lrb)
+mdl_impact_cbf_lrb.set_covariates(covariate_list)
+mdl_impact_cbf_lrb.set_outcome('impacted')
+mdl_impact_cbf_lrb.test_train_split(0.2)
 
-# Fit conditioned DVs using GPR
+mdl_impact_cbf_tfp = GP(df_cbf_tfp)
+mdl_impact_cbf_tfp.set_covariates(covariate_list)
+mdl_impact_cbf_tfp.set_outcome('impacted')
+mdl_impact_cbf_tfp.test_train_split(0.2)
 
-# fit impacted set
-mdl_cost_mf.fit_gpr(kernel_name='rbf_iso')
+mdl_impact_mf_lrb = GP(df_mf_lrb)
+mdl_impact_mf_lrb.set_covariates(covariate_list)
+mdl_impact_mf_lrb.set_outcome('impacted')
+mdl_impact_mf_lrb.test_train_split(0.2)
 
-# fit no impact set
-mdl_cost_cbf.fit_gpr(kernel_name='rbf_iso')
+mdl_impact_mf_tfp = GP(df_mf_tfp)
+mdl_impact_mf_tfp.set_covariates(covariate_list)
+mdl_impact_mf_tfp.set_outcome('impacted')
+mdl_impact_mf_tfp.test_train_split(0.2)
 
-#%% 3d surf for cost ratio - non impact set
+print('======= impact classification per system ========')
+mdl_impact_cbf_lrb.fit_gpc(kernel_name='rbf_iso')
+mdl_impact_cbf_tfp.fit_gpc(kernel_name='rbf_iso')
+mdl_impact_mf_lrb.fit_gpc(kernel_name='rbf_iso')
+mdl_impact_mf_tfp.fit_gpc(kernel_name='rbf_iso')
+
+impact_clf_mdls = {'mdl_impact_cbf_lrb': mdl_impact_cbf_lrb,
+                   'mdl_impact_cbf_tfp': mdl_impact_cbf_tfp,
+                   'mdl_impact_mf_lrb': mdl_impact_mf_lrb,
+                   'mdl_impact_mf_tfp': mdl_impact_mf_tfp}
+
+
+#%% regression models: cost
+# goal: E[cost|sys=sys, impact=impact]
+
+mdl_cost_cbf_lrb_i = GP(df_cbf_lrb_i)
+mdl_cost_cbf_lrb_i.set_covariates(covariate_list)
+mdl_cost_cbf_lrb_i.set_outcome(cost_var)
+mdl_cost_cbf_lrb_i.test_train_split(0.2)
+
+mdl_cost_cbf_lrb_o = GP(df_cbf_lrb_o)
+mdl_cost_cbf_lrb_o.set_covariates(covariate_list)
+mdl_cost_cbf_lrb_o.set_outcome(cost_var)
+mdl_cost_cbf_lrb_o.test_train_split(0.2)
+
+mdl_cost_cbf_tfp_i = GP(df_cbf_tfp_i)
+mdl_cost_cbf_tfp_i.set_covariates(covariate_list)
+mdl_cost_cbf_tfp_i.set_outcome(cost_var)
+mdl_cost_cbf_tfp_i.test_train_split(0.2)
+
+mdl_cost_cbf_tfp_o = GP(df_cbf_tfp_o)
+mdl_cost_cbf_tfp_o.set_covariates(covariate_list)
+mdl_cost_cbf_tfp_o.set_outcome(cost_var)
+mdl_cost_cbf_tfp_o.test_train_split(0.2)
+
+mdl_cost_mf_lrb_i = GP(df_mf_lrb_i)
+mdl_cost_mf_lrb_i.set_covariates(covariate_list)
+mdl_cost_mf_lrb_i.set_outcome(cost_var)
+mdl_cost_mf_lrb_i.test_train_split(0.2)
+
+mdl_cost_mf_lrb_o = GP(df_mf_lrb_o)
+mdl_cost_mf_lrb_o.set_covariates(covariate_list)
+mdl_cost_mf_lrb_o.set_outcome(cost_var)
+mdl_cost_mf_lrb_o.test_train_split(0.2)
+
+mdl_cost_mf_tfp_i = GP(df_mf_tfp_i)
+mdl_cost_mf_tfp_i.set_covariates(covariate_list)
+mdl_cost_mf_tfp_i.set_outcome(cost_var)
+mdl_cost_mf_tfp_i.test_train_split(0.2)
+
+mdl_cost_mf_tfp_o = GP(df_mf_tfp_o)
+mdl_cost_mf_tfp_o.set_covariates(covariate_list)
+mdl_cost_mf_tfp_o.set_outcome(cost_var)
+mdl_cost_mf_tfp_o.test_train_split(0.2)
+
+print('======= outcome regression per system per impact ========')
+import time
+t0 = time.time()
+
+mdl_cost_cbf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_cbf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_cbf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_cbf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+
+tp = time.time() - t0
+
+print("GPR training for cost done for 8 models in %.3f s" % tp)
+
+cost_regression_mdls = {'mdl_cost_cbf_lrb_i': mdl_cost_cbf_lrb_i,
+                        'mdl_cost_cbf_lrb_o': mdl_cost_cbf_lrb_o,
+                        'mdl_cost_cbf_tfp_i': mdl_cost_cbf_tfp_i,
+                        'mdl_cost_cbf_tfp_o': mdl_cost_cbf_tfp_o,
+                        'mdl_cost_mf_lrb_i': mdl_cost_mf_lrb_i,
+                        'mdl_cost_mf_lrb_o': mdl_cost_mf_lrb_o,
+                        'mdl_cost_mf_tfp_i': mdl_cost_mf_tfp_i,
+                        'mdl_cost_mf_tfp_o': mdl_cost_mf_tfp_o}
+
+#%%
+
+def predict_outcome(X, system_clf_mdl, impact_clf_mdls, var_regr_mdls,
+               outcome='cost_50%', return_var=False):
+    """Returns the expected value of the decision variable based on the total
+    probability law (law of iterated expectation).
+    
+    E[cost] = sum_i sum_j E[cost|impact_j, system_i] Pr(impact_j | system_i) Pr(system_i)
+    
+    Currently, this assumes that the models used are all GPC/GPR.
+    
+    Parameters
+    ----------
+    X: pd dataframe of design points
+    system_clf_mdl: singular classification model for system selection (probabilistic)
+    impact_clf_mdls: one impact classification model per system combination
+        name should be 'mdl_impact_'+system_combination
+    var_regr_mdls: one regression model per system per impact status
+        name should be 'mdl_'+outcome+system_combination+impact (i or o)
+    outcome: desired name for outcome variable
+    
+    Returns
+    -------
+    expected_DV_df: DataFrame of expected DV with single column name outcome+'_pred'
+    """
+    
+    # predict system selection
+    sys_names = ['cbf_lrb', 'cbf_tfp', 'mf_lrb', 'mf_tfp']
+    sys_pred = pd.DataFrame(system_clf_mdl.gpc.predict_proba(X), columns=sys_names)
+    
+    # get name of the regression models, which are the innermost iterated expectaiton
+    regr_names = list(var_regr_mdls.keys())
+    expected_DV = None
+    
+    for mdl_name in regr_names:
+        
+        # E[cost|sys=sys, impact=impact]
+        var_pred = var_regr_mdls[mdl_name].gpr.predict(X).ravel()
+        
+        # get the system name (nested within var_regr_mdls)
+        system_var = mdl_name.split('_')[2]+'_'+mdl_name.split('_')[3]
+        
+        # get the impact status (nested within var_regr_mdls)
+        impact_var = mdl_name.split('_')[-1]
+        impact_mdl_name = 'mdl_impact_' + system_var
+        
+        # predict classification either using hit or miss model
+        # Pr[impact|sys=sys]
+        if impact_var == 'i':
+            impact_pred = impact_clf_mdls[impact_mdl_name].gpc.predict_proba(X)[:,1]
+        else:
+            impact_pred = impact_clf_mdls[impact_mdl_name].gpc.predict_proba(X)[:,0]
+            
+        # multiply and sum
+        if expected_DV is None:
+            expected_DV = np.multiply.reduce(
+                (var_pred, impact_pred, sys_pred[system_var]))
+        else:
+            expected_DV += np.multiply.reduce(
+                (var_pred, impact_pred, sys_pred[system_var]))
+    
+    outcome_str = outcome+'_pred'
+    expected_DV_df = pd.DataFrame({outcome_str:expected_DV})
+    
+    if return_var:
+        pass
+    else:
+        return expected_DV_df
+    
+
+#%% 3d surf for cost ratio - mega regression
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -316,28 +466,24 @@ subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-# plt.close('all')
+plt.close('all')
 
 fig = plt.figure(figsize=(16, 7))
 
-
-
-#################################
 xvar = 'gap_ratio'
 yvar = 'RI'
 
 res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar, 
-                            all_vars=covariate_list,
-                            third_var_set = 3.0, fourth_var_set = 0.15)
+X_plot = make_2D_plotting_space(clf_sys.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+
+Z = predict_outcome(X_plot, clf_sys, impact_clf_mdls, cost_regression_mdls,
+                    outcome=cost_var, return_var=False)
+
+
 xx = X_plot[xvar]
 yy = X_plot[yvar]
-
-
-Z = predict_DV(X_plot, clf_struct.gpc, 
-               mdl_cost_mf.gpr, mdl_cost_cbf.gpr, outcome='replacement_freq')
-
-
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
@@ -352,10 +498,8 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
-# ax.scatter(df_miss[xvar], df_miss[yvar], df_miss[cost_var], c=df_miss[cost_var],
-#            edgecolors='k', alpha = 0.7, cmap='Blues')
-
-# ax.set_zlim([0.0, 0.1])
+ax.scatter(df[xvar], df[yvar], df[cost_var], c=df[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
 
 xlim = ax.get_xlim()
 ylim = ax.get_ylim()
@@ -365,7 +509,7 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
-#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
 ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
 
 #################################
@@ -373,15 +517,15 @@ xvar = 'T_ratio'
 yvar = 'zeta_e'
 
 res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar, 
-                            all_vars=covariate_list,
+X_plot = make_2D_plotting_space(clf_sys.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = predict_outcome(X_plot, clf_sys, impact_clf_mdls, cost_regression_mdls,
+                    outcome=cost_var, return_var=False)
+
 xx = X_plot[xvar]
 yy = X_plot[yvar]
-
-Z = predict_DV(X_plot, clf_struct.gpc, 
-               mdl_cost_mf.gpr, mdl_cost_cbf.gpr, outcome='replacement_freq')
-
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
@@ -396,10 +540,9 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
-# ax.scatter(df_miss[xvar], df_miss[yvar], df_miss[cost_var], c=df_miss[cost_var],
-#            edgecolors='k', alpha = 0.7, cmap='Blues')
+ax.scatter(df[xvar], df[yvar], df[cost_var], c=df[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
 
-# ax.set_zlim([0.0, 0.1])
 xlim = ax.get_xlim()
 ylim = ax.get_ylim()
 zlim = ax.get_zlim()
@@ -408,7 +551,7 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
-#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
-'''
+

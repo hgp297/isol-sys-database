@@ -163,8 +163,8 @@ class GP:
         C = log_reg_pipe._final_estimator.C_
         tr_scr = log_reg_pipe.score(K_train, self.y_train)
         
-        print('The best logistic C value is %f with a training score of %0.3f'
-              % (C, tr_scr))
+        print('The best logistic training score is %0.3f'
+              %tr_scr)
         
         te_scr = log_reg_pipe.score(K_test, self.y_test)
         print('Kernel logistic testing score: %0.3f'

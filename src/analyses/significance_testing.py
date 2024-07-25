@@ -152,6 +152,11 @@ plt.close('all')
 
 df_cbf_tfbe = df[df['superstructure_system'] == 'CBF']
 df_mf_tfbe = df[df['superstructure_system'] == 'MF']
+df_mf_tfbe['Ta_mf'] = 0.028*df_mf_tfbe['h_bldg']**0.8
+
+from sklearn.linear_model import LinearRegression
+reg_tfbe = LinearRegression(fit_intercept=False)
+reg_tfbe.fit(X=df_mf_tfbe[['Ta_mf']], y=df_mf[['T_fb']])
 
 cmap = plt.cm.tab10
 
@@ -162,8 +167,11 @@ ax.scatter(df_mf_tfbe['h_bldg'], df_mf_tfbe['T_fb'], alpha=0.7, color=cmap(0), l
 hnx = np.linspace(20, 120, 200)
 tfbe_mf = 1.4*0.028*(hnx)**(0.8)
 tfbe_cbf = 1.4*0.02*(hnx)**(0.75)
+tfbe_mf_readjust = reg_tfbe.coef_.item()*0.028*(hnx)**(0.8)   
 
 ax.plot(hnx, tfbe_mf, color=cmap(0), label=r'$C_u T_a$: MF')
+ax.plot(hnx, tfbe_mf_readjust, linestyle='--', color=cmap(0), 
+        label=r'$C_u T_a$: MF, $C_u=1.8$')
 ax.plot(hnx, tfbe_cbf, color=cmap(1), label=r'$C_u T_a$: CBF')
 
 ax.set_ylabel("$T_{fb}$ (s)", fontsize=axis_font)

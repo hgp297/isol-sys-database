@@ -326,8 +326,10 @@ df_mf = df[df['superstructure_system'] == 'MF']
 cmap = plt.cm.tab10
 
 fig, ax = plt.subplots(1, 1, figsize=(8,6))
-ax.scatter(df_cbf['Vs'], df_cbf['steel_cost'], alpha=0.5, color=cmap(1), label='CBF')
-ax.scatter(df_mf['Vs'], df_mf['steel_cost'], alpha=0.5, color=cmap(0), label='MF')
+ax.scatter(df_cbf['Vs'], df_cbf['steel_cost'], alpha=0.5, marker='^',
+           c=df_cbf['bldg_area'], label='CBF')
+ax.scatter(df_mf['Vs'], df_mf['steel_cost'], alpha=0.5, marker='o',
+           c=df_mf['bldg_area'], label='MF')
 
 ax.set_ylabel("Steel cost (\$)", fontsize=axis_font)
 ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)
@@ -522,9 +524,9 @@ res_des = 5
 X_space = make_design_space(res_des)
 
 config_dict = {
-    'num_stories': 3,
+    'num_stories': 2,
     'h_story': 13.0,
-    'num_bays': 3,
+    'num_bays': 2,
     'num_frames': 2,
     'S_s': 2.2815,
     'L_bay': 30.0,

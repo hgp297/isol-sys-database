@@ -1611,7 +1611,7 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
-#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
 ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
 
 #################################
@@ -1656,7 +1656,7 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
-#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
 
