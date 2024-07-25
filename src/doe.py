@@ -120,6 +120,7 @@ class GP:
         self.log_reg_kernel.K_pr = K_pr
         return(K_pr)
     
+    # TODO: how to pass gamma into predictor
     def fit_kernel_logistic(self, kernel_name='rbf', neg_wt=1.0, gamma=None,
                             degree=3):
         from sklearn.pipeline import Pipeline
