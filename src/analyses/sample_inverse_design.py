@@ -125,7 +125,7 @@ def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                       fixed_var=None):
     
     bound_dict = {
-        'gap_ratio': (0.6, 1.5),
+        'gap_ratio': (0.6, 2.0),
         'RI': (0.5, 2.25),
         'T_ratio': (2.0, 11.0),
         'zeta_e': (0.1, 0.25),
@@ -534,7 +534,7 @@ mpl.rcParams['ytick.labelsize'] = label_size
 
 fig, ax = plt.subplots(1, 1, figsize=(9,7))
 
-xvar = 'RI'
+xvar = 'T_ratio'
 yvar = 'zeta_e'
 
 res = 75
@@ -588,7 +588,7 @@ plt.legend(fontsize=axis_font)
 # ax.set_xlim(0.3, 2.0)
 ax.set_title(r'Impact likelihood: $R_y = 2.0$, $GR = 1.0$', fontsize=title_font)
 ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
-ax.set_xlabel(r'$R_y$', fontsize=axis_font)
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 
 fig.tight_layout()
 plt.show()
@@ -994,6 +994,28 @@ tp = time.time() - t0
 print("GPC-GPR replacement prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                tp))
 
+# TODO: baseline is... MF-TFP?
+### baseline
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+                          columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
+baseline_repair_cost_pred = predict_DV(X_baseline,
+                                      mdl_impact.gpc,
+                                      mdl_cost_hit.kr,
+                                      mdl_cost_miss.kr,
+                                      outcome=cost_var)[cost_var+'_pred'].item()
+baseline_downtime_pred = predict_DV(X_baseline,
+                                      mdl_impact.gpc,
+                                      mdl_time_hit.kr,
+                                      mdl_time_miss.kr,
+                                      outcome=time_var)[time_var+'_pred'].item()
+
+
+baseline_repl_risk_pred = predict_DV(X_baseline,
+                                      mdl_impact.gpc,
+                                      mdl_repl_hit.kr,
+                                      mdl_repl_miss.kr,
+                                      outcome='replacement_freq')['replacement_freq_pred'].item()
+
 #%% Calculate upfront cost of data
 # calc cost of new point
 def calc_upfront_cost(X, config_dict, steel_cost_dict,
@@ -1122,5 +1144,140 @@ config_dict = {
     'S_1': 1.017
     }
 
-cost_dict = calc_upfront_cost(
-    X_space, config_dict=config_dict, steel_cost_dict=reg_dict)
+
+#%% one single inverse design
+
+# TODO: thought is that you might want two separate designs
+# otherwise, you are predicting one X that will have the same outcome regardless of the system
+# or come up with a unifier
+
+# sample building is 4 bay, 4 stories
+og_df = main_obj.ops_analysis.reset_index(drop=True)
+
+# take all 4bay/4stories building from db, calculate average max cost of cmps
+my_type = df_loss_max[(og_df['num_bays'] == 4) & (og_df['num_stories'] == 4)]
+
+nb = 4
+ns = 4
+bldg_area = (nb*30)**2 * (ns + 1)
+
+# assume $600/sf replacement
+n_worker_series = bldg_area/1000
+n_worker_parallel = n_worker_series/2
+replacement_cost = 600*bldg_area
+cmp_cost = my_type['cost_50%'].mean()
+
+# assume 2 years replacement, 1 worker per 1000 sf, but working in parallel (2x faster)
+# = (n_worker_parallel) * (365 * 2) = (n_worker_series / 2) * (365 * 2)
+# = (n_worker_series) * (365)
+replacement_time = bldg_area/1000*365
+cmp_time = my_type['time_l_50%'].mean()
+
+
+# < 40% of cost of replacing all components
+percent_of_replacement = 0.2
+ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=percent_of_replacement]
+
+# <4 weeks for a team of 36
+dt_thresh = n_worker_parallel*28
+
+dt_thresh_ratio = dt_thresh / cmp_time
+ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh_ratio]
+
+repl_thresh = 0.1
+ok_repl = X_space.loc[space_repl['replacement_freq_pred']<=
+                      repl_thresh]
+
+X_design = X_space[np.logical_and.reduce((
+        X_space.index.isin(ok_cost.index), 
+        X_space.index.isin(ok_time.index),
+        X_space.index.isin(ok_repl.index)))]
+
+# select best viable design
+upfront_costs = calc_upfront_cost(
+    X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
+cheapest_mf_idx = upfront_costs['total_mf'].idxmin()
+mf_upfront_cost = upfront_costs['total_mf'].min()
+
+# least upfront cost of the viable designs
+mf_design = X_design.loc[cheapest_mf_idx]
+mf_downtime = space_downtime.iloc[cheapest_mf_idx].item()
+mf_repair_cost = space_repair_cost.iloc[cheapest_mf_idx].item()
+mf_repl_risk = space_repl.iloc[cheapest_mf_idx].item()
+
+# read out predictions
+print('==================================')
+print('            Predictions           ')
+print('==================================')
+print('======= Targets =======')
+print('Repair cost fraction:', f'{percent_of_replacement*100:,.2f}%')
+print('Repair time (days):', dt_thresh/n_worker_parallel)
+print('Replacement risk:', f'{repl_thresh*100:,.2f}%')
+
+
+print('======= Overall MF inverse design =======')
+print(mf_design)
+print('Upfront cost of selected design: ',
+      f'${mf_upfront_cost:,.2f}')
+print('Predicted median repair cost ratio: ',
+      f'{mf_repair_cost*100:,.2f}%')
+print('Predicted median repair cost: ',
+      f'${mf_repair_cost*cmp_cost:,.2f}')
+print('Predicted repair time (parallel): ',
+      f'{mf_downtime*cmp_time/n_worker_parallel:,.2f}', 'days')
+print('Predicted repair time (parallel): ',
+      f'{mf_downtime*cmp_time:,.2f}', 'worker-days')
+print('Predicted repair time ratio: ',
+      f'{mf_downtime*100:,.2f}%')
+print('Predicted replacement risk: ',
+      f'{mf_repl_risk:.2%}')
+
+
+# select best viable design
+upfront_costs = calc_upfront_cost(
+    X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
+cheapest_cbf_idx = upfront_costs['total_mf'].idxmin()
+cbf_upfront_cost = upfront_costs['total_mf'].min()
+
+# least upfront cost of the viable designs
+cbf_design = X_design.loc[cheapest_cbf_idx]
+cbf_downtime = space_downtime.iloc[cheapest_cbf_idx].item()
+cbf_repair_cost = space_repair_cost.iloc[cheapest_cbf_idx].item()
+cbf_repl_risk = space_repl.iloc[cheapest_cbf_idx].item()
+
+print('======= Overall CBF inverse design =======')
+print(cbf_design)
+print('Upfront cost of selected design: ',
+      f'${cbf_upfront_cost:,.2f}')
+print('Predicted median repair cost ratio: ',
+      f'{cbf_repair_cost*100:,.2f}%')
+print('Predicted median repair cost: ',
+      f'${cbf_repair_cost*cmp_cost:,.2f}')
+print('Predicted repair time (parallel): ',
+      f'{cbf_downtime*cmp_time/n_worker_parallel:,.2f}', 'days')
+print('Predicted repair time (parallel): ',
+      f'{cbf_downtime*cmp_time:,.2f}', 'worker-days')
+print('Predicted repair time ratio: ',
+      f'{cbf_downtime*100:,.2f}%')
+print('Predicted replacement risk: ',
+      f'{cbf_repl_risk:.2%}')
+
+baseline_upfront_cost_all = calc_upfront_cost(
+    X_baseline, config_dict=config_dict, steel_cost_dict=reg_dict)
+baseline_upfront_cost = baseline_upfront_cost_all['total_mf'].item()
+
+print('======= Predicted baseline performance =======')
+print('Upfront cost of baseline design: ',
+      f'${baseline_upfront_cost:,.2f}')
+print('Baseline median repair cost ratio: ',
+      f'{baseline_repair_cost_pred*100:,.2f}%')
+print('Baseline median repair cost: ',
+      f'${baseline_repair_cost_pred*cmp_cost:,.2f}')
+print('Baseline repair time (parallel): ',
+      f'{baseline_downtime_pred*cmp_time/n_worker_parallel:,.2f}', 'days')
+print('Baseline repair time (parallel): ',
+      f'{baseline_downtime_pred*cmp_time:,.2f}', 'worker-days')
+print('Baseline repair time ratio: ',
+      f'{baseline_downtime_pred*100:,.2f}%')
+print('Baseline replacement risk: ',
+      f'{baseline_repl_risk_pred:.2%}')

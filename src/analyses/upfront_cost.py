@@ -183,27 +183,6 @@ df_cbf = df_no_impact[df_no_impact['superstructure_system'] == 'CBF']
 df_mf = df_no_impact[df_no_impact['superstructure_system'] == 'MF']
 
 
-#%% maximum structural component loss
-
-# plt.close('all')
-
-df_cbf = df[df['superstructure_system'] == 'CBF']
-df_mf = df[df['superstructure_system'] == 'MF']
-
-df_cbf_max = df_loss_max[df['superstructure_system'] == 'CBF']
-df_mf_max = df_loss_max[df['superstructure_system'] == 'MF']
-
-cmap = plt.cm.tab10
-
-fig, ax = plt.subplots(1, 1, figsize=(8,6))
-ax.scatter(df_cbf['Vs'], df_cbf_max['B_50%'], alpha=0.5, color=cmap(1), label='CBF')
-ax.scatter(df_mf['Vs'], df_mf_max['B_50%'], alpha=0.5, color=cmap(0), label='MF')
-
-ax.set_ylabel("Structural component cost (\$)", fontsize=axis_font)
-ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)
-
-ax.legend()
-
 
 #%% Calculate upfront cost of data
 
@@ -338,24 +317,24 @@ ax.legend()
 
 #%% two loss metrics
 
-# plt.close('all')
+# # plt.close('all')
 
-df_cbf = df[df['superstructure_system'] == 'CBF']
-df_mf = df[df['superstructure_system'] == 'MF']
+# df_cbf = df[df['superstructure_system'] == 'CBF']
+# df_mf = df[df['superstructure_system'] == 'MF']
 
-df_cbf_max = df_loss_max[df['superstructure_system'] == 'CBF']
-df_mf_max = df_loss_max[df['superstructure_system'] == 'MF']
+# df_cbf_max = df_loss_max[df['superstructure_system'] == 'CBF']
+# df_mf_max = df_loss_max[df['superstructure_system'] == 'MF']
 
-cmap = plt.cm.tab10
+# cmap = plt.cm.tab10
 
-fig, ax = plt.subplots(1, 1, figsize=(8,6))
-ax.scatter(df_cbf['steel_cost'], df_cbf_max['B_50%'], alpha=0.5, color=cmap(1), label='CBF')
-ax.scatter(df_mf['steel_cost'], df_mf_max['B_50%'], alpha=0.5, color=cmap(0), label='MF')
+# fig, ax = plt.subplots(1, 1, figsize=(8,6))
+# ax.scatter(df_cbf['steel_cost'], df_cbf_max['B_50%'], alpha=0.5, color=cmap(1), label='CBF')
+# ax.scatter(df_mf['steel_cost'], df_mf_max['B_50%'], alpha=0.5, color=cmap(0), label='MF')
 
-ax.set_ylabel("Structural component cost (\$)", fontsize=axis_font)
-ax.set_xlabel('Steel cost (\$)', fontsize=axis_font)
+# ax.set_ylabel("Structural component cost (\$)", fontsize=axis_font)
+# ax.set_xlabel('Steel cost (\$)', fontsize=axis_font)
 
-ax.legend()
+# ax.legend()
 
 #%% area normalization
 
@@ -366,8 +345,8 @@ df_mf = df[df['superstructure_system'] == 'MF']
 
 
 cmap = plt.cm.tab10
-
-fig, ax = plt.subplots(1, 1, figsize=(8,6))
+fig = plt.figure(figsize=(16, 7))
+ax = fig.add_subplot(1, 2, 1)
 ax.scatter(df_cbf['bldg_area'], df_cbf['Vs'], alpha=0.5, color=cmap(1), label='CBF')
 ax.scatter(df_mf['bldg_area'], df_mf['Vs'], alpha=0.5, color=cmap(0), label='MF')
 
@@ -376,6 +355,18 @@ ax.set_ylabel('$V_s$ (kip)', fontsize=axis_font)
 
 ax.legend()
 
+ax = fig.add_subplot(1, 2, 2)
+ax.scatter(df_cbf['Vs'], df_cbf['steel_cost_per_sf'], 
+           alpha=0.5, marker='^', c=df_cbf['bldg_area'], label='CBF')
+sc=ax.scatter(df_mf['Vs'], df_mf['steel_cost_per_sf'], 
+           alpha=0.5, c=df_mf['bldg_area'], label='MF')
+
+ax.set_ylabel("Steel cost per sf (\$)", fontsize=axis_font)
+ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)
+cbar = plt.colorbar(sc)
+cbar.set_label('Building area (sf)', rotation = 270, fontsize=axis_font)
+ax.legend()
+fig.tight_layout()
 #%% regressions of cost
 
 # linear regress cost as f(base shear)
@@ -537,8 +528,6 @@ cost_dict = calc_upfront_cost(X_space, config_dict=config_dict, steel_cost_dict=
 
 #%% 
 
-# plt.close('all')
-
 cmap = plt.cm.tab10
 
 fig, ax = plt.subplots(1, 1, figsize=(8,6))
@@ -554,3 +543,134 @@ ax.set_ylabel("Upfront cost (\$)", fontsize=axis_font)
 ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)
 
 ax.legend()
+
+#%% 
+
+cmap = plt.cm.tab10
+
+fig, ax = plt.subplots(1, 1, figsize=(8,6))
+ax.scatter(df_cbf['Vs'], df_cbf['steel_cost'], 
+           alpha=0.3, color=cmap(1), label='CBF-data')
+ax.scatter(df_mf['Vs'], df_mf['steel_cost'], 
+           alpha=0.3, color=cmap(0), label='MF-data')
+
+Vs = np.linspace(0, 7000, 200)
+cost_regr_mf = reg_mf.coef_.item()*Vs
+cost_regr_cbf = reg_cbf.coef_.item()*Vs
+
+ax.plot(Vs, cost_regr_mf, color=cmap(0), label='MF cost model')
+ax.plot(Vs, cost_regr_cbf, color=cmap(1), label='CBF cost model')
+
+ax.set_ylabel("Upfront cost (\$)", fontsize=axis_font)
+ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)
+
+ax.legend()
+
+#%% subset by stories
+
+# plt.close('all')
+
+cmap = plt.cm.tab10
+
+fig = plt.figure(figsize=(16, 7))
+ax = fig.add_subplot(1, 2, 1)
+ax.scatter(df_cbf['Vs'], df_cbf['steel_cost'], 
+           alpha=0.3, color=cmap(1), label='CBF-data')
+ax.scatter(df_mf['Vs'], df_mf['steel_cost'], 
+           alpha=0.3, color=cmap(0), label='MF-data')
+
+# joined model
+reg_mf = LinearRegression(fit_intercept=False)
+reg_mf.fit(X=df_mf[['Vs']], y=df_mf[['steel_cost']])
+reg_cbf = LinearRegression(fit_intercept=False)
+reg_cbf.fit(X=df_cbf[['Vs']], y=df_cbf[['steel_cost']])
+Vs = np.linspace(0, 7000, 200)
+cost_regr_mf = reg_mf.coef_.item()*Vs
+cost_regr_cbf = reg_cbf.coef_.item()*Vs
+ax.plot(Vs, cost_regr_mf, color=cmap(0), label='MF cost model')
+ax.plot(Vs, cost_regr_cbf, color=cmap(1), label='CBF cost model')
+
+# 2 stories only
+df_mf_set = df_mf[df_mf['num_stories'] == 2]
+df_cbf_set = df_cbf[df_cbf['num_stories'] == 2]
+reg_mf = LinearRegression(fit_intercept=False)
+reg_mf.fit(X=df_mf_set[['Vs']], y=df_mf_set[['steel_cost']])
+reg_cbf = LinearRegression(fit_intercept=False)
+reg_cbf.fit(X=df_cbf_set[['Vs']], y=df_cbf_set[['steel_cost']])
+cost_regr_mf = reg_mf.coef_.item()*Vs
+cost_regr_cbf = reg_cbf.coef_.item()*Vs
+ax.plot(Vs, cost_regr_mf, color=cmap(0), linewidth=0.9, 
+        linestyle=':', label='MF-story conditioned')
+ax.plot(Vs, cost_regr_cbf, color=cmap(1), linewidth=0.9, 
+        linestyle=':', label='CBF-story conditioned')
+
+ax.legend()
+
+for n in range(3,8):
+    # 3 stories only
+    df_mf_set = df_mf[df_mf['num_stories'] == n]
+    df_cbf_set = df_cbf[df_cbf['num_stories'] == n]
+    reg_mf = LinearRegression(fit_intercept=False)
+    reg_mf.fit(X=df_mf_set[['Vs']], y=df_mf_set[['steel_cost']])
+    reg_cbf = LinearRegression(fit_intercept=False)
+    reg_cbf.fit(X=df_cbf_set[['Vs']], y=df_cbf_set[['steel_cost']])
+    cost_regr_mf = reg_mf.coef_.item()*Vs
+    cost_regr_cbf = reg_cbf.coef_.item()*Vs
+    ax.plot(Vs, cost_regr_mf, color=cmap(0), linewidth=0.9, 
+            linestyle=':', label='MF-story conditioned')
+    ax.plot(Vs, cost_regr_cbf, color=cmap(1), linewidth=0.9, 
+            linestyle=':', label='CBF-story conditioned')
+    
+ax.set_ylabel("Upfront cost (\$)", fontsize=axis_font)
+ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)
+
+ax = fig.add_subplot(1, 2, 2)
+ax.scatter(df_cbf['Vs'], df_cbf['steel_cost'], 
+           alpha=0.3, color=cmap(1), label='CBF-data')
+ax.scatter(df_mf['Vs'], df_mf['steel_cost'], 
+           alpha=0.3, color=cmap(0), label='MF-data')
+
+# joined model
+reg_mf = LinearRegression(fit_intercept=False)
+reg_mf.fit(X=df_mf[['Vs']], y=df_mf[['steel_cost']])
+reg_cbf = LinearRegression(fit_intercept=False)
+reg_cbf.fit(X=df_cbf[['Vs']], y=df_cbf[['steel_cost']])
+Vs = np.linspace(0, 7000, 200)
+cost_regr_mf = reg_mf.coef_.item()*Vs
+cost_regr_cbf = reg_cbf.coef_.item()*Vs
+ax.plot(Vs, cost_regr_mf, color=cmap(0), label='MF cost model')
+ax.plot(Vs, cost_regr_cbf, color=cmap(1), label='CBF cost model')
+
+# 2 stories only
+df_mf_set = df_mf[df_mf['num_stories'] == 2]
+df_cbf_set = df_cbf[df_cbf['num_stories'] == 2]
+reg_mf = LinearRegression(fit_intercept=False)
+reg_mf.fit(X=df_mf_set[['Vs']], y=df_mf_set[['steel_cost']])
+reg_cbf = LinearRegression(fit_intercept=False)
+reg_cbf.fit(X=df_cbf_set[['Vs']], y=df_cbf_set[['steel_cost']])
+cost_regr_mf = reg_mf.coef_.item()*Vs
+cost_regr_cbf = reg_cbf.coef_.item()*Vs
+ax.plot(Vs, cost_regr_mf, color=cmap(0), linewidth=0.9, 
+        linestyle=':', label='MF-bay conditioned')
+ax.plot(Vs, cost_regr_cbf, color=cmap(1), linewidth=0.9, 
+        linestyle=':', label='CBF-bay conditioned')
+
+ax.legend()
+
+for n in range(3,8):
+    # 3 stories only
+    df_mf_set = df_mf[df_mf['num_bays'] == n]
+    df_cbf_set = df_cbf[df_cbf['num_bays'] == n]
+    reg_mf = LinearRegression(fit_intercept=False)
+    reg_mf.fit(X=df_mf_set[['Vs']], y=df_mf_set[['steel_cost']])
+    reg_cbf = LinearRegression(fit_intercept=False)
+    reg_cbf.fit(X=df_cbf_set[['Vs']], y=df_cbf_set[['steel_cost']])
+    cost_regr_mf = reg_mf.coef_.item()*Vs
+    cost_regr_cbf = reg_cbf.coef_.item()*Vs
+    ax.plot(Vs, cost_regr_mf, color=cmap(0), linewidth=0.9, 
+            linestyle=':', label='MF-bay conditioned')
+    ax.plot(Vs, cost_regr_cbf, color=cmap(1), linewidth=0.9, 
+            linestyle=':', label='CBF-bay conditioned')
+    
+ax.set_ylabel("Upfront cost (\$)", fontsize=axis_font)
+ax.set_xlabel('$V_s$ (kip)', fontsize=axis_font)

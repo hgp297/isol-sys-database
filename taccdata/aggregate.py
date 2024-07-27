@@ -3,7 +3,7 @@ import sys
 # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(1, '../src/')
 
-pickle_path = './data/initial/reinit/'
+pickle_path = './data/initial/fuller/'
 
 from db import Database
 
@@ -21,7 +21,7 @@ ops_analysis = None
 dummy_obj = Database(10)
 
 # how many seeds used?
-seed_num = 40
+seed_num = 100
 
 for i in range(seed_num):
     file_str = 'structural_db_seed_'+ str(i+1) +'.pickle'
@@ -62,5 +62,5 @@ dummy_obj.n_generated = generated_designs.shape[0]
 
 import pickle
 final_path = '../data/'
-with open(final_path+'structural_db_parallel.pickle', 'wb') as f:
+with open(final_path+'structural_db_complete.pickle', 'wb') as f:
     pickle.dump(dummy_obj, f)

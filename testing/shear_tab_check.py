@@ -1,5 +1,5 @@
 ############################################################################
-#               Testing for a single MIK spring
+#               Testing for a single MIKPinching spring
 
 # Created by:   Huy Pham
 #               University of California, Berkeley
@@ -28,7 +28,7 @@ def get_shape(shape_name, member, csv_dir='../resource/'):
     shape = shape_db.loc[shape_db['AISC_Manual_Label'] == shape_name]
     return(shape)
 
-def getProperties(shape):
+def get_properties(shape):
     Ag      = float(shape.iloc[0]['A'])
     Ix      = float(shape.iloc[0]['Ix'])
     Iy      = float(shape.iloc[0]['Iy'])
@@ -40,12 +40,13 @@ def getProperties(shape):
     tw      = float(shape.iloc[0]['tw'])
     return(Ag, Ix, Iy, Zx, Sx, d, bf, tf, tw)
 
-def getModifiedIK(shape, L):
+def modified_IK_params(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi
     Es = 29000 # ksi
-
+    
     Zx = float(shape.iloc[0]['Zx'])
+    # Sx = float(shape['Sx'])
     Iz = float(shape.iloc[0]['Ix'])
     d = float(shape.iloc[0]['d'])
     htw = float(shape.iloc[0]['h/tw'])
@@ -55,16 +56,19 @@ def getModifiedIK(shape, L):
     c2 = 6.895
 
     # approximate adjustment for isotropic hardening
-    # adjusted with the *n for spring-beam-spring stiffness adjustment
     My = Fy * Zx * 1.17
     thy = My/(6*Es*Iz/L)
-    Ke = My/thy*10
+    
+    # n is an adjustment to equate stiffness of spring-beam-spring element to 
+    # actual stiffness of spring
+    n = 10
+    Ke = n*My/thy
     # consider using Lb = 0 for beams bc of slab?
     Lb = L
     kappa = 0.4
 
     if d > 21.0:
-        Lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
+        lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
             *(Lb/ry)**(-0.130)*(c2*Fy/355)**(-0.291))
         thp = (0.318*(htw)**(-0.550)*(bftf)**(-0.345)
             *(Lb/ry)**(-0.0230)*(L/d)**(0.090)*(c1*d/533)**(-0.330)*
@@ -73,7 +77,7 @@ def getModifiedIK(shape, L):
             *(Lb/ry)**(-0.110)*(c1*d/533)**(-0.161)*
             (c2*Fy/355)**(-0.320))
     else:
-        Lam = 495*(htw)**(-1.34)*(bftf)**(-0.595)*(c2*Fy/355)**(-0.360)
+        lam = 495*(htw)**(-1.34)*(bftf)**(-0.595)*(c2*Fy/355)**(-0.360)
         thp = (0.0865*(htw)**(-0.365)*(bftf)**(-0.140)
             *(L/d)**(0.340)*(c1*d/533)**(-0.721)*
             (c2*Fy/355)**(-0.230))
@@ -82,50 +86,7 @@ def getModifiedIK(shape, L):
         
     thu = 0.2
 
-    return(Ke, My, Lam, thp, thpc, kappa, thu)
-
-def getModifiedIK_old(shape, L):
-    # reference Lignos & Krawinkler (2011)
-    Fy = 50 # ksi
-    Es = 29000 # ksi
-
-    Zx = float(shape.iloc[0]['Zx'])
-    Iz = float(shape.iloc[0]['Ix'])
-    d = float(shape.iloc[0]['d'])
-    htw = float(shape.iloc[0]['h/tw'])
-    bftf = float(shape.iloc[0]['bf/2tf'])
-    ry = float(shape.iloc[0]['ry'])
-    c1 = 25.4
-    c2 = 6.895
-
-    # approximate adjustment for isotropic hardening
-    My = Fy * Zx * 1.1
-    thy = My/(6*Es*Iz/L)
-    Ke = My/thy
-    # consider using Lb = 0 for beams bc of slab?
-    Lb = L
-    kappa = 0.4
-
-    if d > 21.0:
-        Lam = (536*(htw)**(-1.26)*(bftf)**(-0.525)
-            *(Lb/ry)**(-0.130)*(c2*Fy/355)**(-0.291))
-        thp = (0.318*(htw)**(-0.550)*(bftf)**(-0.345)
-            *(Lb/ry)**(-0.0230)*(L/d)**(0.090)*(c1*d/533)**(-0.330)*
-            (c2*Fy/355)**(-0.130))
-        thpc = (7.50*(htw)**(-0.610)*(bftf)**(-0.710)
-            *(Lb/ry)**(-0.110)*(c1*d/533)**(-0.161)*
-            (c2*Fy/355)**(-0.320))
-    else:
-        Lam = 495*(htw)**(-1.34)*(bftf)**(-0.595)*(c2*Fy/355)**(-0.360)
-        thp = (0.0865*(htw)**(-0.365)*(bftf)**(-0.140)
-            *(L/d)**(0.340)*(c1*d/533)**(-0.721)*
-            (c2*Fy/355)**(-0.230))
-        thpc = (5.63*(htw)**(-0.565)*(bftf)**(-0.800)
-            *(c1*d/533)**(-0.280)*(c2*Fy/355)**(-0.430))
-        
-    thu = 0.4
-
-    return(Ke, My, Lam, thp, thpc, kappa, thu)
+    return(Ke, My, lam, thp, thpc, kappa, thu)
 
 ############################################################################
 # Construct column - new MIK
@@ -163,8 +124,6 @@ L_col = h_story
 
 selectedCol = get_shape('W24X55', 'beam')
 
-(AgCol, IzCol, IyCol, ZxCol, SxCol, 
- dCol, bfCol, tfCol, twCol) = getProperties(selectedCol)
 
 # base node
 ops.node(10, 0.0, 0.0, 0.0)
@@ -172,7 +131,7 @@ ops.node(510, 0.0, 0.0, 0.0)
 ops.fix(10, 1, 1, 1, 1, 1, 1)
 
 # end node
-ops.node(20, 0.0, 0.0, h_story)
+ops.node(20, 0.0, 0.0, L_bay/2)
 
 ############################################################################
 # Materials 
@@ -228,65 +187,54 @@ ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
 # Modified IK steel
 cIK = 1.0
 DIK = 1.0
-(KeCol, MyCol, LamCol, 
- thpCol, thpcCol, kappaCol, thuCol) = getModifiedIK(selectedCol, h_story)
+(Ke_beam, My_beam, lam_beam,
+ thp_beam, thpc_beam,
+ kappa_beam, thu_beam) = modified_IK_params(selectedCol, L_beam)
 
-# calculate modified section properties to account for spring stiffness being in series with the elastic element stiffness
-# Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
-n = 10 # stiffness multiplier for rotational spring
+n_mik = 10
 
-IzCol_mod = IzCol*(n+1)/n
-IyCol_mod = IyCol*(n+1)/n
+(Ag_beam, Iz_beam, Iy_beam,
+ Zx_beam, Sx_beam, d_beam,
+ bf_beam, tf_beam, tw_beam) = get_properties(selectedCol)
 
-# # adjust for increased elastic zone strength to account for plastic hinges
-# # being moved 0.1 away from end
-# KeCol = n*6.0*Es*IzCol/(0.8*h_story)
-
-McMy = 1.11 # ratio of capping moment to yield moment, Mc / My
-a_mem_col = (n+1.0)*(MyCol*(McMy-1.0))/(KeCol*thpCol)
-b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
-
-ops.uniaxialMaterial('IMKBilin', col_sec_tag, KeCol,
-                     thpCol, thpcCol, thuCol, MyCol, McMy, kappaCol,
-                     thpCol, thpcCol, thuCol, MyCol, McMy, kappaCol,
-                     LamCol, LamCol, LamCol,
-                     cIK, cIK, cIK,
-                     DIK, DIK, DIK)
-
-# ops.uniaxialMaterial('Bilin', col_sec_tag, KeCol, b_col, b_col, 
-#                      MyCol, -MyCol, LamCol, 
-#                      0, 0, 0, 
-#                      cIK, cIK, cIK, cIK, 
-#                      thpCol, thpCol, thpcCol, thpcCol, 
-#                      kappaCol, kappaCol, thuCol, thuCol, DIK, DIK)
-
+Iz_beam_mod = Iz_beam*(n_mik+1)/n_mik
+Iy_beam_mod = Iy_beam*(n_mik+1)/n_mik
 ################################################################################
 # define column
 ################################################################################
 
 # Create springs at column and beam ends
 # Springs follow Modified Ibarra Krawinkler model
-def rotSpringModIK(eleID, matID, nodeI, nodeJ, memTag):
-    # Create zero length element (spring), rotations allowed about local z axis
+# should note that the parent-spring convention works only if
+# material is symmetric
+def rot_spring_bilin(eleID, matID, nodeI, nodeJ, mem_tag):
+    
+    # Create springs at column and beam ends
+    # Springs follow Modified Ibarra Krawinkler model
+    # have spring local z be global y, then allow rotation around local z
+    column_x = [0, 0, 1]
+    column_y = [1, 0, 0]
+    beam_x = [1, 0, 0]
+    beam_y = [0, 0, 1]
+    
     # columns
-    if memTag == 1:
+    if mem_tag == 1:
+        # Create zero length element (spring), rotations allowed about local z axis
         ops.element('zeroLength', eleID, nodeI, nodeJ,
             '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
-            elastic_mat_tag, elastic_mat_tag, matID, 
+            torsion_mat_tag, elastic_mat_tag, matID, 
             '-dir', 1, 2, 3, 4, 5, 6,
-            '-orient', 0, 0, 1, 1, 0, 0,
-            '-doRayleigh', 1)
+            '-orient', *column_x, *column_y,
+            '-doRayleigh', 1)           
     # beams
-    # Create zero length element (spring), rotations allowed about local z axis
-    if memTag == 2:
+    if mem_tag == 2:
+        # Create zero length element (spring), rotations allowed about local z axis
         ops.element('zeroLength', eleID, nodeI, nodeJ,
             '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
-            elastic_mat_tag, elastic_mat_tag, matID, 
+            torsion_mat_tag, elastic_mat_tag, matID, 
             '-dir', 1, 2, 3, 4, 5, 6, 
-            '-orient', 1, 0, 0, 0, 0, 1,
+            '-orient', *beam_x, *beam_y,
             '-doRayleigh', 1)
-        
-    ops.equalDOF(nodeI, nodeJ, 1, 2, 3) 
 
 # geometric transformation for beam-columns
 # command: geomTransf('Linear', transfTag, *vecxz, '-jntOffset', *dI, *dJ) for 3d
@@ -304,11 +252,46 @@ vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
 vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
 ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
 
+Mmax_st = 0.15*My_beam
+# point 1 in Elkady's Pinching4
+thy_st = 0.0045
+My_st = 0.521*Mmax_st
+K0_st = My_st/thy_st 
+# point 3 in Elkady's Pinching4
+thp_st = 0.075 - 0.0045
+Fpp_st = 0.7
+Fpn_st = 0.7
+
+lam_st = 0.9
+
+thpc_st = 0.1-0.075
+kappa_res_st = 0.901
+thu_st = 0.08
+
+ops.uniaxialMaterial('IMKPinching', 333, K0_st, 
+                     thp_st, thpc_st, thu_st, My_st, 1/0.521, kappa_res_st,
+                     thp_st, thpc_st, thu_st, My_st, 1/0.521, kappa_res_st,
+                     lam_st, lam_st, lam_st, lam_st,
+                     1.0, 1.0, 1.0, 1.0,
+                     DIK, DIK,
+                     Fpp_st, Fpn_st)
+
+# ops.uniaxialMaterial('ModIMKPinching', 333, K0_st, a_st, a_st, 
+#                       My_st, -My_st, Fpp_st, Fpn_st, a_pinch_st, 
+#                       lam_st, lam_st, lam_st, lam_st,
+#                       1.0, 1.0, 1.0, 1.0, 
+#                       thp_st, thp_st, 
+#                       thpc_st, thpc_st, 
+#                       kappa_res_st, kappa_res_st, thu_st, thu_st, 
+#                       DIK, DIK)
+
 colMem = 1
-rotSpringModIK(51, col_sec_tag, 10, 510, colMem)
+# rotSpringModIK(51, col_sec_tag, 10, 510, colMem)
+
+rot_spring_bilin(51, 333, 10, 510, colMem)
 
 ops.element('elasticBeamColumn', 61, 510, 20, 
-    AgCol, Es, Gs, J, IyCol_mod, IzCol_mod, col_transf_tag)
+    Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod, col_transf_tag)
 
 ############################################################################
 #              Loading and analysis
@@ -328,7 +311,7 @@ ops.timeSeries("Linear", monotonic_series_tag)
 ops.pattern('Plain', monotonic_pattern_tag, monotonic_series_tag)
 ops.load(20, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-tol = 1e-5
+tol = 1e-8
 
 # ops.system("BandGeneral")   
 # ops.test("NormDispIncr", tol, 15)
@@ -336,7 +319,7 @@ tol = 1e-5
 # ops.constraints("Plain")
 # ops.algorithm("Newton")
 
-ops.test('EnergyIncr', 1.0e-5, 300, 0)
+ops.test('EnergyIncr', 1.0e-8, 300, 0)
 ops.algorithm('KrylovNewton')
 ops.system('UmfPack')
 ops.numberer("RCM")
@@ -350,7 +333,7 @@ ops.recorder('Element', '-ele', 51, '-file', spring_moment, 'localForce')
 
 ops.analysis("Static")                      # create analysis object
 
-peaks = np.arange(0.0, 30.0, 3.0)
+peaks = np.arange(0.0, 5.0, 0.25)
 steps = 500
 for i, pk in enumerate(peaks):
     du = (-1.0)**i*(peaks[i] / steps)
@@ -465,65 +448,54 @@ ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue)
 # Modified IK steel
 cIK = 1.0
 DIK = 1.0
-(KeCol, MyCol, LamCol, 
- thpCol, thpcCol, kappaCol, thuCol) = getModifiedIK_old(selectedCol, h_story)
+(Ke_beam, My_beam, lam_beam,
+ thp_beam, thpc_beam,
+ kappa_beam, thu_beam) = modified_IK_params(selectedCol, L_beam)
 
-# calculate modified section properties to account for spring stiffness being in series with the elastic element stiffness
-# Ibarra, L. F., and Krawinkler, H. (2005). "Global collapse of frame structures under seismic excitations,"
-n = 10 # stiffness multiplier for rotational spring
+n_mik = 10
 
-IzCol_mod = IzCol*(n+1)/n
-IyCol_mod = IyCol*(n+1)/n
+(Ag_beam, Iz_beam, Iy_beam,
+ Zx_beam, Sx_beam, d_beam,
+ bf_beam, tf_beam, tw_beam) = get_properties(selectedCol)
 
-# adjust for increased elastic zone strength to account for plastic hinges
-# being moved 0.1 away from end
-KeCol = n*6.0*Es*IzCol/(h_story)
-
-McMy = 1.1 # ratio of capping moment to yield moment, Mc / My
-a_mem_col = (n+1.0)*(MyCol*(McMy-1.0))/(KeCol*thpCol)
-b_col = a_mem_col/(1.0+n*(1.0-a_mem_col))
-
-# ops.uniaxialMaterial('IMKBilin', col_sec_tag, KeCol,
-#                      thpCol, thpcCol, thuCol, MyCol, McMy, kappaCol,
-#                      thpCol, thpcCol, thuCol, MyCol, McMy, kappaCol,
-#                      LamCol, LamCol, LamCol,
-#                      cIK, cIK, cIK,
-#                      DIK, DIK, DIK)
-
-ops.uniaxialMaterial('Bilin', col_sec_tag, KeCol, b_col, b_col, 
-                      MyCol, -MyCol, LamCol, 
-                      0, 0, 0, 
-                      cIK, cIK, cIK, cIK, 
-                      thpCol, thpCol, thpcCol, thpcCol, 
-                      kappaCol, kappaCol, thuCol, thuCol, DIK, DIK)
-
+Iz_beam_mod = Iz_beam*(n_mik+1)/n_mik
+Iy_beam_mod = Iy_beam*(n_mik+1)/n_mik
 ################################################################################
 # define column
 ################################################################################
 
 # Create springs at column and beam ends
 # Springs follow Modified Ibarra Krawinkler model
-def rotSpringModIK(eleID, matID, nodeI, nodeJ, memTag):
-    # Create zero length element (spring), rotations allowed about local z axis
+# should note that the parent-spring convention works only if
+# material is symmetric
+def rot_spring_bilin(eleID, matID, nodeI, nodeJ, mem_tag):
+    
+    # Create springs at column and beam ends
+    # Springs follow Modified Ibarra Krawinkler model
+    # have spring local z be global y, then allow rotation around local z
+    column_x = [0, 0, 1]
+    column_y = [1, 0, 0]
+    beam_x = [1, 0, 0]
+    beam_y = [0, 0, 1]
+    
     # columns
-    if memTag == 1:
+    if mem_tag == 1:
+        # Create zero length element (spring), rotations allowed about local z axis
         ops.element('zeroLength', eleID, nodeI, nodeJ,
             '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
-            elastic_mat_tag, elastic_mat_tag, matID, 
+            torsion_mat_tag, elastic_mat_tag, matID, 
             '-dir', 1, 2, 3, 4, 5, 6,
-            '-orient', 0, 0, 1, 1, 0, 0,
-            '-doRayleigh', 1)
+            '-orient', *column_x, *column_y,
+            '-doRayleigh', 1)           
     # beams
-    # Create zero length element (spring), rotations allowed about local z axis
-    if memTag == 2:
+    if mem_tag == 2:
+        # Create zero length element (spring), rotations allowed about local z axis
         ops.element('zeroLength', eleID, nodeI, nodeJ,
             '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
-            elastic_mat_tag, elastic_mat_tag, matID, 
+            torsion_mat_tag, elastic_mat_tag, matID, 
             '-dir', 1, 2, 3, 4, 5, 6, 
-            '-orient', 1, 0, 0, 0, 0, 1,
+            '-orient', *beam_x, *beam_y,
             '-doRayleigh', 1)
-        
-    ops.equalDOF(nodeI, nodeJ, 1, 2, 3) 
 
 # geometric transformation for beam-columns
 # command: geomTransf('Linear', transfTag, *vecxz, '-jntOffset', *dI, *dJ) for 3d
@@ -541,11 +513,58 @@ vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
 vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
 ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
 
+My_st = 0.15*My_beam
+# point 1 in Elkady's Pinching4
+thy_st = 0.0045
+K0_st = (0.521*My_st)/thy_st 
+# point 3 in Elkady's Pinching4
+thp_st = 0.075 - 0.0045
+a_st = (My_st - 0.521*My_st)/(thp_st)
+a_pinch_st = 0.75
+Fpp_st = 0.4
+Fpn_st = 0.4
+lam_st = 0.9
+thpc_st = 0.1-0.075
+kappa_res_st = 0.901
+gap_st = 0.08
+thu_st = 0.15
+
+# ops.uniaxialMaterial('ModIMKPinching', 333, K0_st, a_st, a_st, 
+#                       My_st, -My_st, Fpp_st, Fpn_st, a_pinch_st, 
+#                       lam_st, lam_st, lam_st, lam_st,
+#                       1.0, 1.0, 1.0, 1.0, 
+#                       thp_st, thp_st, 
+#                       thpc_st, thpc_st, 
+#                       kappa_res_st, kappa_res_st, thu_st, thu_st, 
+#                       DIK, DIK)
+
+M_1 = 0.521*My_st
+M_2 = 0.967*My_st
+M_3 = 1.0*My_st
+M_4 = 0.901*My_st
+th1 = 0.0045
+th2 = 0.0465
+th3 = 0.0750
+th4 = 0.10
+rd_st = 0.57
+rf_st = 0.40
+uf_st = 0.05
+
+ops.uniaxialMaterial('Pinching4', 332, M_1, th1, M_2, th2, M_3, th3, M_4, th4,
+                     -M_1, -th1, -M_2, -th2,- M_3, -th3, -M_4, -th4,
+                     rd_st, rf_st, uf_st,  rd_st, rf_st, uf_st,   
+                     0.0, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, 0.0,   
+                     0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 'energy')
+
+ops.uniaxialMaterial('MinMax', 333, 332, '-min', -0.08, '-max', 0.08)
+
 colMem = 1
-rotSpringModIK(51, col_sec_tag, 10, 510, colMem)
+# rotSpringModIK(51, col_sec_tag, 10, 510, colMem)
+
+rot_spring_bilin(51, 333, 10, 510, colMem)
 
 ops.element('elasticBeamColumn', 61, 510, 20, 
-    AgCol, Es, Gs, J, IyCol_mod, IzCol_mod, col_transf_tag)
+    Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod, col_transf_tag)
 
 ############################################################################
 #              Loading and analysis
@@ -587,7 +606,7 @@ ops.recorder('Element', '-ele', 51, '-file', spring_moment_old, 'localForce')
 
 ops.analysis("Static")                      # create analysis object
 
-peaks = np.arange(0.0, 120.0, 6.0)
+peaks = np.arange(0.0, 5.0, 0.25)
 steps = 500
 for i, pk in enumerate(peaks):
     du = (-1.0)**i*(peaks[i] / steps)
@@ -628,8 +647,8 @@ spring_rot_old = pd.read_csv(node_rot_old, sep=' ', header=None, names=['rotY'])
 
 # stress strain
 fig = plt.figure()
-plt.plot(-spring_rot['rotY'], -spring_res['mz']/12, label='new')
-plt.plot(-spring_rot_old['rotY'], -spring_res_old['mz']/12, label='old')
+plt.plot(-spring_rot['rotY'], -spring_res['mz']/12, label='IMKPinching')
+plt.plot(-spring_rot_old['rotY'], -spring_res_old['mz']/12, label='Pinching4')
 plt.title('Cantilever spring moment curvature')
 plt.ylabel('Moment (kip-ft)')
 plt.xlabel('Rotation (rads)')

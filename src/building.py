@@ -2009,51 +2009,60 @@ class Building:
         #         parent_nd = (nd//10)*10 + 7
         #     ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
             
+        
+        # ModIMKPinching material calibrated to match closely with Elkady's Pinching4
         # assumptions: we roughly use the smallest (top) beam as a reference
         # Many values are derivative of Elkady, A. and D. G. Lignos (2015)'s study
         # Shear tab retains ~15% of the strength (0.121 in Elkady)
+        # assumes that this is "bare steel shear tab" connection
         
-        # My_st = 0.75*My_beam
-        # # point 1 in Elkady's Pinching4
-        # thy_st = 0.0045
-        # K0_st = (0.521*My_st)/thy_st 
-        # # point 3 in Elkady's Pinching4
-        # thp_st = 0.075 - 0.0045
-        # a_st = (My_st - 0.521*My_st)/(thp_st)
-        # a_pinch_st = 0.75
-        # Fpp_st = 0.4
-        # Fpn_st = 0.4
-        # lam_st = 0.9
-        # thpc_st = 0.1-0.075
-        # kappa_res_st = 0.901
-        # gap_st = 0.08
-        # thu_st = gap_st
-        
-        # ops.uniaxialMaterial('ModIMKPinching', 333, K0_st, a_st, a_st, 
-        #                       My_st, -My_st, Fpp_st, Fpn_st, a_pinch_st, 
-        #                       lam_st, lam_st, lam_st, lam_st,
-        #                       1.0, 1.0, 1.0, 1.0, 
-        #                       thp_st, thp_st, 
-        #                       thpc_st, thpc_st, 
-        #                       kappa_res_st, kappa_res_st, thu_st, thu_st, 
-        #                       DIK, DIK)
+        Mmax_st = 0.15*My_beam
+        # point 1 in Elkady's Pinching4
+        thy_st = 0.0045
+        My_st = 0.521*Mmax_st
+        K0_st = My_st/thy_st 
+        # point 3 in Elkady's Pinching4
+        thp_st = 0.075 - 0.0045
+        Fpp_st = 0.7
+        Fpn_st = 0.7
 
-        # old pre-calibrated IMK Pinchiing
-        thp_st = 0.055
-        thpc_st = 0.18
         lam_st = 0.9
-        Fpp_st = 0.75
-        Fpn_st = 0.75
-        a_st = 0.75
-        kappa_res_st = 0.0
-        ops.uniaxialMaterial('ModIMKPinching', 333, Ke_beam, b, b, 
-                              0.1*My_beam, -0.1*My_beam, Fpp_st, Fpn_st, a_st, 
-                              lam_st, lam_st, lam_st, lam_st,
-                              1.0, 1.0, 1.0, 1.0, 
-                              thp_st, thp_st, 
-                              thpc_st, thpc_st, 
-                              kappa_res_st, kappa_res_st, thu_beam, thu_beam, 
-                              DIK, DIK)
+
+        thpc_st = 0.1-0.075
+        kappa_res_st = 0.901
+        thu_st = 0.08
+
+        ops.uniaxialMaterial('IMKPinching', 333, K0_st, 
+                             thp_st, thpc_st, thu_st, My_st, 1/0.521, kappa_res_st,
+                             thp_st, thpc_st, thu_st, My_st, 1/0.521, kappa_res_st,
+                             lam_st, lam_st, lam_st, lam_st,
+                             1.0, 1.0, 1.0, 1.0,
+                             DIK, DIK,
+                             Fpp_st, Fpn_st)
+
+        # # Elkady's Pinching4 example
+        # # assumes that this is "bare steel shear tab" connection
+        
+        # My_st = 0.15*My_beam
+        # M_1 = 0.521*My_st
+        # M_2 = 0.967*My_st
+        # M_3 = 1.0*My_st
+        # M_4 = 0.901*My_st
+        # th1 = 0.0045
+        # th2 = 0.0465
+        # th3 = 0.0750
+        # th4 = 0.10
+        # rd_st = 0.57
+        # rf_st = 0.40
+        # uf_st = 0.05
+
+        # ops.uniaxialMaterial('Pinching4', 332, M_1, th1, M_2, th2, M_3, th3, M_4, th4,
+        #                      -M_1, -th1, -M_2, -th2,- M_3, -th3, -M_4, -th4,
+        #                      rd_st, rf_st, uf_st,  rd_st, rf_st, uf_st,   
+        #                      0.0, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, 0.0,   
+        #                      0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 'energy')
+
+        # ops.uniaxialMaterial('MinMax', 333, 332, '-min', -0.08, '-max', 0.08)
 
         for nd in shear_tab_pins:
             elem_tag = nd + spr_id

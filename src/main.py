@@ -51,14 +51,14 @@
 
 import pandas as pd
 pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db_parallel.pickle")
+main_obj = pd.read_pickle(pickle_path+"structural_db_complete.pickle")
 
 main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
                 cmp_dir='../resource/loss/')
 
 import pickle
 loss_path = '../data/loss/'
-with open(loss_path+'structural_db_parallel_loss.pickle', 'wb') as f:
+with open(loss_path+'structural_db_complete_loss.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
 
 
@@ -66,14 +66,14 @@ with open(loss_path+'structural_db_parallel_loss.pickle', 'wb') as f:
 
 import pandas as pd
 pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db_parallel.pickle")
+main_obj = pd.read_pickle(pickle_path+"structural_db_complete.pickle")
 
 main_obj.calc_cmp_max(main_obj.ops_analysis,
                 cmp_dir='../resource/loss/')
 
 import pickle
 loss_path = '../data/loss/'
-with open(loss_path+'structural_db_parallel_max_loss.pickle', 'wb') as f:
+with open(loss_path+'structural_db_complete_max_loss.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
 
 
