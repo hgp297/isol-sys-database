@@ -40,7 +40,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_parallel_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_loss.pickle")
 
 # with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
 #     main_obj = pickle.load(picklefile)
@@ -77,7 +77,7 @@ df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
 
 df_loss = main_obj.loss_data
 
-max_obj = pd.read_pickle("../../data/loss/structural_db_parallel_max_loss.pickle")
+max_obj = pd.read_pickle("../../data/loss/structural_db_complete_max_loss.pickle")
 df_loss_max = max_obj.max_loss
 
 #%%

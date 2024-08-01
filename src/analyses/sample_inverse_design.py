@@ -30,7 +30,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_parallel_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_loss.pickle")
     
 main_obj.calculate_collapse()
 
@@ -64,7 +64,7 @@ df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
 
 df_loss = main_obj.loss_data
 
-max_obj = pd.read_pickle("../../data/loss/structural_db_parallel_max_loss.pickle")
+max_obj = pd.read_pickle("../../data/loss/structural_db_complete_max_loss.pickle")
 df_loss_max = max_obj.max_loss
 
 #%%
@@ -1236,8 +1236,8 @@ print('Predicted replacement risk: ',
 # select best viable design
 upfront_costs = calc_upfront_cost(
     X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
-cheapest_cbf_idx = upfront_costs['total_mf'].idxmin()
-cbf_upfront_cost = upfront_costs['total_mf'].min()
+cheapest_cbf_idx = upfront_costs['total_cbf'].idxmin()
+cbf_upfront_cost = upfront_costs['total_cbf'].min()
 
 # least upfront cost of the viable designs
 cbf_design = X_design.loc[cheapest_cbf_idx]
@@ -1264,7 +1264,7 @@ print('Predicted replacement risk: ',
 
 baseline_upfront_cost_all = calc_upfront_cost(
     X_baseline, config_dict=config_dict, steel_cost_dict=reg_dict)
-baseline_upfront_cost = baseline_upfront_cost_all['total_mf'].item()
+baseline_upfront_cost = baseline_upfront_cost_all['total_cbf'].item()
 
 print('======= Predicted baseline performance =======')
 print('Upfront cost of baseline design: ',
@@ -1281,3 +1281,23 @@ print('Baseline repair time ratio: ',
       f'{baseline_downtime_pred*100:,.2f}%')
 print('Baseline replacement risk: ',
       f'{baseline_repl_risk_pred:.2%}')
+
+#%% design the systems
+
+import pandas as pd
+from db import prepare_ida_util
+
+
+mf_design['superstructure_system'] = 'MF'
+mf_design['isolator_system'] = 'TFP'
+mf_design['k_ratio'] = 10
+
+mf_dict = mf_design.to_dict()
+ida_mf_df = prepare_ida_util(mf_dict)
+
+cbf_design['superstructure_system'] = 'CBF'
+cbf_design['isolator_system'] = 'TFP'
+cbf_design['k_ratio'] = 10
+
+cbf_dict = cbf_design.to_dict()
+ida_cbf_df = prepare_ida_util(cbf_dict)

@@ -811,7 +811,6 @@ class Database:
         
         self.ida_df = pd.concat([ida_df, ida_gms], axis=1)
     
-    # TODO: parallelize this
     def analyze_ida(self, output_str, save_interval=10,
                    data_path='../data/validation/',
                    gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/'):
@@ -1473,6 +1472,7 @@ def design_structure_util(df_in, filter_designs=True):
         
     return mf_designs, cbf_designs
     
+# TODO: take config_dict as param
 def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0]):
     
     import pandas as pd

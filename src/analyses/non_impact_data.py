@@ -40,7 +40,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_parallel_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_loss.pickle")
 
 # with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
 #     main_obj = pickle.load(picklefile)
@@ -77,7 +77,7 @@ df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
 
 df_loss = main_obj.loss_data
 
-max_obj = pd.read_pickle("../../data/loss/structural_db_parallel_max_loss.pickle")
+max_obj = pd.read_pickle("../../data/loss/structural_db_complete_max_loss.pickle")
 df_loss_max = max_obj.max_loss
 
 #%%
@@ -262,7 +262,7 @@ df_no_impact['bin'] = pd.cut(df_no_impact['zeta_e'], bins=bins, labels=labels)
 ax = fig.add_subplot(2, 2, 4)
 import seaborn as sns
 sns.stripplot(data=df_no_impact, x="max_velo", y="bin", orient="h", size=5, alpha=0.8,
-              hue='superstructure_system', ax=ax, legend='brief', palette='seismic')
+              hue='isolator_system', ax=ax, legend='brief', palette='seismic')
 sns.boxplot(y="bin", x= "max_velo", data=df_no_impact,  showfliers=False,
             boxprops={'facecolor': 'none'}, meanprops={'color': 'black'},
             width=0.6, ax=ax)
@@ -472,8 +472,6 @@ mdl_cost_miss.fit_ols_ridge()
 mdl_time_miss.fit_ols_ridge()
 
 
-#%%  diagnostic
-kr_only = mdl_cost_miss.kr._final_estimator
 
 #%% 3d surf for cost ratio - non impact set
 

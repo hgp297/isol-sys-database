@@ -30,7 +30,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_parallel_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_loss.pickle")
 
 # with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
 #     main_obj = pickle.load(picklefile)
@@ -67,7 +67,7 @@ df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
 
 df_loss = main_obj.loss_data
 
-max_obj = pd.read_pickle("../../data/loss/structural_db_parallel_max_loss.pickle")
+max_obj = pd.read_pickle("../../data/loss/structural_db_complete_max_loss.pickle")
 df_loss_max = max_obj.max_loss
 
 #%%
@@ -292,7 +292,7 @@ sns.boxplot(y='median_cost', x= "system", data=df,  showfliers=False,
 sns.stripplot(x='system', y='median_cost', data=df, ax=ax1, jitter=True,
               alpha=0.3, color='steelblue')
 ax1.set_title('Median repair cost', fontsize=subt_font)
-ax1.set_ylabel('Repair cost ratio', fontsize=axis_font)
+ax1.set_ylabel('Repair cost (USD)', fontsize=axis_font)
 ax1.set_xlabel('System', fontsize=axis_font)
 ax1.set_yscale('log')
 
@@ -302,7 +302,7 @@ sns.boxplot(y='median_time', x= "system", data=df,  showfliers=False,
 sns.stripplot(x='system', y='median_time', data=df, ax=ax2, jitter=True,
               alpha=0.3, color='steelblue')
 ax2.set_title('Median sequential repair time', fontsize=subt_font)
-ax2.set_ylabel('Repair time ratio', fontsize=axis_font)
+ax2.set_ylabel('Repair time (worker-day)', fontsize=axis_font)
 ax2.set_xlabel('System', fontsize=axis_font)
 ax2.set_yscale('log')
 

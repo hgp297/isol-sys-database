@@ -30,7 +30,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_parallel_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_loss.pickle")
 
 # with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
 #     main_obj = pickle.load(picklefile)
@@ -67,7 +67,7 @@ df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
 
 df_loss = main_obj.loss_data
 
-max_obj = pd.read_pickle("../../data/loss/structural_db_parallel_max_loss.pickle")
+max_obj = pd.read_pickle("../../data/loss/structural_db_complete_max_loss.pickle")
 df_loss_max = max_obj.max_loss
 
 #%% normalize DVs and prepare all variables
@@ -112,8 +112,8 @@ from scipy import stats
 df_no_impact = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) < 5].copy()
 df_outlier = df_miss[np.abs(stats.zscore(df_miss['cmp_cost_ratio'])) > 5].copy()
 
-df_tfp = df_no_impact[df_no_impact['isolator_system'] == 'TFP']
 df_lrb = df_no_impact[df_no_impact['isolator_system'] == 'LRB']
+df_tfp = df_no_impact[df_no_impact['isolator_system'] == 'TFP']
 df_cbf = df_no_impact[df_no_impact['superstructure_system'] == 'CBF']
 df_mf = df_no_impact[df_no_impact['superstructure_system'] == 'MF']
 
@@ -122,7 +122,7 @@ df_mf = df_no_impact[df_no_impact['superstructure_system'] == 'MF']
 print('========= stats for repair cost ==========')
 from sklearn import preprocessing
 
-df_test = df_lrb.copy()
+df_test = df_mf.copy()
 
 X = df_test[['gap_ratio', 'RI', 'T_ratio', 'k_ratio', 'zeta_e' ,'Q']]
 y = df_test[cost_var].ravel()
@@ -156,7 +156,7 @@ df_mf_tfbe['Ta_mf'] = 0.028*df_mf_tfbe['h_bldg']**0.8
 
 from sklearn.linear_model import LinearRegression
 reg_tfbe = LinearRegression(fit_intercept=False)
-reg_tfbe.fit(X=df_mf_tfbe[['Ta_mf']], y=df_mf[['T_fb']])
+reg_tfbe.fit(X=df_mf_tfbe[['Ta_mf']], y=df_mf_tfbe[['T_fb']])
 
 cmap = plt.cm.tab10
 
