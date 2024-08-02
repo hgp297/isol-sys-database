@@ -14,16 +14,6 @@
 ############################################################################
 
 def ida_run_row(row_num, run_case_str):
-    
-    # design_dict = {
-    #     'gap_ratio' : 0.6,
-    #     'RI' : 2.25,
-    #     'T_ratio': 5.0,
-    #     'zeta_e': 0.25,
-    #     'isolator_system' : 'LRB',
-    #     'superstructure_system' : 'CBF',
-    #     'k_ratio' : 15
-    # }
 
     import json
     input_path = './inputs/'
