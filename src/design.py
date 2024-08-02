@@ -679,6 +679,7 @@ def design_LRB(param_df):
     
     # buckling loads and pressure check
     # displacement
+    breakpoint()
     if moat_ampli*D_m/d_r > 1.0:
         # TODO: can be helped by reducing N_lb
         return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)
@@ -1993,7 +1994,7 @@ def design_CBF(input_df, db_string='../resource/'):
     
     all_beams = []
     for fl, brace in enumerate(all_braces):
-        current_brace = get_shape(brace, 'brace')
+        current_brace = get_shape(brace, 'brace', csv_dir=db_string)
         
         selected_beam, qualified_beams = capacity_CBF_beam(current_brace, fl,
                                                            Q_per_bay, load_cases, 
@@ -2009,7 +2010,7 @@ def design_CBF(input_df, db_string='../resource/'):
         
     all_columns = []
     for fl, brace in enumerate(all_braces):
-        current_brace = get_shape(brace, 'brace')
+        current_brace = get_shape(brace, 'brace', csv_dir=db_string)
         
         # splice every 4 floors: if 4th floor, select new column
         if (fl%4 == 0):

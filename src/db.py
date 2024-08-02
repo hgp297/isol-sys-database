@@ -1394,7 +1394,7 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
         
     return(tfp_designs, lrb_designs)
 
-def design_structure_util(df_in, filter_designs=True):
+def design_structure_util(df_in, filter_designs=True, db_string='../resource/'):
     import pandas as pd
     import time
     
@@ -1419,7 +1419,7 @@ def design_structure_util(df_in, filter_designs=True):
     if smrf_df.shape[0] > 0:
         t0 = time.time()
         
-        all_mf_designs = smrf_df.apply(lambda row: ds.design_MF(row),
+        all_mf_designs = smrf_df.apply(lambda row: ds.design_MF(row, db_string=db_string),
                                        axis='columns', 
                                        result_type='expand')
         
@@ -1448,7 +1448,7 @@ def design_structure_util(df_in, filter_designs=True):
     # attempt to design all CBFs
     if cbf_df.shape[0] > 0:
         t0 = time.time()
-        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
+        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row, db_string=db_string),
                                         axis='columns', 
                                         result_type='expand')
         all_cbf_designs.columns = ['brace', 'beam', 'column']
@@ -1473,22 +1473,20 @@ def design_structure_util(df_in, filter_designs=True):
     return mf_designs, cbf_designs
     
 # TODO: take config_dict as param
-def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0]):
+def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
+                     config_dict={'S_1' : 1.017,
+                                 'L_bldg': 120.0,
+                                 'h_bldg': 52.0,
+                                 'num_frames' : 2,
+                                 'num_bays' : 4,
+                                 'num_stories' : 4,
+                                 'L_bay': 30.0,
+                                 'h_story': 13.0,
+                                 'S_s' : 2.2815},
+                     db_string='../resource/'):
     
     import pandas as pd
     import numpy as np
-    
-    config_dict = {
-        'S_1' : 1.017,
-        'L_bldg': 120.0,
-        'h_bldg': 52.0,
-        'num_frames' : 2,
-        'num_bays' : 4,
-        'num_stories' : 4,
-        'L_bay': 30.0,
-        'h_story': 13.0,
-        'S_s' : 2.2815
-    }
     
     work_df = pd.DataFrame(config_dict, index=[0])
     design_df = pd.DataFrame(design_dict, index=[0])
@@ -1533,7 +1531,7 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0]):
         work_df = tfp_designs.copy()
         
     else:
-        # TODO: not robust, therefore needs system selector
+        # TODO: not robust (due to moat_ampli*Dm/d_r < 1.0 condition)
         lrb_designs = all_lrbs.loc[(all_lrbs['d_bearing'] >=
                                            3*all_lrbs['d_lead']) &
                                           (all_lrbs['d_bearing'] <=
@@ -1550,15 +1548,17 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0]):
         work_df = lrb_designs.copy()
     
     mf_designs, cbf_designs = design_structure_util(
-        work_df, filter_designs=True)
+        work_df, filter_designs=True, db_string=db_string)
     
     if work_df['superstructure_system'].item() == 'MF':
         work_df = mf_designs.copy()
     else:
         work_df = cbf_designs.copy()
     
-    
-    gm_series, sf_series, sa_avg = scale_ground_motion(work_df.iloc[0], return_list=True)
+    gm_dir = db_string+'/ground_motions/gm_db.csv'
+    spec_dir = db_string+'/ground_motions/gm_spectra.csv'
+    gm_series, sf_series, sa_avg = scale_ground_motion(work_df.iloc[0], return_list=True,
+                                                       db_dir=gm_dir, spec_dir=spec_dir)
     ida_base = pd.concat([gm_series, sf_series], axis=1)
     ida_base['sa_avg'] = sa_avg
     ida_base.columns = ['gm_selected', 'scale_factor', 'sa_avg']

@@ -1293,11 +1293,22 @@ mf_design['isolator_system'] = 'TFP'
 mf_design['k_ratio'] = 10
 
 mf_dict = mf_design.to_dict()
-ida_mf_df = prepare_ida_util(mf_dict)
+ida_mf_df = prepare_ida_util(mf_dict, db_string='../../resource/')
+
+print('Length of MF-TFP IDA:', len(ida_mf_df))
+
+with open('../inputs/mf_tfp_inverse.in', 'w') as file:
+    file.write(str(mf_dict))
+    file.close()
 
 cbf_design['superstructure_system'] = 'CBF'
 cbf_design['isolator_system'] = 'TFP'
 cbf_design['k_ratio'] = 10
 
 cbf_dict = cbf_design.to_dict()
-ida_cbf_df = prepare_ida_util(cbf_dict)
+ida_cbf_df = prepare_ida_util(cbf_dict, db_string='../../resource/')
+
+with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
+    file.write(str(cbf_dict))
+    file.close()
+print('Length of CBF-TFP IDA:', len(ida_cbf_df))
