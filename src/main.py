@@ -46,62 +46,93 @@
 # with open('../data/structural_db_seed_'+str(seed)+'.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
 
+# current workflow (parallel on tacc)
+# change_taskfile.sh writes calls on gen_db_thread (specifying n runs) <- change to main_obj calls here
+# gen_task is written
+# run_control_sbatch then runs on tacc
+# collect_gen brings data from $SCRATCH back to $WORK
+# local update.sh copies data to this repo (taccdata), aggregate file unites the df
+
 
 #%% run pelicun
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db_complete.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_complete.pickle")
 
-main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
-                cmp_dir='../resource/loss/')
+# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+#                 cmp_dir='../resource/loss/')
 
-import pickle
-loss_path = '../data/loss/'
-with open(loss_path+'structural_db_complete_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_complete_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 
 #%% calculate maximum pelicun losses
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db_complete.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_complete.pickle")
 
-main_obj.calc_cmp_max(main_obj.ops_analysis,
-                cmp_dir='../resource/loss/')
+# main_obj.calc_cmp_max(main_obj.ops_analysis,
+#                 cmp_dir='../resource/loss/')
 
-import pickle
-loss_path = '../data/loss/'
-with open(loss_path+'structural_db_complete_max_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_complete_max_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 
 
 #%% validate design
 
-# from db import Database
-# pickle_path = '../data/'
+# current workflow: an analysis file generates the .in input files for validation
+# change_valfile then creates the run case name and writes the IDA calls to val_task
+# everything else is handled by val_control_sbatch -> val_task -> val_ida_thread -> .in
 
-# import pandas as pd
 
-# main_obj = pd.read_pickle(pickle_path+"structural_db_mixed_tol.pickle")
+#%% run pelicun on validation (deterministic on the IDA) and calculate max loss
+import pandas as pd
+import pickle
+
+#### cbf tfp
+run_case = 'cbf_tfp_inverse'
+validation_path = '../data/validation/'+run_case+'/'
+
+main_obj = pd.read_pickle(validation_path+run_case+".pickle")
+df_val = main_obj.ida_results
+
+main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+                cmp_dir='../resource/loss/')
+
+loss_path = '../data/validation/'+run_case+'/'
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+
+main_obj.calc_cmp_max(main_obj.ida_results,
+                cmp_dir='../resource/loss/')
+
+with open(loss_path+run_case+'max_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
     
-# validation_path = '../data/validation/'
+    
+#### mf tfp
+run_case = 'mf_tfp_inverse'
+validation_path = '../data/validation/'+run_case+'/'
 
-# # TODO: is there a way to pipe this straight from GP? and organize depending on target
-# sample_dict = {
-#     'gap_ratio' : 0.6,
-#     'RI' : 2.25,
-#     'T_ratio': 2.16,
-#     'zeta_e': 0.25
-# }
+main_obj = pd.read_pickle(validation_path+run_case+".pickle")
+df_val = main_obj.ida_results
 
-# design_df = pd.DataFrame(sample_dict, index=[0])
+main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+                cmp_dir='../resource/loss/')
 
-# main_obj.prepare_idas(design_df)
-# main_obj.analyze_ida('ida_10.csv')
+loss_path = '../data/validation/'+run_case+'/'
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
-# import pickle
-# with open(validation_path+'tfp_mf_db_ida_10.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+main_obj.calc_cmp_max(main_obj.ida_results,
+                cmp_dir='../resource/loss/')
+
+with open(loss_path+run_case+'max_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)

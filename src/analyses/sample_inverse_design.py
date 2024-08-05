@@ -1284,6 +1284,7 @@ print('Baseline replacement risk: ',
 
 #%% design the systems
 
+# TODO: pass the length of the df to run controllers
 import pandas as pd
 from db import prepare_ida_util
 import json
