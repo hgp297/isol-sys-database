@@ -208,8 +208,10 @@ df['system'] = df['superstructure_system'] +'-' + df['isolator_system']
 df_tfp = df[df['isolator_system'] == 'TFP']
 df_lrb = df[df['isolator_system'] == 'LRB']
 
-df_cbf = df[df['superstructure_system'] == 'CBF']
-df_mf = df[df['superstructure_system'] == 'MF']
+df_cbf = df[df['superstructure_system'] == 'CBF'].reset_index()
+df_cbf['dummy_index'] = df_cbf['replacement_freq'] + df_cbf['index']*1e-9
+df_mf = df[df['superstructure_system'] == 'MF'].reset_index()
+df_mf['dummy_index'] = df_mf['replacement_freq'] + df_mf['index']*1e-9
 
 df_mf_tfp = df_tfp[df_tfp['superstructure_system'] == 'MF']
 df_mf_lrb = df_lrb[df_lrb['superstructure_system'] == 'MF']
@@ -335,20 +337,40 @@ f, ax = plt.subplots(figsize=(16, 7))
 # crashes = sns.load_dataset("car_crashes").sort_values("total", ascending=False)
 
 # Plot the total crashes
-sns.set_color_codes("pastel")
-sns.barplot(x="replacement_freq", y="replacement_freq", data=df_cbf,
-            label="Replacement", color="b")
+sns.barplot(x="max_drift", y="replacement_freq", data=df_cbf,
+            label="PID-related collapse", color="lightsteelblue")
 
 # Plot the crashes where alcohol was involved
-sns.set_color_codes("muted")
-sns.barplot(x="replacement_freq", y="irreparable_freq", data=df_cbf,
-            label="RID-related irreparable", color="b")
+sns.barplot(x="max_drift", y="irreparable_freq", data=df_cbf,
+            label="RID-related irreparable", color="navy")
+frame1 = plt.gca()
+frame1.axes.get_xaxis().set_ticks([])
 
-# # Add a legend and informative axis label
-# ax.legend(ncol=2, loc="lower right", frameon=True)
-# ax.set(xlim=(0, 24), ylabel="",
-#        xlabel="Automobile collisions per billion miles")
-# sns.despine(left=True, bottom=True)
+ax.legend()
+ax.set_title('CBF replacement', fontsize=subt_font)
+ax.set_xlabel('Increasing max transient drift \u2192', fontsize=axis_font)
+ax.set_ylabel('\% replacement', fontsize=axis_font)
+
+# Initialize the matplotlib figure
+f, ax = plt.subplots(figsize=(16, 7))
+
+# Load the example car crash dataset
+# crashes = sns.load_dataset("car_crashes").sort_values("total", ascending=False)
+
+# Plot the total crashes
+sns.barplot(x="max_drift", y="replacement_freq", data=df_mf,
+            label="PID-related collapse", color="lightsteelblue")
+
+# Plot the crashes where alcohol was involved
+sns.barplot(x="max_drift", y="irreparable_freq", data=df_mf,
+            label="RID-related irreparable", color="navy")
+frame1 = plt.gca()
+frame1.axes.get_xaxis().set_ticks([])
+
+ax.legend()
+ax.set_title('MF replacement', fontsize=subt_font)
+ax.set_xlabel('Increasing max transient drift \u2192', fontsize=axis_font)
+ax.set_ylabel('\% replacement', fontsize=axis_font)
 
 #%%
 cmap = plt.cm.tab20
