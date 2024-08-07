@@ -113,7 +113,7 @@ with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
 main_obj.calc_cmp_max(main_obj.ida_results,
                 cmp_dir='../resource/loss/')
 
-with open(loss_path+run_case+'max_loss.pickle', 'wb') as f:
+with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
     
     
@@ -134,5 +134,5 @@ with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
 main_obj.calc_cmp_max(main_obj.ida_results,
                 cmp_dir='../resource/loss/')
 
-with open(loss_path+run_case+'max_loss.pickle', 'wb') as f:
+with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
     pickle.dump(main_obj, f)

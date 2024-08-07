@@ -162,7 +162,7 @@ def make_design_space(res, zeta_fix=None):
     return(X_space)
 
 #%% collapse fragility def
-'''
+
 import numpy as np
 from scipy.stats import norm
 inv_norm = norm.ppf(0.84)
@@ -173,7 +173,7 @@ from math import log, exp
 
 x = np.linspace(0, 0.15, 200)
 mu = log(0.1)- 0.25*inv_norm
-sigma = 0.25;
+sigma = 0.25
 
 ln_dist = lognorm(s=sigma, scale=exp(mu))
 p = ln_dist.cdf(np.array(x))
@@ -248,8 +248,8 @@ from scipy.stats import lognorm
 from math import log, exp
 
 x = np.linspace(0, 0.15, 200)
-mu = log(0.05)- 0.55*inv_norm
 sigma = 0.55
+mu = log(0.05)- sigma*inv_norm
 
 ln_dist = lognorm(s=sigma, scale=exp(mu))
 p = ln_dist.cdf(np.array(x))
@@ -314,7 +314,6 @@ clabel_size = 12
 ax.legend(fontsize=label_size, loc='upper center')
 plt.show()
 
-'''
 #%% normalize DVs and prepare all variables
 df['bldg_area'] = df['L_bldg']**2 * (df['num_stories'] + 1)
 

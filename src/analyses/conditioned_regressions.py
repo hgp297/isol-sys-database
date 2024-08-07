@@ -186,7 +186,7 @@ df['cmp_time_ratio'] = df_loss['time_l_50%']/df['total_cmp_time']
 df['median_time'] = df_loss['time_l_50%']
 
 df['replacement_freq'] = df_loss['replacement_freq']
-
+df['irreparable_freq'] = df['replacement_freq'] - df['collapse_prob']
 df[['B_50%', 'C_50%', 'D_50%', 'E_50%']] = df_loss[['B_50%', 'C_50%', 'D_50%', 'E_50%']]
 
 df['impacted'] = pd.to_numeric(df['impacted'])
@@ -207,6 +207,9 @@ df['system'] = df['superstructure_system'] +'-' + df['isolator_system']
 
 df_tfp = df[df['isolator_system'] == 'TFP']
 df_lrb = df[df['isolator_system'] == 'LRB']
+
+df_cbf = df[df['superstructure_system'] == 'CBF']
+df_mf = df[df['superstructure_system'] == 'MF']
 
 df_mf_tfp = df_tfp[df_tfp['superstructure_system'] == 'MF']
 df_mf_lrb = df_lrb[df_lrb['superstructure_system'] == 'MF']
@@ -311,13 +314,42 @@ ax2.set_yscale('log')
 sns.boxplot(y="replacement_freq", x= "system", data=df,  showfliers=False,
             boxprops={'facecolor': 'none'},
             width=0.5, ax=ax3)
-sns.stripplot(x='system', y='replacement_freq', data=df, ax=ax3, jitter=True,
+sns.stripplot(x='system', y='replacement_freq', hue='collapse_prob', data=df, ax=ax3, jitter=True,
               alpha=0.3, color='steelblue')
 ax3.set_title('Replacement frequency', fontsize=subt_font)
 ax3.set_ylabel('Replacement frequency', fontsize=axis_font)
 ax3.set_xlabel('System', fontsize=axis_font)
 fig.tight_layout()
 plt.show()
+
+#%%
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+sns.set_theme(style="whitegrid")
+
+# Initialize the matplotlib figure
+f, ax = plt.subplots(figsize=(16, 7))
+
+# Load the example car crash dataset
+# crashes = sns.load_dataset("car_crashes").sort_values("total", ascending=False)
+
+# Plot the total crashes
+sns.set_color_codes("pastel")
+sns.barplot(x="replacement_freq", y="replacement_freq", data=df_cbf,
+            label="Replacement", color="b")
+
+# Plot the crashes where alcohol was involved
+sns.set_color_codes("muted")
+sns.barplot(x="replacement_freq", y="irreparable_freq", data=df_cbf,
+            label="RID-related irreparable", color="b")
+
+# # Add a legend and informative axis label
+# ax.legend(ncol=2, loc="lower right", frameon=True)
+# ax.set(xlim=(0, 24), ylabel="",
+#        xlabel="Automobile collisions per billion miles")
+# sns.despine(left=True, bottom=True)
+
 #%%
 cmap = plt.cm.tab20
 

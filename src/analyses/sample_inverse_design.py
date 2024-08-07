@@ -265,37 +265,43 @@ def calc_steel_cost(df, brace_db, steel_per_unit=1.25):
     else:
         return braced_frame_cost(df, brace_db, steel_per_unit=steel_per_unit)
 #%% normalize DVs and prepare all variables
-df['bldg_area'] = df['L_bldg']**2 * (df['num_stories'] + 1)
 
-df['replacement_cost'] = 600.0*(df['bldg_area'])
-df['total_cmp_cost'] = df_loss_max['cost_50%']
-df['cmp_replace_cost_ratio'] = df['total_cmp_cost']/df['replacement_cost']
-df['median_cost_ratio'] = df_loss['cost_50%']/df['replacement_cost']
-df['cmp_cost_ratio'] = df_loss['cost_50%']/df['total_cmp_cost']
+def loss_percentages(df_main, df_loss, df_max):
+    df_main['bldg_area'] = df_main['L_bldg']**2 * (df_main['num_stories'] + 1)
 
-# but working in parallel (2x faster)
-df['replacement_time'] = df['bldg_area']/1000*365
-df['total_cmp_time'] = df_loss_max['time_l_50%']
-df['cmp_replace_time_ratio'] = df['total_cmp_time']/df['replacement_time']
-df['median_time_ratio'] = df_loss['time_l_50%']/df['replacement_time']
-df['cmp_time_ratio'] = df_loss['time_l_50%']/df['total_cmp_time']
+    df_main['replacement_cost'] = 600.0*(df_main['bldg_area'])
+    df_main['total_cmp_cost'] = df_max['cost_50%']
+    df_main['cmp_replace_cost_ratio'] = df_main['total_cmp_cost']/df_main['replacement_cost']
+    df_main['median_cost_ratio'] = df_loss['cost_50%']/df_main['replacement_cost']
+    df_main['cmp_cost_ratio'] = df_loss['cost_50%']/df_main['total_cmp_cost']
 
-df['replacement_freq'] = df_loss['replacement_freq']
+    # but working in parallel (2x faster)
+    df_main['replacement_time'] = df_main['bldg_area']/1000*365
+    df_main['total_cmp_time'] = df_max['time_l_50%']
+    df_main['cmp_replace_time_ratio'] = df['total_cmp_time']/df_main['replacement_time']
+    df_main['median_time_ratio'] = df_loss['time_l_50%']/df_main['replacement_time']
+    df_main['cmp_time_ratio'] = df_loss['time_l_50%']/df_main['total_cmp_time']
 
-df[['B_50%', 'C_50%', 'D_50%', 'E_50%']] = df_loss[['B_50%', 'C_50%', 'D_50%', 'E_50%']]
+    df_main['replacement_freq'] = df_loss['replacement_freq']
 
-df['impacted'] = pd.to_numeric(df['impacted'])
+    df_main[['B_50%', 'C_50%', 'D_50%', 'E_50%']] = df_loss[['B_50%', 'C_50%', 'D_50%', 'E_50%']]
+
+    df_main['impacted'] = pd.to_numeric(df_main['impacted'])
+
+    mask = df['B_50%'].isnull()
+
+    df_main['B_50%'].loc[mask] = df_max['B_50%'].loc[mask]
+    df_main['C_50%'].loc[mask] = df_max['C_50%'].loc[mask]
+    df_main['D_50%'].loc[mask] = df_max['D_50%'].loc[mask]
+    df_main['E_50%'].loc[mask] = df_max['E_50%'].loc[mask]
+    
+    return(df_main)
+    
+df = loss_percentages(df, df_loss, df_loss_max)
 
 cost_var = 'cmp_cost_ratio'
 time_var = 'cmp_time_ratio'
 covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
-
-mask = df['B_50%'].isnull()
-
-df['B_50%'].loc[mask] = df_loss_max['B_50%'].loc[mask]
-df['C_50%'].loc[mask] = df_loss_max['C_50%'].loc[mask]
-df['D_50%'].loc[mask] = df_loss_max['D_50%'].loc[mask]
-df['E_50%'].loc[mask] = df_loss_max['E_50%'].loc[mask]
 
 db_string = '../../resource/'
 brace_db = pd.read_csv(db_string+'braceShapes.csv', index_col=None, header=0)  
@@ -1018,6 +1024,9 @@ baseline_repl_risk_pred = predict_DV(X_baseline,
 
 #%% Calculate upfront cost of data
 # calc cost of new point
+
+# TODO: inverse design of separated models, update Cu Ta to 1.8
+
 def calc_upfront_cost(X, config_dict, steel_cost_dict,
                       land_cost_per_sqft=2837/(3.28**2)):
     
@@ -1284,32 +1293,379 @@ print('Baseline replacement risk: ',
 
 #%% design the systems
 
-# TODO: pass the length of the df to run controllers
-import pandas as pd
-from db import prepare_ida_util
-import json
+# # TODO: pass the length of the df to run controllers
+# import pandas as pd
+# from db import prepare_ida_util
+# import json
 
-mf_design['superstructure_system'] = 'MF'
-mf_design['isolator_system'] = 'TFP'
-mf_design['k_ratio'] = 10
+# mf_design['superstructure_system'] = 'MF'
+# mf_design['isolator_system'] = 'TFP'
+# mf_design['k_ratio'] = 10
 
-mf_dict = mf_design.to_dict()
-ida_mf_df = prepare_ida_util(mf_dict, db_string='../../resource/')
+# mf_dict = mf_design.to_dict()
+# ida_mf_df = prepare_ida_util(mf_dict, db_string='../../resource/')
 
-print('Length of MF-TFP IDA:', len(ida_mf_df))
+# print('Length of MF-TFP IDA:', len(ida_mf_df))
 
-with open('../inputs/mf_tfp_inverse.in', 'w') as file:
-    file.write(json.dumps(mf_dict))
-    file.close()
+# with open('../inputs/mf_tfp_inverse.in', 'w') as file:
+#     file.write(json.dumps(mf_dict))
+#     file.close()
 
-cbf_design['superstructure_system'] = 'CBF'
-cbf_design['isolator_system'] = 'TFP'
-cbf_design['k_ratio'] = 10
+# cbf_design['superstructure_system'] = 'CBF'
+# cbf_design['isolator_system'] = 'TFP'
+# cbf_design['k_ratio'] = 10
 
-cbf_dict = cbf_design.to_dict()
-ida_cbf_df = prepare_ida_util(cbf_dict, db_string='../../resource/')
+# cbf_dict = cbf_design.to_dict()
+# ida_cbf_df = prepare_ida_util(cbf_dict, db_string='../../resource/')
 
-with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
-    file.write(json.dumps(cbf_dict))
-    file.close()
-print('Length of CBF-TFP IDA:', len(ida_cbf_df))
+# with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
+#     file.write(json.dumps(cbf_dict))
+#     file.close()
+# print('Length of CBF-TFP IDA:', len(ida_cbf_df))
+
+#%% results of the inverse design
+
+run_case = 'cbf_tfp_inverse'
+val_dir = '../../data/validation/'+run_case+'/'
+
+cbf_tfp_loss_file = run_case+'_loss.pickle'
+cbf_tfp_max_loss_file = run_case+'_max_loss.pickle'
+
+cbf_tfp_val_obj = pd.read_pickle(val_dir+cbf_tfp_loss_file)
+cbf_tfp_df = cbf_tfp_val_obj.ida_results
+cbf_tfp_loss = cbf_tfp_val_obj.loss_data.reset_index(drop=True)
+cbf_tfp_val_run = cbf_tfp_val_obj.ida_results.reset_index(drop=True)
+
+cbf_tfp_val_max_obj = pd.read_pickle(val_dir+cbf_tfp_max_loss_file)
+cbf_tfp_max_loss = cbf_tfp_val_max_obj.max_loss.reset_index(drop=True)
+
+run_case = 'mf_tfp_inverse'
+val_dir = '../../data/validation/'+run_case+'/'
+
+mf_tfp_loss_file = run_case+'_loss.pickle'
+mf_tfp_max_loss_file = run_case+'_max_loss.pickle'
+
+mf_tfp_val_obj = pd.read_pickle(val_dir+mf_tfp_loss_file)
+mf_tfp_df = mf_tfp_val_obj.ida_results
+mf_tfp_loss = mf_tfp_val_obj.loss_data.reset_index(drop=True)
+mf_tfp_val_run = mf_tfp_val_obj.ida_results.reset_index(drop=True)
+
+mf_tfp_val_max_obj = pd.read_pickle(val_dir+mf_tfp_max_loss_file)
+mf_tfp_max_loss = mf_tfp_val_max_obj.max_loss.reset_index(drop=True)
+
+#%% process data for inverse
+
+cbf_tfp_df = loss_percentages(cbf_tfp_df, cbf_tfp_loss, cbf_tfp_max_loss)
+mf_tfp_df = loss_percentages(mf_tfp_df, mf_tfp_loss, mf_tfp_max_loss)
+
+#%% inverse design basics
+
+# TODO: ratios are comparable?
+
+ida_levels = [1.0, 1.5, 2.0]
+
+cbf_tfp_cost  = np.zeros((3,))
+cbf_tfp_downtime = np.zeros((3,))
+cbf_tfp_replacement = np.zeros((3,))
+cbf_tfp_cost_ratio = np.zeros((3,))
+cbf_tfp_downtime_ratio = np.zeros((3,))
+
+mf_tfp_cost = np.zeros((3,))
+mf_tfp_downtime = np.zeros((3,))
+mf_tfp_replacement = np.zeros((3,))
+mf_tfp_cost_ratio = np.zeros((3,))
+mf_tfp_downtime_ratio = np.zeros((3,))
+
+# collect means
+cost_var_ida = 'cost_50%'
+time_var_ida = 'time_l_50%'
+
+for i, lvl in enumerate(ida_levels):
+    cbf_tfp_ida = cbf_tfp_df[cbf_tfp_df['ida_level']==lvl]
+    mf_tfp_ida = mf_tfp_df[mf_tfp_df['ida_level']==lvl]
+    
+    cbf_tfp_replacement[i] = cbf_tfp_ida['replacement_freq'].mean()
+    cbf_tfp_downtime[i] = cbf_tfp_loss[time_var_ida].mean()/n_worker_parallel
+    cbf_tfp_cost[i] = cbf_tfp_loss[cost_var_ida].mean()
+    cbf_tfp_cost_ratio[i] = cbf_tfp_ida[cost_var].mean()
+    cbf_tfp_downtime_ratio[i] = cbf_tfp_ida[time_var].mean()
+    
+    mf_tfp_downtime[i] = mf_tfp_loss[time_var_ida].mean()/n_worker_parallel
+    mf_tfp_cost[i] = mf_tfp_loss[cost_var_ida].mean()
+    mf_tfp_replacement[i] = mf_tfp_ida['replacement_freq'].mean()
+    mf_tfp_cost_ratio[i] = mf_tfp_ida[cost_var].mean()
+    mf_tfp_downtime_ratio[i] = mf_tfp_ida[time_var].mean()
+    
+
+print('==================================')
+print('   Validation results  (1.0 MCE)  ')
+print('==================================')
+
+design_tested = cbf_tfp_df[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+design_specifics = cbf_tfp_df[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column', 'brace']].iloc[0]
+
+print('====== CBF-TFP INVERSE DESIGN ======')
+print('Average median repair cost: ',
+      f'${cbf_tfp_cost[0]:,.2f}')
+print('Repair cost ratio: ', 
+      f'{cbf_tfp_cost_ratio[0]:,.3f}')
+print('Average median repair time: ',
+      f'{cbf_tfp_downtime[0]:,.2f}', 'days')
+print('Repair time ratio: ',
+      f'{cbf_tfp_downtime_ratio[0]:,.3f}')
+print('Estimated replacement frequency: ',
+      f'{cbf_tfp_replacement[0]:.2%}')
+print(design_tested)
+print(design_specifics)
+
+design_tested = mf_tfp_df[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+design_specifics = mf_tfp_df[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column']].iloc[0]
+
+print('====== MF-TFP INVERSE DESIGN ======')
+print('Average median repair cost: ',
+      f'${mf_tfp_cost[0]:,.2f}')
+print('Repair cost ratio: ', 
+      f'{mf_tfp_cost_ratio[0]:,.3f}')
+print('Average median repair time: ',
+      f'{mf_tfp_downtime[0]:,.2f}', 'days')
+print('Repair time ratio: ',
+      f'{mf_tfp_downtime_ratio[0]:,.3f}')
+print('Estimated replacement frequency: ',
+      f'{mf_tfp_replacement[0]:.2%}')
+print(design_tested)
+print(design_specifics)
+
+#%% MLE fragility curves
+def neg_log_likelihood_sum(params, im_l, no_a, no_c):
+    from scipy import stats
+    import numpy as np
+    sigma, beta = params
+    theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(im_l)
+    likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
+    log_likelihood = np.log(likelihood)
+    log_likelihood_sum = np.sum(log_likelihood)
+
+    return -log_likelihood_sum
+
+def mle_fit_collapse(ida_levels, pr_collapse):
+    from functools import partial
+    import numpy as np
+    from scipy import optimize
+    
+    im_log = np.log(ida_levels)
+    number_of_analyses = np.array([1000, 1000, 1000 ])
+    number_of_collapses = np.round(1000*pr_collapse)
+    
+    neg_log_likelihood_sum_partial = partial(
+        neg_log_likelihood_sum, im_l=im_log, no_a=number_of_analyses, no_c=number_of_collapses)
+    
+    
+    res = optimize.minimize(neg_log_likelihood_sum_partial, (1, 1), method="Nelder-Mead")
+    return res.x[0], res.x[1]
+
+
+from scipy.stats import norm
+f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+b_TOT = np.linalg.norm([0.2, 0.2, 0.2, 0.4])
+
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,cbf_tfp_replacement)
+
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+p2 = f(xx_pr, theta_inv, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax1=fig.add_subplot(1, 2, 1)
+ax1.plot(xx_pr, p)
+# ax1.plot(xx_pr, p2)
+ax1.axhline(cbf_repl_risk, linestyle='--', color='black')
+ax1.axvline(1.0, linestyle='--', color='black')
+ax1.text(2.2, cbf_repl_risk+0.02, r'Predicted replacement risk',
+          fontsize=subt_font, color='black')
+ax1.text(0.6, 0.04, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='steelblue')
+# ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+ax1.set_ylabel('Replacement probability', fontsize=axis_font)
+# ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax1.set_title('CBF-TFP', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [cbf_tfp_replacement[i]], 
+              marker='x', markersize=15, color="red")
+ax1.grid()
+ax1.set_xlim([0, 4.0])
+ax1.set_ylim([0, 1.0])
+
+
+####
+theta_base, beta_base = mle_fit_collapse(ida_levels, mf_tfp_replacement)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_base, beta_base)
+p2 = f(xx_pr, theta_base, b_TOT)
+
+MCE_level = float(p[xx_pr==1.0])
+MCE_level_unc = float(p2[xx_pr==1.0])
+ax4=fig.add_subplot(1, 2, 2)
+ax4.plot(xx_pr, p, label='Best lognormal fit')
+# ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
+ax4.axhline(mf_repl_risk, linestyle='--', color='black')
+ax4.axvline(1.0, linestyle='--', color='black')
+ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+ax4.text(2.2, mf_repl_risk+0.02, r'Predicted replacement risk',
+          fontsize=subt_font, color='black')
+ax4.text(0.6, 0.13, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color='steelblue')
+# ax4.text(0.2, 0.2, f'{MCE_level_unc:,.4f}',
+#           fontsize=subt_font, color='orange')
+
+# ax4.set_ylabel('Collapse probability', fontsize=axis_font)
+ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
+ax4.set_title('MF-TFP', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax4.plot([lvl], [mf_tfp_replacement[i]], 
+              marker='x', markersize=15, color="red")
+ax4.grid()
+ax4.set_xlim([0, 4.0])
+ax4.set_ylim([0, 1.0])
+# ax4.legend(fontsize=subt_font-2, loc='center right')
+
+fig.tight_layout()
+plt.show()
+
+#%% cost validation distr
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+from matplotlib.lines import Line2D
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+cbf_tfp_ida = cbf_tfp_loss[cbf_tfp_loss['ida_level']==1.0]
+mf_tfp_ida = mf_tfp_loss[mf_tfp_loss['ida_level']==1.0]
+cbf_tfp_max_ida = cbf_tfp_max_loss[cbf_tfp_loss['ida_level']==1.0]
+mf_tfp_max_ida = mf_tfp_max_loss[mf_tfp_loss['ida_level']==1.0]
+
+cbf_tfp_ida['repair_coef'] = cbf_tfp_ida[cost_var_ida]/cbf_tfp_max_ida[cost_var_ida]
+mf_tfp_ida['repair_coef'] = mf_tfp_ida[cost_var_ida]/mf_tfp_max_ida[cost_var_ida]
+
+mf_tfp_repl_cases = mf_tfp_ida[mf_tfp_ida[cost_var_ida] == replacement_cost].count()[cost_var_ida]
+cbf_tfp_repl_cases = cbf_tfp_ida[cbf_tfp_ida[cost_var_ida] == replacement_cost].count()[cost_var_ida]
+print('CBF-TFP runs requiring replacement:', cbf_tfp_repl_cases)
+print('MF-TFP runs requiring replacement:', mf_tfp_repl_cases)
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+df_dt = pd.DataFrame.from_dict(
+    data=dict(CBF=cbf_tfp_ida['repair_coef'], MF=mf_tfp_ida['repair_coef']),
+    orient='index',
+).T
+
+import seaborn as sns
+
+ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+ax.set_xlim(0, .75)
+meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
+                      markerfacecolor='navy')
+sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False)
+# # ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax.axvline(cbf_repair_cost, ymin=0.5, ymax=1, linestyle='--', color='cornflowerblue')
+ax.axvline(mf_repair_cost, ymin=0.0, ymax=0.5, linestyle='--', color='lightsalmon')
+ax.grid(visible=True)
+
+custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
+                       , markerfacecolor='navy', markersize=10),
+                Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
+                Line2D([-1], [-1], color='lightsalmon', linestyle='--'),
+                ]
+
+ax.legend(custom_lines, ['Mean', 'CBF-TFP predicted', 'MF-TFP predicted'], fontsize=subt_font)
+
+ax.text(.3, 0, u'5 replacements \u2192', fontsize=axis_font, color='red')
+ax.text(.3, 1, u'0 replacement', fontsize=axis_font, color='red')
+# ax.text(14.5, 1.45, r'14 days threshold', fontsize=axis_font, color='black')
+plt.show()
+
+#%% time validation distr
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 18
+import matplotlib as mpl
+from matplotlib.lines import Line2D
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+cbf_tfp_ida = cbf_tfp_loss[cbf_tfp_loss['ida_level']==1.0]
+mf_tfp_ida = mf_tfp_loss[mf_tfp_loss['ida_level']==1.0]
+cbf_tfp_max_ida = cbf_tfp_max_loss[cbf_tfp_loss['ida_level']==1.0]
+mf_tfp_max_ida = mf_tfp_max_loss[mf_tfp_loss['ida_level']==1.0]
+
+cbf_tfp_ida['repair_coef'] = cbf_tfp_ida[time_var_ida]/cbf_tfp_max_ida[time_var_ida]
+mf_tfp_ida['repair_coef'] = mf_tfp_ida[time_var_ida]/mf_tfp_max_ida[time_var_ida]
+
+mf_tfp_repl_cases = mf_tfp_ida[mf_tfp_ida[time_var_ida] == replacement_time].count()[time_var_ida]
+cbf_tfp_repl_cases = cbf_tfp_ida[cbf_tfp_ida[time_var_ida] == replacement_time].count()[time_var_ida]
+
+fig, axes = plt.subplots(1, 1, 
+                         figsize=(10, 6))
+df_dt = pd.DataFrame.from_dict(
+    data=dict(CBF=cbf_tfp_ida['repair_coef'], MF=mf_tfp_ida['repair_coef']),
+    orient='index',
+).T
+
+import seaborn as sns
+
+ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
+                   edgecolor='black', linewidth=1.0)
+ax.set_xlim(0, .75)
+meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
+                      markerfacecolor='navy')
+sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
+            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False)
+# # ax.set_ylabel('Design case', fontsize=axis_font)
+ax.set_xlabel(r'Downtime ratio', fontsize=axis_font)
+ax.axvline(cbf_downtime, ymin=0.5, ymax=1, linestyle='--', color='cornflowerblue')
+ax.axvline(mf_downtime, ymin=0.0, ymax=0.5, linestyle='--', color='lightsalmon')
+ax.grid(visible=True)
+
+custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
+                       , markerfacecolor='navy', markersize=10),
+                Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
+                Line2D([-1], [-1], color='lightsalmon', linestyle='--'),
+                ]
+
+ax.legend(custom_lines, ['Mean', 'CBF-TFP predicted', 'MF-TFP predicted'], fontsize=subt_font)
+
+ax.text(.3, 0, u'5 replacements \u2192', fontsize=axis_font, color='red')
+ax.text(.3, 1, u'0 replacement', fontsize=axis_font, color='red')
+# ax.text(14.5, 1.45, r'14 days threshold', fontsize=axis_font, color='black')
+plt.show()
+
+#%

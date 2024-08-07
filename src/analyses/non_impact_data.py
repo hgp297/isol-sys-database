@@ -475,7 +475,6 @@ mdl_time_miss.fit_ols_ridge()
 
 #%% 3d surf for cost ratio - non impact set
 
-# TODO: here
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -531,7 +530,7 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
-#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
 ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
 
 #################################
@@ -574,14 +573,13 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
-#ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
 
 
-
-
 #%% ml training
+'''
 ############
 # k ratio
 ############
@@ -664,7 +662,6 @@ mdl_time_miss.fit_ols_ridge()
 
 #%% 3d surf for cost ratio - non impact set
 
-# TODO: here
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -765,4 +762,713 @@ ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$k_1/k_2$', fontsize=axis_font)
 #ax1.set_zlabel('Median loss ($)', fontsize=axis_font)
 ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+'''
+
+#%% subsets
+
+df_tfp = df[df['isolator_system'] == 'TFP']
+df_lrb = df[df['isolator_system'] == 'LRB']
+
+df_mf_tfp = df_tfp[df_tfp['superstructure_system'] == 'MF']
+df_mf_lrb = df_lrb[df_lrb['superstructure_system'] == 'MF']
+
+df_cbf_tfp = df_tfp[df_tfp['superstructure_system'] == 'CBF']
+df_cbf_lrb = df_lrb[df_lrb['superstructure_system'] == 'CBF']
+
+
+df_mf_tfp_i = df_mf_tfp[df_mf_tfp['impacted'] == 1]
+df_mf_tfp_o = df_mf_tfp[df_mf_tfp['impacted'] == 0]
+df_mf_lrb_i = df_mf_lrb[df_mf_lrb['impacted'] == 1]
+df_mf_lrb_o = df_mf_lrb[df_mf_lrb['impacted'] == 0]
+
+df_cbf_tfp_i = df_cbf_tfp[df_cbf_tfp['impacted'] == 1]
+df_cbf_tfp_o = df_cbf_tfp[df_cbf_tfp['impacted'] == 0]
+df_cbf_lrb_i = df_cbf_lrb[df_cbf_lrb['impacted'] == 1]
+df_cbf_lrb_o = df_cbf_lrb[df_cbf_lrb['impacted'] == 0]
+
+#%% regression models: cost
+# goal: E[cost|sys=sys, impact=impact]
+
+mdl_cost_cbf_lrb_o = GP(df_cbf_lrb_o)
+mdl_cost_cbf_lrb_o.set_covariates(covariate_list)
+mdl_cost_cbf_lrb_o.set_outcome(cost_var)
+mdl_cost_cbf_lrb_o.test_train_split(0.2)
+
+mdl_cost_cbf_tfp_o = GP(df_cbf_tfp_o)
+mdl_cost_cbf_tfp_o.set_covariates(covariate_list)
+mdl_cost_cbf_tfp_o.set_outcome(cost_var)
+mdl_cost_cbf_tfp_o.test_train_split(0.2)
+
+mdl_cost_mf_lrb_o = GP(df_mf_lrb_o)
+mdl_cost_mf_lrb_o.set_covariates(covariate_list)
+mdl_cost_mf_lrb_o.set_outcome(cost_var)
+mdl_cost_mf_lrb_o.test_train_split(0.2)
+
+mdl_cost_mf_tfp_o = GP(df_mf_tfp_o)
+mdl_cost_mf_tfp_o.set_covariates(covariate_list)
+mdl_cost_mf_tfp_o.set_outcome(cost_var)
+mdl_cost_mf_tfp_o.test_train_split(0.2)
+
+print('======= outcome regression per system per impact ========')
+import time
+t0 = time.time()
+
+mdl_cost_cbf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_cbf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+
+tp = time.time() - t0
+
+print("GPR training for cost done for 4 models in %.3f s" % tp)
+
+cost_regression_mdls = {'mdl_cost_cbf_lrb_o': mdl_cost_cbf_lrb_o,
+                        'mdl_cost_cbf_tfp_o': mdl_cost_cbf_tfp_o,
+                        'mdl_cost_mf_lrb_o': mdl_cost_mf_lrb_o,
+                        'mdl_cost_mf_tfp_o': mdl_cost_mf_tfp_o}
+
+#%% CBF-TFP and MF-TFP cost
+
+# TODO: here
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 4.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+Z = mdl_cost_cbf_tfp_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_tfp_o[xvar], df_cbf_tfp_o[yvar], df_cbf_tfp_o[cost_var], c=df_cbf_tfp_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+ax.set_zlim([0.0, 0.3])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+########
+Z = mdl_cost_mf_tfp_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Reds',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_tfp_o[xvar], df_mf_tfp_o[yvar], df_mf_tfp_o[cost_var], c=df_mf_tfp_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Reds')
+
+ax.set_zlim([0.0, 0.3])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Reds_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Reds')
+######
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
+ax.set_title('TFPs no impact: Blue = CBF, Red = MF', fontsize=subt_font)
+
+#################################
+
+
+res = 75
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 4.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+Z = mdl_cost_cbf_tfp_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.2,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_tfp_o[xvar], df_cbf_tfp_o[yvar], df_cbf_tfp_o[cost_var], c=df_cbf_tfp_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+########
+Z = mdl_cost_mf_tfp_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Reds',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_tfp_o[xvar], df_mf_tfp_o[yvar], df_mf_tfp_o[cost_var], c=df_mf_tfp_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Reds')
+
+ax.set_zlim([0.0, 0.05])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Reds_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Reds')
+######
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
+ax.set_title('Same plot zoomed in', fontsize=subt_font)
+
+fig.tight_layout()
+
+#%% CBF-TFP and MF-TFP cost (secondary variables)
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+Z = mdl_cost_cbf_tfp_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_tfp_o[xvar], df_cbf_tfp_o[yvar], df_cbf_tfp_o[cost_var], c=df_cbf_tfp_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+ax.set_zlim([0.0, 0.3])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+########
+Z = mdl_cost_mf_tfp_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Reds',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_tfp_o[xvar], df_mf_tfp_o[yvar], df_mf_tfp_o[cost_var], c=df_mf_tfp_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Reds')
+
+ax.set_zlim([0.0, 0.3])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Reds_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Reds')
+######
+
+ax.set_xlabel('$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
+ax.set_title('TFPs no impact: Blue = CBF, Red = MF', fontsize=subt_font)
+
+#################################
+
+
+res = 75
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+Z = mdl_cost_cbf_tfp_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.2,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_tfp_o[xvar], df_cbf_tfp_o[yvar], df_cbf_tfp_o[cost_var], c=df_cbf_tfp_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+########
+Z = mdl_cost_mf_tfp_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Reds',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_tfp_o[xvar], df_mf_tfp_o[yvar], df_mf_tfp_o[cost_var], c=df_mf_tfp_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Reds')
+
+ax.set_zlim([0.0, 0.05])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Reds_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Reds')
+######
+
+ax.set_xlabel('$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
+ax.set_title('Same plot zoomed in', fontsize=subt_font)
+
+fig.tight_layout()
+
+#%% CBF-LRB and MF-LRB cost
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 4.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+Z = mdl_cost_cbf_lrb_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb_o[xvar], df_cbf_lrb_o[yvar], df_cbf_lrb_o[cost_var], c=df_cbf_lrb_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+ax.set_zlim([0.0, 0.3])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+########
+Z = mdl_cost_mf_lrb_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Reds',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_lrb_o[xvar], df_mf_lrb_o[yvar], df_mf_lrb_o[cost_var], c=df_mf_lrb_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Reds')
+
+ax.set_zlim([0.0, 0.1])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Reds_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Reds')
+######
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
+ax.set_title('LRBs no impact: Blue = CBF, Red = MF', fontsize=subt_font)
+
+#################################
+
+
+res = 75
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 4.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+Z = mdl_cost_cbf_lrb_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.2,
+                       vmin=-0.2)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb_o[xvar], df_cbf_lrb_o[yvar], df_cbf_lrb_o[cost_var], c=df_cbf_lrb_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+########
+Z = mdl_cost_mf_lrb_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Reds',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_lrb_o[xvar], df_mf_lrb_o[yvar], df_mf_lrb_o[cost_var], c=df_mf_lrb_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Reds')
+
+ax.set_zlim([0.0, 0.05])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Reds_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Reds')
+######
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
+ax.set_title('LRBs no impact: Blue = CBF, Red = MF', fontsize=subt_font)
+ax.set_title('Same plot zoomed in', fontsize=subt_font)
+
+fig.tight_layout()
+
+#%% CBF-LRB and MF-LRB cost (secondary variables)
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+Z = mdl_cost_cbf_lrb_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb_o[xvar], df_cbf_lrb_o[yvar], df_cbf_lrb_o[cost_var], c=df_cbf_lrb_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+ax.set_zlim([0.0, 0.3])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+########
+Z = mdl_cost_mf_lrb_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Reds',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_lrb_o[xvar], df_mf_lrb_o[yvar], df_mf_lrb_o[cost_var], c=df_mf_lrb_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Reds')
+
+ax.set_zlim([0.0, 0.1])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Reds_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Reds')
+######
+
+ax.set_xlabel('$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
+ax.set_title('LRBs no impact: Blue = CBF, Red = MF', fontsize=subt_font)
+
+#################################
+
+
+res = 75
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+Z = mdl_cost_cbf_lrb_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.2,
+                       vmin=-0.2)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb_o[xvar], df_cbf_lrb_o[yvar], df_cbf_lrb_o[cost_var], c=df_cbf_lrb_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+########
+Z = mdl_cost_mf_lrb_o.gpr.predict(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Reds',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_lrb_o[xvar], df_mf_lrb_o[yvar], df_mf_lrb_o[cost_var], c=df_mf_lrb_o[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Reds')
+
+ax.set_zlim([0.0, 0.05])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Reds_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Reds')
+######
+
+ax.set_xlabel('$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Cost ratio', fontsize=axis_font)
+ax.set_title('LRBs no impact: Blue = CBF, Red = MF', fontsize=subt_font)
+ax.set_title('Same plot zoomed in', fontsize=subt_font)
+
 fig.tight_layout()
