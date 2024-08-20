@@ -935,3 +935,36 @@ cbf_lrb_inv_design = grid_search_inverse_design(
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
+
+#%% design the systems
+
+# TODO: pass the length of the df to run controllers
+import pandas as pd
+from db import prepare_ida_util
+import json
+
+mf_tfp_inv_design['superstructure_system'] = 'MF'
+mf_tfp_inv_design['isolator_system'] = 'TFP'
+mf_tfp_inv_design['k_ratio'] = 10
+
+mf_tfp_dict = mf_tfp_inv_design.to_dict()
+ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/')
+
+print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
+
+with open('../inputs/mf_tfp_inverse.in', 'w') as file:
+    file.write(json.dumps(mf_tfp_dict))
+    file.close()
+
+cbf_tfp_inv_design['superstructure_system'] = 'CBF'
+cbf_tfp_inv_design['isolator_system'] = 'TFP'
+cbf_tfp_inv_design['k_ratio'] = 10
+
+cbf_tfp_dict = cbf_tfp_inv_design.to_dict()
+ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/')
+
+with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
+    file.write(json.dumps(cbf_tfp_dict))
+    file.close()
+    
+print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
