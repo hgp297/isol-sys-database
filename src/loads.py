@@ -140,7 +140,7 @@ def estimate_period(input_df, use_Cu=True, unit_in_ft=True):
             C_u = 1.4
         # this is a departure from code value from my own set of data
         elif struct_type == 'MF':
-            C_u = 1.8
+            C_u = 1.4
     else:
         C_u = 1.0
         
@@ -207,7 +207,7 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
         C_u = 1.4
     # this is a departure from code value from my own set of data
     elif struct_type == 'MF':
-        C_u = 1.8
+        C_u = 1.4
     T_a = Ct*(h_n**x_Tfb)
     T_fb = C_u*T_a
 

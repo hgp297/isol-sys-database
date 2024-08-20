@@ -849,7 +849,7 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
             X_space.index.isin(ok_repl.index)))]
 
     if X_design.shape[0] < 1:
-        print('No suitable design found.')
+        print('No suitable design found for system', system_name)
         return None
     
     

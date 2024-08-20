@@ -1493,10 +1493,15 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
                         axis=1)
     
+    # ad-hoc adjust Tfbe here? Cu = 1.8?
     from loads import estimate_period
-    work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+    if work_df['superstructure_system'].item == 'MF':
+        work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
+    else:
+        work_df['T_fbe'] = estimate_period(work_df.iloc[0])
     
     from gms import scale_ground_motion
+    
     
     work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
     work_df['moat_ampli'] = work_df['gap_ratio']
