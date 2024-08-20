@@ -277,52 +277,6 @@ ax3.set_xlabel('System', fontsize=axis_font)
 fig.tight_layout()
 plt.show()
 
-#%% are outcomes different for each system?
-
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-
-# plt.close('all')
-import seaborn as sns
-
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(13, 4))
-sns.boxplot(y='median_cost', x= "system", data=df,  showfliers=False,
-            boxprops={'facecolor': 'none'},
-            width=0.6, ax=ax1)
-sns.stripplot(x='system', y='median_cost', data=df, ax=ax1, jitter=True,
-              alpha=0.3, color='steelblue')
-ax1.set_title('Median repair cost', fontsize=subt_font)
-ax1.set_ylabel('Repair cost (USD)', fontsize=axis_font)
-ax1.set_xlabel('System', fontsize=axis_font)
-ax1.set_yscale('log')
-
-sns.boxplot(y='median_time', x= "system", data=df,  showfliers=False,
-            boxprops={'facecolor': 'none'},
-            width=0.6, ax=ax2)
-sns.stripplot(x='system', y='median_time', data=df, ax=ax2, jitter=True,
-              alpha=0.3, color='steelblue')
-ax2.set_title('Median sequential repair time', fontsize=subt_font)
-ax2.set_ylabel('Repair time (worker-day)', fontsize=axis_font)
-ax2.set_xlabel('System', fontsize=axis_font)
-ax2.set_yscale('log')
-
-
-# ax3.set_yscale('log')
-sns.boxplot(y="replacement_freq", x= "system", data=df,  showfliers=False,
-            boxprops={'facecolor': 'none'},
-            width=0.5, ax=ax3)
-sns.stripplot(x='system', y='replacement_freq', hue='collapse_prob', data=df, ax=ax3, jitter=True,
-              alpha=0.3, color='steelblue')
-ax3.set_title('Replacement frequency', fontsize=subt_font)
-ax3.set_ylabel('Replacement frequency', fontsize=axis_font)
-ax3.set_xlabel('System', fontsize=axis_font)
-fig.tight_layout()
-plt.show()
 
 #%%
 
@@ -544,14 +498,154 @@ cost_regression_mdls = {'mdl_cost_cbf_lrb_i': mdl_cost_cbf_lrb_i,
                         'mdl_cost_mf_tfp_i': mdl_cost_mf_tfp_i,
                         'mdl_cost_mf_tfp_o': mdl_cost_mf_tfp_o}
 
-#%%
+#%% regression models: time
+# goal: E[time|sys=sys, impact=impact]
+
+mdl_time_cbf_lrb_i = GP(df_cbf_lrb_i)
+mdl_time_cbf_lrb_i.set_covariates(covariate_list)
+mdl_time_cbf_lrb_i.set_outcome(time_var)
+mdl_time_cbf_lrb_i.test_train_split(0.2)
+
+mdl_time_cbf_lrb_o = GP(df_cbf_lrb_o)
+mdl_time_cbf_lrb_o.set_covariates(covariate_list)
+mdl_time_cbf_lrb_o.set_outcome(time_var)
+mdl_time_cbf_lrb_o.test_train_split(0.2)
+
+mdl_time_cbf_tfp_i = GP(df_cbf_tfp_i)
+mdl_time_cbf_tfp_i.set_covariates(covariate_list)
+mdl_time_cbf_tfp_i.set_outcome(time_var)
+mdl_time_cbf_tfp_i.test_train_split(0.2)
+
+mdl_time_cbf_tfp_o = GP(df_cbf_tfp_o)
+mdl_time_cbf_tfp_o.set_covariates(covariate_list)
+mdl_time_cbf_tfp_o.set_outcome(time_var)
+mdl_time_cbf_tfp_o.test_train_split(0.2)
+
+mdl_time_mf_lrb_i = GP(df_mf_lrb_i)
+mdl_time_mf_lrb_i.set_covariates(covariate_list)
+mdl_time_mf_lrb_i.set_outcome(time_var)
+mdl_time_mf_lrb_i.test_train_split(0.2)
+
+mdl_time_mf_lrb_o = GP(df_mf_lrb_o)
+mdl_time_mf_lrb_o.set_covariates(covariate_list)
+mdl_time_mf_lrb_o.set_outcome(time_var)
+mdl_time_mf_lrb_o.test_train_split(0.2)
+
+mdl_time_mf_tfp_i = GP(df_mf_tfp_i)
+mdl_time_mf_tfp_i.set_covariates(covariate_list)
+mdl_time_mf_tfp_i.set_outcome(time_var)
+mdl_time_mf_tfp_i.test_train_split(0.2)
+
+mdl_time_mf_tfp_o = GP(df_mf_tfp_o)
+mdl_time_mf_tfp_o.set_covariates(covariate_list)
+mdl_time_mf_tfp_o.set_outcome(time_var)
+mdl_time_mf_tfp_o.test_train_split(0.2)
+
+print('======= outcome regression per system per impact ========')
+import time
+t0 = time.time()
+
+mdl_time_cbf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_time_cbf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_time_cbf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_time_cbf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+
+tp = time.time() - t0
+
+print("GPR training for time done for 8 models in %.3f s" % tp)
+
+time_regression_mdls = {'mdl_time_cbf_lrb_i': mdl_time_cbf_lrb_i,
+                        'mdl_time_cbf_lrb_o': mdl_time_cbf_lrb_o,
+                        'mdl_time_cbf_tfp_i': mdl_time_cbf_tfp_i,
+                        'mdl_time_cbf_tfp_o': mdl_time_cbf_tfp_o,
+                        'mdl_time_mf_lrb_i': mdl_time_mf_lrb_i,
+                        'mdl_time_mf_lrb_o': mdl_time_mf_lrb_o,
+                        'mdl_time_mf_tfp_i': mdl_time_mf_tfp_i,
+                        'mdl_time_mf_tfp_o': mdl_time_mf_tfp_o}
+
+#%% regression models: repl
+# goal: E[repl|sys=sys, impact=impact]
+
+mdl_repl_cbf_lrb_i = GP(df_cbf_lrb_i)
+mdl_repl_cbf_lrb_i.set_covariates(covariate_list)
+mdl_repl_cbf_lrb_i.set_outcome('replacement_freq')
+mdl_repl_cbf_lrb_i.test_train_split(0.2)
+
+mdl_repl_cbf_lrb_o = GP(df_cbf_lrb_o)
+mdl_repl_cbf_lrb_o.set_covariates(covariate_list)
+mdl_repl_cbf_lrb_o.set_outcome('replacement_freq')
+mdl_repl_cbf_lrb_o.test_train_split(0.2)
+
+mdl_repl_cbf_tfp_i = GP(df_cbf_tfp_i)
+mdl_repl_cbf_tfp_i.set_covariates(covariate_list)
+mdl_repl_cbf_tfp_i.set_outcome('replacement_freq')
+mdl_repl_cbf_tfp_i.test_train_split(0.2)
+
+mdl_repl_cbf_tfp_o = GP(df_cbf_tfp_o)
+mdl_repl_cbf_tfp_o.set_covariates(covariate_list)
+mdl_repl_cbf_tfp_o.set_outcome('replacement_freq')
+mdl_repl_cbf_tfp_o.test_train_split(0.2)
+
+mdl_repl_mf_lrb_i = GP(df_mf_lrb_i)
+mdl_repl_mf_lrb_i.set_covariates(covariate_list)
+mdl_repl_mf_lrb_i.set_outcome('replacement_freq')
+mdl_repl_mf_lrb_i.test_train_split(0.2)
+
+mdl_repl_mf_lrb_o = GP(df_mf_lrb_o)
+mdl_repl_mf_lrb_o.set_covariates(covariate_list)
+mdl_repl_mf_lrb_o.set_outcome('replacement_freq')
+mdl_repl_mf_lrb_o.test_train_split(0.2)
+
+mdl_repl_mf_tfp_i = GP(df_mf_tfp_i)
+mdl_repl_mf_tfp_i.set_covariates(covariate_list)
+mdl_repl_mf_tfp_i.set_outcome('replacement_freq')
+mdl_repl_mf_tfp_i.test_train_split(0.2)
+
+mdl_repl_mf_tfp_o = GP(df_mf_tfp_o)
+mdl_repl_mf_tfp_o.set_covariates(covariate_list)
+mdl_repl_mf_tfp_o.set_outcome('replacement_freq')
+mdl_repl_mf_tfp_o.test_train_split(0.2)
+
+t0 = time.time()
+
+print('======= outcome regression per system per impact ========')
+
+mdl_repl_cbf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_cbf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_cbf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_cbf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+
+tp = time.time() - t0
+
+print("GPR training for replacement done for 8 models in %.3f s" % tp)
+
+repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
+                        'mdl_repl_cbf_lrb_o': mdl_repl_cbf_lrb_o,
+                        'mdl_repl_cbf_tfp_i': mdl_repl_cbf_tfp_i,
+                        'mdl_repl_cbf_tfp_o': mdl_repl_cbf_tfp_o,
+                        'mdl_repl_mf_lrb_i': mdl_repl_mf_lrb_i,
+                        'mdl_repl_mf_lrb_o': mdl_repl_mf_lrb_o,
+                        'mdl_repl_mf_tfp_i': mdl_repl_mf_tfp_i,
+                        'mdl_repl_mf_tfp_o': mdl_repl_mf_tfp_o}
+
+
+#%% deprecated model for conditioning on system clf
+'''
 
 def predict_outcome(X, system_clf_mdl, impact_clf_mdls, var_regr_mdls,
                outcome='cost_50%', return_var=False):
     """Returns the expected value of the decision variable based on the total
     probability law (law of iterated expectation).
     
-    E[cost] = sum_i sum_j E[cost|impact_j, system_i] Pr(impact_j | system_i) Pr(system_i)
+    E[cost] = sum_i sum_j E[cost|impact_j] Pr(impact_j) 
     
     Currently, this assumes that the models used are all GPC/GPR.
     
@@ -612,7 +706,8 @@ def predict_outcome(X, system_clf_mdl, impact_clf_mdls, var_regr_mdls,
         pass
     else:
         return expected_DV_df
-    
+'''
+  
 #%% sample for CBF-LRB
 
 plt.rcParams["font.family"] = "serif"

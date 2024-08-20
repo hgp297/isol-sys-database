@@ -819,6 +819,9 @@ mdl_cost_cbf_tfp_o.fit_gpr(kernel_name='rbf_iso')
 mdl_cost_mf_lrb_o.fit_gpr(kernel_name='rbf_iso')
 mdl_cost_mf_tfp_o.fit_gpr(kernel_name='rbf_iso')
 
+mdl_cost_cbf_lrb_o.fit_kernel_ridge(kernel_name='rbf')
+mdl_cost_cbf_tfp_o.fit_kernel_ridge(kernel_name='rbf')
+
 tp = time.time() - t0
 
 print("GPR training for cost done for 4 models in %.3f s" % tp)
@@ -856,7 +859,7 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 Z = mdl_cost_cbf_tfp_o.gpr.predict(X_plot)
-
+# Z = mdl_cost_cbf_tfp_o.kr.predict(X_plot)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -928,7 +931,7 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 Z = mdl_cost_cbf_tfp_o.gpr.predict(X_plot)
-
+# Z = mdl_cost_cbf_tfp_o.kr.predict(X_plot)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -1016,7 +1019,7 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 Z = mdl_cost_cbf_tfp_o.gpr.predict(X_plot)
-
+# Z = mdl_cost_cbf_tfp_o.kr.predict(X_plot)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -1088,7 +1091,7 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 Z = mdl_cost_cbf_tfp_o.gpr.predict(X_plot)
-
+# Z = mdl_cost_cbf_tfp_o.kr.predict(X_plot)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -1176,7 +1179,7 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 Z = mdl_cost_cbf_lrb_o.gpr.predict(X_plot)
-
+# Z = mdl_cost_cbf_lrb_o.kr.predict(X_plot)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -1248,7 +1251,7 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 Z = mdl_cost_cbf_lrb_o.gpr.predict(X_plot)
-
+# Z = mdl_cost_cbf_lrb_o.kr.predict(X_plot)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -1338,7 +1341,7 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 Z = mdl_cost_cbf_lrb_o.gpr.predict(X_plot)
-
+# Z = mdl_cost_cbf_lrb_o.kr.predict(X_plot)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -1410,7 +1413,7 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 Z = mdl_cost_cbf_lrb_o.gpr.predict(X_plot)
-
+# Z = mdl_cost_cbf_lrb_o.kr.predict(X_plot)
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)

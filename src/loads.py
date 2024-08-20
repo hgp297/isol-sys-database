@@ -136,7 +136,11 @@ def estimate_period(input_df, use_Cu=True, unit_in_ft=True):
     T_a = Ct*(h_n**x_Tfb)
     
     if use_Cu:
-        C_u = 1.4
+        if struct_type == 'CBF':
+            C_u = 1.4
+        # this is a departure from code value from my own set of data
+        elif struct_type == 'MF':
+            C_u = 1.8
     else:
         C_u = 1.0
         
@@ -199,7 +203,11 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
     Ct = get_Ct(struct_type)
     x_Tfb = get_x_Tfb(struct_type)
     h_n = np.sum(hsx)/12.0
-    C_u = 1.4
+    if struct_type == 'CBF':
+        C_u = 1.4
+    # this is a departure from code value from my own set of data
+    elif struct_type == 'MF':
+        C_u = 1.8
     T_a = Ct*(h_n**x_Tfb)
     T_fb = C_u*T_a
 

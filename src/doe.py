@@ -453,14 +453,32 @@ class GP:
         from sklearn.kernel_ridge import KernelRidge
         from sklearn.model_selection import GridSearchCV
         
+        
+        
         kr_pipe = Pipeline([('scaler', StandardScaler()),
                              ('kr', KernelRidge(kernel=kernel_name))])
+        
+        '''
+        from scipy.stats import loguniform
+        from sklearn.model_selection import RandomizedSearchCV
+        param_distributions = {
+            "kr__alpha": loguniform(1e-3, 1e3),
+            "kr__gamma": loguniform(1e-5, 1e3),
+        }
+        kr_cv = RandomizedSearchCV(
+            kr_pipe,
+            param_distributions=param_distributions,
+            n_iter=500,
+            random_state=985,
+        )
+        kr_cv.fit(self.X, self.y)
+        '''
         
         # cross-validate several parameters
         from numpy import logspace
         parameters = [
-            {'kr__alpha':[0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0],
-             'kr__gamma':logspace(-5, 3, 9)}
+            {'kr__alpha':[0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 50.0, 100.0],
+              'kr__gamma':logspace(-5, 3, 9)}
             ]
         
         kr_cv = GridSearchCV(kr_pipe, param_grid=parameters)
