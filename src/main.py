@@ -96,25 +96,25 @@
 import pandas as pd
 import pickle
 
-#### cbf tfp
-run_case = 'cbf_tfp_inverse'
-validation_path = '../data/validation/'+run_case+'/'
+# #### cbf tfp
+# run_case = 'cbf_tfp_inverse'
+# validation_path = '../data/validation/'+run_case+'/'
 
-main_obj = pd.read_pickle(validation_path+run_case+".pickle")
-df_val = main_obj.ida_results
+# main_obj = pd.read_pickle(validation_path+run_case+".pickle")
+# df_val = main_obj.ida_results
 
-main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
-                cmp_dir='../resource/loss/')
+# main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+#                 cmp_dir='../resource/loss/')
 
-loss_path = '../data/validation/'+run_case+'/'
-with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# loss_path = '../data/validation/'+run_case+'/'
+# with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
-main_obj.calc_cmp_max(main_obj.ida_results,
-                cmp_dir='../resource/loss/')
+# main_obj.calc_cmp_max(main_obj.ida_results,
+#                 cmp_dir='../resource/loss/')
 
-with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
     
     
 #### mf tfp
