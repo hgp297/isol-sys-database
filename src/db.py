@@ -1495,7 +1495,7 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     
     # ad-hoc adjust Tfbe here? Cu = 1.8?
     from loads import estimate_period
-    if work_df['superstructure_system'].item == 'MF':
+    if work_df['superstructure_system'].item() == 'MF':
         work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
     else:
         work_df['T_fbe'] = estimate_period(work_df.iloc[0])
@@ -1521,6 +1521,16 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         if tfp_designs.shape[0] == 0:
             all_tfps, lrb_designs = design_bearing_util(
                 work_df, filter_designs=False, mu_1_force=0.06)
+            
+            # keep the designs that look sensible
+            tfp_designs = all_tfps.loc[(all_tfps['R_1'] >= 10.0) &
+                                       (all_tfps['R_1'] <= 50.0) &
+                                       (all_tfps['R_2'] <= 190.0) &
+                                       (all_tfps['zeta_loop'] <= 0.27)]
+            
+        if tfp_designs.shape[0] == 0:
+            all_tfps, lrb_designs = design_bearing_util(
+                work_df, filter_designs=False, mu_1_force=0.03)
             
             # keep the designs that look sensible
             tfp_designs = all_tfps.loc[(all_tfps['R_1'] >= 10.0) &
@@ -1559,6 +1569,12 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         work_df = mf_designs.copy()
     else:
         work_df = cbf_designs.copy()
+        
+    # recalculate Tfbe
+    if work_df['superstructure_system'].item() == 'MF':
+        work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
+    else:
+        work_df['T_fbe'] = estimate_period(work_df.iloc[0])
     
     gm_dir = db_string+'/ground_motions/gm_db.csv'
     spec_dir = db_string+'/ground_motions/gm_spectra.csv'

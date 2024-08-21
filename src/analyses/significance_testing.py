@@ -405,3 +405,114 @@ ax.set_ylim([0, 0.2])
 
 fig.tight_layout()
 
+#%% 1d regression: structure, cost
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 8))
+
+from sklearn import linear_model
+regr = linear_model.LinearRegression()
+
+ax = fig.add_subplot(2, 3, 1)
+xvar = 'num_stories'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("num stories", fontsize=axis_font)
+ax.set_ylabel('Cost ratio', fontsize=axis_font)
+ax.legend()
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 2)
+xvar = 'bldg_area'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("building area", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 3)
+xvar = 'L_bay'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("L bay", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 4)
+xvar = 'h_story'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("h story", fontsize=axis_font)
+ax.set_ylabel('Cost ratio', fontsize=axis_font)
+ax.legend()
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 5)
+xvar = 'h_bldg'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("h building", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+ax = fig.add_subplot(2, 3, 6)
+xvar = 'L_bldg'
+x_1d = np.linspace(df_miss[xvar].min(), df_miss[xvar].max(), 200).reshape(-1, 1)
+ax.scatter(df_cbf[xvar], df_cbf['cmp_cost_ratio'], alpha=0.7, color=cmap(1), label='CBF')
+regr.fit(df_cbf[[xvar]], df_cbf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(1), linewidth=3)
+
+ax.scatter(df_mf[xvar], df_mf['cmp_cost_ratio'], alpha=0.7, color=cmap(0), label='MF')
+regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
+y_pred = regr.predict(x_1d)
+plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
+ax.set_xlabel("L building", fontsize=axis_font)
+ax.set_ylim([0, 0.2])
+
+fig.tight_layout()
