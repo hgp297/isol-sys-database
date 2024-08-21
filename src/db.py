@@ -1351,7 +1351,7 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
     
     df_lrb = df_raw[df_raw['isolator_system'] == 'LRB']
         
-    
+    breakpoint()
     # attempt to design all LRBs
     if df_lrb.shape[0] > 0:
         t0 = time.time()
@@ -1368,6 +1368,31 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
         else:
             # keep the designs that look sensible
             # limits from design example CE 223
+            lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
+                                               3*all_lrb_designs['d_lead']) &
+                                              (all_lrb_designs['d_bearing'] <=
+                                               6*all_lrb_designs['d_lead']) &
+                                              (all_lrb_designs['d_lead'] <= 
+                                                all_lrb_designs['t_r']) &
+                                              (all_lrb_designs['t_r'] > 4.0) &
+                                              (all_lrb_designs['t_r'] < 35.0) &
+                                              (all_lrb_designs['buckling_fail'] == 0) &
+                                              (all_lrb_designs['zeta_loop'] <= 0.25)]
+            
+            lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
+            
+        # check to see if bearing design succeeded
+        # if failed (particularly for inverse design), reduce bearings
+        if lrb_designs.shape[0] < 1:
+            all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row, reduce_bearings=True),
+                                           axis='columns', result_type='expand')
+            
+            
+            all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
+                                       'N_lb', 'S_pad', 'S_2',
+                                       'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m', 'buckling_fail']
+            
+            # keep the designs that look sensible
             lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
                                                3*all_lrb_designs['d_lead']) &
                                               (all_lrb_designs['d_bearing'] <=
@@ -1559,6 +1584,11 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                                           (all_lrbs['zeta_loop'] <= 0.27)]
         
         lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
+        
+        # retry if design didn't work
+        if lrb_designs.shape[0] == 0:
+            print('Bearing design failed')
+            return
         
         work_df = lrb_designs.copy()
     

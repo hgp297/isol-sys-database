@@ -452,7 +452,7 @@ def iterate_on_Q(Q_guess, S_1, T_m, zeta_target, rho_k, W_tot):
     
     return(err)   
 
-def design_LRB(param_df):
+def design_LRB(param_df, reduce_bearings=False):
     
     # read in parameters
     T_m = param_df['T_m']
@@ -466,6 +466,11 @@ def design_LRB(param_df):
     
     # number of LRBs vs non LRBs
     N_lb, N_sl = get_layout(n_bays)
+    
+    # if reduce_bearing is triggered to increase bearing size, remove corners
+    if reduce_bearings:
+        N_lb = N_lb - 4
+        N_sl = N_sl + 4
     
     # converge design on Q
     # design will achieve T_m, Q, rho_k as specified
