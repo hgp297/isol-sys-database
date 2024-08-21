@@ -1351,7 +1351,6 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
     
     df_lrb = df_raw[df_raw['isolator_system'] == 'LRB']
         
-    breakpoint()
     # attempt to design all LRBs
     if df_lrb.shape[0] > 0:
         t0 = time.time()
@@ -1497,7 +1496,6 @@ def design_structure_util(df_in, filter_designs=True, db_string='../resource/'):
         
     return mf_designs, cbf_designs
     
-# TODO: take config_dict as param
 def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                      config_dict={'S_1' : 1.017,
                                  'L_bldg': 120.0,
@@ -1586,6 +1584,19 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
         
         # retry if design didn't work
+        if lrb_designs.shape[0] == 0:
+            all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=True)
+            
+            lrb_designs = all_lrbs.loc[(all_lrbs['d_bearing'] >=
+                                               3*all_lrbs['d_lead']) &
+                                              (all_lrbs['d_bearing'] <=
+                                               6*all_lrbs['d_lead']) &
+                                              (all_lrbs['d_lead'] <= 
+                                                all_lrbs['t_r']) &
+                                              (all_lrbs['t_r'] > 4.0) &
+                                              (all_lrbs['t_r'] < 35.0) &
+                                              (all_lrbs['zeta_loop'] <= 0.27)]
+            
         if lrb_designs.shape[0] == 0:
             print('Bearing design failed')
             return

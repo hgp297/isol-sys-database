@@ -469,8 +469,8 @@ def design_LRB(param_df, reduce_bearings=False):
     
     # if reduce_bearing is triggered to increase bearing size, remove corners
     if reduce_bearings:
-        N_lb = N_lb - 4
-        N_sl = N_sl + 4
+        N_lb = N_lb - 8
+        N_sl = N_sl + 8
     
     # converge design on Q
     # design will achieve T_m, Q, rho_k as specified

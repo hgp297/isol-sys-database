@@ -943,53 +943,54 @@ cbf_lrb_inv_design, cbf_lrb_inv_performance = grid_search_inverse_design(
 
 #%% design the systems
 
-# TODO: pass the length of the df to run controllers
+# # TODO: pass the length of the df to run controllers
 
-import pandas as pd
-from db import prepare_ida_util
-import json
+# import pandas as pd
+# from db import prepare_ida_util
+# import json
 
-mf_tfp_inv_design['superstructure_system'] = 'MF'
-mf_tfp_inv_design['isolator_system'] = 'TFP'
-mf_tfp_inv_design['k_ratio'] = 10
+# mf_tfp_inv_design['superstructure_system'] = 'MF'
+# mf_tfp_inv_design['isolator_system'] = 'TFP'
+# mf_tfp_inv_design['k_ratio'] = 10
 
-mf_tfp_dict = mf_tfp_inv_design.to_dict()
-ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/')
+# mf_tfp_dict = mf_tfp_inv_design.to_dict()
+# ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/')
 
-print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
+# print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
-with open('../inputs/mf_tfp_inverse.in', 'w') as file:
-    file.write(json.dumps(mf_tfp_dict))
-    file.close()
+# with open('../inputs/mf_tfp_inverse.in', 'w') as file:
+#     file.write(json.dumps(mf_tfp_dict))
+#     file.close()
 
-cbf_tfp_inv_design['superstructure_system'] = 'CBF'
-cbf_tfp_inv_design['isolator_system'] = 'TFP'
-cbf_tfp_inv_design['k_ratio'] = 10
+# cbf_tfp_inv_design['superstructure_system'] = 'CBF'
+# cbf_tfp_inv_design['isolator_system'] = 'TFP'
+# cbf_tfp_inv_design['k_ratio'] = 10
 
-cbf_tfp_dict = cbf_tfp_inv_design.to_dict()
-ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/')
+# cbf_tfp_dict = cbf_tfp_inv_design.to_dict()
+# ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/')
 
-with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
-    file.write(json.dumps(cbf_tfp_dict))
-    file.close()
+# with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
+#     file.write(json.dumps(cbf_tfp_dict))
+#     file.close()
     
-print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
+# print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
-# when writing to task file, remember to subtract 1
+# # when writing to task file, remember to subtract 1
 
 #%%
 
-import pandas as pd
-from db import prepare_ida_util
+# import pandas as pd
+# from db import prepare_ida_util
 
-mf_lrb_inv_design['superstructure_system'] = 'MF'
-mf_lrb_inv_design['isolator_system'] = 'LRB'
-mf_lrb_inv_design['k_ratio'] = 10
+# mf_lrb_inv_design['superstructure_system'] = 'MF'
+# mf_lrb_inv_design['isolator_system'] = 'LRB'
+# mf_lrb_inv_design['k_ratio'] = 10
 
-mf_lrb_dict = mf_lrb_inv_design.to_dict()
-ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/')
+# mf_lrb_dict = mf_lrb_inv_design.to_dict()
+# ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/')
 
-print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
+# print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
+
 
 #%% results of the inverse design
 
