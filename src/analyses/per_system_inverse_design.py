@@ -179,14 +179,15 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
     return(X_plot)
 
 def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                      fixed_var=None):
+                      fixed_var=None, bound_dict=None):
     
-    bound_dict = {
-        'gap_ratio': (0.6, 2.0),
-        'RI': (0.5, 2.25),
-        'T_ratio': (2.0, 11.0),
-        'zeta_e': (0.1, 0.25),
-        'k_ratio': (5.0, 12.0)}
+    if bound_dict is None:
+        bound_dict = {
+            'gap_ratio': (0.6, 2.0),
+            'RI': (0.5, 2.25),
+            'T_ratio': (2.0, 11.0),
+            'zeta_e': (0.1, 0.25),
+            'k_ratio': (5.0, 12.0)}
     
     fixed_val = {
         'gap_ratio': 1.0,
@@ -772,7 +773,21 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
                                impact_clfs, cost_regs, time_regs, repl_regs,
                                cost_var='cmp_cost_ratio', time_var='cmp_time_ratio'):
     import time
-    X_space = make_design_space(res)
+    
+    # TODO: if LRB, we need to keep moat ratio low to enable design
+    isolator_system = system_name.split('_')[1]
+    if isolator_system == 'lrb':
+        bounds = {
+            'gap_ratio': (0.6, 1.2),
+            'RI': (0.5, 2.25),
+            'T_ratio': (2.0, 11.0),
+            'zeta_e': (0.1, 0.25),
+            'k_ratio': (5.0, 12.0)}
+    
+        X_space = make_design_space(res, bound_dict=bounds)
+        breakpoint()
+    else:
+        X_space = make_design_space(res)
     
     t0 = time.time()
     
@@ -989,7 +1004,7 @@ mf_lrb_inv_design['k_ratio'] = 10
 mf_lrb_dict = mf_lrb_inv_design.to_dict()
 ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/')
 
-print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
+# print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
 
 #%% results of the inverse design
 

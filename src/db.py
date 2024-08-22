@@ -1351,7 +1351,6 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
     
     df_lrb = df_raw[df_raw['isolator_system'] == 'LRB']
         
-    breakpoint()
     # attempt to design all LRBs
     if df_lrb.shape[0] > 0:
         t0 = time.time()
@@ -1532,7 +1531,6 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     work_df['moat_ampli'] = work_df['gap_ratio']
     
     all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=False)
-    
     if work_df['isolator_system'].item() == 'TFP':
         # keep the designs that look sensible
         tfp_designs = all_tfps.loc[(all_tfps['R_1'] >= 10.0) &
@@ -1585,7 +1583,11 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         
         lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
         
-        # retry if design didn't work
+        # retry if design didn't work, reducing bearings
+        if lrb_designs.shape[0] == 0:
+            all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=True)
+            lrb_designs = all_lrbs.copy()
+        
         if lrb_designs.shape[0] == 0:
             print('Bearing design failed')
             return
