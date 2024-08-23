@@ -287,9 +287,6 @@ sns.set_theme(style="whitegrid")
 # Initialize the matplotlib figure
 f, ax = plt.subplots(figsize=(16, 7))
 
-# Load the example car crash dataset
-# crashes = sns.load_dataset("car_crashes").sort_values("total", ascending=False)
-
 # Plot the total crashes
 sns.barplot(x="max_drift", y="replacement_freq", data=df_cbf,
             label="PID-related collapse", color="lightsteelblue")
@@ -307,9 +304,6 @@ ax.set_ylabel('\% replacement', fontsize=axis_font)
 
 # Initialize the matplotlib figure
 f, ax = plt.subplots(figsize=(16, 7))
-
-# Load the example car crash dataset
-# crashes = sns.load_dataset("car_crashes").sort_values("total", ascending=False)
 
 # Plot the total crashes
 sns.barplot(x="max_drift", y="replacement_freq", data=df_mf,
