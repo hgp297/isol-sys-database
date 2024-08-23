@@ -385,7 +385,7 @@ class Database:
         
         self.retained_designs = all_des
         
-    def analyze_db(self, output_str, save_interval=10,
+    def analyze_df(self, output_str, save_interval=10,
                    data_path='../data/',
                    gm_path='../resource/ground_motions/PEERNGARecords_Unscaled/',
                    output_path='./outputs/'):
@@ -395,7 +395,7 @@ class Database:
         
         all_designs = self.retained_designs
         all_designs = all_designs.reset_index()
-        db_results = None
+        df_results = None
         
         import os
         import shutil
@@ -411,17 +411,17 @@ class Database:
             bldg_result = run_nlth(design=design, gm_path=gm_path, output_path=output_path)
             
             # if initial run, start the dataframe with headers
-            if db_results is None:
-                db_results = pd.DataFrame(bldg_result).T
+            if df_results is None:
+                df_results = pd.DataFrame(bldg_result).T
             else:
-                db_results = pd.concat([db_results,bldg_result.to_frame().T], 
+                df_results = pd.concat([df_results,bldg_result.to_frame().T], 
                                        sort=False)
                 
-            if (len(db_results)%save_interval == 0):
-                db_results.to_csv(output_path+'temp_save.csv', index=False)
+            if (len(df_results)%save_interval == 0):
+                df_results.to_csv(output_path+'temp_save.csv', index=False)
         
-        db_results.to_csv(data_path+output_str, index=False)
-        self.ops_analysis = db_results
+        df_results.to_csv(data_path+output_str, index=False)
+        self.ops_analysis = df_results
         
         
     def calculate_collapse(self, mf_reference_drift=0.1, cbf_reference_drift=0.05):
@@ -821,7 +821,7 @@ class Database:
         all_designs = self.ida_df
         all_designs = all_designs.reset_index()
         
-        db_results = None
+        df_results = None
         print('========= Validation IDAs ==========')
         
         for index, design in all_designs.iterrows():
@@ -833,24 +833,24 @@ class Database:
             bldg_result = run_nlth(design, gm_path)
             
             # if initial run, start the dataframe with headers
-            if db_results is None:
-                db_results = pd.DataFrame(bldg_result).T
+            if df_results is None:
+                df_results = pd.DataFrame(bldg_result).T
             else:
-                db_results = pd.concat([db_results,bldg_result.to_frame().T], 
+                df_results = pd.concat([df_results,bldg_result.to_frame().T], 
                                        sort=False)
                 
-            if (len(db_results)%save_interval == 0):
-                db_results.to_csv(data_path+'ida_temp_save.csv', index=False)
+            if (len(df_results)%save_interval == 0):
+                df_results.to_csv(data_path+'ida_temp_save.csv', index=False)
         
-        db_results.to_csv(data_path+output_str, index=False)
+        df_results.to_csv(data_path+output_str, index=False)
         
         # TODO: store ida depending on target
-        self.ida_results = db_results
+        self.ida_results = df_results
         
     # this runs Pelicun in the deterministic style. collect_IDA flag used if running
     # validation IDAs
-    def run_pelicun(self, db, collect_IDA=False,
-                    cmp_dir='../resource/loss/'):
+    def run_pelicun(self, df, collect_IDA=False,
+                    cmp_dir='../resource/loss/', max_loss_df=None):
         # run info
         import pandas as pd
 
@@ -870,13 +870,13 @@ class Database:
         # generate structural components and join with NSCs
         P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
         
-        additional_frag_db = pd.read_csv(cmp_dir+'custom_component_fragilities.csv',
+        additional_frag_df = pd.read_csv(cmp_dir+'custom_component_fragilities.csv',
                                           header=[0,1], index_col=0)
         
         # lab, health, ed, res, office, retail, warehouse, hotel
         fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
         
-        db = db.reset_index(drop=True)
+        df = df.reset_index(drop=True)
         
         # estimate loss for set
         all_losses = []
@@ -886,11 +886,21 @@ class Database:
         if collect_IDA:
             IDA_list = []
             
-        for run_idx in db.index:
+        breakpoint()
+        # if max loss df is provided, we now use the median loss of the total 
+        # damage scenario as the replacement consequences
+        if max_loss_df is not None:
+            max_costs = max_loss_df['cost_50%']
+            max_time = max_loss_df['time_l_50%']
+        else:
+            max_costs = None*df.shape[0]
+            max_time = None*df.shape[0]
+            
+        for run_idx in df.index:
             print('========================================')
             print('Estimating loss for run index', run_idx+1)
             
-            run_data = db.loc[run_idx]
+            run_data = df.loc[run_idx]
             
             floors = run_data.num_stories
             
@@ -902,9 +912,13 @@ class Database:
 
             loss.process_EDP()
             
+            run_max_cost = max_costs.loc[run_idx]
+            run_max_time = max_time.loc[run_idx]
+            
             [cmp, dmg, loss, loss_cmp, agg, 
              collapse_rate, irr_rate] = loss.estimate_damage(
-                 custom_fragility_db=additional_frag_db, mode='generate')
+                 custom_fragility_db=additional_frag_df, mode='generate',
+                 cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
             
             loss_summary = agg.describe([0.1, 0.5, 0.9])
             cost = loss_summary['repair_cost']['50%']
@@ -1001,7 +1015,7 @@ class Database:
         self.loss_data = pd.concat([loss_df_data, group_df_data], axis=1)
         
     # This runs Pelicun by fitting a lognormal distribution through the MCE EDPs
-    def validate_pelicun(self, db, cmp_dir='../resource/loss/'):
+    def validate_pelicun(self, df, cmp_dir='../resource/loss/'):
         # run info
         import pandas as pd
 
@@ -1021,13 +1035,13 @@ class Database:
         # generate structural components and join with NSCs
         P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
         
-        additional_frag_db = pd.read_csv(cmp_dir+'custom_component_fragilities.csv',
+        additional_frag_df = pd.read_csv(cmp_dir+'custom_component_fragilities.csv',
                                           header=[0,1], index_col=0)
         
         # lab, health, ed, res, office, retail, warehouse, hotel
         fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
         
-        db = db.reset_index(drop=True)
+        df = df.reset_index(drop=True)
         
         # estimate loss for set
         all_losses = []
@@ -1035,10 +1049,10 @@ class Database:
         col_list = []
         irr_list = []
         
-        ida_levels = db['ida_level'].unique().tolist()
+        ida_levels = df['ida_level'].unique().tolist()
         
         for lvl_i, lvl in enumerate(ida_levels):
-            df_lvl = db[db['ida_level'] == lvl]
+            df_lvl = df[df['ida_level'] == lvl]
             
             print('========================================')
             print('Estimating loss for IDA level', lvl)
@@ -1059,7 +1073,7 @@ class Database:
             
             [cmp, dmg, loss, loss_cmp, agg, 
              collapse_rate, irr_rate] = loss.estimate_damage(
-                 custom_fragility_db=additional_frag_db, mode='validation')
+                 custom_fragility_db=additional_frag_df, mode='validation')
                  
             loss_summary = agg.describe([0.1, 0.5, 0.9])
             cost = loss_summary['repair_cost']['50%']
@@ -1152,7 +1166,7 @@ class Database:
             
         self.loss_data = pd.concat([loss_df_data, group_df_data], axis=1)
         
-    def calc_cmp_max(self, db,
+    def calc_cmp_max(self, df,
                     cmp_dir='../resource/loss/'):
         # run info
         import pandas as pd
@@ -1173,13 +1187,13 @@ class Database:
         # generate structural components and join with NSCs
         P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
         
-        additional_frag_db = pd.read_csv(cmp_dir+'custom_component_fragilities.csv',
+        additional_frag_df = pd.read_csv(cmp_dir+'custom_component_fragilities.csv',
                                           header=[0,1], index_col=0)
         
         # lab, health, ed, res, office, retail, warehouse, hotel
         fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
         
-        db = db.reset_index(drop=True)
+        df = df.reset_index(drop=True)
         
         # estimate loss for set
         all_losses = []
@@ -1187,11 +1201,11 @@ class Database:
         col_list = []
         irr_list = []
         
-        for run_idx in db.index:
+        for run_idx in df.index:
             print('========================================')
             print('Estimating maximum loss for run index', run_idx+1)
             
-            run_data = db.loc[run_idx]
+            run_data = df.loc[run_idx]
             
             floors = run_data.num_stories
             
@@ -1205,7 +1219,7 @@ class Database:
             
             [cmp, dmg, loss, loss_cmp, agg, 
              collapse_rate, irr_rate] = loss.estimate_damage(
-                 custom_fragility_db=additional_frag_db, mode='maximize')
+                 custom_fragility_db=additional_frag_df, mode='maximize')
             
             loss_summary = agg.describe([0.1, 0.5, 0.9])
             cost = loss_summary['repair_cost']['50%']
@@ -1418,7 +1432,7 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
         
     return(tfp_designs, lrb_designs)
 
-def design_structure_util(df_in, filter_designs=True, db_string='../resource/'):
+def design_structure_util(df_in, filter_designs=True, df_string='../resource/'):
     import pandas as pd
     import time
     
@@ -1443,7 +1457,7 @@ def design_structure_util(df_in, filter_designs=True, db_string='../resource/'):
     if smrf_df.shape[0] > 0:
         t0 = time.time()
         
-        all_mf_designs = smrf_df.apply(lambda row: ds.design_MF(row, db_string=db_string),
+        all_mf_designs = smrf_df.apply(lambda row: ds.design_MF(row, df_string=df_string),
                                        axis='columns', 
                                        result_type='expand')
         
@@ -1472,7 +1486,7 @@ def design_structure_util(df_in, filter_designs=True, db_string='../resource/'):
     # attempt to design all CBFs
     if cbf_df.shape[0] > 0:
         t0 = time.time()
-        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row, db_string=db_string),
+        all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row, df_string=df_string),
                                         axis='columns', 
                                         result_type='expand')
         all_cbf_designs.columns = ['brace', 'beam', 'column']
@@ -1507,7 +1521,7 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                                  'L_bay': 30.0,
                                  'h_story': 13.0,
                                  'S_s' : 2.2815},
-                     db_string='../resource/'):
+                     df_string='../resource/'):
     
     import pandas as pd
     import numpy as np
@@ -1595,7 +1609,7 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         work_df = lrb_designs.copy()
     
     mf_designs, cbf_designs = design_structure_util(
-        work_df, filter_designs=True, db_string=db_string)
+        work_df, filter_designs=True, df_string=df_string)
     
     if work_df['superstructure_system'].item() == 'MF':
         work_df = mf_designs.copy()
@@ -1608,10 +1622,10 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     else:
         work_df['T_fbe'] = estimate_period(work_df.iloc[0])
     
-    gm_dir = db_string+'/ground_motions/gm_db.csv'
-    spec_dir = db_string+'/ground_motions/gm_spectra.csv'
+    gm_dir = df_string+'/ground_motions/gm_df.csv'
+    spec_dir = df_string+'/ground_motions/gm_spectra.csv'
     gm_series, sf_series, sa_avg = scale_ground_motion(work_df.iloc[0], return_list=True,
-                                                       db_dir=gm_dir, spec_dir=spec_dir)
+                                                       df_dir=gm_dir, spec_dir=spec_dir)
     ida_base = pd.concat([gm_series, sf_series], axis=1)
     ida_base['sa_avg'] = sa_avg
     ida_base.columns = ['gm_selected', 'scale_factor', 'sa_avg']
