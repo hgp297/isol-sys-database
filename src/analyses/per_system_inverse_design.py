@@ -31,7 +31,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_complete_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_normloss.pickle")
     
 main_obj.calculate_collapse()
 
@@ -774,8 +774,11 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
                                cost_var='cmp_cost_ratio', time_var='cmp_time_ratio'):
     import time
     
-    # TODO: if LRB, we need to keep moat ratio low to enable design
+    # TODO: pass a reasonable bound for each variable
     isolator_system = system_name.split('_')[1]
+    system_X = impact_clfs['mdl_impact_'+system_name].X
+    system_X_bounds = system_X.agg(['min', 'max'])
+    
     if isolator_system == 'lrb':
         bounds = {
             'gap_ratio': (0.6, 1.2),
@@ -785,9 +788,15 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
             'k_ratio': (5.0, 12.0)}
     
         X_space = make_design_space(res, bound_dict=bounds)
-        breakpoint()
     else:
-        X_space = make_design_space(res)
+        bounds = {
+            'gap_ratio': (0.6, 2.0),
+            'RI': (0.5, 2.25),
+            'T_ratio': (2.0, 4.0),
+            'zeta_e': (0.1, 0.25),
+            'k_ratio': (5.0, 12.0)}
+    
+        X_space = make_design_space(res, bound_dict=bounds)
     
     t0 = time.time()
     
@@ -973,20 +982,20 @@ ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/')
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
-with open('../inputs/mf_tfp_inverse.in', 'w') as file:
-    file.write(json.dumps(mf_tfp_dict))
-    file.close()
+# with open('../inputs/mf_tfp_inverse.in', 'w') as file:
+#     file.write(json.dumps(mf_tfp_dict))
+#     file.close()
 
 cbf_tfp_inv_design['superstructure_system'] = 'CBF'
 cbf_tfp_inv_design['isolator_system'] = 'TFP'
-cbf_tfp_inv_design['k_ratio'] = 10
+cbf_tfp_inv_design['k_ratio'] = 7
 
 cbf_tfp_dict = cbf_tfp_inv_design.to_dict()
 ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/')
 
-with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
-    file.write(json.dumps(cbf_tfp_dict))
-    file.close()
+# with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
+#     file.write(json.dumps(cbf_tfp_dict))
+#     file.close()
     
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 

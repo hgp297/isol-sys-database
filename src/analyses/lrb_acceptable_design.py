@@ -31,7 +31,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_complete_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_normloss.pickle")
     
 main_obj.calculate_collapse()
 
