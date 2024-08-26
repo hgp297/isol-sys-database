@@ -30,7 +30,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_complete_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_normloss.pickle")
 
 # with open("../../data/tfp_mf_db.pickle", 'rb') as picklefile:
 #     main_obj = pickle.load(picklefile)
@@ -287,9 +287,6 @@ sns.set_theme(style="whitegrid")
 # Initialize the matplotlib figure
 f, ax = plt.subplots(figsize=(16, 7))
 
-# Load the example car crash dataset
-# crashes = sns.load_dataset("car_crashes").sort_values("total", ascending=False)
-
 # Plot the total crashes
 sns.barplot(x="max_drift", y="replacement_freq", data=df_cbf,
             label="PID-related collapse", color="lightsteelblue")
@@ -307,9 +304,6 @@ ax.set_ylabel('\% replacement', fontsize=axis_font)
 
 # Initialize the matplotlib figure
 f, ax = plt.subplots(figsize=(16, 7))
-
-# Load the example car crash dataset
-# crashes = sns.load_dataset("car_crashes").sort_values("total", ascending=False)
 
 # Plot the total crashes
 sns.barplot(x="max_drift", y="replacement_freq", data=df_mf,
@@ -757,7 +751,7 @@ zlim = ax.get_zlim()
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_zlim([-0.25, 3.0])
+
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
 ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
@@ -800,7 +794,7 @@ zlim = ax.get_zlim()
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_zlim([-0.25, 3.0])
+
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
@@ -856,7 +850,7 @@ zlim = ax.get_zlim()
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_zlim([-0.25, 3.0])
+
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
 ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
@@ -900,7 +894,7 @@ zlim = ax.get_zlim()
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_zlim([-0.25, 3.0])
+
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
@@ -956,7 +950,7 @@ zlim = ax.get_zlim()
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_zlim([-0.25, 3.0])
+
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
 ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
@@ -999,7 +993,7 @@ zlim = ax.get_zlim()
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_zlim([-0.25, 3.0])
+
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
@@ -1055,7 +1049,7 @@ zlim = ax.get_zlim()
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_zlim([-0.25, 3.0])
+
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
 ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
@@ -1098,7 +1092,7 @@ zlim = ax.get_zlim()
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_zlim([-0.25, 3.0])
+
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 ax.set_zlabel('Repair cost ratio', fontsize=axis_font)

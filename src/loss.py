@@ -636,7 +636,8 @@ class Loss_Analysis:
     
             self.edp = edp_df
     
-    def estimate_damage(self, mode='generate', custom_fragility_db=None):
+    def estimate_damage(self, mode='generate', custom_fragility_db=None,
+                        cmp_replacement_cost=None, cmp_replacement_time=None):
         
         
         from pelicun.assessment import Assessment
@@ -1069,14 +1070,20 @@ class Loss_Analysis:
         # assume 40% of replacement cost is labor, $680/worker-day for SF Bay Area
         
         # assume $600/sf
-        bldg_area = self.L_bldg**2 * (self.num_stories + 1)
-        replacement_cost = 600.0*bldg_area
+        if cmp_replacement_cost is None:
+            bldg_area = self.L_bldg**2 * (self.num_stories + 1)
+            replacement_cost = 600.0*bldg_area
+        else:
+            replacement_cost = cmp_replacement_cost
         
         # assume 2 years timeline
         # assume 1 worker per 1000 sf, but can work in parallel of 2 floors
-        n_worker_series = bldg_area/1000
-        n_worker_parallel = n_worker_series/2
-        replacement_time = n_worker_parallel*365*2
+        if cmp_replacement_time is None:
+            n_worker_series = bldg_area/1000
+            n_worker_parallel = n_worker_series/2
+            replacement_time = n_worker_parallel*365*2
+        else:
+            replacement_time = cmp_replacement_time
         additional_consequences.loc[('replacement', 'Cost')] = [0, '1 EA',
                                                                 'USD_2011',
                                                                 replacement_cost,

@@ -849,8 +849,8 @@ class Database:
         
     # this runs Pelicun in the deterministic style. collect_IDA flag used if running
     # validation IDAs
-    def run_pelicun(self, db, collect_IDA=False,
-                    cmp_dir='../resource/loss/'):
+    def run_pelicun(self, df, collect_IDA=False,
+                    cmp_dir='../resource/loss/', max_loss_df=None):
         # run info
         import pandas as pd
 
@@ -876,7 +876,7 @@ class Database:
         # lab, health, ed, res, office, retail, warehouse, hotel
         fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
         
-        db = db.reset_index(drop=True)
+        df = df.reset_index(drop=True)
         
         # estimate loss for set
         all_losses = []
@@ -886,11 +886,20 @@ class Database:
         if collect_IDA:
             IDA_list = []
             
-        for run_idx in db.index:
+        # if max loss df is provided, we now use the median loss of the total 
+        # damage scenario as the replacement consequences
+        if max_loss_df is not None:
+            max_costs = max_loss_df['cost_50%']
+            max_time = max_loss_df['time_l_50%']
+        else:
+            max_costs = None*df.shape[0]
+            max_time = None*df.shape[0]
+            
+        for run_idx in df.index:
             print('========================================')
             print('Estimating loss for run index', run_idx+1)
             
-            run_data = db.loc[run_idx]
+            run_data = df.loc[run_idx]
             
             floors = run_data.num_stories
             
@@ -902,9 +911,13 @@ class Database:
 
             loss.process_EDP()
             
+            run_max_cost = max_costs.loc[run_idx]
+            run_max_time = max_time.loc[run_idx]
+            
             [cmp, dmg, loss, loss_cmp, agg, 
              collapse_rate, irr_rate] = loss.estimate_damage(
-                 custom_fragility_db=additional_frag_db, mode='generate')
+                 custom_fragility_db=additional_frag_db, mode='generate',
+                 cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
             
             loss_summary = agg.describe([0.1, 0.5, 0.9])
             cost = loss_summary['repair_cost']['50%']
@@ -1001,7 +1014,7 @@ class Database:
         self.loss_data = pd.concat([loss_df_data, group_df_data], axis=1)
         
     # This runs Pelicun by fitting a lognormal distribution through the MCE EDPs
-    def validate_pelicun(self, db, cmp_dir='../resource/loss/'):
+    def validate_pelicun(self, df, cmp_dir='../resource/loss/'):
         # run info
         import pandas as pd
 
@@ -1027,7 +1040,7 @@ class Database:
         # lab, health, ed, res, office, retail, warehouse, hotel
         fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
         
-        db = db.reset_index(drop=True)
+        df = df.reset_index(drop=True)
         
         # estimate loss for set
         all_losses = []
@@ -1035,10 +1048,10 @@ class Database:
         col_list = []
         irr_list = []
         
-        ida_levels = db['ida_level'].unique().tolist()
+        ida_levels = df['ida_level'].unique().tolist()
         
         for lvl_i, lvl in enumerate(ida_levels):
-            df_lvl = db[db['ida_level'] == lvl]
+            df_lvl = df[df['ida_level'] == lvl]
             
             print('========================================')
             print('Estimating loss for IDA level', lvl)
@@ -1152,7 +1165,7 @@ class Database:
             
         self.loss_data = pd.concat([loss_df_data, group_df_data], axis=1)
         
-    def calc_cmp_max(self, db,
+    def calc_cmp_max(self, df,
                     cmp_dir='../resource/loss/'):
         # run info
         import pandas as pd
@@ -1179,7 +1192,7 @@ class Database:
         # lab, health, ed, res, office, retail, warehouse, hotel
         fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
         
-        db = db.reset_index(drop=True)
+        df = df.reset_index(drop=True)
         
         # estimate loss for set
         all_losses = []
@@ -1187,11 +1200,11 @@ class Database:
         col_list = []
         irr_list = []
         
-        for run_idx in db.index:
+        for run_idx in df.index:
             print('========================================')
             print('Estimating maximum loss for run index', run_idx+1)
             
-            run_data = db.loc[run_idx]
+            run_data = df.loc[run_idx]
             
             floors = run_data.num_stories
             
@@ -1530,7 +1543,6 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     work_df['moat_ampli'] = work_df['gap_ratio']
     
     all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=False)
-    
     if work_df['isolator_system'].item() == 'TFP':
         # keep the designs that look sensible
         tfp_designs = all_tfps.loc[(all_tfps['R_1'] >= 10.0) &
@@ -1583,7 +1595,11 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         
         lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
         
-        # retry if design didn't work
+        # retry if design didn't work, reducing bearings
+        if lrb_designs.shape[0] == 0:
+            all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=True)
+            lrb_designs = all_lrbs.copy()
+        
         if lrb_designs.shape[0] == 0:
             all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=True)
             

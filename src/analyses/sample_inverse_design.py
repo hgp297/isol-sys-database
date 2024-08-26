@@ -601,7 +601,6 @@ plt.show()
 
 #%% dirty contours repair time and cost
 
-
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 title_font=22
