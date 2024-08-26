@@ -1509,7 +1509,6 @@ def design_structure_util(df_in, filter_designs=True, db_string='../resource/'):
         
     return mf_designs, cbf_designs
     
-# TODO: take config_dict as param
 def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                      config_dict={'S_1' : 1.017,
                                  'L_bldg': 120.0,

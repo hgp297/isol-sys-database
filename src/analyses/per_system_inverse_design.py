@@ -649,6 +649,364 @@ repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
                         'mdl_repl_mf_tfp_i': mdl_repl_mf_tfp_i,
                         'mdl_repl_mf_tfp_o': mdl_repl_mf_tfp_o}
 
+#%% dirty contours repair time and cost
+'''
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+fig = plt.figure(figsize=(16, 7))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75])
+
+res = 100
+X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+ax = fig.add_subplot(1, 2, 1)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_cbf_lrb.gpc,
+                       mdl_time_cbf_lrb_i.gpr,
+                       mdl_time_cbf_lrb_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+prob_list = [0.3, 0.2, 0.1]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.4, 2.0, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_cont)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 1.7, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+
+
+ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2.5,))
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+# df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) & 
+#             (df['zeta_e']<=0.2) & (df['zeta_e']>=0.13)]
+
+# sc = ax.scatter(df_sc[xvar],
+#             df_sc[yvar],
+#             c=df_sc[cost_var], cmap='Blues',
+#             s=20, edgecolors='k', linewidth=0.5)
+
+ax.grid(visible=True)
+ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+# handles, labels = sc.legend_elements(prop="colors")
+# legend2 = ax.legend(handles, labels, loc="lower right", title="$c_r$",
+#                       fontsize=subt_font, title_fontsize=subt_font)
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0, 2.0])
+
+res = 100
+X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+ax = fig.add_subplot(1, 2, 2)
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_cbf_lrb.gpc,
+                       mdl_time_cbf_lrb_i.gpr,
+                       mdl_time_cbf_lrb_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+prob_list = [0.3, 0.2, 0.1]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.4, 2.0, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_cont)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 1.7, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+
+
+ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2.5,))
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+# df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) & 
+#            (df['zeta_e']<=0.2) & (df['zeta_e']>=0.13)]
+
+# sc = ax.scatter(df_sc[xvar],
+#             df_sc[yvar],
+#             c=df_sc[cost_var], cmap='Blues',
+#             s=20, edgecolors='k', linewidth=0.5)
+
+ax.grid(visible=True)
+ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+# handles, labels = sc.legend_elements(prop="colors")
+# legend2 = ax.legend(handles, labels, loc="lower left", title="$t_r$",
+#                       fontsize=subt_font, title_fontsize=subt_font)
+
+
+fig.tight_layout()
+plt.show()
+
+#### replacement
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+lvls = np.array([0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5])
+
+res = 100
+X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fig, ax = plt.subplots(1, 1, figsize=(9,7))
+plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+prob_target = 0.1
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_cbf_lrb.gpc,
+                       mdl_repl_cbf_lrb_i.gpr,
+                       mdl_repl_cbf_lrb_o.gpr,
+                       outcome='replacement_freq')
+
+Z = np.array(grid_repl)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-1,
+                 levels=lvls)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+prob_list = [0.1]
+from scipy.interpolate import RegularGridInterpolator
+for j, prob_des in enumerate(prob_list):
+    xq = np.linspace(0.4, 2.0, 200)
+    
+    Ry_target = 1.0
+    
+    interp = RegularGridInterpolator((y_pl, x_pl), Z_cont)
+    pts = np.zeros((200,2))
+    pts[:,1] = xq
+    pts[:,0] = Ry_target
+    
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 0.55, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+    
+    # Ry = 2.0
+    Ry_target = 2.0
+    pts[:,0] = Ry_target
+    lq = interp(pts)
+    
+    the_points = np.vstack((pts[:,0], pts[:,1], lq))
+    
+    theGapIdx = np.argmin(abs(lq - prob_des))
+    
+    theGap = xq[theGapIdx]
+    ax.vlines(x=theGap, ymin=0.49, ymax=Ry_target, color='red',
+                linewidth=2.0)
+    ax.hlines(y=Ry_target, xmin=0.3, xmax=theGap, color='red', linewidth=2.0)
+    ax.text(theGap+0.05, 1.7, r'GR = '+f'{theGap:,.2f}', rotation=90,
+              fontsize=subt_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+    ax.plot([theGap], [Ry_target], marker='*', markersize=15, color='red')
+    
+
+
+ax.contour(xx_pl, yy_pl, Z_cont, levels = [0.1], colors=('red'),
+            linestyles=('-'),linewidths=(2.5,))
+
+ax.set_xlim([0.3, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+# df_sc = df[(df['T_ratio']<=3.5) & (df['T_ratio']>=2.5) & 
+#            (df['zeta_e']<=0.2) & (df['zeta_e']>=0.13)]
+
+# sc = ax.scatter(df_sc[xvar],
+#             df_sc[yvar],
+#             c=df_sc['replacement_freq'], cmap='Blues',
+#             s=20, edgecolors='k', linewidth=0.5)
+
+ax.grid(visible=True)
+ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+# handles, labels = sc.legend_elements(prop="colors")
+# legend2 = ax.legend(handles, labels, loc="lower right", title="$p_r$",
+#                       fontsize=subt_font, title_fontsize=subt_font)
+
+fig.tight_layout()
+plt.show()
+'''
+
 #%% Calculate upfront cost of data
 # calc cost of new point
 
@@ -778,26 +1136,44 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     isolator_system = system_name.split('_')[1]
     system_X = impact_clfs['mdl_impact_'+system_name].X
     system_X_bounds = system_X.agg(['min', 'max'])
+    test = system_X_bounds.to_dict()
     
-    if isolator_system == 'lrb':
+    if system_name == 'mf_lrb':
         bounds = {
             'gap_ratio': (0.6, 1.2),
             'RI': (0.5, 2.25),
-            'T_ratio': (2.0, 11.0),
+            'T_ratio': (2.0, 4.0),
             'zeta_e': (0.1, 0.25),
-            'k_ratio': (5.0, 12.0)}
+            'k_ratio': (5.0, 12.0)
+            }
     
-        X_space = make_design_space(res, bound_dict=bounds)
-    else:
+    elif system_name == 'cbf_lrb':
+        bounds = {
+            'gap_ratio': (0.6, 2.0),
+            'RI': (0.5, 2.25),
+            'T_ratio': (2.0, 9.0),
+            'zeta_e': (0.1, 0.25),
+            'k_ratio': (5.0, 12.0)
+            }
+    elif system_name == 'mf_tfp':
         bounds = {
             'gap_ratio': (0.6, 2.0),
             'RI': (0.5, 2.25),
             'T_ratio': (2.0, 4.0),
             'zeta_e': (0.1, 0.25),
-            'k_ratio': (5.0, 12.0)}
+            'k_ratio': (5.0, 12.0)
+            }
     
-        X_space = make_design_space(res, bound_dict=bounds)
+    elif system_name == 'cbf_tfp':
+        bounds = {
+            'gap_ratio': (0.6, 2.0),
+            'RI': (0.5, 2.25),
+            'T_ratio': (2.0, 4.0),
+            'zeta_e': (0.1, 0.25),
+            'k_ratio': (5.0, 12.0)
+            }
     
+    X_space = make_design_space(res, bound_dict=bounds)
     t0 = time.time()
     
     # identify cost models
@@ -1013,8 +1389,16 @@ mf_lrb_inv_design['k_ratio'] = 10
 mf_lrb_dict = mf_lrb_inv_design.to_dict()
 ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/')
 
-# print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
+print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
 
+cbf_lrb_inv_design['superstructure_system'] = 'CBF'
+cbf_lrb_inv_design['isolator_system'] = 'LRB'
+cbf_lrb_inv_design['k_ratio'] = 10
+
+cbf_lrb_dict = cbf_lrb_inv_design.to_dict()
+ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/')
+
+print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
 #%% results of the inverse design
 
 run_case = 'cbf_tfp_inverse'
