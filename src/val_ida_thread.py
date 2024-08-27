@@ -49,7 +49,7 @@ def ida_run_row(row_num, run_case_str):
     data_path = '../data/validation/'+run_case_str+'/'
     
     if os.path.exists(data_path):
-        shutil.rmtree(data_path)
+        pass
     else:
         os.makedirs(data_path)
     
