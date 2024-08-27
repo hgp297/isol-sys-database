@@ -404,6 +404,10 @@ df_cbf_lrb_o = df_cbf_lrb[df_cbf_lrb['impacted'] == 0]
 
 #%% impact classification model
 # for each system, make separate impact classification model
+
+mdl_all = GP(df)
+mdl_all.set_covariates(covariate_list)
+
 mdl_impact_cbf_lrb = GP(df_cbf_lrb)
 mdl_impact_cbf_lrb.set_covariates(covariate_list)
 mdl_impact_cbf_lrb.set_outcome('impacted')
@@ -436,6 +440,21 @@ mdl_impact_mf_tfp.fit_gpc(kernel_name='rbf_iso')
 tp = time.time() - t0
 
 print("GPC training for impact done for 4 models in %.3f s" % tp)
+
+# density estimation model to enable constructability 
+print('======= Density estimation per system ========')
+
+t0 = time.time()
+
+mdl_impact_mf_lrb.fit_kde()
+mdl_impact_cbf_lrb.fit_kde()
+mdl_impact_mf_tfp.fit_kde()
+mdl_impact_cbf_tfp.fit_kde()
+
+tp = time.time() - t0
+
+print("KDE training done for 4 models in %.3f s" % tp)
+
 
 impact_classification_mdls = {'mdl_impact_cbf_lrb': mdl_impact_cbf_lrb,
                         'mdl_impact_cbf_tfp': mdl_impact_cbf_tfp,
@@ -1143,16 +1162,16 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
             'gap_ratio': (0.6, 1.2),
             'RI': (0.5, 2.25),
             'T_ratio': (2.0, 4.0),
-            'zeta_e': (0.1, 0.25),
+            'zeta_e': (0.17, 0.25),
             'k_ratio': (5.0, 12.0)
             }
     
     elif system_name == 'cbf_lrb':
         bounds = {
-            'gap_ratio': (0.6, 2.0),
+            'gap_ratio': (0.6, 1.2),
             'RI': (0.5, 2.25),
             'T_ratio': (2.0, 9.0),
-            'zeta_e': (0.1, 0.25),
+            'zeta_e': (0.17, 0.25),
             'k_ratio': (5.0, 12.0)
             }
     elif system_name == 'mf_tfp':
@@ -1343,39 +1362,65 @@ cbf_lrb_inv_design, cbf_lrb_inv_performance = grid_search_inverse_design(
 
 #%% design the systems
 
-# # TODO: pass the length of the df to run controllers
+# TODO: pass the length of the df to run controllers
 
-# import pandas as pd
-# from db import prepare_ida_util
-# import json
+import pandas as pd
+from db import prepare_ida_util
+import json
 
-# mf_tfp_inv_design['superstructure_system'] = 'MF'
-# mf_tfp_inv_design['isolator_system'] = 'TFP'
-# mf_tfp_inv_design['k_ratio'] = 10
+mf_tfp_inv_design['superstructure_system'] = 'MF'
+mf_tfp_inv_design['isolator_system'] = 'TFP'
+mf_tfp_inv_design['k_ratio'] = 10
 
-# mf_tfp_dict = mf_tfp_inv_design.to_dict()
-# ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/')
+mf_tfp_dict = mf_tfp_inv_design.to_dict()
+ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/')
 
-# print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
+print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
-# with open('../inputs/mf_tfp_inverse.in', 'w') as file:
-#     file.write(json.dumps(mf_tfp_dict))
-#     file.close()
+with open('../inputs/mf_tfp_inverse.in', 'w') as file:
+    file.write(json.dumps(mf_tfp_dict))
+    file.close()
 
-# cbf_tfp_inv_design['superstructure_system'] = 'CBF'
-# cbf_tfp_inv_design['isolator_system'] = 'TFP'
-# cbf_tfp_inv_design['k_ratio'] = 7
+cbf_tfp_inv_design['superstructure_system'] = 'CBF'
+cbf_tfp_inv_design['isolator_system'] = 'TFP'
+cbf_tfp_inv_design['k_ratio'] = 7
 
-# cbf_tfp_dict = cbf_tfp_inv_design.to_dict()
-# ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/')
+cbf_tfp_dict = cbf_tfp_inv_design.to_dict()
+ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/')
 
-# with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
-#     file.write(json.dumps(cbf_tfp_dict))
-#     file.close()
+with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
+    file.write(json.dumps(cbf_tfp_dict))
+    file.close()
     
-# print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
+print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
-# # when writing to task file, remember to subtract 1
+mf_lrb_inv_design['superstructure_system'] = 'MF'
+mf_lrb_inv_design['isolator_system'] = 'LRB'
+mf_lrb_inv_design['k_ratio'] = 10
+
+mf_lrb_dict = mf_lrb_inv_design.to_dict()
+ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/')
+
+with open('../inputs/mf_lrb_inverse.in', 'w') as file:
+    file.write(json.dumps(mf_lrb_dict))
+    file.close()
+    
+print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
+
+cbf_lrb_inv_design['superstructure_system'] = 'CBF'
+cbf_lrb_inv_design['isolator_system'] = 'LRB'
+cbf_lrb_inv_design['k_ratio'] = 10
+
+cbf_lrb_dict = cbf_lrb_inv_design.to_dict()
+ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/')
+
+with open('../inputs/cbf_lrb_inverse.in', 'w') as file:
+    file.write(json.dumps(cbf_lrb_dict))
+    file.close()
+    
+print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
+
+# when writing to task file, remember to subtract 1
 
 #%%
 

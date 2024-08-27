@@ -56,6 +56,30 @@ class GP:
         
         self.lin_reg = lin_pipe
         
+    def fit_kde(self):
+        import numpy as np
+        from sklearn.model_selection import GridSearchCV
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.neighbors import KernelDensity
+        from sklearn.pipeline import Pipeline
+        
+        kde_pipe = Pipeline([('scaler', StandardScaler()),
+                                 ('kde', KernelDensity())])
+        
+        # cross-validate several parameters
+        parameters = [
+            {'kde__bandwidth':np.logspace(-1, 1, 20)}
+            ]
+        
+        kde_cv = GridSearchCV(kde_pipe, param_grid=parameters)
+        kde_cv.fit(self.X_train)
+        
+        # set pipeline to use CV params
+        kde_pipe.set_params(**kde_cv.best_params_)
+        kde_pipe.fit(self.X_train)
+        
+        self.kde = kde_pipe
+        
     # Train GP classifier
     def fit_gpc(self, kernel_name, noisy=True):
         from sklearn.pipeline import Pipeline

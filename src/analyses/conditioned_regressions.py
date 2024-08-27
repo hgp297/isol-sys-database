@@ -203,6 +203,8 @@ df['D_50%'].loc[mask] = df_loss_max['D_50%'].loc[mask]
 df['E_50%'].loc[mask] = df_loss_max['E_50%'].loc[mask]
 
 df['system'] = df['superstructure_system'] +'-' + df['isolator_system']
+
+df['replacement_binary'] = round(df['replacement_freq'])
 #%% subsets
 
 df_tfp = df[df['isolator_system'] == 'TFP']
@@ -422,6 +424,45 @@ impact_classification_mdls = {'mdl_impact_cbf_lrb': mdl_impact_cbf_lrb,
                         'mdl_impact_mf_lrb': mdl_impact_mf_lrb,
                         'mdl_impact_mf_tfp': mdl_impact_mf_tfp,}
 
+#%% replacement classification model
+
+mdl_repl_clf_cbf_lrb = GP(df_cbf_lrb)
+mdl_repl_clf_cbf_lrb.set_covariates(covariate_list)
+mdl_repl_clf_cbf_lrb.set_outcome('replacement_binary')
+mdl_repl_clf_cbf_lrb.test_train_split(0.2)
+
+mdl_repl_clf_cbf_tfp = GP(df_cbf_tfp)
+mdl_repl_clf_cbf_tfp.set_covariates(covariate_list)
+mdl_repl_clf_cbf_tfp.set_outcome('replacement_binary')
+mdl_repl_clf_cbf_tfp.test_train_split(0.2)
+
+mdl_repl_clf_mf_lrb = GP(df_mf_lrb)
+mdl_repl_clf_mf_lrb.set_covariates(covariate_list)
+mdl_repl_clf_mf_lrb.set_outcome('replacement_binary')
+mdl_repl_clf_mf_lrb.test_train_split(0.2)
+
+mdl_repl_clf_mf_tfp = GP(df_mf_tfp)
+mdl_repl_clf_mf_tfp.set_covariates(covariate_list)
+mdl_repl_clf_mf_tfp.set_outcome('replacement_binary')
+mdl_repl_clf_mf_tfp.test_train_split(0.2)
+
+print('======= replacement classification per system ========')
+import time
+t0 = time.time()
+
+mdl_repl_clf_cbf_lrb.fit_gpc(kernel_name='rbf_iso')
+mdl_repl_clf_cbf_tfp.fit_gpc(kernel_name='rbf_iso')
+mdl_repl_clf_mf_lrb.fit_gpc(kernel_name='rbf_iso')
+mdl_repl_clf_mf_tfp.fit_gpc(kernel_name='rbf_iso')
+
+tp = time.time() - t0
+
+print("GPC training for impact done for 4 models in %.3f s" % tp)
+
+impact_classification_mdls = {'mdl_repl_clf_cbf_lrb': mdl_repl_clf_cbf_lrb,
+                        'mdl_repl_clf_cbf_tfp': mdl_repl_clf_cbf_tfp,
+                        'mdl_repl_clf_mf_lrb': mdl_repl_clf_mf_lrb,
+                        'mdl_repl_clf_mf_tfp': mdl_repl_clf_mf_tfp}
 
 #%% regression models: cost
 # goal: E[cost|sys=sys, impact=impact]
@@ -630,6 +671,170 @@ repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
                         'mdl_repl_mf_tfp_i': mdl_repl_mf_tfp_i,
                         'mdl_repl_mf_tfp_o': mdl_repl_mf_tfp_o}
 
+#%% compare using the two outcomes
+print('============= mean squared error of regressions using impact =======================')
+from sklearn.metrics import mean_squared_error
+# MF TFP - cost
+mdl_dummy = GP(df_mf_tfp)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(cost_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_impact_mf_tfp.gpc, mdl_cost_mf_tfp_i.gpr, mdl_cost_mf_tfp_o.gpr,
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('MF-TFP, cost:', mse)
+
+# MF LRB - cost
+mdl_dummy = GP(df_mf_lrb)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(cost_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_impact_mf_lrb.gpc, mdl_cost_mf_lrb_i.gpr, mdl_cost_mf_lrb_o.gpr,
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('MF-LRB, cost', mse)
+
+# CBF TFP - cost
+mdl_dummy = GP(df_cbf_tfp)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(cost_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_impact_cbf_tfp.gpc, mdl_cost_cbf_tfp_i.gpr, mdl_cost_cbf_tfp_o.gpr,
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('CBF-TFP, cost', mse)
+
+# CBF LRB - cost
+mdl_dummy = GP(df_cbf_lrb)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(cost_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_impact_cbf_lrb.gpc, mdl_cost_cbf_lrb_i.gpr, mdl_cost_cbf_lrb_o.gpr,
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('CBF-LRB, cost', mse)
+
+# MF TFP - time
+mdl_dummy = GP(df_mf_tfp)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(time_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_impact_mf_tfp.gpc, mdl_time_mf_tfp_i.gpr, mdl_time_mf_tfp_o.gpr,
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('MF-TFP, time:', mse)
+
+# MF LRB - time
+mdl_dummy = GP(df_mf_lrb)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(time_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_impact_mf_lrb.gpc, mdl_time_mf_lrb_i.gpr, mdl_time_mf_lrb_o.gpr,
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('MF-LRB, time', mse)
+
+# CBF TFP - time
+mdl_dummy = GP(df_cbf_tfp)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(time_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_impact_cbf_tfp.gpc, mdl_time_cbf_tfp_i.gpr, mdl_time_cbf_tfp_o.gpr,
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('CBF-TFP, time', mse)
+
+# CBF LRB - time
+mdl_dummy = GP(df_cbf_lrb)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(time_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_impact_cbf_lrb.gpc, mdl_time_cbf_lrb_i.gpr, mdl_time_cbf_lrb_o.gpr,
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('CBF-LRB, time', mse)
+
+print('============= mean squared error of regressions using replacement =======================')
+from sklearn.metrics import mean_squared_error
+# MF TFP - cost
+mdl_dummy = GP(df_mf_tfp)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(cost_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_repl_clf_mf_tfp.gpc, mdl_cost_mf_tfp_i.gpr, mdl_cost_mf_tfp_o.gpr,
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('MF-TFP, cost:', mse)
+
+# MF LRB - cost
+mdl_dummy = GP(df_mf_lrb)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(cost_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_repl_clf_mf_lrb.gpc, mdl_cost_mf_lrb_i.gpr, mdl_cost_mf_lrb_o.gpr,
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('MF-LRB, cost', mse)
+
+# CBF TFP - cost
+mdl_dummy = GP(df_cbf_tfp)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(cost_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_repl_clf_cbf_tfp.gpc, mdl_cost_cbf_tfp_i.gpr, mdl_cost_cbf_tfp_o.gpr,
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('CBF-TFP, cost', mse)
+
+# CBF LRB - cost
+mdl_dummy = GP(df_cbf_lrb)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(cost_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_repl_clf_cbf_lrb.gpc, mdl_cost_cbf_lrb_i.gpr, mdl_cost_cbf_lrb_o.gpr,
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('CBF-LRB, cost', mse)
+
+# MF TFP - time
+mdl_dummy = GP(df_mf_tfp)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(time_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_repl_clf_mf_tfp.gpc, mdl_time_mf_tfp_i.gpr, mdl_time_mf_tfp_o.gpr,
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('MF-TFP, time:', mse)
+
+# MF LRB - time
+mdl_dummy = GP(df_mf_lrb)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(time_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_repl_clf_mf_lrb.gpc, mdl_time_mf_lrb_i.gpr, mdl_time_mf_lrb_o.gpr,
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('MF-LRB, time', mse)
+
+# CBF TFP - time
+mdl_dummy = GP(df_cbf_tfp)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(time_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_repl_clf_cbf_tfp.gpc, mdl_time_cbf_tfp_i.gpr, mdl_time_cbf_tfp_o.gpr,
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('CBF-TFP, time', mse)
+
+# CBF LRB - time
+mdl_dummy = GP(df_cbf_lrb)
+mdl_dummy.set_covariates(covariate_list)
+mdl_dummy.set_outcome(time_var)
+mdl_dummy.test_train_split(0.2)
+y_pred = predict_DV(mdl_dummy.X_test, mdl_repl_clf_cbf_lrb.gpc, mdl_time_cbf_lrb_i.gpr, mdl_time_cbf_lrb_o.gpr,
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_dummy.y_test, y_pred)
+print('CBF-LRB, time', mse)
 
 #%% deprecated model for conditioning on system clf
 '''
