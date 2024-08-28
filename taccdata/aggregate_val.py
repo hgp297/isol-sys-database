@@ -3,7 +3,7 @@ import sys
 # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(1, '../src/')
 
-run_case = 'mf_tfp_inverse'
+run_case = 'mf_lrb_inverse'
 
 pickle_path = './data/validation/'+run_case+'/'
 
@@ -41,5 +41,12 @@ dummy_obj.ida_results = ida_df
 
 import pickle
 final_path = '../data/validation/'+run_case+'/'
+
+import os
+if os.path.exists(final_path):
+    pass
+else:
+    os.makedirs(final_path)
+    
 with open(final_path+run_case+'.pickle', 'wb') as f:
     pickle.dump(dummy_obj, f)

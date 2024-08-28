@@ -1437,20 +1437,20 @@ print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
 # print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
 
 
-cbf_lrb_inv_design['superstructure_system'] = 'CBF'
-cbf_lrb_inv_design['isolator_system'] = 'LRB'
-cbf_lrb_inv_design['k_ratio'] = 10
+# cbf_lrb_inv_design['superstructure_system'] = 'CBF'
+# cbf_lrb_inv_design['isolator_system'] = 'LRB'
+# cbf_lrb_inv_design['k_ratio'] = 10
 
-cbf_lrb_dict = cbf_lrb_inv_design.to_dict()
-ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/')
+# cbf_lrb_dict = cbf_lrb_inv_design.to_dict()
+# ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/')
 
-print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
+# print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
 #%% results of the inverse design
 
 run_case = 'cbf_tfp_inverse'
 val_dir = '../../data/validation/'+run_case+'/'
 
-cbf_tfp_loss_file = run_case+'_loss.pickle'
+cbf_tfp_loss_file = run_case+'_normloss.pickle'
 cbf_tfp_max_loss_file = run_case+'_max_loss.pickle'
 
 cbf_tfp_val_obj = pd.read_pickle(val_dir+cbf_tfp_loss_file)
@@ -1464,7 +1464,7 @@ cbf_tfp_max_loss = cbf_tfp_val_max_obj.max_loss.reset_index(drop=True)
 run_case = 'mf_tfp_inverse'
 val_dir = '../../data/validation/'+run_case+'/'
 
-mf_tfp_loss_file = run_case+'_loss.pickle'
+mf_tfp_loss_file = run_case+'_normloss.pickle'
 mf_tfp_max_loss_file = run_case+'_max_loss.pickle'
 
 mf_tfp_val_obj = pd.read_pickle(val_dir+mf_tfp_loss_file)
@@ -1550,6 +1550,22 @@ print('Estimated replacement frequency: ',
       f'{mf_tfp_replacement[0]:.2%}')
 print(design_tested)
 print(design_specifics)
+
+#%%
+design_cbf_tfp = pd.DataFrame.from_dict({
+    '0': [1.263, 2.25, 3.72, 0.25]}, orient='index', 
+    columns=covariate_list)
+true_mf_cost = predict_DV(design_cbf_tfp, 
+                               mdl_impact_cbf_tfp.gpc, 
+                               mdl_cost_cbf_tfp_i.gpr, 
+                               mdl_cost_cbf_tfp_o.gpr, 
+                               outcome=cost_var)
+
+true_mf_repl = predict_DV(design_cbf_tfp, 
+                               mdl_impact_cbf_tfp.gpc, 
+                               mdl_repl_cbf_tfp_i.gpr, 
+                               mdl_repl_cbf_tfp_o.gpr, 
+                               outcome='replacement_freq')
 
 #%% MLE fragility curves
 def neg_log_likelihood_sum(params, im_l, no_a, no_c):
