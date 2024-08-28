@@ -126,7 +126,11 @@ To calculate theoretical maximum damage/loss of the building, run
     db_obj.calc_cmp_max(db_obj.ops_analysis,
                 cmp_dir='../resource/loss/')
 
-These are stored in the Database object's `loss_data` and `max_loss` attributes, respectively.
+These are stored in the Database object's `loss_data` and `max_loss` attributes, respectively. It might be prudent to first calculate theoretical maximum loss of the building to further feed into the actual loss calculation for the purpose of having a realistic estimate for replacement consequences. Without this, manual estimation of the replacement calculation is required within `loss`.
+
+    db_max = db_obj.max_loss
+    db_obj.run_pelicun(db_bj.ops_analysis, collect_IDA=False,
+    			cmp_dir='../resource/loss/', max_loss_df=db_max)
 
 ### Validating a design in incremental dynamic analysis
 
