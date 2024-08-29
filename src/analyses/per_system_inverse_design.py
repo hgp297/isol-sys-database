@@ -1152,50 +1152,9 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     import time
     
     # TODO: pass a reasonable bound for each variable
-    isolator_system = system_name.split('_')[1]
-    system_X = impact_clfs['mdl_impact_'+system_name].X
-    # system_X_bounds = system_X.agg(['min', 'max'])
-    # test = system_X_bounds.to_dict()
-    
-    # if system_name == 'mf_lrb':
-    #     bounds = {
-    #         'gap_ratio': (0.6, 1.2),
-    #         'RI': (0.5, 2.25),
-    #         'T_ratio': (2.0, 4.0),
-    #         'zeta_e': (0.17, 0.25),
-    #         'k_ratio': (5.0, 12.0)
-    #         }
-    
-    # elif system_name == 'cbf_lrb':
-    #     bounds = {
-    #         'gap_ratio': (0.6, 1.2),
-    #         'RI': (0.5, 2.25),
-    #         'T_ratio': (2.0, 9.0),
-    #         'zeta_e': (0.17, 0.25),
-    #         'k_ratio': (5.0, 12.0)
-    #         }
-    # elif system_name == 'mf_tfp':
-    #     bounds = {
-    #         'gap_ratio': (0.6, 2.0),
-    #         'RI': (0.5, 2.25),
-    #         'T_ratio': (2.0, 4.0),
-    #         'zeta_e': (0.1, 0.25),
-    #         'k_ratio': (5.0, 12.0)
-    #         }
-    
-    # elif system_name == 'cbf_tfp':
-    #     bounds = {
-    #         'gap_ratio': (0.6, 2.0),
-    #         'RI': (0.5, 2.25),
-    #         'T_ratio': (2.0, 4.0),
-    #         'zeta_e': (0.1, 0.25),
-    #         'k_ratio': (5.0, 12.0)
-    #         }
-    
-    # X_space = make_design_space(res, bound_dict=bounds)
-    
+    # isolator_system = system_name.split('_')[1]
+    # system_X = impact_clfs['mdl_impact_'+system_name].X
     X_space = make_design_space(res)
-    t0 = time.time()
     
     # identify cost models
     mdl_impact_name = 'mdl_impact_' + system_name
@@ -1221,6 +1180,23 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     mdl_impact = impact_clfs[mdl_impact_name]
     mdl_repl_hit = repl_regs[mdl_repl_hit_name]
     mdl_repl_miss = repl_regs[mdl_repl_miss_name]
+    
+    # first, scan whole range for constructable bounds
+    # constructable
+    space_constr = mdl_impact.kde.score_samples(X_space)
+    constr_thresh = targets_dict['constructability']
+    ok_constr = X_space.loc[space_constr >= constr_thresh]
+    constr_bounds = ok_constr.agg(['min', 'max'])
+    variable_names = list(constr_bounds.columns)
+    temp_dict = constr_bounds.to_dict()
+    ranges = [tuple(temp_dict[key].values()) for key in variable_names]
+    bounds = {k:v for (k,v) in zip(variable_names, ranges)}
+    
+    
+    # then recreate a finer design space within constructable range
+    X_space = make_design_space(res, bound_dict=bounds)
+    
+    t0 = time.time()
     
     # assumes GPC/GPR, predict the outcome for the design space
     space_repair_cost = predict_DV(X_space, 
@@ -1254,6 +1230,7 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     
     t0 = time.time()
     space_constr = mdl_impact.kde.score_samples(X_space)
+    tp = time.time() - t0
     print("KDE constructability prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                    tp))
     
@@ -1305,9 +1282,9 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     
     bldg_area = (config_dict['num_bays']*config_dict['L_bay'])**2 * (config_dict['num_stories'] + 1)
 
-    # assume $600/sf replacement
-    n_worker_series = bldg_area/1000
-    n_worker_parallel = n_worker_series/2
+    # # assume $600/sf replacement
+    # n_worker_series = bldg_area/1000
+    # n_worker_parallel = n_worker_series/2
 
     # read out predictions
     print('==================================')
