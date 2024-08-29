@@ -656,7 +656,7 @@ yvar = 'T_ratio'
 res = 75
 X_plot = make_2D_plotting_space(mdl_all.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            third_var_set = 2.0, fourth_var_set = 0.15)
+                            third_var_set = 2.0, fourth_var_set = 0.2)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
@@ -688,7 +688,8 @@ plt.imshow(
     )
 
 
-cs = plt.contour(xx_pl, yy_pl, Z_dens, linewidths=1.1, cmap='Reds')
+lvls = np.arange(-20, -2, 2)
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
 clabels = plt.clabel(cs, fontsize=14, colors='black')
 [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
@@ -696,7 +697,7 @@ ax.scatter(df_mf_lrb[xvar],
             df_mf_lrb[yvar],
             s=40, c='darkblue', marker='v', edgecolors='crimson', label='Replacement')
 
-ax.set_title(r'Density of MF-LRB: $R_y = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_title(r'Density of MF-LRB: $R_y = 2.0$, $\zeta_M = 0.2$', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 
@@ -709,7 +710,7 @@ yvar = 'T_ratio'
 res = 75
 X_plot = make_2D_plotting_space(mdl_all.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            third_var_set = 2.0, fourth_var_set = 0.15)
+                            third_var_set = 2.0, fourth_var_set = 0.2)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
@@ -741,7 +742,8 @@ plt.imshow(
     )
 plt_density = 200
 
-cs = plt.contour(xx_pl, yy_pl, Z_dens, linewidths=1.1, cmap='Reds')
+lvls = np.arange(-20, -2, 2)
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
 clabels = plt.clabel(cs, fontsize=14, colors='black')
 [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
@@ -749,9 +751,126 @@ ax.scatter(df_cbf_lrb[xvar],
             df_cbf_lrb[yvar],
             s=40, c='darkblue', marker='v', edgecolors='crimson', label='Replacement')
 
-ax.set_title(r'Density of CBF-LRB: $R_y = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_title(r'Density of CBF-LRB: $R_y = 2.0$, $\zeta_M = 0.2$', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+
+fig.tight_layout()
+plt.show()
+
+#%% try kde for LRBs
+
+mdl_impact_mf_lrb.fit_kde()
+mdl_impact_cbf_lrb.fit_kde()
+
+fig = plt.figure(figsize=(13,7))
+
+ax=fig.add_subplot(1, 2, 1)
+
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_all.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+# density estimation
+log_dens = mdl_impact_mf_lrb.kde.score_samples(X_plot)
+
+
+# # kernel logistic impact prediction
+# K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+# probs_imp = mdl_impact.log_reg_kernel.predict_proba(K_space)
+# Z = probs_imp[:,1]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_dens = log_dens.reshape(xx_pl.shape)
+
+plt.imshow(
+        Z_dens,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.Blues,
+    )
+
+
+lvls = np.arange(-20, -2, 2)
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
+clabels = plt.clabel(cs, fontsize=14, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+ax.scatter(df_mf_lrb[xvar],
+            df_mf_lrb[yvar],
+            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Replacement')
+
+ax.set_title(r'Density of MF-LRB: $R_y = 2.0$, $GR = 1.0$', fontsize=title_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+
+
+ax=fig.add_subplot(1, 2, 2)
+
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_all.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+# density estimation
+log_dens = mdl_impact_cbf_lrb.kde.score_samples(X_plot)
+
+
+# # kernel logistic impact prediction
+# K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
+# probs_imp = mdl_impact.log_reg_kernel.predict_proba(K_space)
+# Z = probs_imp[:,1]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_dens = log_dens.reshape(xx_pl.shape)
+
+plt.imshow(
+        Z_dens,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.Blues,
+    )
+plt_density = 200
+
+lvls = np.arange(-20, -2, 2)
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
+clabels = plt.clabel(cs, fontsize=14, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+ax.scatter(df_cbf_lrb[xvar],
+            df_cbf_lrb[yvar],
+            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Replacement')
+
+ax.set_title(r'Density of CBF-LRB: $R_y = 2.0$, $GR = 1.0$', fontsize=title_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 
 fig.tight_layout()
 plt.show()
@@ -802,8 +921,8 @@ plt.imshow(
         cmap=plt.cm.Blues,
     )
 
-
-cs = plt.contour(xx_pl, yy_pl, Z_dens, linewidths=1.1, cmap='Reds')
+lvls = np.arange(-20, -2, 2)
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
 clabels = plt.clabel(cs, fontsize=14, colors='black')
 [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
@@ -855,7 +974,8 @@ plt.imshow(
         cmap=plt.cm.Blues,
     )
 
-cs = plt.contour(xx_pl, yy_pl, Z_dens, linewidths=1.1, cmap='Reds')
+lvls = np.arange(-20, -2, 2)
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
 clabels = plt.clabel(cs, fontsize=14, colors='black')
 [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 

@@ -1154,45 +1154,47 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     # TODO: pass a reasonable bound for each variable
     isolator_system = system_name.split('_')[1]
     system_X = impact_clfs['mdl_impact_'+system_name].X
-    system_X_bounds = system_X.agg(['min', 'max'])
-    test = system_X_bounds.to_dict()
+    # system_X_bounds = system_X.agg(['min', 'max'])
+    # test = system_X_bounds.to_dict()
     
-    if system_name == 'mf_lrb':
-        bounds = {
-            'gap_ratio': (0.6, 1.2),
-            'RI': (0.5, 2.25),
-            'T_ratio': (2.0, 4.0),
-            'zeta_e': (0.17, 0.25),
-            'k_ratio': (5.0, 12.0)
-            }
+    # if system_name == 'mf_lrb':
+    #     bounds = {
+    #         'gap_ratio': (0.6, 1.2),
+    #         'RI': (0.5, 2.25),
+    #         'T_ratio': (2.0, 4.0),
+    #         'zeta_e': (0.17, 0.25),
+    #         'k_ratio': (5.0, 12.0)
+    #         }
     
-    elif system_name == 'cbf_lrb':
-        bounds = {
-            'gap_ratio': (0.6, 1.2),
-            'RI': (0.5, 2.25),
-            'T_ratio': (2.0, 9.0),
-            'zeta_e': (0.17, 0.25),
-            'k_ratio': (5.0, 12.0)
-            }
-    elif system_name == 'mf_tfp':
-        bounds = {
-            'gap_ratio': (0.6, 2.0),
-            'RI': (0.5, 2.25),
-            'T_ratio': (2.0, 4.0),
-            'zeta_e': (0.1, 0.25),
-            'k_ratio': (5.0, 12.0)
-            }
+    # elif system_name == 'cbf_lrb':
+    #     bounds = {
+    #         'gap_ratio': (0.6, 1.2),
+    #         'RI': (0.5, 2.25),
+    #         'T_ratio': (2.0, 9.0),
+    #         'zeta_e': (0.17, 0.25),
+    #         'k_ratio': (5.0, 12.0)
+    #         }
+    # elif system_name == 'mf_tfp':
+    #     bounds = {
+    #         'gap_ratio': (0.6, 2.0),
+    #         'RI': (0.5, 2.25),
+    #         'T_ratio': (2.0, 4.0),
+    #         'zeta_e': (0.1, 0.25),
+    #         'k_ratio': (5.0, 12.0)
+    #         }
     
-    elif system_name == 'cbf_tfp':
-        bounds = {
-            'gap_ratio': (0.6, 2.0),
-            'RI': (0.5, 2.25),
-            'T_ratio': (2.0, 4.0),
-            'zeta_e': (0.1, 0.25),
-            'k_ratio': (5.0, 12.0)
-            }
+    # elif system_name == 'cbf_tfp':
+    #     bounds = {
+    #         'gap_ratio': (0.6, 2.0),
+    #         'RI': (0.5, 2.25),
+    #         'T_ratio': (2.0, 4.0),
+    #         'zeta_e': (0.1, 0.25),
+    #         'k_ratio': (5.0, 12.0)
+    #         }
     
-    X_space = make_design_space(res, bound_dict=bounds)
+    # X_space = make_design_space(res, bound_dict=bounds)
+    
+    X_space = make_design_space(res)
     t0 = time.time()
     
     # identify cost models
@@ -1250,22 +1252,33 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     print("GPC-GPR replacement prediction for %d inputs in %.3f s" % (X_space.shape[0],
                                                                    tp))
     
+    t0 = time.time()
+    space_constr = mdl_impact.kde.score_samples(X_space)
+    print("KDE constructability prediction for %d inputs in %.3f s" % (X_space.shape[0],
+                                                                   tp))
+    
     # filter cost threshold
     cost_thresh = targets_dict[cost_var]
     ok_cost = X_space.loc[space_repair_cost[cost_var+'_pred']<=cost_thresh]
 
-
+    # downtime threshold
     dt_thresh = targets_dict[time_var]
     ok_time = X_space.loc[space_downtime[time_var+'_pred']<=dt_thresh]
 
+    # acceptable replacement risk
     repl_thresh = targets_dict['replacement_freq']
     ok_repl = X_space.loc[space_repl['replacement_freq_pred']<=
                           repl_thresh]
+    
+    # constructable
+    constr_thresh = targets_dict['constructability']
+    ok_constr = X_space.loc[space_constr >= constr_thresh]
 
     X_design = X_space[np.logical_and.reduce((
             X_space.index.isin(ok_cost.index), 
             X_space.index.isin(ok_time.index),
-            X_space.index.isin(ok_repl.index)))]
+            X_space.index.isin(ok_repl.index),
+            X_space.index.isin(ok_constr.index)))]
 
     if X_design.shape[0] < 1:
         print('No suitable design found for system', system_name)
@@ -1334,7 +1347,8 @@ config_dict = {
 my_targets = {
     cost_var: 0.20,
     time_var: 0.20,
-    'replacement_freq': 0.1}
+    'replacement_freq': 0.1,
+    'constructability': -6.0}
 
 mf_tfp_inv_design, mf_tfp_inv_performance = grid_search_inverse_design(
     20, 'mf_tfp', my_targets, config_dict, 
@@ -1377,7 +1391,7 @@ ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/')
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
-with open('../inputs/mf_tfp_inverse.in', 'w') as file:
+with open('../inputs/mf_tfp_constructable.in', 'w') as file:
     file.write(json.dumps(mf_tfp_dict))
     file.close()
 
@@ -1388,7 +1402,7 @@ cbf_tfp_inv_design['k_ratio'] = 7
 cbf_tfp_dict = cbf_tfp_inv_design.to_dict()
 ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/')
 
-with open('../inputs/cbf_tfp_inverse.in', 'w') as file:
+with open('../inputs/cbf_tfp_constructable.in', 'w') as file:
     file.write(json.dumps(cbf_tfp_dict))
     file.close()
     
@@ -1401,7 +1415,7 @@ mf_lrb_inv_design['k_ratio'] = 10
 mf_lrb_dict = mf_lrb_inv_design.to_dict()
 ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/')
 
-with open('../inputs/mf_lrb_inverse.in', 'w') as file:
+with open('../inputs/mf_lrb_constructable.in', 'w') as file:
     file.write(json.dumps(mf_lrb_dict))
     file.close()
     
@@ -1414,7 +1428,7 @@ cbf_lrb_inv_design['k_ratio'] = 10
 cbf_lrb_dict = cbf_lrb_inv_design.to_dict()
 ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/')
 
-with open('../inputs/cbf_lrb_inverse.in', 'w') as file:
+with open('../inputs/cbf_lrb_constructable.in', 'w') as file:
     file.write(json.dumps(cbf_lrb_dict))
     file.close()
     
