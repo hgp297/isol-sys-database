@@ -1151,7 +1151,6 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
                                cost_var='cmp_cost_ratio', time_var='cmp_time_ratio'):
     import time
     
-    # TODO: pass a reasonable bound for each variable
     # isolator_system = system_name.split('_')[1]
     # system_X = impact_clfs['mdl_impact_'+system_name].X
     X_space = make_design_space(res)

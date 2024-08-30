@@ -97,7 +97,7 @@ import pandas as pd
 import pickle
 
 #### cbf tfp
-run_case = 'cbf_tfp_inverse'
+run_case = 'cbf_tfp_constructable'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 
@@ -115,12 +115,12 @@ df_loss_max = main_obj.max_loss
 main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
                 cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
 
-with open(loss_path+run_case+'_normloss.pickle', 'wb') as f:
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
 
     
 #### mf tfp
-run_case = 'mf_tfp_inverse'
+run_case = 'mf_tfp_constructable'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 
@@ -138,12 +138,12 @@ df_loss_max = main_obj.max_loss
 main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
                 cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
 
-with open(loss_path+run_case+'_normloss.pickle', 'wb') as f:
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
     
     
 #### cbf lrb
-run_case = 'cbf_lrb_inverse'
+run_case = 'cbf_lrb_constructable'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 
@@ -161,12 +161,12 @@ df_loss_max = main_obj.max_loss
 main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
                 cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
 
-with open(loss_path+run_case+'_normloss.pickle', 'wb') as f:
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
     
     
 #### mf lrb
-run_case = 'mf_lrb_inverse'
+run_case = 'mf_lrb_constructable'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 
@@ -184,5 +184,5 @@ df_loss_max = main_obj.max_loss
 main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
                 cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
 
-with open(loss_path+run_case+'_normloss.pickle', 'wb') as f:
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
     pickle.dump(main_obj, f)

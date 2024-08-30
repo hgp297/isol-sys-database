@@ -1551,7 +1551,6 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                                    (all_tfps['zeta_loop'] <= 0.27)]
         
         
-        # TODO: this still fails if Tm is say <3.0 (not robust, check legacy)
         # retry if design didn't work
         if tfp_designs.shape[0] == 0:
             all_tfps, lrb_designs = design_bearing_util(
@@ -1581,7 +1580,6 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         work_df = tfp_designs.copy()
         
     else:
-        # TODO: not robust (due to moat_ampli*Dm/d_r < 1.0 condition)
         lrb_designs = all_lrbs.loc[(all_lrbs['d_bearing'] >=
                                            3*all_lrbs['d_lead']) &
                                           (all_lrbs['d_bearing'] <=
