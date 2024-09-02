@@ -132,7 +132,7 @@ def getModifiedIK_old(shape, L):
 ############################################################################
 
 # import OpenSees and libraries
-import openseespy.opensees as ops
+import opensees.openseespy as ops
 
 # remove existing model
 ops.wipe()
@@ -374,7 +374,7 @@ ops.wipe()
 ############################################################################
 
 # import OpenSees and libraries
-import openseespy.opensees as ops
+import opensees.openseespy as ops
 
 # remove existing model
 ops.wipe()
