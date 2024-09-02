@@ -271,7 +271,6 @@ dependencies:
   - zipp=3.17.0=pyhd8ed1ab_0
   - zstd=1.5.5=h12be248_0
   - pip:
-    - openseespy==3.4.0.8
-    - openseespywin==3.4.0.8
+    - opensees>=0.0.69
     - pelicun==3.3.2
 prefix: C:\Users\hgp\.conda\envs\ops-ts
