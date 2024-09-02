@@ -12,175 +12,177 @@
 
 ############################################################################
 
-from db import Database
+# from db import Database
 
-main_obj = Database(50)
+# main_obj = Database(400)
 
-main_obj.design_bearings(filter_designs=True)
-main_obj.design_structure(filter_designs=True)
+# main_obj.design_bearings(filter_designs=True)
+# main_obj.design_structure(filter_designs=True)
 
-main_obj.scale_gms()
-
-#%% troubleshoot
-
-# # cbf lrb
-# run = main_obj.retained_designs.loc[299]
-
-# # cbf tfp
-# run = main_obj.retained_designs.loc[714]
-
-# # mf lrb
-# run = main_obj.retained_designs.loc[704]
-
-# # mf tfp
-# run = main_obj.retained_designs.loc[68]
-
-# failed CBFs in 100 set: 10, 22, 38
-# 10 solved with smaller time step
-# 22 solved with strong ghosts + Broyden
-# 38 solved with smaller time step, without convergence adds
-
-# solution ideas for 22: run through time-stepping loops, increase time-step
-# attempting a non-zero gravity spring for 22
-
-# # troubleshoot building
-# run = main_obj.retained_designs.iloc[22]
-# from building import Building
-
-# bldg = Building(run)
-# bldg.model_frame(convergence_mode=True)
-# bldg.apply_grav_load()
-
-# T_1 = bldg.run_eigen()
-
-# bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
-
-# dt = 0.0005
-# ok = bldg.run_ground_motion(run.gm_selected, 
-#                         run.scale_factor*1.0, 
-#                         dt, T_end=60.0)
-
-# from experiment import run_nlth
-# res = run_nlth(troubleshoot_run)
-
-
-#%%
-
-# failed CBFs in 200 set: 7? 25
-# fatal condition: dt = 0.005, convergence_mode=False, Broyden in algo
-# ran in loop
-
-# fatal crash ONLY happens in loop
-# crashes after Broyden works and loop returns to Newton for single step
-
-# all runs seem to solve with dt really small, but we don't want this
-
-# # troubleshoot building
-# run = main_obj.retained_designs.iloc[25]
-# from building import Building
-
-# bldg = Building(run)
-# bldg.model_frame(convergence_mode=False)
-# bldg.apply_grav_load()
-
-# T_1 = bldg.run_eigen()
-
-# bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
-
-# dt = 0.005
-# ok = bldg.run_ground_motion(run.gm_selected, 
-#                         run.scale_factor*1.0, 
-#                         dt, T_end=60.0)
-
-
-#%% pushover
-
-# bldg = Building(run)
-# bldg.model_frame()
-# bldg.apply_grav_load()
-
-# T_1 = bldg.run_eigen()
-
-# bldg.provide_damping(80, method='SP',
-#                                   zeta=[0.05], modes=[1])
-
-# bldg.run_pushover(max_drift_ratio=0.1)
-
-# from plot_structure import plot_pushover
-# plot_pushover(bldg)
-
-#%% dynamic run
-
-# from plot_structure import plot_dynamic
-# plot_dynamic(run)
-
-#%% ground motion spectrum
-
-# from gms import plot_spectrum
-# plot_spectrum(run)
-
-
-#%% animation
-
-# from plot_structure import animate_gm
-# fig, animate, n_ani = animate_gm(bldg)
-# import matplotlib.animation as animation
-# animation.FuncAnimation(fig, animate, n_ani, interval=1/4, blit=True)
+# main_obj.scale_gms()
 
 #%% generate analyze database
 
-# main_obj.analyze_db('structural_db_uncalibrated_sheartab.csv', save_interval=5)
+# main_obj.analyze_db('structural_db_mixed_tol.csv', save_interval=5)
 
 # # Pickle the main object
 # import pickle
-# with open('../data/structural_db.pickle', 'wb') as f:
+# with open('../data/structural_db_mixed_tol.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
 
-#%%
-# # plot distribution of parameters
+#%% database gen in parallel
 
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig, axs = plt.subplots(2, 2, figsize=(13, 13))
+# from db import Database
+# num = 4
+# seed = 105
+# main_obj = Database(n_points=num, seed=seed)
+# main_obj.design_bearings(filter_designs=True)
+# main_obj.design_structure(filter_designs=True)
+# main_obj.scale_gms()
+# output_dir = './outputs/seed_'+str(seed)+'_output/'
+# main_obj.analyze_db('structural_db_seed_'+str(seed)+'.csv', save_interval=5,
+#                     output_path=output_dir)
+# import pickle
+# with open('../data/structural_db_seed_'+str(seed)+'.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
+# current workflow (parallel on tacc)
+# change_taskfile.sh writes calls on gen_db_thread (specifying n runs) <- change to main_obj calls here
+# gen_task is written
+# run_control_sbatch then runs on tacc
+# collect_gen brings data from $SCRATCH back to $WORK
+# local update.sh copies data to this repo (taccdata), aggregate file unites the df
+
+
+#%% calculate maximum pelicun losses
+
 # import pandas as pd
-# df_plot = pd.concat([lrbs, tfps], axis=0)
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_complete.pickle")
 
-# sns.histplot(data=df_plot, x="Q", kde=True, 
-#               hue='isolator_system',ax=axs[0, 0])
-# sns.histplot(data=df_plot, x="k_ratio", kde=True, 
-#               hue='isolator_system',ax=axs[0, 1])
-# sns.histplot(data=df_plot, x="T_m", kde=True, 
-#               hue='isolator_system',ax=axs[1, 0])
-# sns.histplot(data=df_plot, x="zeta_e", kde=True, 
-#               hue='isolator_system',ax=axs[1, 1])
+# main_obj.calc_cmp_max(main_obj.ops_analysis,
+#                 cmp_dir='../resource/loss/')
 
-# # plt.legend()
-# plt.show()
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_complete_max_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
-#%%
+#%% run pelicun
 
-# # plot distribution of parameters
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_complete.pickle")
 
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig, axs = plt.subplots(1, 1, figsize=(9, 9))
+# max_obj = pd.read_pickle(pickle_path+"loss/structural_db_complete_max_loss.pickle")
+# df_loss_max = max_obj.max_loss
 
-# lrbs = main_obj.lrb_designs
-# tfps = main_obj.tfp_designs
+# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+#                 cmp_dir='../resource/loss/', max_loss_df=df_loss_max)
 
-# lrbs['strain_ratio'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['t_r']
-# lrbs['dm_check'] = (lrbs['D_m']*lrbs['moat_ampli'])/lrbs['d_bearing']
-# lrbs['amp'] = lrbs['moat_ampli']
-# # import pandas as pd
-# # df_plot = pd.concat([lrbs, tfps], axis=0)
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_complete_normloss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
-# sns.histplot(data=lrbs, x="strain_ratio", kde=True, ax=axs)
+#%% validate design
 
-# plt.show()
+# current workflow: an analysis file generates the .in input files for validation
+# change_valfile then creates the run case name and writes the IDA calls to val_task
+# everything else is handled by val_control_sbatch -> val_task -> val_ida_thread -> .in
+
+
+#%% run pelicun on validation (deterministic on the IDA) and calculate max loss
+import pandas as pd
+import pickle
+
+#### cbf tfp
+run_case = 'cbf_tfp_constructable'
+validation_path = '../data/validation/'+run_case+'/'
+loss_path = '../data/validation/'+run_case+'/'
+
+main_obj = pd.read_pickle(validation_path+run_case+".pickle")
+df_val = main_obj.ida_results
+
+main_obj.calc_cmp_max(main_obj.ida_results,
+                cmp_dir='../resource/loss/')
+
+with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+    
+df_loss_max = main_obj.max_loss
+    
+main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+                cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
+
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+
+    
+#### mf tfp
+run_case = 'mf_tfp_constructable'
+validation_path = '../data/validation/'+run_case+'/'
+loss_path = '../data/validation/'+run_case+'/'
+
+main_obj = pd.read_pickle(validation_path+run_case+".pickle")
+df_val = main_obj.ida_results
+
+main_obj.calc_cmp_max(main_obj.ida_results,
+                cmp_dir='../resource/loss/')
+
+with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+    
+df_loss_max = main_obj.max_loss
+    
+main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+                cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
+
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+    
+    
+#### cbf lrb
+run_case = 'cbf_lrb_constructable'
+validation_path = '../data/validation/'+run_case+'/'
+loss_path = '../data/validation/'+run_case+'/'
+
+main_obj = pd.read_pickle(validation_path+run_case+".pickle")
+df_val = main_obj.ida_results
+
+main_obj.calc_cmp_max(main_obj.ida_results,
+                cmp_dir='../resource/loss/')
+
+with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+    
+df_loss_max = main_obj.max_loss
+    
+main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+                cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
+
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+    
+    
+#### mf lrb
+run_case = 'mf_lrb_constructable'
+validation_path = '../data/validation/'+run_case+'/'
+loss_path = '../data/validation/'+run_case+'/'
+
+main_obj = pd.read_pickle(validation_path+run_case+".pickle")
+df_val = main_obj.ida_results
+
+main_obj.calc_cmp_max(main_obj.ida_results,
+                cmp_dir='../resource/loss/')
+
+with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+    
+df_loss_max = main_obj.max_loss
+    
+main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+                cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
+
+with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)

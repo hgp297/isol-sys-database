@@ -267,6 +267,7 @@ def plot_dynamic(run, data_dir='./outputs/'):
     plt.title('Global drift history')
     plt.xlabel('Time (s)')
     plt.ylabel('Drift ratio')
+    # plt.ylim([-0.15, 0.15])
     plt.grid(True)
     
     PID = story_drift.abs().max().tolist()
@@ -300,8 +301,8 @@ def plot_pushover(run, data_dir='./outputs/pushover/'):
     
     rxn_cols = ['bay_'+str(bay)
                  for bay in range(0, num_bays+1)]
-    rxn_cols.insert(-1, 'left_wall')
-    rxn_cols.insert(-1, 'right_wall')
+    rxn_cols.insert(len(rxn_cols), 'left_wall')
+    rxn_cols.insert(len(rxn_cols), 'right_wall')
     
     bay_names = rxn_cols.copy()
     rxn_cols.insert(0, 'time')
@@ -331,6 +332,13 @@ def plot_pushover(run, data_dir='./outputs/pushover/'):
                     'jFx', 'jFy', 'jFz', 'jMx', 'jMy', 'jMz']
     isol_force = pd.read_csv(data_dir+'isolator_forces.csv', sep=' ', 
                                  header=None, names=force_columns)
+    
+    # cut off problematic points
+    isol_disp = isol_disp.iloc[:-1]
+    isol_force = isol_force.iloc[:-1]
+    story_disp = story_disp.iloc[:-1]
+    base_shear = base_shear.iloc[:-1]
+    story_drift = story_drift.iloc[:-1]
     
     # All hystereses
     isol_type = run.isolator_system

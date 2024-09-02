@@ -14,13 +14,13 @@
 
 # from db import Database
 
-# main_obj = Database(100, n_buffer=8, seed=130, 
+# main_obj = Database(400, n_buffer=8, seed=130, 
 #                     struct_sys_list=['MF'], isol_wts=[1, 0])
 
 # main_obj.design_bearings(filter_designs=True)
 # main_obj.design_structure(filter_designs=True)
 
-# main_obj.scale_gms(repeat=11)
+# main_obj.scale_gms()
 
 #%% troubleshoot fatal case
 
@@ -49,30 +49,84 @@
 
 #%% analyze database
 
-# main_obj.analyze_db('tfp_mf_db_stack.csv', save_interval=5)
+# main_obj.analyze_db('tfp_mf_db.csv', save_interval=5)
 
 # # Pickle the main object
 # import pickle
-# with open('../data/tfp_mf_db_stack.pickle', 'wb') as f:
+# with open('../data/tfp_mf_db.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
 
-#%% DoE
+#%% DoE with iso
 
 # you could either read the csv or unpickle
 # or chain this straight from the analyzed main_obj
 
 # pickle_path = '../data/'
 
-# import pickle
+# import pandas as pd
 
-# with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
-#     main_obj = pickle.load(picklefile)
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
     
 # main_obj.calculate_collapse()
-# main_obj.perform_doe(n_set=50,batch_size=5)
+# main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500, strategy='balanced')
+
+# # current settings: loocv, batch of 5, stricter convergence, rejection sample, start at 100
+# import pickle
+# with open('../data/tfp_mf_db_doe.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+    
+    
+# # exploit
+
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
+    
+# main_obj.calculate_collapse()
+# main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500, strategy='exploit')
 
 # import pickle
-# with open('../data/tfp_mf_db_doe_loocv_single.pickle', 'wb') as f:
+# with open('../data/tfp_mf_db_doe_exploit.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+    
+# # explore
+    
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
+    
+# main_obj.calculate_collapse()
+# main_obj.perform_doe(n_set=200,batch_size=5, max_iters=1500, strategy='explore')
+
+# import pickle
+# with open('../data/tfp_mf_db_doe_explore.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+    
+#%% DoE with ARD
+
+# you could either read the csv or unpickle
+# or chain this straight from the analyzed main_obj
+
+# pickle_path = '../data/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db.pickle")
+
+# # with open(pickle_path+"tfp_mf_db.pickle", 'rb') as picklefile:
+# #     main_obj = pickle.load(picklefile)
+    
+# main_obj.calculate_collapse()
+# main_obj.perform_doe(n_set=100,batch_size=5, kernel='rbf_ard')
+
+# # current settings: loocv, batch of 5, strict convergence, rejection sample
+# import pickle
+# with open('../data/tfp_mf_db_doe_ard.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
     
 #%%
@@ -83,30 +137,268 @@
 # design structures
 # randomly select ground motion for each
 #%% load DoE
+
 from db import Database
 pickle_path = '../data/'
 
-import pickle
 import pandas as pd
 
-with open(pickle_path+"tfp_mf_db_doe_loocv.pickle", 'rb') as picklefile:
-    main_obj = pickle.load(picklefile)
+main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
     
-#%% run validation
-
 validation_path = '../data/validation/'
+
 # TODO: is there a way to pipe this straight from GP? and organize depending on target
 sample_dict = {
     'gap_ratio' : 0.6,
-    'RI' : 1.447,
-    'T_ratio': 1.500,
+    'RI' : 2.25,
+    'T_ratio': 2.16,
     'zeta_e': 0.25
 }
 
 design_df = pd.DataFrame(sample_dict, index=[0])
 
-main_obj.prepare_idas(design_df)
-main_obj.analyze_ida(validation_path+'ida_10.csv')
+main_obj.prepare_ida_legacy(design_df)
+main_obj.analyze_ida('ida_10.csv')
 
-with open(validation_path+"tfp_mf_db_10_validation.pickle", 'rb') as picklefile:
-    main_obj = pickle.load(picklefile)
+import pickle
+with open(validation_path+'tfp_mf_db_ida_10.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+
+
+sample_dict = {
+    'gap_ratio' : 0.6,
+    'RI' : 2.25,
+    'T_ratio': 2.79,
+    'zeta_e': 0.25
+}
+
+design_df = pd.DataFrame(sample_dict, index=[0])
+
+main_obj.prepare_ida_legacy(design_df)
+main_obj.analyze_ida('ida_5.csv')
+
+import pickle
+with open(validation_path+'tfp_mf_db_ida_5.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+    
+    
+sample_dict = {
+    'gap_ratio' : 0.6,
+    'RI' : 2.25,
+    'T_ratio': 3.10,
+    'zeta_e': 0.25
+}
+
+design_df = pd.DataFrame(sample_dict, index=[0])
+
+main_obj.prepare_ida_legacy(design_df)
+main_obj.analyze_ida('ida_2_5.csv')
+
+import pickle
+with open(validation_path+'tfp_mf_db_ida_2_5.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
+
+# sample_dict = {
+#     'gap_ratio' : 1.0,
+#     'RI' : 2.0,
+#     'T_ratio': 3.0,
+#     'zeta_e': 0.15
+# }
+
+# design_df = pd.DataFrame(sample_dict, index=[0])
+
+# main_obj.prepare_idas(design_df)
+# main_obj.analyze_ida('ida_baseline.csv')
+
+# import pickle
+# with open(validation_path+'tfp_mf_db_ida_baseline.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+#%% run pushover
+
+# from db import Database
+# pickle_path = '../data/'
+
+# import pickle
+# import pandas as pd
+
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
+
+    
+# sample_dict = {
+#     'gap_ratio' : 1.0,
+#     'RI' : 2.0,
+#     'T_ratio': 3.0,
+#     'zeta_e': 0.2
+# }
+
+# design_df = pd.DataFrame(sample_dict, index=[0])
+# main_obj.prepare_pushover(design_df)
+# pushover_design = main_obj.pushover_design.iloc[0]
+
+# from building import Building
+
+# bldg = Building(pushover_design)
+# bldg.model_frame()
+# bldg.apply_grav_load()
+# bldg.run_pushover()
+
+# from plot_structure import plot_pushover
+# plot_pushover(pushover_design)
+# T_1 = bldg.run_eigen()
+
+#%% run pelicun
+
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe.pickle")
+
+# main_obj.run_pelicun(main_obj.doe_analysis, mode='generate',
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_doe_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+#%% calculate maximum pelicun losses
+
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
+
+# main_obj.calc_cmp_max(main_obj.doe_analysis,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_doe_loss_max.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+    
+#%% Validate loss targeted building
+
+# 4 bay, 4 stories, targeted 20% cost fraction, 28 days, 10% replacement
+
+# from db import Database
+# pickle_path = '../data/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(pickle_path+"tfp_mf_db_doe_prestrat.pickle")
+    
+# validation_path = '../data/validation/'
+
+# sample_dict = {
+#     'gap_ratio' : 0.647,
+#     'RI' : 0.684,
+#     'T_ratio': 3.10,
+#     'zeta_e': 0.25
+# }
+
+# design_df = pd.DataFrame(sample_dict, index=[0])
+
+# main_obj.prepare_idas(design_df)
+# main_obj.analyze_ida('ida_emi_pbe_unleashed.csv')
+
+# import pickle
+# with open(validation_path+'tfp_mf_db_ida_emi_unleashed.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+#%% calculate pelicun losses for a validation run (deterministic fit)
+
+# validation_path = '../data/validation/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_baseline.pickle")
+# df_val = main_obj.ida_results
+
+# main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_valdet_baseline_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+# validation_path = '../data/validation/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_emi.pickle")
+# df_val = main_obj.ida_results
+
+# main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_valdet_inverse_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+# validation_path = '../data/validation/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_emi_unleashed.pickle")
+# df_val = main_obj.ida_results
+
+# main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_valdet_inverse_loss_unleashed.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+#%% calculate pelicun losses for a validation run (distribution fit MCE level)
+
+# from db import Database
+# validation_path = '../data/validation/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_baseline.pickle")
+# df_val = main_obj.ida_results
+
+# main_obj.validate_pelicun(main_obj.ida_results,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_val_baseline_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+# from db import Database
+# validation_path = '../data/validation/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_emi.pickle")
+# df_val = main_obj.ida_results
+
+# main_obj.validate_pelicun(main_obj.ida_results,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_val_inverse_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+
+
+# # from db import Database
+# validation_path = '../data/validation/'
+
+# import pandas as pd
+
+# main_obj = pd.read_pickle(validation_path+"tfp_mf_db_ida_emi_unleashed.pickle")
+# df_val = main_obj.ida_results
+
+# main_obj.validate_pelicun(main_obj.ida_results,
+#                 cmp_dir='../resource/loss/')
+
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'tfp_mf_db_val_inverse_loss_unleashed.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
+    

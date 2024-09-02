@@ -15,6 +15,10 @@
 import collections
 collections.Callable = collections.abc.Callable
 
+# suppress future warnings
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 class Loss_Analysis:
         
     # import attributes as building characteristics from pd.Series
@@ -45,7 +49,7 @@ class Loss_Analysis:
         nqe_data = nqe_data.replace({'All Zero': 0}, regex=True)
         nqe_data = nqe_data.replace({'2 Points = 0': 0}, regex=True)
         nqe_data = nqe_data.replace({np.nan: 0})
-        nqe_data['directional'] = nqe_data['directional'].replace(
+        nqe_data['directional'] = nqe_data['directional'].map(
             {'YES': True, 'NO': False})
 
         nqe_meta = nqe_data[[c for c in nqe_data if not (
@@ -104,6 +108,43 @@ class Loss_Analysis:
         nqe_meta.loc[mask, 'PACT_block'] = 'EA 1'
         nqe_meta.loc[mask, 'unit'] = 'EA'
         
+        # Reduce block size for some excessive block count components
+        # curtain walls
+        mask = nqe_meta['PACT_name'].str.contains('Curtain Walls')
+        nqe_meta.loc[mask, 'PACT_block'] = 'SF 500'
+        
+        # # steam piping
+        # mask = nqe_meta['PACT_name'].str.contains('Steam Piping')
+        # nqe_meta.loc[mask, 'PACT_block'] = 'LF 1000'
+        
+        # # waste piping
+        # mask = nqe_meta['PACT_name'].str.contains('Waste Piping')
+        # nqe_meta.loc[mask, 'PACT_block'] = 'LF 1000'
+        
+        # ceiling
+        mask = nqe_meta['PACT_name'].str.contains('Raised Access Floor')
+        nqe_meta.loc[mask, 'PACT_block'] = 'SF 1000'
+        
+        # ceiling
+        mask = nqe_meta['PACT_name'].str.contains('Suspended Ceiling')
+        nqe_meta.loc[mask, 'PACT_block'] = 'SF 1000'
+        
+        # Floor covering
+        mask = nqe_meta['PACT_name'].str.contains('Generic Floor Covering')
+        nqe_meta.loc[mask, 'PACT_block'] = 'SF 500'
+        
+        # Pendant lighting
+        mask = nqe_meta['PACT_name'].str.contains('Independent Pendant Lighting')
+        nqe_meta.loc[mask, 'PACT_block'] = 'EA 100'
+        
+        # Concrete tile roof
+        mask = nqe_meta['PACT_name'].str.contains('Concrete tile roof')
+        nqe_meta.loc[mask, 'PACT_block'] = 'SF 1000'
+        
+        # Bookcases
+        mask = nqe_meta['PACT_name'].str.contains('Bookcase')
+        nqe_meta.loc[mask, 'PACT_block'] = 'EA 10'
+        
         self.meta_sheet = nqe_meta
         self.mean_sheet = nqe_mean
         self.std_sheet = nqe_std
@@ -125,10 +166,12 @@ class Loss_Analysis:
         
         n_col_base = (n_bays+1)**2
         
-        # TODO: store data as pickle to avoid this having to convert str to datatype
-        from ast import literal_eval
-        all_beams = literal_eval(self.beam)
-        all_cols = literal_eval(self.column)
+        # from ast import literal_eval
+        # all_beams = literal_eval(self.beam)
+        # all_cols = literal_eval(self.column)
+        
+        all_beams = self.beam
+        all_cols = self.column
         
         # column base plates
         n_col_base = (n_bays+1)**2
@@ -140,7 +183,7 @@ class Loss_Analysis:
         else:
             cur_cmp = 'B.10.31.011b'
             
-        cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', '1', '1,2',
+        cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', '1', '0',
                              n_col_base, np.nan, np.nan,
                              n_col_base, metadata[cur_cmp]['Description']]], 
                                             columns=cmp_strct.columns), cmp_strct])
@@ -148,19 +191,20 @@ class Loss_Analysis:
         # bolted shear tab gravity, assume 1 per every 10 ft span in one direction
         cur_cmp = 'B.10.31.001'
         num_grav_tabs_per_frame = (L_bay//10 - 1) * n_bays # girders
-        num_frames = (n_bays+1)*2
+        n_side_connection = (n_bays*2)*2
         
         # non-MF connections
-        n_cxn_per_reg_frame = (n_bays-1)*2
+        n_cxn_per_reg_frame = (n_bays-1)*2 + 2
         n_reg_frames = (n_bays-1)*2
         
         # gravity girders + shear tabs from non-MF connections
-        num_grav_tabs = ((num_grav_tabs_per_frame * num_frames) + 
+        num_grav_tabs = ((num_grav_tabs_per_frame * n_side_connection) + 
                          (n_cxn_per_reg_frame * n_reg_frames))
         
+        # use blocks of 10
         cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', 'all', '0',
                                  num_grav_tabs, np.nan, np.nan,
-                                 num_grav_tabs, metadata[cur_cmp][
+                                 num_grav_tabs//9, metadata[cur_cmp][
                                      'Description']]], 
                                             columns=cmp_strct.columns), cmp_strct])
         
@@ -215,7 +259,6 @@ class Loss_Analysis:
                                 n_cxn_interior, np.nan, np.nan,
                                 n_cxn_interior, metadata[cur_cmp]['Description']]], 
                               columns=cmp_strct.columns), cmp_strct])
-            
         return(cmp_strct)
 
     def get_structural_cmp_CBF(self, metadata, 
@@ -239,9 +282,12 @@ class Loss_Analysis:
         
         n_col_base = (n_bays+1)**2
         
-        from ast import literal_eval
-        all_cols = literal_eval(self.column)
-        all_braces = literal_eval(self.brace)
+        # from ast import literal_eval
+        # all_cols = literal_eval(self.column)
+        # all_braces = literal_eval(self.brace)
+        
+        all_cols = self.column
+        all_braces = self.brace
         
         # column base plates
         n_col_base = (n_bays+1)**2
@@ -261,18 +307,19 @@ class Loss_Analysis:
         # bolted shear tab gravity, assume 1 per every 10 ft span in one direction
         cur_cmp = 'B.10.31.001'
         num_grav_tabs_per_frame = (L_bay//10 - 1) * n_bays # girders
-        num_frames = (n_bays+1)*2
+        n_side_connection = (n_bays*2)*2
         
         # shear tab at every column joints
         n_cxn_per_reg_frame = (n_bays)*2
         
         # gravity girders + shear tabs from non-MF connections
-        num_grav_tabs = ((num_grav_tabs_per_frame * num_frames) + 
-                         (n_cxn_per_reg_frame * num_frames))
+        num_grav_tabs = ((num_grav_tabs_per_frame * n_side_connection) + 
+                         (n_cxn_per_reg_frame * n_side_connection))
         
+        # use blocks of 10
         cmp_strct = pd.concat([pd.DataFrame([[cur_cmp, 'ea', 'all', '0',
                                  num_grav_tabs, np.nan, np.nan,
-                                 num_grav_tabs, metadata[cur_cmp][
+                                 num_grav_tabs//9, metadata[cur_cmp][
                                      'Description']]], 
                                             columns=cmp_strct.columns), cmp_strct])
         
@@ -293,7 +340,7 @@ class Loss_Analysis:
                     cur_cmp = 'B.10.31.021b'
                     
                 cmp_strct = pd.concat(
-                    [pd.DataFrame([[cur_cmp, 'ea', splice_floor_ind+1, '1,2',
+                    [pd.DataFrame([[cur_cmp, 'ea', splice_floor_ind+1, '0',
                                     n_col_base, np.nan, np.nan, 
                                     n_col_base, metadata[cur_cmp]['Description']]], 
                                   columns=cmp_strct.columns), cmp_strct])
@@ -473,8 +520,12 @@ class Loss_Analysis:
         
         # hardcoded no-block list
         no_block_stuff = ['Chiller', 'Cooling Tower', 'Motor Control', 'stair',
-                          'Elevator', 'Raised Access Floor', 'Switchgear']
+                          'Elevator', 'Switchgear']
         mask = cmp_marginal['Comment'].str.contains('|'.join(no_block_stuff))
+        cmp_marginal.loc[mask, 'Blocks'] = cmp_marginal.loc[mask, 'Theta_0']//1.0
+        
+        # convert all 0 blocks to nan
+        mask = cmp_marginal['Blocks'] == 0
         cmp_marginal.loc[mask, 'Blocks'] = np.nan
         
         # total loss cmps
@@ -494,49 +545,99 @@ class Loss_Analysis:
             structural_cmp = self.get_structural_cmp_MF(P58_metadata)
         else:
             structural_cmp = self.get_structural_cmp_CBF(P58_metadata, brace_dir)
-            
-        total_cmps = pd.concat([structural_cmp, nsc_cmp], ignore_index=True)
         
+        # dtype conversion
+        structural_cmp[['Theta_0']] = structural_cmp[['Theta_0']].apply(pd.to_numeric)
+        structural_cmp[['Blocks']] = structural_cmp[['Blocks']].apply(pd.to_numeric)
+        
+        structural_cmp['Theta_1'] = 0
+        
+        from numpy import ceil
+        nsc_cmp[['Theta_0']] = nsc_cmp[['Theta_0']].apply(pd.to_numeric)
+        nsc_cmp[['Theta_0']] = ceil(nsc_cmp[['Theta_0']])
+        nsc_cmp[['Blocks']] = nsc_cmp[['Blocks']].apply(pd.to_numeric)
+        
+        total_cmps = pd.concat([structural_cmp, nsc_cmp], ignore_index=True)
         self.components = total_cmps
         
-    def process_EDP(self):
+    def process_EDP(self, df_edp=None):
 
-        # TODO: store data as pickle to avoid this having to convert str to datatype
-        from ast import literal_eval
-        PID = literal_eval(self.PID)
-        PFV = literal_eval(self.PFV)
-        PFA = literal_eval(self.PFA)
-        # max_isol_disp = self.max_isol_disp
+        # from ast import literal_eval
+        # PID = literal_eval(self.PID)
+        # PFV = literal_eval(self.PFV)
+        # PFA = literal_eval(self.PFA)
         
-        PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
-        PID_names_2 = ['PID-'+str(fl+1)+'-2' for fl in range(len(PID))]
-        
-        PFA_names_1 = ['PFA-'+str(fl+1)+'-1' for fl in range(len(PFA))]
-        PFA_names_2 = ['PFA-'+str(fl+1)+'-2' for fl in range(len(PFA))]
-        
-        PFV_names_1 = ['PFV-'+str(fl+1)+'-1' for fl in range(len(PFV))]
-        PFV_names_2 = ['PFV-'+str(fl+1)+'-2' for fl in range(len(PFV))]
-        
-        import pandas as pd
-        all_edps = PFA + PFV + PID + PFA + PFV + PID
-        all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
-                     PFA_names_2 + PFV_names_2 + PID_names_2)
-        edp_df = pd.DataFrame([all_edps], columns = all_names)
-        
-        
-        edp_df.loc['Units'] = ['g' if edp.startswith('PFA') else
-                               'inps' if edp.startswith('PFV') else
-                               'rad' for edp in all_names]
-
-        edp_df["new"] = range(1,len(edp_df)+1)
-        edp_df.loc[edp_df.index=='Units', 'new'] = 0
-        edp_df = edp_df.sort_values("new").drop('new', axis=1)
-
-        self.edp = edp_df
-        
-    # TODO: run the loss analysis
+        if df_edp is None:
+            PID = self.PID
+            PFV = self.PFV
+            PFA = self.PFA
+            # max_isol_disp = self.max_isol_disp
+            
+            PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
+            PID_names_2 = ['PID-'+str(fl+1)+'-2' for fl in range(len(PID))]
+            
+            PFA_names_1 = ['PFA-'+str(fl+1)+'-1' for fl in range(len(PFA))]
+            PFA_names_2 = ['PFA-'+str(fl+1)+'-2' for fl in range(len(PFA))]
+            
+            PFV_names_1 = ['PFV-'+str(fl+1)+'-1' for fl in range(len(PFV))]
+            PFV_names_2 = ['PFV-'+str(fl+1)+'-2' for fl in range(len(PFV))]
+            
+            import pandas as pd
+            all_edps = PFA + PFV + PID + PFA + PFV + PID
+            all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
+                         PFA_names_2 + PFV_names_2 + PID_names_2)
+            edp_df = pd.DataFrame([all_edps], columns = all_names)
+            
+            
+            edp_df.loc['Units'] = ['g' if edp.startswith('PFA') else
+                                   'inps' if edp.startswith('PFV') else
+                                   'rad' for edp in all_names]
     
-    def estimate_damage(self, mode='generate'):
+            edp_df["new"] = range(1,len(edp_df)+1)
+            edp_df.loc[edp_df.index=='Units', 'new'] = 0
+            edp_df = edp_df.sort_values("new").drop('new', axis=1)
+    
+            self.edp = edp_df
+        # made for validation mode, results in edp item being a df
+        else:
+            PID = df_edp['PID'].iloc[0]
+            PFV = df_edp['PFV'].iloc[0]
+            PFA = df_edp['PFA'].iloc[0]
+            
+            PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
+            PID_names_2 = ['PID-'+str(fl+1)+'-2' for fl in range(len(PID))]
+            
+            PFA_names_1 = ['PFA-'+str(fl+1)+'-1' for fl in range(len(PFA))]
+            PFA_names_2 = ['PFA-'+str(fl+1)+'-2' for fl in range(len(PFA))]
+            
+            PFV_names_1 = ['PFV-'+str(fl+1)+'-1' for fl in range(len(PFV))]
+            PFV_names_2 = ['PFV-'+str(fl+1)+'-2' for fl in range(len(PFV))]
+            
+            all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
+                         PFA_names_2 + PFV_names_2 + PID_names_2)
+            
+            import pandas as pd
+            pid_df = pd.DataFrame(df_edp['PID'].to_list())
+            pfv_df = pd.DataFrame(df_edp['PFV'].to_list())
+            pfa_df = pd.DataFrame(df_edp['PFA'].to_list())
+            
+            
+            
+            edp_df = pd.concat([pfa_df, pfv_df, pid_df, pfa_df, pfv_df, pid_df],
+                          axis=1)
+            edp_df.columns = all_names
+            edp_df.loc['Units'] = ['g' if edp.startswith('PFA') else
+                                   'inps' if edp.startswith('PFV') else
+                                   'rad' for edp in all_names]
+    
+            edp_df["new"] = range(1,len(edp_df)+1)
+            edp_df.loc[edp_df.index=='Units', 'new'] = 0
+            edp_df = edp_df.sort_values("new").drop('new', axis=1)
+    
+            self.edp = edp_df
+    
+    def estimate_damage(self, mode='generate', custom_fragility_db=None,
+                        cmp_replacement_cost=None, cmp_replacement_time=None):
         
         
         from pelicun.assessment import Assessment
@@ -556,9 +657,18 @@ class Loss_Analysis:
         # if mode is validation, treat the dataset as a distribution
         elif mode=='validation':
             raw_demands = self.edp.transpose()
+            raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
+            raw_demands.index.names = ['type','loc','dir']
+            
+        # if mode is maximize, add high EDPs to maximize loss
+        elif mode=='maximize':
+            raw_demands = self.edp.transpose()
             raw_demands.columns = ['Units', 'Value']
             raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
             raw_demands.index.names = ['type','loc','dir']
+            raw_demands.loc[raw_demands['Units'] == 'g', 'Value'] = 1e4
+            raw_demands.loc[raw_demands['Units'] == 'rad', 'Value'] = 1e2
+            raw_demands.loc[raw_demands['Units'] == 'inps', 'Value'] = 1e6
         
         # initialize, no printing outputs, offset fixed with current components
         PAL = Assessment({
@@ -571,9 +681,8 @@ class Loss_Analysis:
         ###########################################################################
         # DEMANDS
         ###########################################################################
-        # TODO: change validation? can do either deterministic or distro
         if mode=='validation':
-            PAL.demand.load_sample(raw_demands)
+            PAL.demand.load_sample(raw_demands.T)
             PAL.demand.calibrate_model(
                 {
                     "ALL": {
@@ -611,9 +720,12 @@ class Loss_Analysis:
         demand_sample = PAL.demand.save_sample()
 
 
-        # TODO: this is structure system dependent
         # get residual drift estimates 
-        delta_y = 0.0075 # found from typical pushover curve for structure
+        superstructure_system = self.superstructure_system
+        if superstructure_system == 'MF':
+            delta_y = 0.0075 # found from typical pushover curve for structure
+        else:
+            delta_y = 0.005
         PID = demand_sample['PID']
 
         RID = PAL.demand.estimate_RID(PID, {'yield_drift': delta_y}) 
@@ -627,14 +739,14 @@ class Loss_Analysis:
         #                                        run_data['accMax1'],
         #                                        run_data['accMax2'],
         #                                        run_data['accMax3'])
-
-        demand_sample_ext[('SA_Tm',0,1)] = self.sa_tm
         
-        # TODO: change this once pickled
-        from ast import literal_eval
-        PID_all = literal_eval(self.PID)
-        
-        demand_sample_ext[('PID_all',0,1)] = max(PID_all)
+        PID_all = self.PID
+        if mode != 'maximize':
+            demand_sample_ext[('SA_Tm',0,1)] = self.sa_tm
+            demand_sample_ext[('PID_all',0,1)] = max(PID_all)
+        else:
+            demand_sample_ext[('SA_Tm',0,1)] = 1e4
+            demand_sample_ext[('PID_all',0,1)] = 1e2
         
         # demand_sample_ext[('PID_all',0,1)] = demand_sample_ext[[('PID','1','1'),
         #                                                         ('PID','2','1'),
@@ -655,9 +767,7 @@ class Loss_Analysis:
         # # COMPONENTS
         # ###########################################################################
         
-        # # generate structural components and join with NSCs
-        # P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
-        # cmp_structural = get_structural_cmp_MF(run_data, P58_metadata)
+        # generate structural components and join with NSCs
         
         cmp_marginals = self.components
         cmp_marginals = cmp_marginals.set_index('Component')
@@ -670,23 +780,13 @@ class Loss_Analysis:
         
         
         # review the damage model - in this example: fragility functions
-        P58_data = PAL.get_default_data('fragility_DB_FEMA_P58_2nd')
+        P58_data = PAL.get_default_data('damage_DB_FEMA_P58_2nd')
 
         # note that we drop the last three components here (excessiveRID, irreparable, and collapse) 
         # because they are not part of P58
         cmp_list = cmp_marginals.index.unique().values[:-3]
 
         P58_data_for_this_assessment = P58_data.loc[cmp_list,:].sort_values('Incomplete', ascending=False)
-        
-        '''
-        incomplete_fragility_db = P58_data_for_this_assessment.loc[
-            P58_data_for_this_assessment['Incomplete'] == 1].sort_index()
-        inc_names = incomplete_fragility_db.index.tolist()
-        
-        # TEMP HACK: remove incomplete from cmp_marginals
-        inc_df = cmp_marginals.index.isin(inc_names)
-        cmp_marginals = cmp_marginals[~inc_df]
-        '''
         
         # to make the convenience keywords work in the model, 
         # we need to specify the number of stories
@@ -701,11 +801,27 @@ class Loss_Analysis:
         # get the component quantity sample - again, use the save function to convert units
         cmp_sample = PAL.asset.save_cmp_sample()
 
-        # TODO: we have problems stemming from incomplete db
-        additional_fragility_db = P58_data_for_this_assessment.loc[
+        # load in some custom definitions for a couple of missing components
+        incomplete_db = P58_data_for_this_assessment.loc[
             P58_data_for_this_assessment['Incomplete'] == 1].sort_index() 
+        inc_names = incomplete_db.index.tolist()
         
-        # TODO: change this section to the system-dependent drift values
+        if custom_fragility_db is None:
+            custom_fragility_db = pd.read_csv('../resource/loss/custom_component_fragilities.csv',
+                                              header=[0,1], index_col=0)
+            
+        custom_fragility_db = custom_fragility_db.rename(
+            columns=lambda x: '' if "Unnamed" in x else x, level=1)
+        
+        additional_fragility_db = pd.concat([custom_fragility_db, incomplete_db], axis=0)
+        
+        # if we have all components accounted for, drop the initial duplicate list
+        if set(inc_names).issubset(custom_fragility_db.index.tolist()):
+            additional_fragility_db = additional_fragility_db[additional_fragility_db['Incomplete'] != 1]
+            
+        mask = additional_fragility_db.index.isin(inc_names)
+        additional_fragility_db = additional_fragility_db[mask]
+        
         
         # add demand for the replacement criteria
         # irreparable damage
@@ -717,12 +833,17 @@ class Loss_Analysis:
                             ('Demand','Unit')]] = [1, 
                                                     0, 
                                                     'Residual Interstory Drift Ratio',
-                                                    'rad']   
-
+                                                    'rad']
+        # reference for drifts in FEMA 356, Table C1-2, or FEMA P-58 Table C-1
+        if superstructure_system=='MF':
+            irreparable_drift = 0.01
+        else:
+            irreparable_drift = 0.005
+            
         additional_fragility_db.loc[
             'excessiveRID', [('LS1','Family'),
                             ('LS1','Theta_0'),
-                            ('LS1','Theta_1')]] = ['lognormal', 0.01, 0.3]   
+                            ('LS1','Theta_1')]] = ['lognormal', irreparable_drift, 0.3]   
 
         additional_fragility_db.loc[
             'irreparable', [('Demand','Directional'),
@@ -767,9 +888,24 @@ class Loss_Analysis:
         # 3-story global collapse drift, lowered by 0.05 if nonlin dynamic anly
         from math import log, exp
         from scipy.stats import norm
-        inv_norm = norm.ppf(0.84)
-        beta_drift = 0.25
-        mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) # 0.9945 is inverse normCDF of 0.84
+        
+        if superstructure_system == 'MF':
+            # MF: set 84% collapse at 0.10 drift, 0.25 beta
+            drift_mu_plus_std = 0.1
+            inv_norm = norm.ppf(0.84)
+            n_stories = self.num_stories
+            if n_stories < 4:
+                beta_drift = 0.25
+            else:
+                beta_drift = 0.35
+            # 0.9945 is inverse normCDF of 0.84
+            mean_log_drift = exp(log(drift_mu_plus_std) - beta_drift*inv_norm) 
+        else:
+            # CBF: set 90% collapse at 0.05 drift, 0.55 beta
+            inv_norm = norm.ppf(0.90)
+            beta_drift = 0.55
+            mean_log_drift = exp(log(0.05) - beta_drift*inv_norm) 
+            
         additional_fragility_db.loc[
             'collapse', [('Demand','Directional'),
                             ('Demand','Offset'),
@@ -784,10 +920,15 @@ class Loss_Analysis:
         # We set the incomplete flag to 0 for the additional components
         additional_fragility_db['Incomplete'] = 0
         
+        # if maximizing, drop the three replacement damage states
+        if mode == 'maximize':
+            additional_fragility_db = additional_fragility_db.drop(
+                index=['collapse', 'excessiveRID', 'irreparable'])
+        
         # load fragility data
         PAL.damage.load_damage_model([
             additional_fragility_db,  # This is the extra fragility data we've just created
-            'PelicunDefault/fragility_DB_FEMA_P58_2nd.csv' # and this is a table with the default P58 data    
+            'PelicunDefault/damage_DB_FEMA_P58_2nd.csv' # and this is a table with the default P58 data    
         ])
         
         ### 3.3.5 Damage Process
@@ -806,18 +947,22 @@ class Loss_Analysis:
         # then the irreparable component should be set to DS1.
 
         # FEMA P58 uses the following process:
-        dmg_process = {
-            "1_collapse": {
-                "DS1": "ALL_NA"
-            },
-            "2_excessiveRID": {
-                "DS1": "irreparable_DS1"
+        if mode != 'maximize':
+            dmg_process = {
+                "1_collapse": {
+                    "DS1": "ALL_NA"
+                },
+                "2_excessiveRID": {
+                    "DS1": "irreparable_DS1"
+                }
             }
-        }
+        else:
+            dmg_process = None
         
         ###########################################################################
         # DAMAGE
         ###########################################################################
+        
         
         print('Damage estimation...')
         # Now we can run the calculation
@@ -825,6 +970,8 @@ class Loss_Analysis:
         
         # Damage estimates
         damage_sample = PAL.damage.save_sample()
+        
+        print('Damage estimation complete!')
         
         ###########################################################################
         # LOSS
@@ -836,139 +983,209 @@ class Loss_Analysis:
 
         # we are looking at repair consequences in this example
         # the components in P58 have consequence models under the same name
+        # this assumes that there are three omitted components: irreparable, excessiveRID, collapse
         loss_models = cmp_marginals.index.unique().tolist()[:-3]
 
-        # # We will define the replacement consequence in the following cell.
-        # loss_models+=['replacement',]*2
+        # We will define the replacement consequence in the following cell.
+        loss_models+=['replacement',]*2
 
-        # # Assemble the DataFrame with the mapping information
-        # # The column name identifies the type of the consequence model.
-        # loss_map = pd.DataFrame(loss_models, columns=['BldgRepair'], index=drivers)
+        # Assemble the DataFrame with the mapping information
+        # The column name identifies the type of the consequence model.
+        loss_map = pd.DataFrame(loss_models, columns=['Repair'], index=drivers)
         
-        # # load the consequence models
-        # P58_data = PAL.get_default_data('bldg_repair_DB_FEMA_P58_2nd')
+        # load the consequence models
+        P58_data = PAL.get_default_data('loss_repair_DB_FEMA_P58_2nd')
 
-        # # group E
-        # incomplete_cmp = pd.DataFrame(
-        #     columns = pd.MultiIndex.from_tuples([('Incomplete',''), 
-        #                                          ('Quantity','Unit'), 
-        #                                          ('DV', 'Unit'), 
-        #                                          ('DS1','Theta_0'),
-        #                                          ('DS1','Theta_1'),
-        #                                          ('DS1','Family'),]),
-        #     index=pd.MultiIndex.from_tuples([('E.20.22.102a','Cost'), 
-        #                                      ('E.20.22.102a','Time'),
-        #                                      ('E.20.22.112a','Cost'), 
-        #                                      ('E.20.22.112a','Time')])
-        # )
+        # group E (filing cabinets, bookcases)
+        incomplete_cmp = pd.DataFrame(
+            columns = pd.MultiIndex.from_tuples([('Incomplete',''), 
+                                                  ('Quantity','Unit'), 
+                                                  ('DV', 'Unit'), 
+                                                  ('DS1','Theta_0'),
+                                                  ('DS1','Theta_1'),
+                                                  ('DS1','Family'),]),
+            index=pd.MultiIndex.from_tuples([('E.20.22.102a','Cost'), 
+                                              ('E.20.22.102a','Time'),
+                                              ('E.20.22.112a','Cost'), 
+                                              ('E.20.22.112a','Time'),
+                                              ('E.20.22.114b','Cost'), 
+                                              ('E.20.22.114b','Time'),
+                                              ('E.20.22.106b','Cost'), 
+                                              ('E.20.22.106b','Time'),])
+        )
+        
+        # bookcases (unanchored vs anchored)
+        incomplete_cmp.loc[('E.20.22.102a', 'Cost')] = [0, '1 EA', 'USD_2011',
+                                                      '190.0,150.0|1,5', 0.35, 'lognormal']
+        incomplete_cmp.loc[('E.20.22.102a', 'Time')] = [0, '1 EA', 'worker_day',
+                                                      0.02, 0.5, 'lognormal']
+        
+        incomplete_cmp.loc[('E.20.22.106b', 'Cost')] = [0, '1 EA', 'USD_2011',
+                                                      '250.0,150.0|1,5', 0.35, 'lognormal']
+        incomplete_cmp.loc[('E.20.22.106b', 'Time')] = [0, '1 EA', 'worker_day',
+                                                      0.03, 0.5, 'lognormal']
 
-        # incomplete_cmp.loc[('E.20.22.102a', 'Cost')] = [0, '1 EA', 'USD_2011',
-        #                                              '190.0, 150.0|1,5', 0.35, 'lognormal']
-        # incomplete_cmp.loc[('E.20.22.102a', 'Time')] = [0, '1 EA', 'worker_day',
-        #                                              0.02, 0.5, 'lognormal']
+        # filing cabinets (unanchored vs anchored)
+        incomplete_cmp.loc[('E.20.22.112a', 'Cost')] = [0, '1 EA', 'USD_2011',
+                                                      '110.0,70.0|1,5', 0.35, 'lognormal']
+        incomplete_cmp.loc[('E.20.22.112a', 'Time')] = [0, '1 EA', 'worker_day',
+                                                      0.02, 0.5, 'lognormal']
+        
+        incomplete_cmp.loc[('E.20.22.114b', 'Cost')] = [0, '1 EA', 'USD_2011',
+                                                      '170.0,70.0|1,5', 0.35, 'lognormal']
+        incomplete_cmp.loc[('E.20.22.114b', 'Time')] = [0, '1 EA', 'worker_day',
+                                                      0.03, 0.5, 'lognormal']
+        
+        # if maximizing, drop the three replacement damage states
+        if mode == 'maximize':
+            loss_map = loss_map.drop(
+                index=['DMG-irreparable', 'DMG-collapse'])
 
-        # incomplete_cmp.loc[('E.20.22.112a', 'Cost')] = [0, '1 EA', 'USD_2011',
-        #                                              '110.0, 70.0|1,5', 0.35, 'lognormal']
-        # incomplete_cmp.loc[('E.20.22.112a', 'Time')] = [0, '1 EA', 'worker_day',
-        #                                              0.02, 0.5, 'lognormal']
+        # get the consequences used by this assessment
+        # grab all loss map values that are present in P58_data
+        P58_available = list(set(P58_data.index.get_level_values(0).values).intersection(
+            loss_map['Repair'].values.tolist()))
+        P58_data_for_this_assessment = P58_data.loc[P58_available,:]
+        
+        # this should be taken care of from incomplete_cmp
+        P58_missing = set(loss_map['Repair'].values[:-2]) - set(P58_available)
 
-        # # get the consequences used by this assessment
-        # P58_data_for_this_assessment = P58_data.loc[loss_map['BldgRepair'].values[:-5],:]
+        # initialize the dataframe
+        additional_consequences = pd.DataFrame(
+            columns = pd.MultiIndex.from_tuples([('Incomplete',''), 
+                                                  ('Quantity','Unit'), 
+                                                  ('DV', 'Unit'), 
+                                                  ('DS1', 'Theta_0'),
+                                                  ('DS1', 'Theta_1'),
+                                                  ('DS1', 'Family')]),
+            index=pd.MultiIndex.from_tuples([('replacement','Cost'), 
+                                              ('replacement','Time')])
+        )
+        
+        # add the data about replacement cost and time
 
-        # # initialize the dataframe
-        # additional_consequences = pd.DataFrame(
-        #     columns = pd.MultiIndex.from_tuples([('Incomplete',''), 
-        #                                          ('Quantity','Unit'), 
-        #                                          ('DV', 'Unit'), 
-        #                                          ('DS1', 'Theta_0')]),
-        #     index=pd.MultiIndex.from_tuples([('replacement','Cost'), 
-        #                                      ('replacement','Time')])
-        # )
+        # TODO: find replacement cost estimate
+        # use PACT
+        # assume $250/sf
+        # assume 40% of replacement cost is labor, $680/worker-day for SF Bay Area
         
-        # # add the data about replacement cost and time
-
-        # # use PACT
-        # # assume $250/sf
-        # # assume 40% of replacement cost is labor, $680/worker-day for SF Bay Area
+        # assume $600/sf
+        if cmp_replacement_cost is None:
+            bldg_area = self.L_bldg**2 * (self.num_stories + 1)
+            replacement_cost = 600.0*bldg_area
+        else:
+            replacement_cost = cmp_replacement_cost
         
-        # # assume $600/sf
-        # replacement_cost = 600.0*90.0*90.0*4
+        # assume 2 years timeline
+        # assume 1 worker per 1000 sf, but can work in parallel of 2 floors
+        if cmp_replacement_time is None:
+            n_worker_series = bldg_area/1000
+            n_worker_parallel = n_worker_series/2
+            replacement_time = n_worker_parallel*365*2
+        else:
+            replacement_time = cmp_replacement_time
+        additional_consequences.loc[('replacement', 'Cost')] = [0, '1 EA',
+                                                                'USD_2011',
+                                                                replacement_cost,
+                                                                0,
+                                                                np.nan]
+        additional_consequences.loc[('replacement', 'Time')] = [0, '1 EA',
+                                                                'worker_day',
+                                                                replacement_time,
+                                                                0,
+                                                                np.nan]
         
-        # # assume 2 years timeline
-        # # assume 1 worker per 1000 sf, but can work in parallel of 2 floors
-        # n_worker_series = 90*90*4/1000
-        # n_worker_parallel = n_worker_series/2
-        # replacement_time = n_worker_parallel*365*2
-        # additional_consequences.loc[('replacement', 'Cost')] = [0, '1 EA',
-        #                                                         'USD_2011',
-        #                                                         replacement_cost]
-        # additional_consequences.loc[('replacement', 'Time')] = [0, '1 EA',
-        #                                                         'worker_day',
-        #                                                         replacement_time]
         
-        # # Load the loss model to pelicun
-        # PAL.bldg_repair.load_model(
-        #     [additional_consequences, incomplete_cmp,
-        #       "PelicunDefault/bldg_repair_DB_FEMA_P58_2nd.csv"], 
-        #     loss_map)
+    
+        # Load the loss model to pelicun
+        PAL.repair.load_model(
+            [additional_consequences, incomplete_cmp,
+              "PelicunDefault/loss_repair_DB_FEMA_P58_2nd.csv"], 
+            loss_map, decision_variables=['Cost', 'Time'])
         
-        # # and run the calculations
-        # print('Loss estimation...')
-        # PAL.bldg_repair.calculate()
+        # and run the calculations
+        print('Loss estimation...')
+        PAL.repair.calculate()
+        print('Loss estimation done!')
         
-        # # loss estimates
-        # loss_sample = PAL.bldg_repair.sample
+        # loss estimates
+        loss_sample = PAL.repair.save_sample()
         
-        # # group components and ensure that all components and replacement are present
-        # loss_by_cmp = loss_sample.groupby(level=[0, 2], axis=1).sum()['COST']
-        # for cmp_grp in list(cmp_list):
-        #     if cmp_grp not in list(loss_by_cmp.columns):
-        #         loss_by_cmp[cmp_grp] = 0
+        
+        # group components and ensure that all components and replacement are present
+        loss_by_cmp = loss_sample.groupby(level=[0, 2], axis=1).sum()['Cost']
+        for cmp_grp in list(cmp_list):
+            if cmp_grp not in list(loss_by_cmp.columns):
+                loss_by_cmp[cmp_grp] = 0
                 
-        # # grab replacement cost and convert to instances, fill with zeros if needed
-        # replacement_instances = pd.DataFrame()
-        # try:
-        #     replacement_instances['collapse'] = loss_by_cmp['collapse']/replacement_cost
-        # except KeyError:
-        #     loss_by_cmp['collapse'] = 0
-        #     replacement_instances['collapse'] = pd.DataFrame(np.zeros((n_sample, 1)))
-        # try:
-        #     replacement_instances['irreparable'] = loss_by_cmp['irreparable']/replacement_cost
-        # except KeyError:
-        #     loss_by_cmp['irreparable'] = 0
-        #     replacement_instances['irreparable'] = pd.DataFrame(np.zeros((n_sample, 1)))
-        # replacement_instances = replacement_instances.astype(int)
+        if mode == 'maximize':
+            # summarize by groups
+            loss_groups = pd.DataFrame()
+            loss_groups['B'] = loss_by_cmp[[
+                col for col in loss_by_cmp.columns if col.startswith('B')]].sum(axis=1)
+            loss_groups['C'] = loss_by_cmp[[
+                col for col in loss_by_cmp.columns if col.startswith('C')]].sum(axis=1)
+            loss_groups['D'] = loss_by_cmp[[
+                col for col in loss_by_cmp.columns if col.startswith('D')]].sum(axis=1)
+            loss_groups['E'] = loss_by_cmp[[
+                col for col in loss_by_cmp.columns if col.startswith('E')]].sum(axis=1)
+            
+            # this returns NaN if collapse/irreparable is 100%
+            loss_groups = loss_groups.describe()
+            
+            # aggregate
+            agg_DF = PAL.repair.aggregate_losses()
+            
+            collapse_freq = 0.0
+            irreparable_freq = 0.0
+            
+            return(cmp_sample, damage_sample, loss_sample, loss_groups, agg_DF,
+                    collapse_freq, irreparable_freq)
+            
+        # grab replacement cost and convert to instances, fill with zeros if needed
+        replacement_instances = pd.DataFrame()
+        try:
+            replacement_instances['collapse'] = loss_by_cmp['collapse']/replacement_cost
+        except KeyError:
+            loss_by_cmp['collapse'] = 0
+            replacement_instances['collapse'] = pd.DataFrame(np.zeros((n_sample, 1)))
+        try:
+            replacement_instances['irreparable'] = loss_by_cmp['irreparable']/replacement_cost
+        except KeyError:
+            loss_by_cmp['irreparable'] = 0
+            replacement_instances['irreparable'] = pd.DataFrame(np.zeros((n_sample, 1)))
+        replacement_instances = replacement_instances.astype(int)
                 
-        # # summarize by groups
-        # loss_groups = pd.DataFrame()
-        # loss_groups['B'] = loss_by_cmp[[
-        #     col for col in loss_by_cmp.columns if col.startswith('B')]].sum(axis=1)
-        # loss_groups['C'] = loss_by_cmp[[
-        #     col for col in loss_by_cmp.columns if col.startswith('C')]].sum(axis=1)
-        # loss_groups['D'] = loss_by_cmp[[
-        #     col for col in loss_by_cmp.columns if col.startswith('D')]].sum(axis=1)
-        # loss_groups['E'] = loss_by_cmp[[
-        #     col for col in loss_by_cmp.columns if col.startswith('E')]].sum(axis=1)
+        # summarize by groups
+        loss_groups = pd.DataFrame()
+        loss_groups['B'] = loss_by_cmp[[
+            col for col in loss_by_cmp.columns if col.startswith('B')]].sum(axis=1)
+        loss_groups['C'] = loss_by_cmp[[
+            col for col in loss_by_cmp.columns if col.startswith('C')]].sum(axis=1)
+        loss_groups['D'] = loss_by_cmp[[
+            col for col in loss_by_cmp.columns if col.startswith('D')]].sum(axis=1)
+        loss_groups['E'] = loss_by_cmp[[
+            col for col in loss_by_cmp.columns if col.startswith('E')]].sum(axis=1)
         
-        # # only summarize repair cost from non-replacement cases
-        # loss_groups = loss_groups.loc[
-        #     (replacement_instances['collapse'] == 0) & (replacement_instances['irreparable'] == 0)]
+        # only summarize repair cost from non-replacement cases
+        loss_groups = loss_groups.loc[
+            (replacement_instances['collapse'] == 0) & (replacement_instances['irreparable'] == 0)]
         
-        # # TODO: these two conditions are mutually exclusive
-        # collapse_freq = replacement_instances['collapse'].sum(axis=0)/n_sample
-        # irreparable_freq = replacement_instances['irreparable'].sum(axis=0)/n_sample
+        collapse_freq = replacement_instances['collapse'].sum(axis=0)/n_sample
+        irreparable_freq = replacement_instances['irreparable'].sum(axis=0)/n_sample
         
-        # # this returns NaN if collapse/irreparable is 100%
-        # loss_groups = loss_groups.describe()
+        # this returns NaN if collapse/irreparable is 100%
+        loss_groups = loss_groups.describe()
         
-        # # aggregate
-        # agg_DF = PAL.bldg_repair.aggregate_losses()
+        # aggregate
+        agg_DF = PAL.repair.aggregate_losses()
         
-        # return(cmp_sample, damage_sample, loss_sample, loss_groups, agg_DF,
-        #        collapse_freq, irreparable_freq)
+        return(cmp_sample, damage_sample, loss_sample, loss_groups, agg_DF,
+                collapse_freq, irreparable_freq)
     
 #%% test
-# run info
+
+# # run info
 # import pandas as pd
 # import numpy as np
 
@@ -988,25 +1205,33 @@ class Loss_Analysis:
 # })
 
 # # generate structural components and join with NSCs
-# P58_metadata = PAL.get_default_metadata('fragility_DB_FEMA_P58_2nd')
+# P58_metadata = PAL.get_default_metadata('loss_repair_DB_FEMA_P58_2nd')
 
-# data = pd.read_csv('../data/structural_db_conv.csv')
-# cbf_run = data.iloc[0]
+# # data = pd.read_csv('../data/tfp_mf_db.csv')
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db.pickle")
+# data = main_obj.ops_analysis
+# run = data.iloc[1]
 
 
-# cbf_floors = cbf_run.num_stories
-# cbf_area = cbf_run.L_bldg**2 # sq ft
+# floors = run.num_stories
+# area = run.L_bldg**2 # sq ft
 
 # # lab, health, ed, res, office, retail, warehouse, hotel
 # fl_usage = [0., 0., 0., 0., 1.0, 0., 0., 0.]
-# bldg_usage = [fl_usage]*cbf_floors
+# bldg_usage = [fl_usage]*floors
 
-# area_usage = np.array(fl_usage)*cbf_area
+# area_usage = np.array(fl_usage)*area
 
-# loss = Loss_Analysis(cbf_run)
+# loss = Loss_Analysis(run)
 # loss.nqe_sheets()
 # loss.normative_quantity_estimation(bldg_usage, P58_metadata)
 
-# # TODO: keep record of total cmp (groupby?)
 
+# additional_frag_db = pd.read_csv('../resource/loss/custom_component_fragilities.csv',
+#                                   header=[0,1], index_col=0)
 # loss.process_EDP()
+# [cmp, dmg, loss, loss_cmp, agg, 
+#  collapse_rate, irr_rate] = loss.estimate_damage(
+#      custom_fragility_db=additional_frag_db, mode='generate')
+

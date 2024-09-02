@@ -14,9 +14,8 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     
     import pandas as pd
     import numpy as np
-    from gms import get_gm_ST
+    from gms import get_gm_ST, get_ST
     
-    # TODO: collect validation indicator (IDA level)
     num_stories = design['num_stories']
     
     # gather EDPs from opensees output
@@ -70,10 +69,11 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
     outer_col_vel = outer_col_vel.drop(columns=['time'])
     
     ss_type = design['superstructure_system']
+    
     if ss_type == 'MF':
         ok_thresh = 0.20
     else:
-        ok_thresh = 0.075
+        ok_thresh = 0.10
     # if run was OK, we collect true max values
     if run_status == 0:
         PID = np.maximum(inner_col_drift.abs().max(), 
@@ -117,14 +117,28 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
         impact_bool = 0
         
     Tms_interest = np.array([design['T_m'], 1.0, Tfb])
-    Sa_gm = get_gm_ST(design, Tms_interest)
+    
+    # be careful not to double calculate damping effect
+    # Sa_gm = get_gm_ST(design, Tms_interest)
+    Sa_gm = get_ST(design, Tms_interest)
     
     Sa_Tm = Sa_gm[0]
     Sa_1 = Sa_gm[1]
     Sa_Tfb = Sa_gm[2]
-        
+    
     # Sa_Tm = get_ST(design, design['T_m'])
     # Sa_1 = get_ST(design, 1.0)
+    # Sa_Tfb = get_ST(design, Tfb)
+        
+    import numpy as np
+    zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    Bm = np.interp(design['zeta_e'], zetaRef, BmRef)
+    
+    pi = 3.14159
+    g = 386.4
+    gap_ratio = (design['moat_ampli']*design['D_m']*4*pi**2)/ \
+        (g*(Sa_Tm/Bm)*design['T_m']**2)
     
     result_dict = {'sa_tm': Sa_Tm,
                    'sa_1': Sa_1,
@@ -132,6 +146,8 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
                    'constructed_moat': design['moat_ampli']*design['D_m'],
                    'T_1': T_1,
                    'T_fb': Tfb,
+                   'T_ratio' : design['T_m']/Tfb,
+                   'gap_ratio' : gap_ratio,
                    'max_isol_disp': isol_max_horiz_disp,
                    'PID': PID,
                    'PFV': PFV,
@@ -141,11 +157,10 @@ def prepare_results(output_path, design, T_1, Tfb, run_status):
                    'run_status': run_status
         }
     result_series = pd.Series(result_dict)
-    
-    final_series = design.append(result_series)
+    final_series = pd.concat([design, result_series])
     return(final_series)
     
-def collapse_fragility(run):
+def collapse_fragility(run, mf_drift_mu_plus_std=0.1, cbf_drift_90=0.05):
     system = run.superstructure_system
     peak_drift = max(run.PID)
     n_stories = run.num_stories
@@ -155,7 +170,6 @@ def collapse_fragility(run):
     from scipy.stats import lognorm
     from scipy.stats import norm
     
-    # TODO: change this for taller buildings
     # MF: set 84% collapse at 0.10 drift, 0.25 beta
     if system == 'MF':
         inv_norm = norm.ppf(0.84)
@@ -163,19 +177,19 @@ def collapse_fragility(run):
             beta_drift = 0.25
         else:
             beta_drift = 0.35
-        mean_log_drift = exp(log(0.1) - beta_drift*inv_norm) 
+        mean_log_drift = exp(log(mf_drift_mu_plus_std) - beta_drift*inv_norm) 
         
     # CBF: set 90% collapse at 0.05 drift, 0.55 beta
     else:
         inv_norm = norm.ppf(0.90)
         beta_drift = 0.55
-        mean_log_drift = exp(log(0.05) - beta_drift*inv_norm) 
+        mean_log_drift = exp(log(cbf_drift_90) - beta_drift*inv_norm) 
         
     ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
     collapse_prob = ln_dist.cdf(peak_drift)
     
     return(peak_drift, collapse_prob)
-    
+
 # run the experiment, GM name and scale factor must be baked into design
 
 def run_nlth(design, 
@@ -289,9 +303,10 @@ def run_nlth(design,
     results_series = prepare_results(output_path, design, T_1, Tfb, run_status)
     return(results_series)
     
-
-def run_doe(prob_target, df_train, df_test, 
-            batch_size=10, error_tol=0.15, maxIter=1000, conv_tol=1e-2):
+# TODO: DoE has NOT been integrated for CBF
+def run_doe(prob_target, df_train, df_test, sample_bounds=None,
+            batch_size=10, error_tol=0.15, maxIter=1000, conv_tol=1e-2,
+            kernel='rbf_iso', doe_strat='balanced'):
     
     import random
     import numpy as np
@@ -304,15 +319,25 @@ def run_doe(prob_target, df_train, df_test,
     from doe import GP
     from db import Database
     
+    # sample_bounds = test_set.X.agg(['min', 'max'])
+    
+    # set bounds for DoE
+    if sample_bounds is None:
+        sample_bounds = pd.DataFrame({'gap_ratio': [0.5, 2.0],
+                                      'RI': [0.5, 2.25],
+                                      'T_ratio': [2.0, 5.0],
+                                      'zeta_e': [0.10, 0.25]}, index=['min', 'max'])
+        covariate_columns = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+    
+    else:
+        covariate_columns = sample_bounds.columns
+    
     test_set = GP(df_test)
-    covariate_columns = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
     test_set.set_covariates(covariate_columns)
     
     outcome = 'collapse_prob'
     
     test_set.set_outcome(outcome)
-    
-    sample_bounds = test_set.X.agg(['min', 'max'])
     
     buffer = 4
     doe_reserve_db = Database(maxIter, n_buffer=buffer, seed=131, 
@@ -325,7 +350,7 @@ def run_doe(prob_target, df_train, df_test,
                                               if col in covariate_columns])
     
     from loads import estimate_period
-    pregen_designs[['T_fbe']] = pregen_designs.apply(lambda row: estimate_period(row),
+    pregen_designs['T_fbe'] = pregen_designs.apply(lambda row: estimate_period(row),
                                                      axis='columns', result_type='expand')
     
     rmse = 1.0
@@ -335,10 +360,25 @@ def run_doe(prob_target, df_train, df_test,
     rmse_list = []
     mae_list = []
     nrmse_list = []
-    hyperparam_list = np.empty((0,3), float)
+    
+    if kernel == 'rbf_iso':
+        hyperparam_list = np.empty((0,3), float)
+    else:
+        hyperparam_list = np.empty((0,6), float)
     
     doe_idx = 0
     
+    if doe_strat == 'balanced':
+        # base weighting (balance exploration-exploitation)
+        rho_list = [1.0, 1.0, 1.0, 1.0, 1.0]
+    elif doe_strat == 'exploit':
+        # exploitation weighting from Kyprioti et al. 2020
+        rho_list = [10.0, 5.0, 1.0, 0.5, 0.0]
+    elif doe_strat == 'explore':
+        # exploration weighting from Kyprioti et al. 2020
+        rho_list = [1.0, 1.0, 1.0, 0.0, 0.0]
+    
+    rho_idx = 0
     
     import design as ds
     from loads import define_lateral_forces, define_gravity_loads
@@ -356,7 +396,7 @@ def run_doe(prob_target, df_train, df_test,
             mdl.set_outcome(outcome)
             
             mdl.set_covariates(covariate_columns)
-            mdl.fit_gpr(kernel_name='rbf_iso')
+            mdl.fit_gpr(kernel_name=kernel)
             
             y_hat = mdl.gpr.predict(test_set.X)
             
@@ -395,13 +435,21 @@ def run_doe(prob_target, df_train, df_test,
             # else:
             #     conv = abs(rmse - rmse_list[-1])/rmse_list[-1]
             
-            # TODO: more intelligent convergence criteria
             # if rmse < error_tol:
-            if len(nrmse_list) == 0:
-                conv = NRMSE_cv
-            else:
-                conv = abs(NRMSE_cv - nrmse_list[-1])/nrmse_list[-1]
+            # if len(nrmse_list) == 0:
+            #     conv = NRMSE_cv
+            # else:
+            #     conv = abs(NRMSE_cv - nrmse_list[-1])/nrmse_list[-1]
             
+            # check if last 3 points are all < convergence tolerance. Stop if true
+            if len(nrmse_list) < 3:
+                conv = False
+            else:
+                nrmse_array = np.append(np.array(nrmse_list), NRMSE_cv)
+                change_array = np.abs(np.diff(nrmse_array))
+                conv = np.all(change_array[-3:] < conv_tol)
+            
+            # global convergence metric
             if NRMSE_cv < error_tol:
                 print('Stopping criterion reached. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
@@ -411,7 +459,9 @@ def run_doe(prob_target, df_train, df_test,
                 mae_list.append(mae)
                 
                 return (df_train, rmse_list, mae_list, nrmse_list, hyperparam_list)
-            elif conv < conv_tol:
+            
+            # relative convergence metric
+            elif conv:
                 print('NRMSE_cv did not improve beyond convergence tolerance. Ending DoE...')
                 print('Number of added points: ' + str((batch_idx)*(batch_no)))
                 
@@ -422,13 +472,17 @@ def run_doe(prob_target, df_train, df_test,
                 return (df_train, rmse_list, mae_list, nrmse_list, hyperparam_list)
             else:
                 pass
+            
             batch_idx = 0
             df_train.to_csv('../data/doe/temp_save.csv', index=False)
             
-            # TODO: temp change: single pt MSE
+            # select the next points via rejection sampling
+            rho_selected = rho_list[rho_idx % len(rho_list)]
             x_next = mdl.doe_rejection_sampler(batch_size, prob_target, 
-                                                sample_bounds, design_filter=True)
+                                                sample_bounds, rho_wt=rho_selected,
+                                                design_filter=True)
             
+            rho_idx += 1
             # x_next = mdl.doe_mse_loocv(sample_bounds, design_filter=True)
             
             next_df = pd.DataFrame(x_next, columns=covariate_columns)
@@ -436,7 +490,7 @@ def run_doe(prob_target, df_train, df_test,
     
         ######################## DESIGN FOR DOE SET ###########################
         #
-        # Currently somewhat hardcoded for TFP-MF
+        # Currently hardcoded for TFP-MF
     
         # get first set of randomly generated params and merge with a buffer
         # amount of DoE found points (to account for failed designs)
@@ -469,9 +523,8 @@ def run_doe(prob_target, df_train, df_test,
                        'all_Plc_cases']] = work_df.apply(lambda row: define_gravity_loads(row),
                                                         axis='columns', result_type='expand')
                              
-                # TODO: gracefully handle cases where design not found
                 try:
-                    all_tfp_designs = work_df.apply(lambda row: ds.design_TFP(row),
+                    all_tfp_designs = work_df.apply(lambda row: ds.design_TFP_legacy(row),
                                                    axis='columns', result_type='expand')
                 except:
                     continue
@@ -529,7 +582,13 @@ def run_doe(prob_target, df_train, df_test,
                    
                 break
             
+            # TODO: we cannot have the exact T_ratio and gap_ratio as DOE called for
+            # gap ratio is affected by a stochastic gm_sa_tm
+            # T_ratio is affected by the fact that the true Tfb is not the estimated Tfb
             
+            # drop the "called-for" values and record the "as constructed" values
+            
+            work_df = work_df.drop(columns=['gap_ratio', 'T_ratio'])
             bldg_result = run_nlth(work_df.iloc[0], gm_path)
             result_df = pd.DataFrame(bldg_result).T
             
@@ -540,7 +599,6 @@ def run_doe(prob_target, df_train, df_test,
                                    
             from numpy import log
             result_df['log_collapse_prob'] = log(result_df['collapse_prob'])
-            result_df['T_ratio'] = result_df['T_m'] / result_df['T_fb']
             
             # if run is successful and is batch marker, record error metric
             if (batch_idx % (batch_size) == 0):

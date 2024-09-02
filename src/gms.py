@@ -75,7 +75,6 @@ def scale_ground_motion(input_df, return_list=False,
         scale_factor, 
         on=' Record Sequence Number').drop(columns=['full_RSN'])
     
-    '''
     # section on scaling to match 90% range
     # get scaled values and check that all Sa at least 90% of target in range
     
@@ -93,7 +92,6 @@ def scale_ground_motion(input_df, return_list=False,
     # scale the sf by addl scaling
     scale_factor['sf_average_spectral'] = scale_factor[
         'sf_average_spectral']*scale_factor['addl_90_sf']
-    '''
     
     # grab only relevant columns
     db_cols = [' Record Sequence Number',
@@ -115,6 +113,10 @@ def scale_ground_motion(input_df, return_list=False,
 
     import numpy as np
     
+    # if running IDA mode, keep a numpy seed to ensure same validation
+    if return_list:
+        np.random.seed(985)
+    
     # Select earthquakes that are least severely scaled
     # This section ensures no more than 3 motions per event
     for earthquake in uniq_EQs:
@@ -124,10 +126,9 @@ def scale_ground_motion(input_df, return_list=False,
         # take 3 random ones (shuffle then take)
         match_eqs = match_eqs.reindex(np.random.permutation(match_eqs.index))
         random_set = match_eqs.head(3)
-
+        
         if final_GM is None:
-            GM_headers = list(match_eqs.columns)
-            final_GM = pd.DataFrame(columns=GM_headers)
+            final_GM = pd.DataFrame(random_set)
         
         final_GM = pd.concat([random_set,final_GM], sort=False)
         final_GM[' Horizontal-1 Acc. Filename'] = final_GM[
@@ -141,7 +142,6 @@ def scale_ground_motion(input_df, return_list=False,
     # filter excessively scaled GMs
     final_GM = final_GM[final_GM['sf_average_spectral'] < 20.0]
     final_GM = final_GM[final_GM['scaled_peak_Sa'] < 3*S_s]
-    
     if return_list:
         gm_name = final_GM.apply(lambda sheet: sheet.filename.replace('.AT2', ''), axis=1)
         sf = final_GM['sf_average_spectral']
@@ -159,31 +159,38 @@ def scale_ground_motion(input_df, return_list=False,
 def show_selection(final_GM, target_spectrum, H1s):
 
     import matplotlib.pyplot as plt
+    import numpy as np
+    plt.close('all')
     plt.figure()
     plt.plot(target_spectrum['Period (sec)'], target_spectrum['Target pSa (g)'])
+    running_sum = np.zeros(target_spectrum.shape[0])
     for idx, row in final_GM.iterrows():
         new_str = 'RSN-'+str(row['RSN'])+' Horizontal-1 pSa (g)'
         row_spectrum = H1s[new_str]
         scaled_row = row_spectrum * row['sf_average_spectral']
+        running_sum = running_sum + np.array(scaled_row)
         plt.plot(target_spectrum['Period (sec)'], scaled_row,
                  linewidth=0.5, alpha=0.3)
-        
-    plt.axvline(t_lower, linestyle=':', color='red')
-    plt.axvline(t_upper, linestyle=':', color='red')
-    plt.axvline(T_m, linestyle='--', color='red')
-    plt.axhline(target_average, linestyle=':', color='black')    
-    plt.xlabel(r'Period $T_n$ (s)')
-    plt.ylabel(r'Spectral acceleration $Sa$ (g)')
-    plt.xlim([0, 5])
+    running_average = running_sum / final_GM.shape[0]
+    plt.plot(target_spectrum['Period (sec)'], running_average, linestyle='--')
+    # plt.axvline(t_lower, linestyle=':', color='red')
+    # plt.axvline(t_upper, linestyle=':', color='red')
+    # plt.axvline(T_m, linestyle='--', color='red')
+    # plt.axhline(target_average, linestyle=':', color='black')    
+    plt.xlabel(r'Period $T_n$ (s)', fontsize = 20)
+    plt.ylabel(r'Spectral acceleration $Sa$ (g)', fontsize = 20)
+    plt.xlim([0, 7])
     plt.ylim([0, 2*2.5])
     plt.grid(True)
 
+# this creates a damped spectrum based on real zeta e value and extracts value
 def get_gm_ST(input_df, T_query):
     Tn, gm_A, gm_D, uddg = generate_spectrum(input_df)
     from numpy import interp
     Sa_query = interp(T_query, Tn, gm_A)
     return(Sa_query)
-    
+
+# this extracts Sa value from the 5% spectrum 
 def get_ST(input_df, T_query, 
            db_dir='../resource/ground_motions/gm_db.csv',
            spec_dir='../resource/ground_motions/gm_spectra.csv'):

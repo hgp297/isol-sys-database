@@ -111,7 +111,7 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
 def get_Ct(frame_type):
     return {
         'MF': 0.028,
-        'CBF' : 0.03,
+        'CBF' : 0.02,
         'BRB' : 0.03, 
         'SW' : 0.02
     }.get(frame_type, 0.02)
@@ -136,7 +136,11 @@ def estimate_period(input_df, use_Cu=True, unit_in_ft=True):
     T_a = Ct*(h_n**x_Tfb)
     
     if use_Cu:
-        C_u = 1.4
+        if struct_type == 'CBF':
+            C_u = 1.4
+        # this is a departure from code value from my own set of data
+        elif struct_type == 'MF':
+            C_u = 1.4
     else:
         C_u = 1.0
         
@@ -195,12 +199,17 @@ def define_lateral_forces(input_df, D_load=None, L_load=None):
     Vs = (Vst/R_y)
     F1 = (Vb - Vst)/R_y
 
-    # TODO: use allowed maximum 1.4x? CuTa
     # approximate fixed based fundamental period
     Ct = get_Ct(struct_type)
     x_Tfb = get_x_Tfb(struct_type)
     h_n = np.sum(hsx)/12.0
-    T_fb = Ct*(h_n**x_Tfb)
+    if struct_type == 'CBF':
+        C_u = 1.4
+    # this is a departure from code value from my own set of data
+    elif struct_type == 'MF':
+        C_u = 1.4
+    T_a = Ct*(h_n**x_Tfb)
+    T_fb = C_u*T_a
 
     k       = 14*zeta_e*T_fb
 

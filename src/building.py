@@ -352,8 +352,8 @@ class Building:
               (self.num_bays, self.num_stories, self.D_m))
         print('Moat amplification = %.2f | Ry = %.2f' % 
               (self.moat_ampli, self.RI))
-        print('Tm = %.2f s | Q = %.2f | k_ratio = %.2f' %
-              (self.T_m, self.Q, self.k_ratio))
+        print('Tm = %.2f s | zeta = %.2f | k_ratio = %.2f' %
+              (self.T_m, self.zeta_e, self.k_ratio))
         
         if self.superstructure_system == 'MF':
             self.model_moment_frame()
@@ -1344,9 +1344,9 @@ class Building:
         
         # minimal stiffness elements (ghosts)
         if convergence_mode==True:
-            A_ghost = 10.0
-        else:
             A_ghost = 1.0
+        else:
+            A_ghost = 0.05
         
         # A_ghost = 1.0
         E_ghost = 100.0
@@ -2009,29 +2009,60 @@ class Building:
         #         parent_nd = (nd//10)*10 + 7
         #     ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
             
-        # TODO: consider pinching material for shear tab to beam (IMKPinching)
-        # ops.uniaxialMaterial('IMKBilin', 333, Ke_beam,
-        #                       0.055, 0.18, thu_beam, My_beam, 1.1, 0.0,
-        #                       0.055, 0.18, thu_beam, My_beam, 1.1, 0.0,
-        #                       0.9, 0.9, 0.9,
-        #                       cIK, cIK, cIK,
-        #                       DIK, DIK, DIK)
+        
+        # ModIMKPinching material calibrated to match closely with Elkady's Pinching4
+        # assumptions: we roughly use the smallest (top) beam as a reference
+        # Many values are derivative of Elkady, A. and D. G. Lignos (2015)'s study
+        # Shear tab retains ~15% of the strength (0.121 in Elkady)
+        # assumes that this is "bare steel shear tab" connection
+        
+        Mmax_st = 0.15*My_beam
+        # point 1 in Elkady's Pinching4
+        thy_st = 0.0045
+        My_st = 0.521*Mmax_st
+        K0_st = My_st/thy_st 
+        # point 3 in Elkady's Pinching4
+        thp_st = 0.075 - 0.0045
+        Fpp_st = 0.7
+        Fpn_st = 0.7
 
-        thp_st = 0.055
-        thpc_st = 0.18
         lam_st = 0.9
-        Fpp_st = 0.75
-        Fpn_st = 0.75
-        a_st = 0.75
-        kappa_res_st = 0.0
-        ops.uniaxialMaterial('ModIMKPinching', 333, Ke_beam, b, b, 
-                              0.75*My_beam, -0.75*My_beam, Fpp_st, Fpn_st, a_st, 
-                              lam_st, lam_st, lam_st, lam_st,
-                              1.0, 1.0, 1.0, 1.0, 
-                              thp_st, thp_st, 
-                              thpc_st, thpc_st, 
-                              kappa_res_st, kappa_res_st, thu_beam, thu_beam, 
-                              DIK, DIK)
+
+        thpc_st = 0.1-0.075
+        kappa_res_st = 0.901
+        thu_st = 0.08
+
+        ops.uniaxialMaterial('IMKPinching', 333, K0_st, 
+                             thp_st, thpc_st, thu_st, My_st, 1/0.521, kappa_res_st,
+                             thp_st, thpc_st, thu_st, My_st, 1/0.521, kappa_res_st,
+                             lam_st, lam_st, lam_st, lam_st,
+                             1.0, 1.0, 1.0, 1.0,
+                             DIK, DIK,
+                             Fpp_st, Fpn_st)
+
+        # # Elkady's Pinching4 example
+        # # assumes that this is "bare steel shear tab" connection
+        
+        # My_st = 0.15*My_beam
+        # M_1 = 0.521*My_st
+        # M_2 = 0.967*My_st
+        # M_3 = 1.0*My_st
+        # M_4 = 0.901*My_st
+        # th1 = 0.0045
+        # th2 = 0.0465
+        # th3 = 0.0750
+        # th4 = 0.10
+        # rd_st = 0.57
+        # rf_st = 0.40
+        # uf_st = 0.05
+
+        # ops.uniaxialMaterial('Pinching4', 332, M_1, th1, M_2, th2, M_3, th3, M_4, th4,
+        #                      -M_1, -th1, -M_2, -th2,- M_3, -th3, -M_4, -th4,
+        #                      rd_st, rf_st, uf_st,  rd_st, rf_st, uf_st,   
+        #                      0.0, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, 0.0,   
+        #                      0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 'energy')
+
+        # ops.uniaxialMaterial('MinMax', 333, 332, '-min', -0.08, '-max', 0.08)
 
         for nd in shear_tab_pins:
             elem_tag = nd + spr_id
@@ -2496,7 +2527,6 @@ class Building:
         return(T_1)
 
     
-    # TODO: not confident about T_fb of moment frames. recheck
     def provide_damping(self, regTag, method='SP',
                         zeta=[0.05], modes=[1]):
         import opensees.openseespy as ops
@@ -2728,7 +2758,7 @@ class Building:
         ok = 0
 
         # Create the system of equation, a sparse solver with partial pivoting
-        ops.system('BandGeneral')
+        ops.system('UmfPack')
 
         # Create the constraint handler, the transformation method
         ops.constraints('Plain')
@@ -2791,7 +2821,7 @@ class Building:
         walls = self.elem_tags['wall']
         isol_id = self.elem_ids['isolator']
         base_id = self.elem_ids['base']
-        
+        h_story = self.h_story
         # print all warnings to log file
         ops.logFile(data_dir+'run.log', '-noEcho')
         
@@ -2974,14 +3004,14 @@ class Building:
         if superstructure_system == 'CBF':
             
             # Convergence Test: maximum number of iterations that will be performed
-            maxIterDynamic      = 1000
+            maxIterDynamic      = 100
             
             # Convergence Test: flag used to print information on convergence
             printFlagDynamic    = 0  
             
             # algorithmTypeDynamic    = 'Broyden'
             # ops.algorithm(algorithmTypeDynamic, 8)
-            algorithmTypeDynamic    = 'Newton'
+            algorithmTypeDynamic    = 'KrylovNewton'
             ops.algorithm(algorithmTypeDynamic)
             
             # # Convergence Test: tolerance
@@ -2992,8 +3022,8 @@ class Building:
             # ops.integrator('TRBDF2')
             
             # Convergence Test: tolerance
-            testTypeDynamic     = 'NormDispIncr'
-            tolDynamic = 1e-6
+            testTypeDynamic     = 'EnergyIncr'
+            tolDynamic = 1e-8
             
             # Newmark-integrator gamma parameter (also HHT)
             newmarkGamma = 0.5
@@ -3014,7 +3044,7 @@ class Building:
             
             # Convergence Test: tolerance
             testTypeDynamic     = 'NormDispIncr'
-            tolDynamic = 1e-5
+            tolDynamic = 1e-8
             
             # Newmark-integrator gamma parameter (also HHT)
             newmarkGamma = 0.5
@@ -3067,26 +3097,55 @@ class Building:
         # Convergence loop, careful with Broyden/BFGS with energy
         ok = ops.analyze(n_steps, dt_transient)   
         
+        # drift limits triggering halt to analysis
+        cbf_drift_limit = 0.10
+        mf_drift_limit = 0.20
+        
+        # if good collapse, halt. if non-convergent collapse, discard and retry
+        if superstructure_system == 'MF':
+            collapse_status = determine_collapse(outer_col_nds, h_story, mf_drift_limit)
+        else:
+            collapse_status = determine_collapse(outer_col_nds, h_story, cbf_drift_limit)
+        
+        if collapse_status == 'collapse':
+            ok = 0
+            print('Collapse occurred (MF drift 0.2 | CBF drift 0.1).')
+        elif collapse_status == 'non-convergence':
+            ok = -3
+            t_final = ops.getTime()
+            tp = time.time() - t0
+            minutes = tp//60
+            seconds = tp - 60*minutes
+            print('Drift is beyond convergence. Ending...')
+            print('Ground motion done. End time: %.4f s' % t_final)
+            print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
+            ops.wipe()
+            return(ok)
+            
+        # If analysis failed reasonably
         if ok != 0:
             ops.analysis('Transient')
             curr_time = ops.getTime()
             print("Convergence issues at time: ", curr_time)
-            
-            # # print nodes to see constraints
-            node_log = ops.getNodeTags()
-                
-            with open('../data/logs/nodes.log', 'w') as f:
-                for nd in node_log:
-                    f.write(f'Node {nd}: {ops.nodeDOFs(nd)}\n')
-            # for nd in ops.getNodeTags():
-            #     print(f'Node {nd}: {ops.nodeDOFs(nd)}')
+            # The analysis will be time-controlled and is done for the remaining time
                 
             if superstructure_system == 'MF':
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):
                     curr_time     = ops.getTime()
                     ok = ops.analyze(1, dt_transient)
+                        
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, mf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print("Trying Newton with line search ...")
                         ops.algorithm('NewtonLineSearch')
                         ok = ops.analyze(1, dt_transient)
@@ -3094,6 +3153,16 @@ class Building:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, mf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print('Trying Broyden ... ')
                         algorithmTypeDynamic = 'Broyden'
                         ops.algorithm(algorithmTypeDynamic)
@@ -3102,6 +3171,16 @@ class Building:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, mf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print('Trying BFGS ... ')
                         algorithmTypeDynamic = 'BFGS'
                         ops.algorithm(algorithmTypeDynamic)
@@ -3109,36 +3188,222 @@ class Building:
                         if ok == 0:
                             print("That worked. Back to Newton")
                             ops.algorithm('Newton')
-                          
             else:
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):
                     curr_time     = ops.getTime()
                     ok = ops.analyze(1, dt_transient)
+                    
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
+                        
                         print("Trying Newton with line search ...")
                         ops.algorithm('NewtonLineSearch')
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
-                            print("That worked. Back to Newton")
-                            ops.algorithm('Newton')
+                            print("That worked. Back to KrylovNewton")
+                            ops.algorithm('KrylovNewton')
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print('Trying Broyden ... ')
                         ops.algorithm('Broyden')
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
-                            print("That worked. Back to Newton")
-                            ops.algorithm('Newton')
+                            print("That worked. Back to KrylovNewton")
+                            ops.algorithm('KrylovNewton')
                     if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
                         print('Trying BFGS ... ')
                         ops.algorithm('BFGS')
                         ok = ops.analyze(1, dt_transient)
                         if ok == 0:
-                            print("That worked. Back to Newton")
-                            ops.algorithm('Newton')
+                            print("That worked. Back to KrylovNewton")
+                            ops.algorithm('KrylovNewton')
+                    if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
+                        curr_time     = ops.getTime()
+                        print("Trying KrylovNewton with 1/5 dt for 10 steps ...")
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(10, dt_transient/5.0)
+                        if ok == 0:
+                            print("That worked. Back to regular dt.")
+                    if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
+                        curr_time     = ops.getTime()
+                        print("Trying KrylovNewton with 1/10 dt for 10 steps ...")
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(10, dt_transient/10.0)
+                        if ok == 0:
+                            print("That worked. Back to regular dt.")
+                    if ok != 0:
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status == 'collapse':
+                            print('Collapse triggered.')
+                            ok = 0
+                            break
+                        elif collapse_status == 'non-convergence':
+                            print('Drift is beyond convergence. Ending...')
+                            ok = -3
+                            break
+                        curr_time     = ops.getTime()
+                        print("Trying KrylovNewton with 1/100 dt for 10 steps ...")
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(10, dt_transient/100.0)
+                        if ok == 0:
+                            print("That worked. Back to regular dt.")
                     if ok != 0:
                         print('CBF convergence loop exhausted. Ending run...')
-                 
+            '''
+            else:
+                ok = 0
+                curr_time     = ops.getTime()
+                
+                while (curr_time < T_end) and (ok == 0):
+                    
+                    # check for collapse first
+                    collapse_status = determine_collapse(
+                        outer_col_nds, h_story, cbf_drift_limit)
+                    if collapse_status:
+                        print('Collapse triggered.')
+                        ok = 0
+                        break
+                    else:
+                        ok = -1
+                    
+                    if ok != 0:
+                        curr_time     = ops.getTime()
+                        remaining_time = T_end - curr_time
+                        remaining_steps = int(np.floor(remaining_time / (dt_transient/2.0)))
+                        print("Trying KrylovNewton with 1/2 dt for 10 steps ...")
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(10, dt_transient/2.0)
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status:
+                            ok = 0
+                       
+                    if ok != 0:
+                        curr_time     = ops.getTime()
+                        remaining_time = T_end - curr_time
+                        remaining_steps = int(np.floor(remaining_time / dt_transient))
+                        print("Going back to original ...")
+                        ops.test('EnergyIncr', 1.0e-2, 100, 0)
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(remaining_steps, dt_transient)
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status:
+                            ok = 0
+                    if ok != 0:
+                        curr_time     = ops.getTime()
+                        remaining_time = T_end - curr_time
+                        remaining_steps = int(np.floor(remaining_time / 0.001))
+                        print("Trying KrylovNewton with 0.001 dt for 10 steps ...")
+                        ops.test('EnergyIncr', 1.0e-2, 100, 0)
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(remaining_steps, 0.001)
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status:
+                            ok = 0
+                    if ok != 0:
+                        curr_time     = ops.getTime()
+                        remaining_time = T_end - curr_time
+                        remaining_steps = int(np.floor(remaining_time / (dt_transient/2.0)))
+                        print("Going back to 1/2 dt for 10 steps ...")
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(10, dt_transient/2.0)
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status:
+                            ok = 0
+                    if ok != 0:
+                        curr_time     = ops.getTime()
+                        remaining_time = T_end - curr_time
+                        remaining_steps = int(np.floor(remaining_time / 0.0001))
+                        print("Trying KrylovNewton with 0.0001 dt for 5 steps ...")
+                        ops.test('EnergyIncr', 1.0e-2, 100, 0)
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(5, 0.001)
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status:
+                            ok = 0
+                    if ok != 0:
+                        curr_time     = ops.getTime()
+                        remaining_time = T_end - curr_time
+                        remaining_steps = int(np.floor(remaining_time / dt_transient))
+                        print("Going back to original ...")
+                        ops.test('EnergyIncr', 1.0e-2, 100, 0)
+                        ops.algorithm('KrylovNewton')
+                        ok = ops.analyze(remaining_steps, dt_transient)
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status:
+                            ok = 0
+                    if ok != 0:
+                        curr_time     = ops.getTime()
+                        remaining_time = T_end - curr_time
+                        remaining_steps = int(np.floor(remaining_time / 0.0001))
+                        print("Trying Newton with fixed iters ...")
+                        ops.test('FixedNumIter', 50)
+                        ops.integrator('NewmarkHSFixedNumIter', 0.5, 0.25)
+                        ops.algorithm('Newton')
+                        ok = ops.analyze(10, dt_transient)
+                        collapse_status = determine_collapse(
+                            outer_col_nds, h_story, cbf_drift_limit)
+                        if collapse_status:
+                            ok = 0
+                        
+                    curr_time     = ops.getTime()
+            '''
+        
             # # cutting time convergence loop
             # else:
             #     ok = 0
@@ -3155,15 +3420,12 @@ class Building:
             #         if ok != 0:
             #             print('CBF convergence loop exhausted. Ending run...')
                 
-                
-                
         t_final = ops.getTime()
         tp = time.time() - t0
         minutes = tp//60
         seconds = tp - 60*minutes
         print('Ground motion done. End time: %.4f s' % t_final)
         print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
-        
         ops.wipe()
         
         return(ok)
@@ -3208,14 +3470,14 @@ def modified_IK_params(shape, L):
     # reference Lignos & Krawinkler (2011)
     Fy = 50 # ksi
     Es = 29000 # ksi
-
-    Zx = float(shape['Zx'])
+    
+    Zx = float(shape.iloc[0]['Zx'])
     # Sx = float(shape['Sx'])
-    Iz = float(shape['Ix'])
-    d = float(shape['d'])
-    htw = float(shape['h/tw'])
-    bftf = float(shape['bf/2tf'])
-    ry = float(shape['ry'])
+    Iz = float(shape.iloc[0]['Ix'])
+    d = float(shape.iloc[0]['d'])
+    htw = float(shape.iloc[0]['h/tw'])
+    bftf = float(shape.iloc[0]['bf/2tf'])
+    ry = float(shape.iloc[0]['ry'])
     c1 = 25.4
     c2 = 6.895
 
@@ -3255,7 +3517,20 @@ def modified_IK_params(shape, L):
 ###############################################################################
 #              Brace geometry
 ###############################################################################
-
+def determine_collapse(nds, h_story, drift_limit):
+    import openseespy.opensees as ops
+    import numpy as np
+    disp_array = np.array([ops.nodeDisp(node, 1) 
+                               for node in nds])
+    drift_array = np.abs(np.diff(disp_array)/(h_story*12.0))
+    if np.any(drift_array > drift_limit) and np.all(drift_array < 1.5):
+        return 'collapse'
+    elif np.any(drift_array > 1.5):
+        return 'non-convergence'
+    else:
+        return 'okay'
+    
+    
 def bot_gp_coord(nd, L_bay, h_story, offset=0.25):
     # from node number, get the parent node it's attached to
     bot_nd = nd//100
