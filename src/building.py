@@ -23,7 +23,7 @@ class Building:
             setattr(self, key, value)
             
     def floating_nodes(self):
-        import openseespy.opensees as ops
+        import opensees.openseespy as ops
         
         connected_nodes = []
         for ele in ops.getEleTags():
@@ -370,7 +370,7 @@ class Building:
     def model_moment_frame(self):
         
         # import OpenSees and libraries
-        import openseespy.opensees as ops
+        import opensees.openseespy as ops
         
         # remove existing model
         ops.wipe()
@@ -1004,7 +1004,7 @@ class Building:
         
     def model_braced_frame(self, convergence_mode=False):
         # import OpenSees and libraries
-        import openseespy.opensees as ops
+        import opensees.openseespy as ops
         
         # remove existing model
         ops.wipe()
@@ -2348,7 +2348,7 @@ class Building:
         print('Elements placed.')
         
     def apply_grav_load(self):
-        import openseespy.opensees as ops
+        import opensees.openseespy as ops
         
         superstructure_system = self.superstructure_system
         
@@ -2470,7 +2470,7 @@ class Building:
         ops.loadConst('-time', 0.0)
         
     def refix(self, nodeTag, action):
-        import openseespy.opensees as ops
+        import opensees.openseespy as ops
         for j in range(1,7):
             ops.remove('sp', nodeTag, j)
         if(action == "fix"):
@@ -2483,7 +2483,7 @@ class Building:
             ops.fix(nodeTag,  0, 1, 1, 1, 0, 1)
          
     def run_eigen(self):
-        import openseespy.opensees as ops
+        import opensees.openseespy as ops
         
         nEigenJ = 1;                    # how many modes to analyze
         lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
@@ -2499,7 +2499,7 @@ class Building:
     # TODO: not confident about T_fb of moment frames. recheck
     def provide_damping(self, regTag, method='SP',
                         zeta=[0.05], modes=[1]):
-        import openseespy.opensees as ops
+        import opensees.openseespy as ops
         
         diaph_nodes = self.node_tags['diaphragm']
         # fix base for Tfb
@@ -2568,7 +2568,7 @@ class Building:
     def run_pushover(self, max_drift_ratio=0.1, 
                      data_dir='./outputs/pushover/'):
         
-        import openseespy.opensees as ops
+        import opensees.openseespy as ops
         
         # get list of relevant nodes
         superstructure_system = self.superstructure_system
@@ -2782,7 +2782,7 @@ class Building:
                           data_dir='./outputs/'):
         
         # Recorders
-        import openseespy.opensees as ops
+        import opensees.openseespy as ops
         
         # get list of relevant nodes
         superstructure_system = self.superstructure_system
