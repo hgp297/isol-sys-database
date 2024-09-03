@@ -1788,7 +1788,7 @@ label_size = 16
 title_font=20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 13))
 
@@ -2016,13 +2016,13 @@ ax.axvline(mf_lrb_repair_cost_ab, ymin=0.5, ymax=0.75, linestyle=':', color='cor
 ax.axvline(cbf_tfp_repair_cost_ab, ymin=0.25, ymax=0.5, linestyle=':', color='lightsalmon')
 ax.axvline(cbf_lrb_repair_cost_ab, ymin=0.0, ymax=0.25, linestyle=':', color='darksalmon')
 
-# custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
-#                        , markerfacecolor='navy', markersize=10),
-#                 Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
-#                 Line2D([-1], [-1], color='lightsalmon', linestyle='--'),
-#                 ]
+custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
+                        , markerfacecolor='navy', markersize=10),
+                Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
+                Line2D([-1], [-1], color='cornflowerblue', linestyle=':'),
+                ]
 
-# ax.legend(custom_lines, ['Mean', 'CBF-TFP predicted', 'MF-TFP predicted'], fontsize=subt_font)
+ax.legend(custom_lines, ['Mean', 'Prediction of inverse design', 'Prediction of as-built design'], fontsize=subt_font)
 
 # ax.text(.3, 0, u'5 replacements \u2192', fontsize=axis_font, color='red')
 # ax.text(.3, 1, u'0 replacement', fontsize=axis_font, color='red')
@@ -2103,13 +2103,13 @@ ax.axvline(mf_lrb_downtime_ab, ymin=0.5, ymax=0.75, linestyle=':', color='cornfl
 ax.axvline(cbf_tfp_downtime_ab, ymin=0.25, ymax=0.5, linestyle=':', color='lightsalmon')
 ax.axvline(cbf_lrb_downtime_ab, ymin=0.0, ymax=0.25, linestyle=':', color='darksalmon')
 
-# custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
-#                        , markerfacecolor='navy', markersize=10),
-#                 Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
-#                 Line2D([-1], [-1], color='lightsalmon', linestyle='--'),
-#                 ]
+custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
+                        , markerfacecolor='navy', markersize=10),
+                Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
+                Line2D([-1], [-1], color='cornflowerblue', linestyle=':'),
+                ]
 
-# ax.legend(custom_lines, ['Mean', 'CBF-TFP predicted', 'MF-TFP predicted'], fontsize=subt_font)
+ax.legend(custom_lines, ['Mean', 'Prediction of inverse design', 'Prediction of as-built design'], fontsize=subt_font)
 
 # ax.text(.3, 0, u'5 replacements \u2192', fontsize=axis_font, color='red')
 # ax.text(.3, 1, u'0 replacement', fontsize=axis_font, color='red')
@@ -2120,4 +2120,3 @@ plt.show()
 # TODO: presentables
 # curve fitting for cost and downtime
 # variance
-# "predicted" = actual design seen vs. inverse design selected
