@@ -1320,10 +1320,11 @@ config_dict = {
     'S_1': 1.017
     }
 
+# TODO: increase targets (0.1, 0.1, 0.05) should pass
 my_targets = {
-    cost_var: 0.20,
-    time_var: 0.20,
-    'replacement_freq': 0.1,
+    cost_var: 0.10,
+    time_var: 0.10,
+    'replacement_freq': 0.05,
     'constructability': -6.0}
 
 mf_tfp_inv_design, mf_tfp_inv_performance = grid_search_inverse_design(
@@ -1367,9 +1368,9 @@ ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/')
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
-# with open('../inputs/mf_tfp_constructable.in', 'w') as file:
-#     file.write(json.dumps(mf_tfp_dict))
-#     file.close()
+with open('../inputs/mf_tfp_strict.in', 'w') as file:
+    file.write(json.dumps(mf_tfp_dict))
+    file.close()
 
 cbf_tfp_inv_design['superstructure_system'] = 'CBF'
 cbf_tfp_inv_design['isolator_system'] = 'TFP'
@@ -1378,9 +1379,9 @@ cbf_tfp_inv_design['k_ratio'] = 7
 cbf_tfp_dict = cbf_tfp_inv_design.to_dict()
 ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/')
 
-# with open('../inputs/cbf_tfp_constructable.in', 'w') as file:
-#     file.write(json.dumps(cbf_tfp_dict))
-#     file.close()
+with open('../inputs/cbf_tfp_strict.in', 'w') as file:
+    file.write(json.dumps(cbf_tfp_dict))
+    file.close()
     
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
@@ -1391,9 +1392,9 @@ mf_lrb_inv_design['k_ratio'] = 10
 mf_lrb_dict = mf_lrb_inv_design.to_dict()
 ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/')
 
-# with open('../inputs/mf_lrb_constructable.in', 'w') as file:
-#     file.write(json.dumps(mf_lrb_dict))
-#     file.close()
+with open('../inputs/mf_lrb_strict.in', 'w') as file:
+    file.write(json.dumps(mf_lrb_dict))
+    file.close()
     
 print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
 
@@ -1404,13 +1405,14 @@ cbf_lrb_inv_design['k_ratio'] = 10
 cbf_lrb_dict = cbf_lrb_inv_design.to_dict()
 ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/')
 
-# with open('../inputs/cbf_lrb_constructable.in', 'w') as file:
-#     file.write(json.dumps(cbf_lrb_dict))
-#     file.close()
+with open('../inputs/cbf_lrb_strict.in', 'w') as file:
+    file.write(json.dumps(cbf_lrb_dict))
+    file.close()
     
 print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
 
 # when writing to task file, remember to subtract 1
+
 
 #%%
 
@@ -1654,25 +1656,36 @@ true_mf_repl = predict_DV(design_cbf_tfp,
 # GR should be different because real ground motion suite has different Sa than design spectrum
 # T ratio should be different because actual T_fb is not perfectly equal to Tfbe
 
+import numpy as np
+zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+
 mf_tfp_ida = mf_tfp_val_results[mf_tfp_val_results['ida_level']==1.0]
+# mf_tfp_ida['Bm'] = np.interp(mf_tfp_ida['zeta_e'], zetaRef, BmRef)
+# b = 4*pi**2*mf_tfp_ida['D_m']/((mf_tfp_ida['sa_tm']*g/mf_tfp_ida['Bm'])*mf_tfp_ida['T_m']**2)
+# a = (mf_tfp_ida['S_1']/mf_tfp_ida['T_m'])/(mf_tfp_ida['sa_tm'])
+# print(a.mean(), b.mean())
 x = mf_tfp_ida[covariate_list]
 x = x.loc[:, abs(x.mean() - mf_tfp_inv_design['gap_ratio']) >= 0.0001]
 x = x.loc[:, abs(x.mean() - mf_tfp_inv_design['T_ratio']) >= 0.0001]
 mf_tfp_as_built = pd.DataFrame(x.mean()).T
 
 mf_lrb_ida = mf_lrb_val_results[mf_lrb_val_results['ida_level']==1.0]
+mf_lrb_ida['Bm'] = np.interp(mf_lrb_ida['zeta_e'], zetaRef, BmRef)
 x = mf_lrb_ida[covariate_list]
 x = x.loc[:, abs(x.mean() - mf_lrb_inv_design['gap_ratio']) >= 0.0001]
 x = x.loc[:, abs(x.mean() - mf_lrb_inv_design['T_ratio']) >= 0.0001]
 mf_lrb_as_built = pd.DataFrame(x.mean()).T
 
 cbf_tfp_ida = cbf_tfp_val_results[cbf_tfp_val_results['ida_level']==1.0]
+cbf_tfp_ida['Bm'] = np.interp(cbf_tfp_ida['zeta_e'], zetaRef, BmRef)
 x = cbf_tfp_ida[covariate_list]
 x = x.loc[:, abs(x.mean() - cbf_tfp_inv_design['gap_ratio']) >= 0.0001]
 x = x.loc[:, abs(x.mean() - cbf_tfp_inv_design['T_ratio']) >= 0.0001]
 cbf_tfp_as_built = pd.DataFrame(x.mean()).T
 
 cbf_lrb_ida = cbf_lrb_val_results[cbf_lrb_val_results['ida_level']==1.0]
+cbf_lrb_ida['Bm'] = np.interp(cbf_lrb_ida['zeta_e'], zetaRef, BmRef)
 x = cbf_lrb_ida[covariate_list]
 x = x.loc[:, abs(x.mean() - cbf_lrb_inv_design['gap_ratio']) >= 0.0001]
 x = x.loc[:, abs(x.mean() - cbf_lrb_inv_design['T_ratio']) >= 0.0001]
@@ -2117,6 +2130,319 @@ ax.legend(custom_lines, ['Mean', 'Prediction of inverse design', 'Prediction of 
 
 plt.show()
 
+#%% generalized curve fitting for cost and time
+
+# TODO: should this be real values ($)
+
+def nlls(params, log_x, no_a, no_c):
+    from scipy import stats
+    import numpy as np
+    sigma, beta = params
+    theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(log_x)
+    likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
+    log_likelihood = np.log(likelihood)
+    log_likelihood_sum = np.sum(log_likelihood)
+
+    return -log_likelihood_sum
+
+def mle_fit_general(x_values, probs, x_init=None):
+    from functools import partial
+    import numpy as np
+    from scipy.optimize import basinhopping
+    
+    log_x = np.log(x_values)
+    number_of_analyses = 1000*np.ones(len(x_values))
+    number_of_collapses = np.round(1000*probs)
+    
+    neg_log_likelihood_sum_partial = partial(
+        nlls, log_x=log_x, no_a=number_of_analyses, no_c=number_of_collapses)
+    
+    if x_init is None:
+        x0 = (1, 1)
+    else:
+        x0 = x_init
+    
+    res = basinhopping(neg_log_likelihood_sum_partial, x0,
+                       niter=500, seed=985)
+    
+    return res.x[0], res.x[1]
+
+from scipy.stats import ecdf
+f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+plt.close('all')
+
+
+my_y_var = mf_tfp_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 13))
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('MF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = mf_lrb_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 2)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('MF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_tfp_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.01,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 3)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('CBF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_lrb_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.01,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 4)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('CBF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+fig.tight_layout()
+
+#%%
+
+plt.close('all')
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+my_y_var = mf_tfp_ida[time_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+fig = plt.figure(figsize=(16, 13))
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.04,0.8))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+ax1.set_title('MF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = mf_lrb_ida[time_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.04,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 2)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+ax1.set_title('MF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_tfp_ida[time_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 3)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+ax1.set_title('CBF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_lrb_ida[time_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.01,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 4)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+ax1.set_title('CBF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+fig.tight_layout()
+
+#%%
 # TODO: presentables
-# curve fitting for cost and downtime
 # variance
