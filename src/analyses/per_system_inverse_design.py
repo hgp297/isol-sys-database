@@ -103,7 +103,7 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
     
     hit_loss, hit_std = hit_loss_mdl.predict(X, return_std=True)
     miss_loss, miss_std = miss_loss_mdl.predict(X, return_std=True)
-    
+    miss_gpr = miss_loss_mdl[1]
     # weight with probability of collapse
     # E[Loss] = (impact loss)*Pr(impact) + (no impact loss)*Pr(no impact)
     # run SVR_hit model on this dataset
@@ -149,15 +149,20 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
         hit_var = hit_std**2
         miss_var = miss_std**2
         
-        # TODO: zero division 
         # for now, ignore correlation
         # is there correlation? is probability of impact correlated with cost given that the building impacted
         # propagate uncertainty (f = AB)
+        
+        if miss_loss < 1e-8:
+            miss_loss_min = 1e-3
+        else:
+            miss_loss_min = miss_loss
+            
         impact_side_var = np.multiply(hit_loss, hit_prob)**2*(
             (hit_var/hit_loss**2) + (prob_var/hit_prob**2) + 0)
         
-        nonimpact_side_var = np.multiply(miss_loss, miss_prob)**2*(
-            (miss_var/miss_loss**2) + (prob_var/miss_prob**2) + 0)
+        nonimpact_side_var = np.multiply(miss_loss_min, miss_prob)**2*(
+            (miss_var/miss_loss_min**2) + (prob_var/miss_prob**2) + 0)
         
         # propagate uncertainty (f = A + B)
         total_var = impact_side_var + nonimpact_side_var + 0
@@ -1364,9 +1369,9 @@ config_dict = {
 
 # TODO: increase targets (0.1, 0.1, 0.05) should pass
 my_targets = {
-    cost_var: 0.2,
-    time_var: 0.2,
-    'replacement_freq': 0.1,
+    cost_var: 0.1,
+    time_var: 0.1,
+    'replacement_freq': 0.05,
     'constructability': -6.0}
 
 mf_tfp_inv_design, mf_tfp_inv_performance = grid_search_inverse_design(
@@ -1590,34 +1595,34 @@ mf_tfp_ida = mf_tfp_val_results[mf_tfp_val_results['ida_level']==1.0]
 # b = 4*pi**2*mf_tfp_ida['D_m']/((mf_tfp_ida['sa_tm']*g/mf_tfp_ida['Bm'])*mf_tfp_ida['T_m']**2)
 # a = (mf_tfp_ida['S_1']/mf_tfp_ida['T_m'])/(mf_tfp_ida['sa_tm'])
 # print(a.mean(), b.mean())
-x = mf_tfp_ida[covariate_list]
+x = mf_tfp_ida[covariate_list].copy()
 x = x.loc[:, abs(x.mean() - mf_tfp_inv_design['gap_ratio']) >= 0.0001]
 x = x.loc[:, abs(x.mean() - mf_tfp_inv_design['T_ratio']) >= 0.0001]
 mf_tfp_as_built = pd.DataFrame(x.mean()).T
 
 mf_lrb_ida = mf_lrb_val_results[mf_lrb_val_results['ida_level']==1.0]
 mf_lrb_ida['Bm'] = np.interp(mf_lrb_ida['zeta_e'], zetaRef, BmRef)
-x = mf_lrb_ida[covariate_list]
+x = mf_lrb_ida[covariate_list].copy()
 x = x.loc[:, abs(x.mean() - mf_lrb_inv_design['gap_ratio']) >= 0.0001]
 x = x.loc[:, abs(x.mean() - mf_lrb_inv_design['T_ratio']) >= 0.0001]
 mf_lrb_as_built = pd.DataFrame(x.mean()).T
 
 cbf_tfp_ida = cbf_tfp_val_results[cbf_tfp_val_results['ida_level']==1.0]
 cbf_tfp_ida['Bm'] = np.interp(cbf_tfp_ida['zeta_e'], zetaRef, BmRef)
-x = cbf_tfp_ida[covariate_list]
+x = cbf_tfp_ida[covariate_list].copy()
 x = x.loc[:, abs(x.mean() - cbf_tfp_inv_design['gap_ratio']) >= 0.0001]
 x = x.loc[:, abs(x.mean() - cbf_tfp_inv_design['T_ratio']) >= 0.0001]
 cbf_tfp_as_built = pd.DataFrame(x.mean()).T
 
 cbf_lrb_ida = cbf_lrb_val_results[cbf_lrb_val_results['ida_level']==1.0]
 cbf_lrb_ida['Bm'] = np.interp(cbf_lrb_ida['zeta_e'], zetaRef, BmRef)
-x = cbf_lrb_ida[covariate_list]
+x = cbf_lrb_ida[covariate_list].copy()
 x = x.loc[:, abs(x.mean() - cbf_lrb_inv_design['gap_ratio']) >= 0.0001]
 x = x.loc[:, abs(x.mean() - cbf_lrb_inv_design['T_ratio']) >= 0.0001]
 cbf_lrb_as_built = pd.DataFrame(x.mean()).T
 
-
-def as_built_pred(X_built, system_name, 
+# TODO: asbuilt
+def one_time_pred(X_built, system_name, 
                         impact_clfs, cost_regs, time_regs, repl_regs):
     
     cost_var = 'cmp_cost_ratio'
@@ -1661,27 +1666,46 @@ def as_built_pred(X_built, system_name,
         X_built, mdl_impact.gpc, mdl_repl_hit.gpr, mdl_repl_miss.gpr,
         outcome='replacement_freq', return_var=True)
     
-    return(ab_repl, ab_repair_cost, ab_downtime, 
-           ab_repl_var, ab_repair_cost_var, ab_downtime_var)
+    ab_performance = {
+        'time': ab_downtime.iloc[0][time_var+'_pred'],
+        'cost': ab_repair_cost.iloc[0][cost_var+'_pred'],
+        'replacement_freq': ab_repl.iloc[0]['replacement_freq'+'_pred'],
+        'time_var': ab_downtime_var[0],
+        'cost_var': ab_repair_cost_var[0],
+        'replacement_freq_var': ab_repl_var[0]}
+    
+    return(ab_performance)
 
-(mf_tfp_ab_repl, mf_tfp_ab_repair_cost, mf_tfp_ab_downtime,
- mf_tfp_ab_repl_var, mf_tfp_ab_repair_cost_var, mf_tfp_ab_downtime_var) = as_built_pred(
+mf_tfp_ab_pred = one_time_pred(
     mf_tfp_as_built, 'mf_tfp', impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls)
 
-(mf_lrb_ab_repl, mf_lrb_ab_repair_cost, mf_lrb_ab_downtime,
- mf_lrb_ab_repl_var, mf_lrb_ab_repair_cost_var, mf_lrb_ab_downtime_var) = as_built_pred(
+mf_lrb_ab_pred = one_time_pred(
     mf_lrb_as_built, 'mf_lrb', impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls)
 
-(cbf_tfp_ab_repl, cbf_tfp_ab_repair_cost, cbf_tfp_ab_downtime,
- cbf_tfp_ab_repl_var, cbf_tfp_ab_repair_cost_var, cbf_tfp_ab_downtime_var) = as_built_pred(
+cbf_tfp_ab_pred = one_time_pred(
     cbf_tfp_as_built, 'cbf_tfp', impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls)
  
-(cbf_lrb_ab_repl, cbf_lrb_ab_repair_cost, cbf_lrb_ab_downtime,
- cbf_lrb_ab_repl_var, cbf_lrb_ab_repair_cost_var, cbf_lrb_ab_downtime_var) = as_built_pred(
+cbf_lrb_ab_pred = one_time_pred(
     cbf_lrb_as_built, 'cbf_lrb', impact_classification_mdls, cost_regression_mdls, 
+    time_regression_mdls, repl_regression_mdls)
+
+mf_tfp_inv_pred = one_time_pred(
+    pd.DataFrame(mf_tfp_inv_design).T, 'mf_tfp', impact_classification_mdls, cost_regression_mdls, 
+    time_regression_mdls, repl_regression_mdls)
+
+mf_lrb_inv_pred = one_time_pred(
+    pd.DataFrame(mf_lrb_inv_design).T, 'mf_lrb', impact_classification_mdls, cost_regression_mdls, 
+    time_regression_mdls, repl_regression_mdls)
+
+cbf_tfp_inv_pred = one_time_pred(
+    pd.DataFrame(cbf_tfp_inv_design).T, 'cbf_tfp', impact_classification_mdls, cost_regression_mdls, 
+    time_regression_mdls, repl_regression_mdls)
+ 
+cbf_lrb_inv_pred = one_time_pred(
+    pd.DataFrame(cbf_lrb_inv_design).T, 'cbf_lrb', impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls)
 
 #%% MLE fragility curves
@@ -1738,7 +1762,7 @@ xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_inv, beta_inv)
 p2 = f(xx_pr, theta_inv, b_TOT)
 
-mf_tfp_repl_risk = mf_tfp_inv_performance['replacement_freq']
+mf_tfp_repl_risk = mf_tfp_inv_pred['replacement_freq']
 
 MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
@@ -1746,7 +1770,7 @@ ax1=fig.add_subplot(2, 2, 1)
 ax1.plot(xx_pr, p)
 # ax1.plot(xx_pr, p2)
 ax1.axhline(mf_tfp_repl_risk, linestyle='--', color='black')
-ax1.axhline(mf_tfp_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
+# ax1.axhline(mf_tfp_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
 ax1.text(1.5,mf_tfp_repl_risk+0.02, r'Predicted replacement risk',
           fontsize=subt_font, color='black')
@@ -1770,7 +1794,7 @@ ax1.set_ylim([0, 1.0])
 ####
 
 theta_base, beta_base = mle_fit_collapse(ida_levels, mf_lrb_val_repl)
-mf_lrb_repl_risk = mf_lrb_inv_performance['replacement_freq']
+mf_lrb_repl_risk = mf_lrb_inv_pred['replacement_freq']
 
 xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_base, beta_base)
@@ -1782,7 +1806,7 @@ ax4=fig.add_subplot(2, 2, 2)
 ax4.plot(xx_pr, p, label='Best lognormal fit')
 # ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
 ax4.axhline(mf_lrb_repl_risk, linestyle='--', color='black')
-ax4.axhline(mf_lrb_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
+# ax4.axhline(mf_lrb_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
 ax4.axvline(1.0, linestyle='--', color='black')
 ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
@@ -1812,7 +1836,7 @@ xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_inv, beta_inv)
 p2 = f(xx_pr, theta_inv, b_TOT)
 
-cbf_tfp_repl_risk = cbf_tfp_inv_performance['replacement_freq']
+cbf_tfp_repl_risk = cbf_tfp_inv_pred['replacement_freq']
 
 MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
@@ -1820,7 +1844,7 @@ ax1=fig.add_subplot(2, 2, 3)
 ax1.plot(xx_pr, p)
 # ax1.plot(xx_pr, p2)
 ax1.axhline(cbf_tfp_repl_risk, linestyle='--', color='black')
-ax1.axhline(cbf_tfp_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
+# ax1.axhline(cbf_tfp_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
 ax1.text(1.5,cbf_tfp_repl_risk+0.02, r'Predicted replacement risk',
           fontsize=subt_font, color='black')
@@ -1849,7 +1873,7 @@ xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_inv, beta_inv)
 p2 = f(xx_pr, theta_inv, b_TOT)
 
-cbf_lrb_repl_risk = cbf_lrb_inv_performance['replacement_freq']
+cbf_lrb_repl_risk = cbf_lrb_inv_pred['replacement_freq']
 
 MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
@@ -1857,7 +1881,7 @@ ax1=fig.add_subplot(2, 2, 4)
 ax1.plot(xx_pr, p)
 # ax1.plot(xx_pr, p2)
 ax1.axhline(cbf_lrb_repl_risk, linestyle='--', color='black')
-ax1.axhline(cbf_lrb_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
+# ax1.axhline(cbf_lrb_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
 ax1.text(1.5,cbf_lrb_repl_risk+0.02, r'Predicted replacement risk',
           fontsize=subt_font, color='black')
@@ -1882,7 +1906,7 @@ fig.tight_layout()
 plt.show()
 
 #%% cost validation distr
-
+# plt.close('all')
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -1924,10 +1948,15 @@ df_dt = pd.DataFrame.from_dict(
 
 import seaborn as sns
 
-cbf_tfp_repair_cost = cbf_tfp_inv_performance['cost']
-mf_tfp_repair_cost = mf_tfp_inv_performance['cost']
-cbf_lrb_repair_cost = cbf_lrb_inv_performance['cost']
-mf_lrb_repair_cost = mf_lrb_inv_performance['cost']
+cbf_tfp_repair_cost = cbf_tfp_inv_pred['cost']
+mf_tfp_repair_cost = mf_tfp_inv_pred['cost']
+cbf_lrb_repair_cost = cbf_lrb_inv_pred['cost']
+mf_lrb_repair_cost = mf_lrb_inv_pred['cost']
+
+cbf_tfp_repair_cost_var = cbf_tfp_inv_pred['cost_var']
+mf_tfp_repair_cost_var = mf_tfp_inv_pred['cost_var']
+cbf_lrb_repair_cost_var = cbf_lrb_inv_pred['cost_var']
+mf_lrb_repair_cost_var = mf_lrb_inv_pred['cost_var']
 
 ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
                    edgecolor='black', linewidth=1.0)
@@ -1938,37 +1967,63 @@ sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
             width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False)
 # # ax.set_ylabel('Design case', fontsize=axis_font)
 ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-ax.axvline(mf_tfp_repair_cost, ymin=0.75, ymax=1.0, linestyle='--', color='royalblue')
-ax.axvline(mf_lrb_repair_cost, ymin=0.5, ymax=0.75, linestyle='--', color='cornflowerblue')
-ax.axvline(cbf_tfp_repair_cost, ymin=0.25, ymax=0.5, linestyle='--', color='lightsalmon')
-ax.axvline(cbf_lrb_repair_cost, ymin=0.0, ymax=0.25, linestyle='--', color='darksalmon')
+
+
+def plot_predictions(mean, var, y_middle, y_bar):
+    middle = mean
+    upper = mean + var**0.5
+    lower = mean - var**0.5
+    
+    ax.plot(middle, y_bar, 'v', ms=10, markeredgecolor='black', markerfacecolor='red')
+    ax.plot([lower, upper], 
+            [y_bar,y_bar], color='red')
+    
+    ax.axvline(middle, ymin=y_middle-0.075, ymax=y_middle+0.075, linestyle='--', color='red')
+    ax.axvline(lower, ymin=y_middle-0.025, ymax=y_middle+0.025, color='red')
+    ax.axvline(upper, ymin=y_middle-0.025, ymax=y_middle+0.025, color='red')
+
+# ax.plot(middle, 0, 'v', ms=10, markeredgecolor='black', markerfacecolor='red')
+# ax.plot([lower, upper], 
+#         [0,0], color='red')
+# ax.axvline(middle, ymin=0.75, ymax=1.0, linestyle='--', color='red')
+# ax.axvline(lower, ymin=0.85, ymax=0.9, color='red')
+# ax.axvline(upper,  ymin=0.85, ymax=0.9, color='red')
+
+plot_predictions(mf_tfp_repair_cost, mf_tfp_repair_cost_var, 0.875, 0)
+plot_predictions(mf_lrb_repair_cost, mf_lrb_repair_cost_var, 0.625, 1)
+plot_predictions(cbf_tfp_repair_cost, cbf_tfp_repair_cost_var, 0.375, 2)
+plot_predictions(cbf_lrb_repair_cost, cbf_lrb_repair_cost_var, 0.125, 3)
+
+# ax.axvline(mf_tfp_repair_cost, ymin=0.75, ymax=1.0, linestyle='--', color='royalblue')
+# ax.axvline(mf_lrb_repair_cost, ymin=0.5, ymax=0.75, linestyle='--', color='cornflowerblue')
+# ax.axvline(cbf_tfp_repair_cost, ymin=0.25, ymax=0.5, linestyle='--', color='lightsalmon')
+# ax.axvline(cbf_lrb_repair_cost, ymin=0.0, ymax=0.25, linestyle='--', color='darksalmon')
 ax.grid(visible=True)
 
-mf_tfp_repair_cost_ab = mf_tfp_ab_repair_cost[cost_var+'_pred'].iloc[0]
-mf_lrb_repair_cost_ab = mf_lrb_ab_repair_cost[cost_var+'_pred'].iloc[0]
-cbf_tfp_repair_cost_ab = cbf_tfp_ab_repair_cost[cost_var+'_pred'].iloc[0]
-cbf_lrb_repair_cost_ab = cbf_lrb_ab_repair_cost[cost_var+'_pred'].iloc[0]
+# mf_tfp_repair_cost_ab = mf_tfp_ab_repair_cost[cost_var+'_pred'].iloc[0]
+# mf_lrb_repair_cost_ab = mf_lrb_ab_repair_cost[cost_var+'_pred'].iloc[0]
+# cbf_tfp_repair_cost_ab = cbf_tfp_ab_repair_cost[cost_var+'_pred'].iloc[0]
+# cbf_lrb_repair_cost_ab = cbf_lrb_ab_repair_cost[cost_var+'_pred'].iloc[0]
 
-ax.axvline(mf_tfp_repair_cost_ab, ymin=0.75, ymax=1.0, linestyle=':', color='royalblue')
-ax.axvline(mf_lrb_repair_cost_ab, ymin=0.5, ymax=0.75, linestyle=':', color='cornflowerblue')
-ax.axvline(cbf_tfp_repair_cost_ab, ymin=0.25, ymax=0.5, linestyle=':', color='lightsalmon')
-ax.axvline(cbf_lrb_repair_cost_ab, ymin=0.0, ymax=0.25, linestyle=':', color='darksalmon')
+# ax.axvline(mf_tfp_repair_cost_ab, ymin=0.75, ymax=1.0, linestyle=':', color='royalblue')
+# ax.axvline(mf_lrb_repair_cost_ab, ymin=0.5, ymax=0.75, linestyle=':', color='cornflowerblue')
+# ax.axvline(cbf_tfp_repair_cost_ab, ymin=0.25, ymax=0.5, linestyle=':', color='lightsalmon')
+# ax.axvline(cbf_lrb_repair_cost_ab, ymin=0.0, ymax=0.25, linestyle=':', color='darksalmon')
 
-stats = [
-    dict(med=mf_tfp_repair_cost_ab, q1=mf_tfp_repair_cost_ab, q3=mf_tfp_repair_cost_ab, 
-         whislo=mf_tfp_repair_cost_ab-mf_tfp_ab_repair_cost_var**0.5, 
-         whishi=mf_tfp_repair_cost_ab+mf_tfp_ab_repair_cost_var**0.5, fliers=[], label='A'),
-]
+# stats = [
+#     dict(med=mf_tfp_repair_cost_ab, q1=mf_tfp_repair_cost_ab, q3=mf_tfp_repair_cost_ab, 
+#          whislo=mf_tfp_repair_cost_ab-mf_tfp_ab_repair_cost_var**0.5, 
+#          whishi=mf_tfp_repair_cost_ab+mf_tfp_ab_repair_cost_var**0.5, fliers=[], label='A'),
+# ]
 
 # sns.boxplot(stats, patch_artist=True, boxprops={'facecolor': 'bisque'})
 
-custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
-                        , markerfacecolor='navy', markersize=10),
-                Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
-                Line2D([-1], [-1], color='cornflowerblue', linestyle=':'),
-                ]
+# custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
+#                         , markerfacecolor='navy', markersize=10),
+#                 Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
+#                 ]
 
-ax.legend(custom_lines, ['Mean', 'Prediction of inverse design', 'Prediction of as-built design'], fontsize=subt_font)
+# ax.legend(custom_lines, ['Mean', 'Prediction of inverse design'], fontsize=subt_font)
 
 # ax.text(.3, 0, u'5 replacements \u2192', fontsize=axis_font, color='red')
 # ax.text(.3, 1, u'0 replacement', fontsize=axis_font, color='red')
@@ -2019,10 +2074,15 @@ df_dt = pd.DataFrame.from_dict(
 
 import seaborn as sns
 
-cbf_tfp_repair_time = cbf_tfp_inv_performance['time']
-mf_tfp_repair_time = mf_tfp_inv_performance['time']
-cbf_lrb_repair_time = cbf_lrb_inv_performance['time']
-mf_lrb_repair_time = mf_lrb_inv_performance['time']
+cbf_tfp_repair_time = cbf_tfp_inv_pred['time']
+mf_tfp_repair_time = mf_tfp_inv_pred['time']
+cbf_lrb_repair_time = cbf_lrb_inv_pred['time']
+mf_lrb_repair_time = mf_lrb_inv_pred['time']
+
+cbf_tfp_repair_time_var = cbf_tfp_inv_pred['time_var']
+mf_tfp_repair_time_var = mf_tfp_inv_pred['time_var']
+cbf_lrb_repair_time_var = cbf_lrb_inv_pred['time_var']
+mf_lrb_repair_time_var = mf_lrb_inv_pred['time_var']
 
 ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', 
                    edgecolor='black', linewidth=1.0)
@@ -2033,29 +2093,35 @@ sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', palette='coolwarm',
             width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False)
 # # ax.set_ylabel('Design case', fontsize=axis_font)
 ax.set_xlabel(r'Repair time ratio', fontsize=axis_font)
-ax.axvline(mf_tfp_repair_time, ymin=0.75, ymax=1.0, linestyle='--', color='royalblue')
-ax.axvline(mf_lrb_repair_time, ymin=0.5, ymax=0.75, linestyle='--', color='cornflowerblue')
-ax.axvline(cbf_tfp_repair_time, ymin=0.25, ymax=0.5, linestyle='--', color='lightsalmon')
-ax.axvline(cbf_lrb_repair_time, ymin=0.0, ymax=0.25, linestyle='--', color='darksalmon')
+
+plot_predictions(mf_tfp_repair_time, mf_tfp_repair_time_var, 0.875, 0)
+plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1)
+plot_predictions(cbf_tfp_repair_time, cbf_tfp_repair_time_var, 0.375, 2)
+plot_predictions(cbf_lrb_repair_time, cbf_lrb_repair_time_var, 0.125, 3)
+
+# ax.axvline(mf_tfp_repair_time, ymin=0.75, ymax=1.0, linestyle='--', color='royalblue')
+# ax.axvline(mf_lrb_repair_time, ymin=0.5, ymax=0.75, linestyle='--', color='cornflowerblue')
+# ax.axvline(cbf_tfp_repair_time, ymin=0.25, ymax=0.5, linestyle='--', color='lightsalmon')
+# ax.axvline(cbf_lrb_repair_time, ymin=0.0, ymax=0.25, linestyle='--', color='darksalmon')
+
 ax.grid(visible=True)
 
-mf_tfp_downtime_ab = mf_tfp_ab_downtime[time_var+'_pred'].iloc[0]
-mf_lrb_downtime_ab = mf_lrb_ab_downtime[time_var+'_pred'].iloc[0]
-cbf_tfp_downtime_ab = cbf_tfp_ab_downtime[time_var+'_pred'].iloc[0]
-cbf_lrb_downtime_ab = cbf_lrb_ab_downtime[time_var+'_pred'].iloc[0]
+# mf_tfp_downtime_ab = mf_tfp_ab_downtime[time_var+'_pred'].iloc[0]
+# mf_lrb_downtime_ab = mf_lrb_ab_downtime[time_var+'_pred'].iloc[0]
+# cbf_tfp_downtime_ab = cbf_tfp_ab_downtime[time_var+'_pred'].iloc[0]
+# cbf_lrb_downtime_ab = cbf_lrb_ab_downtime[time_var+'_pred'].iloc[0]
 
-ax.axvline(mf_tfp_downtime_ab, ymin=0.75, ymax=1.0, linestyle=':', color='royalblue')
-ax.axvline(mf_lrb_downtime_ab, ymin=0.5, ymax=0.75, linestyle=':', color='cornflowerblue')
-ax.axvline(cbf_tfp_downtime_ab, ymin=0.25, ymax=0.5, linestyle=':', color='lightsalmon')
-ax.axvline(cbf_lrb_downtime_ab, ymin=0.0, ymax=0.25, linestyle=':', color='darksalmon')
+# ax.axvline(mf_tfp_downtime_ab, ymin=0.75, ymax=1.0, linestyle=':', color='royalblue')
+# ax.axvline(mf_lrb_downtime_ab, ymin=0.5, ymax=0.75, linestyle=':', color='cornflowerblue')
+# ax.axvline(cbf_tfp_downtime_ab, ymin=0.25, ymax=0.5, linestyle=':', color='lightsalmon')
+# ax.axvline(cbf_lrb_downtime_ab, ymin=0.0, ymax=0.25, linestyle=':', color='darksalmon')
 
-custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
-                        , markerfacecolor='navy', markersize=10),
-                Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
-                Line2D([-1], [-1], color='cornflowerblue', linestyle=':'),
-                ]
+# custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
+#                         , markerfacecolor='navy', markersize=10),
+#                 Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
+#                 ]
 
-ax.legend(custom_lines, ['Mean', 'Prediction of inverse design', 'Prediction of as-built design'], fontsize=subt_font)
+# ax.legend(custom_lines, ['Mean', 'Prediction of inverse design', 'Prediction of as-built design'], fontsize=subt_font)
 
 # ax.text(.3, 0, u'5 replacements \u2192', fontsize=axis_font, color='red')
 # ax.text(.3, 1, u'0 replacement', fontsize=axis_font, color='red')
@@ -2095,8 +2161,12 @@ def mle_fit_general(x_values, probs, x_init=None):
     else:
         x0 = x_init
     
-    res = basinhopping(neg_log_likelihood_sum_partial, x0,
-                       niter=500, seed=985)
+    bnds = ((1e-6, 0.2), (0.5, 1.5))
+    
+    # use basin hopping to avoid local minima
+    minimizer_kwargs={'bounds':bnds}
+    res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
+                       niter=100, seed=985)
     
     return res.x[0], res.x[1]
 
@@ -2238,7 +2308,7 @@ ax1.grid(True)
 # ax1.set_ylim([0, 1.0])
 
 fig.tight_layout()
-
+plt.show()
 #%%
 
 # plt.close('all')
@@ -2258,7 +2328,7 @@ ecdf_values = res.cdf.quantiles
 
 fig = plt.figure(figsize=(16, 13))
 
-theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.04,0.8))
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.05,1.0))
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -2357,7 +2427,7 @@ title_font=20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.01,1))
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.2,0.5))
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -2378,4 +2448,3 @@ fig.tight_layout()
 
 #%%
 # TODO: presentables
-# variance
