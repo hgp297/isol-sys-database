@@ -101,26 +101,68 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
     miss_prob = probs_imp[:,0]
     hit_prob = probs_imp[:,1]
     
+    hit_loss, hit_std = hit_loss_mdl.predict(X, return_std=True)
+    miss_loss, miss_std = miss_loss_mdl.predict(X, return_std=True)
+    
     # weight with probability of collapse
     # E[Loss] = (impact loss)*Pr(impact) + (no impact loss)*Pr(no impact)
     # run SVR_hit model on this dataset
     outcome_str = outcome+'_pred'
     expected_DV_hit = pd.DataFrame(
             {outcome_str:np.multiply(
-                    hit_loss_mdl.predict(X).ravel(),
+                    hit_loss,
                     hit_prob)})
             
     
     # run miss model on this dataset
     expected_DV_miss = pd.DataFrame(
             {outcome_str:np.multiply(
-                    miss_loss_mdl.predict(X).ravel(),
+                    miss_loss,
                     miss_prob)})
     
     expected_DV = expected_DV_hit + expected_DV_miss
     
     if return_var:
-        pass
+        # get probability of impact
+        gpc_obj = impact_pred_mdl._final_estimator
+        base_estimator = gpc_obj.base_estimator_
+        K_func = base_estimator.kernel_
+        W_inv = np.diag(1/base_estimator.W_sr_**2)
+        K_a = K_func(base_estimator.X_train_, base_estimator.X_train_)
+        R_inv = np.linalg.inv(W_inv + K_a)
+        
+        # follow Eq. 3.24 to calculate latent variance
+        gpc_scaler = impact_pred_mdl[0]
+        X_scaled = gpc_scaler.transform(X)
+        K_s = K_func(base_estimator.X_train_, X_scaled)
+        k_ss = np.diagonal(K_func(X_scaled, X_scaled))
+        var_f = k_ss - np.sum((R_inv @ K_s) * K_s, axis=0)
+        
+        # propagate uncertainty (Wikipedia example for f = ae^(bA)) and f = aA^b
+        pi_ = base_estimator.pi_
+        y_train_ = base_estimator.y_train_
+        f_star = K_s.T.dot(y_train_ - pi_)
+        gamma_ = (1 + np.exp(-f_star))
+        prob_var = np.exp(-2*f_star)*var_f/(gamma_**4)
+        
+        # regression model variances
+        hit_var = hit_std**2
+        miss_var = miss_std**2
+        
+        # TODO: zero division 
+        # for now, ignore correlation
+        # is there correlation? is probability of impact correlated with cost given that the building impacted
+        # propagate uncertainty (f = AB)
+        impact_side_var = np.multiply(hit_loss, hit_prob)**2*(
+            (hit_var/hit_loss**2) + (prob_var/hit_prob**2) + 0)
+        
+        nonimpact_side_var = np.multiply(miss_loss, miss_prob)**2*(
+            (miss_var/miss_loss**2) + (prob_var/miss_prob**2) + 0)
+        
+        # propagate uncertainty (f = A + B)
+        total_var = impact_side_var + nonimpact_side_var + 0
+        
+        return(expected_DV, total_var)
     else:
         return(expected_DV)
     
@@ -1322,9 +1364,9 @@ config_dict = {
 
 # TODO: increase targets (0.1, 0.1, 0.05) should pass
 my_targets = {
-    cost_var: 0.10,
-    time_var: 0.10,
-    'replacement_freq': 0.05,
+    cost_var: 0.2,
+    time_var: 0.2,
+    'replacement_freq': 0.1,
     'constructability': -6.0}
 
 mf_tfp_inv_design, mf_tfp_inv_performance = grid_search_inverse_design(
@@ -1359,55 +1401,59 @@ import pandas as pd
 from db import prepare_ida_util
 import json
 
-mf_tfp_inv_design['superstructure_system'] = 'MF'
-mf_tfp_inv_design['isolator_system'] = 'TFP'
-mf_tfp_inv_design['k_ratio'] = 10
+my_design = mf_tfp_inv_design.copy()
+my_design['superstructure_system'] = 'MF'
+my_design['isolator_system'] = 'TFP'
+my_design['k_ratio'] = 10
 
-mf_tfp_dict = mf_tfp_inv_design.to_dict()
+mf_tfp_dict = my_design.to_dict()
 ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/')
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
-with open('../inputs/mf_tfp_strict.in', 'w') as file:
-    file.write(json.dumps(mf_tfp_dict))
-    file.close()
+# with open('../inputs/mf_tfp_strict.in', 'w') as file:
+#     file.write(json.dumps(mf_tfp_dict))
+#     file.close()
 
-cbf_tfp_inv_design['superstructure_system'] = 'CBF'
-cbf_tfp_inv_design['isolator_system'] = 'TFP'
-cbf_tfp_inv_design['k_ratio'] = 7
+my_design = cbf_tfp_inv_design.copy()
+my_design['superstructure_system'] = 'CBF'
+my_design['isolator_system'] = 'TFP'
+my_design['k_ratio'] = 7
 
-cbf_tfp_dict = cbf_tfp_inv_design.to_dict()
+cbf_tfp_dict = my_design.to_dict()
 ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/')
 
-with open('../inputs/cbf_tfp_strict.in', 'w') as file:
-    file.write(json.dumps(cbf_tfp_dict))
-    file.close()
+# with open('../inputs/cbf_tfp_strict.in', 'w') as file:
+#     file.write(json.dumps(cbf_tfp_dict))
+#     file.close()
     
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
-mf_lrb_inv_design['superstructure_system'] = 'MF'
-mf_lrb_inv_design['isolator_system'] = 'LRB'
-mf_lrb_inv_design['k_ratio'] = 10
+my_design = mf_lrb_inv_design.copy()
+my_design['superstructure_system'] = 'MF'
+my_design['isolator_system'] = 'LRB'
+my_design['k_ratio'] = 10
 
-mf_lrb_dict = mf_lrb_inv_design.to_dict()
+mf_lrb_dict = my_design.to_dict()
 ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/')
 
-with open('../inputs/mf_lrb_strict.in', 'w') as file:
-    file.write(json.dumps(mf_lrb_dict))
-    file.close()
+# with open('../inputs/mf_lrb_strict.in', 'w') as file:
+#     file.write(json.dumps(mf_lrb_dict))
+#     file.close()
     
 print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
 
-cbf_lrb_inv_design['superstructure_system'] = 'CBF'
-cbf_lrb_inv_design['isolator_system'] = 'LRB'
-cbf_lrb_inv_design['k_ratio'] = 10
+my_design = cbf_lrb_inv_design.copy()
+my_design['superstructure_system'] = 'CBF'
+my_design['isolator_system'] = 'LRB'
+my_design['k_ratio'] = 10
 
-cbf_lrb_dict = cbf_lrb_inv_design.to_dict()
+cbf_lrb_dict = my_design.to_dict()
 ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/')
 
-with open('../inputs/cbf_lrb_strict.in', 'w') as file:
-    file.write(json.dumps(cbf_lrb_dict))
-    file.close()
+# with open('../inputs/cbf_lrb_strict.in', 'w') as file:
+#     file.write(json.dumps(cbf_lrb_dict))
+#     file.close()
     
 print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
 
@@ -1529,128 +1575,7 @@ def process_results(run_case):
  cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_constructable')
 (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
  cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_constructable')
-#%% results of the inverse design
 
-'''
-run_case = 'cbf_tfp_inverse'
-val_dir = '../../data/validation/'+run_case+'/'
-
-cbf_tfp_loss_file = run_case+'_loss.pickle'
-cbf_tfp_max_loss_file = run_case+'_max_loss.pickle'
-
-cbf_tfp_val_obj = pd.read_pickle(val_dir+cbf_tfp_loss_file)
-cbf_tfp_df = cbf_tfp_val_obj.ida_results
-cbf_tfp_loss = cbf_tfp_val_obj.loss_data.reset_index(drop=True)
-cbf_tfp_val_run = cbf_tfp_val_obj.ida_results.reset_index(drop=True)
-
-cbf_tfp_val_max_obj = pd.read_pickle(val_dir+cbf_tfp_max_loss_file)
-cbf_tfp_max_loss = cbf_tfp_val_max_obj.max_loss.reset_index(drop=True)
-
-run_case = 'mf_tfp_inverse'
-val_dir = '../../data/validation/'+run_case+'/'
-
-mf_tfp_loss_file = run_case+'_normloss.pickle'
-mf_tfp_max_loss_file = run_case+'_max_loss.pickle'
-
-mf_tfp_val_obj = pd.read_pickle(val_dir+mf_tfp_loss_file)
-mf_tfp_df = mf_tfp_val_obj.ida_results
-mf_tfp_loss = mf_tfp_val_obj.loss_data.reset_index(drop=True)
-mf_tfp_val_run = mf_tfp_val_obj.ida_results.reset_index(drop=True)
-
-mf_tfp_val_max_obj = pd.read_pickle(val_dir+mf_tfp_max_loss_file)
-mf_tfp_max_loss = mf_tfp_val_max_obj.max_loss.reset_index(drop=True)
-
-#%% process data for inverse
-
-cbf_tfp_df = loss_percentages(cbf_tfp_df, cbf_tfp_loss, cbf_tfp_max_loss)
-mf_tfp_df = loss_percentages(mf_tfp_df, mf_tfp_loss, mf_tfp_max_loss)
-
-#%% inverse design basics
-
-
-ida_levels = [1.0, 1.5, 2.0]
-
-cbf_tfp_cost  = np.zeros((3,))
-cbf_tfp_downtime = np.zeros((3,))
-cbf_tfp_replacement = np.zeros((3,))
-cbf_tfp_cost_ratio = np.zeros((3,))
-cbf_tfp_downtime_ratio = np.zeros((3,))
-
-mf_tfp_cost = np.zeros((3,))
-mf_tfp_downtime = np.zeros((3,))
-mf_tfp_replacement = np.zeros((3,))
-mf_tfp_cost_ratio = np.zeros((3,))
-mf_tfp_downtime_ratio = np.zeros((3,))
-
-# collect means
-cost_var_ida = 'cost_50%'
-time_var_ida = 'time_l_50%'
-
-for i, lvl in enumerate(ida_levels):
-    cbf_tfp_ida = cbf_tfp_df[cbf_tfp_df['ida_level']==lvl]
-    mf_tfp_ida = mf_tfp_df[mf_tfp_df['ida_level']==lvl]
-    
-    cbf_tfp_replacement[i] = cbf_tfp_ida['replacement_freq'].mean()
-    cbf_tfp_cost[i] = cbf_tfp_loss[cost_var_ida].mean()
-    cbf_tfp_cost_ratio[i] = cbf_tfp_ida[cost_var].mean()
-    cbf_tfp_downtime_ratio[i] = cbf_tfp_ida[time_var].mean()
-    
-    mf_tfp_cost[i] = mf_tfp_loss[cost_var_ida].mean()
-    mf_tfp_replacement[i] = mf_tfp_ida['replacement_freq'].mean()
-    mf_tfp_cost_ratio[i] = mf_tfp_ida[cost_var].mean()
-    mf_tfp_downtime_ratio[i] = mf_tfp_ida[time_var].mean()
-    
-
-print('==================================')
-print('   Validation results  (1.0 MCE)  ')
-print('==================================')
-
-design_tested = cbf_tfp_df[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
-design_specifics = cbf_tfp_df[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column', 'brace']].iloc[0]
-
-print('====== CBF-TFP INVERSE DESIGN ======')
-print('Average median repair cost: ',
-      f'${cbf_tfp_cost[0]:,.2f}')
-print('Repair cost ratio: ', 
-      f'{cbf_tfp_cost_ratio[0]:,.3f}')
-print('Repair time ratio: ',
-      f'{cbf_tfp_downtime_ratio[0]:,.3f}')
-print('Estimated replacement frequency: ',
-      f'{cbf_tfp_replacement[0]:.2%}')
-print(design_tested)
-print(design_specifics)
-
-design_tested = mf_tfp_df[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
-design_specifics = mf_tfp_df[['mu_1', 'mu_2', 'R_1', 'R_2', 'beam', 'column']].iloc[0]
-
-print('====== MF-TFP INVERSE DESIGN ======')
-print('Average median repair cost: ',
-      f'${mf_tfp_cost[0]:,.2f}')
-print('Repair cost ratio: ', 
-      f'{mf_tfp_cost_ratio[0]:,.3f}')
-print('Repair time ratio: ',
-      f'{mf_tfp_downtime_ratio[0]:,.3f}')
-print('Estimated replacement frequency: ',
-      f'{mf_tfp_replacement[0]:.2%}')
-print(design_tested)
-print(design_specifics)
-
-#%%
-design_cbf_tfp = pd.DataFrame.from_dict({
-    '0': [1.263, 2.25, 3.72, 0.25]}, orient='index', 
-    columns=covariate_list)
-true_mf_cost = predict_DV(design_cbf_tfp, 
-                               mdl_impact_cbf_tfp.gpc, 
-                               mdl_cost_cbf_tfp_i.gpr, 
-                               mdl_cost_cbf_tfp_o.gpr, 
-                               outcome=cost_var)
-
-true_mf_repl = predict_DV(design_cbf_tfp, 
-                               mdl_impact_cbf_tfp.gpc, 
-                               mdl_repl_cbf_tfp_i.gpr, 
-                               mdl_repl_cbf_tfp_o.gpr, 
-                               outcome='replacement_freq')
-'''
 #%% debrief predictions: try to get predictions of actual ran building
 # two values differ
 # GR should be different because real ground motion suite has different Sa than design spectrum
@@ -1724,41 +1649,41 @@ def as_built_pred(X_built, system_name,
     mdl_repl_miss = repl_regs[mdl_repl_miss_name]
     
     # assumes GPC/GPR, predict the outcome for the design space
-    ab_repair_cost = predict_DV(X_built, 
-                                   mdl_impact.gpc, 
-                                   mdl_cost_hit.gpr, 
-                                   mdl_cost_miss.gpr, 
-                                   outcome=cost_var)
+    ab_repair_cost, ab_repair_cost_var = predict_DV(
+        X_built, mdl_impact.gpc, mdl_cost_hit.gpr, mdl_cost_miss.gpr, 
+        outcome=cost_var, return_var=True)
     
-    ab_downtime = predict_DV(X_built,
-                                mdl_impact.gpc,
-                                mdl_time_hit.gpr,
-                                mdl_time_miss.gpr,
-                                outcome=time_var)
+    ab_downtime, ab_downtime_var = predict_DV(
+        X_built, mdl_impact.gpc, mdl_time_hit.gpr, mdl_time_miss.gpr, 
+        outcome=time_var, return_var=True)
     
-    ab_repl = predict_DV(X_built,
-                            mdl_impact.gpc,
-                            mdl_repl_hit.gpr,
-                            mdl_repl_miss.gpr,
-                            outcome='replacement_freq')
+    ab_repl, ab_repl_var = predict_DV(
+        X_built, mdl_impact.gpc, mdl_repl_hit.gpr, mdl_repl_miss.gpr,
+        outcome='replacement_freq', return_var=True)
     
-    return(ab_repl, ab_repair_cost, ab_downtime)
+    return(ab_repl, ab_repair_cost, ab_downtime, 
+           ab_repl_var, ab_repair_cost_var, ab_downtime_var)
 
-mf_tfp_ab_repl, mf_tfp_ab_repair_cost, mf_tfp_ab_downtime = as_built_pred(
+(mf_tfp_ab_repl, mf_tfp_ab_repair_cost, mf_tfp_ab_downtime,
+ mf_tfp_ab_repl_var, mf_tfp_ab_repair_cost_var, mf_tfp_ab_downtime_var) = as_built_pred(
     mf_tfp_as_built, 'mf_tfp', impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls)
 
-mf_lrb_ab_repl, mf_lrb_ab_repair_cost, mf_lrb_ab_downtime = as_built_pred(
+(mf_lrb_ab_repl, mf_lrb_ab_repair_cost, mf_lrb_ab_downtime,
+ mf_lrb_ab_repl_var, mf_lrb_ab_repair_cost_var, mf_lrb_ab_downtime_var) = as_built_pred(
     mf_lrb_as_built, 'mf_lrb', impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls)
 
-cbf_tfp_ab_repl, cbf_tfp_ab_repair_cost, cbf_tfp_ab_downtime = as_built_pred(
+(cbf_tfp_ab_repl, cbf_tfp_ab_repair_cost, cbf_tfp_ab_downtime,
+ cbf_tfp_ab_repl_var, cbf_tfp_ab_repair_cost_var, cbf_tfp_ab_downtime_var) = as_built_pred(
     cbf_tfp_as_built, 'cbf_tfp', impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls)
-
-cbf_lrb_ab_repl, cbf_lrb_ab_repair_cost, cbf_lrb_ab_downtime = as_built_pred(
+ 
+(cbf_lrb_ab_repl, cbf_lrb_ab_repair_cost, cbf_lrb_ab_downtime,
+ cbf_lrb_ab_repl_var, cbf_lrb_ab_repair_cost_var, cbf_lrb_ab_downtime_var) = as_built_pred(
     cbf_lrb_as_built, 'cbf_lrb', impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls)
+
 #%% MLE fragility curves
 def neg_log_likelihood_sum(params, im_l, no_a, no_c):
     from scipy import stats
@@ -2029,6 +1954,14 @@ ax.axvline(mf_lrb_repair_cost_ab, ymin=0.5, ymax=0.75, linestyle=':', color='cor
 ax.axvline(cbf_tfp_repair_cost_ab, ymin=0.25, ymax=0.5, linestyle=':', color='lightsalmon')
 ax.axvline(cbf_lrb_repair_cost_ab, ymin=0.0, ymax=0.25, linestyle=':', color='darksalmon')
 
+stats = [
+    dict(med=mf_tfp_repair_cost_ab, q1=mf_tfp_repair_cost_ab, q3=mf_tfp_repair_cost_ab, 
+         whislo=mf_tfp_repair_cost_ab-mf_tfp_ab_repair_cost_var**0.5, 
+         whishi=mf_tfp_repair_cost_ab+mf_tfp_ab_repair_cost_var**0.5, fliers=[], label='A'),
+]
+
+# sns.boxplot(stats, patch_artist=True, boxprops={'facecolor': 'bisque'})
+
 custom_lines = [Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
                         , markerfacecolor='navy', markersize=10),
                 Line2D([-1], [-1], color='cornflowerblue', linestyle='--'),
@@ -2169,7 +2102,7 @@ def mle_fit_general(x_values, probs, x_init=None):
 
 from scipy.stats import ecdf
 f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
-plt.close('all')
+# plt.close('all')
 
 
 my_y_var = mf_tfp_ida[cost_var]
@@ -2308,7 +2241,7 @@ fig.tight_layout()
 
 #%%
 
-plt.close('all')
+# plt.close('all')
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
