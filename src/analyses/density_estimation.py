@@ -656,7 +656,7 @@ yvar = 'T_ratio'
 res = 75
 X_plot = make_2D_plotting_space(mdl_all.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-                            third_var_set = 2.0, fourth_var_set = 0.2)
+                            third_var_set = 1.60, fourth_var_set = 0.194)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
@@ -697,7 +697,7 @@ ax.scatter(df_mf_lrb[xvar],
             df_mf_lrb[yvar],
             s=40, c='darkblue', marker='v', edgecolors='crimson', label='Replacement')
 
-ax.set_title(r'Density of MF-LRB: $R_y = 2.0$, $\zeta_M = 0.2$', fontsize=title_font)
+ax.set_title(r'Density of MF-LRB: $R_y = 1.6$, $\zeta_M = 0.19$', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 

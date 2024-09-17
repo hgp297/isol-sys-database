@@ -103,7 +103,7 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
     
     hit_loss, hit_std = hit_loss_mdl.predict(X, return_std=True)
     miss_loss, miss_std = miss_loss_mdl.predict(X, return_std=True)
-    miss_gpr = miss_loss_mdl[1]
+    
     # weight with probability of collapse
     # E[Loss] = (impact loss)*Pr(impact) + (no impact loss)*Pr(no impact)
     # run SVR_hit model on this dataset
@@ -121,6 +121,16 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
                     miss_prob)})
     
     expected_DV = expected_DV_hit + expected_DV_miss
+    
+    # tower variance
+    # Var[cost] = E[cost^2] - E[cost]^2 = E[E(cost^2|imp)] - expected_DV^2
+    # = (hit_cost^2 + var_hit_cost)*p(hit) + (miss_cost^2 + var_miss_cost)*p(miss) - expected_DV^2
+    '''
+    if return_var:
+        expected_loss_sq = (hit_std**2 + hit_loss**2)*hit_prob + (miss_std**2 + miss_loss**2)*miss_prob
+        total_var = expected_loss_sq - expected_DV**2
+        return(expected_DV, total_var)
+    '''
     
     if return_var:
         # get probability of impact
@@ -1367,7 +1377,6 @@ config_dict = {
     'S_1': 1.017
     }
 
-# TODO: increase targets (0.1, 0.1, 0.05) should pass
 my_targets = {
     cost_var: 0.1,
     time_var: 0.1,
@@ -1573,55 +1582,50 @@ def process_results(run_case):
            val_cost_ratio, val_downtime, val_downtime_ratio)
     
 (mf_tfp_val_results, mf_tfp_val_repl, mf_tfp_val_cost, mf_tfp_val_cost_ratio, 
- mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_constructable')
+ mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_strict')
 (mf_lrb_val_results, mf_lrb_val_repl, mf_lrb_val_cost, mf_lrb_val_cost_ratio, 
- mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_constructable')
+ mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_strict')
 (cbf_tfp_val_results, cbf_tfp_val_repl, cbf_tfp_val_cost, cbf_tfp_val_cost_ratio, 
- cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_constructable')
+ cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_strict')
 (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
- cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_constructable')
+ cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_strict')
 
 #%% debrief predictions: try to get predictions of actual ran building
 # two values differ
 # GR should be different because real ground motion suite has different Sa than design spectrum
 # T ratio should be different because actual T_fb is not perfectly equal to Tfbe
 
-import numpy as np
-zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
-BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+# import numpy as np
+# zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+# BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
 
-mf_tfp_ida = mf_tfp_val_results[mf_tfp_val_results['ida_level']==1.0]
-# mf_tfp_ida['Bm'] = np.interp(mf_tfp_ida['zeta_e'], zetaRef, BmRef)
-# b = 4*pi**2*mf_tfp_ida['D_m']/((mf_tfp_ida['sa_tm']*g/mf_tfp_ida['Bm'])*mf_tfp_ida['T_m']**2)
-# a = (mf_tfp_ida['S_1']/mf_tfp_ida['T_m'])/(mf_tfp_ida['sa_tm'])
-# print(a.mean(), b.mean())
-x = mf_tfp_ida[covariate_list].copy()
-x = x.loc[:, abs(x.mean() - mf_tfp_inv_design['gap_ratio']) >= 0.0001]
-x = x.loc[:, abs(x.mean() - mf_tfp_inv_design['T_ratio']) >= 0.0001]
-mf_tfp_as_built = pd.DataFrame(x.mean()).T
+# mf_tfp_ida = mf_tfp_val_results[mf_tfp_val_results['ida_level']==1.0]
+# x = mf_tfp_ida[covariate_list].copy()
+# x = x.loc[:, abs(x.mean() - mf_tfp_inv_design['gap_ratio']) >= 0.0001]
+# x = x.loc[:, abs(x.mean() - mf_tfp_inv_design['T_ratio']) >= 0.0001]
+# mf_tfp_as_built = pd.DataFrame(x.mean()).T
 
-mf_lrb_ida = mf_lrb_val_results[mf_lrb_val_results['ida_level']==1.0]
-mf_lrb_ida['Bm'] = np.interp(mf_lrb_ida['zeta_e'], zetaRef, BmRef)
-x = mf_lrb_ida[covariate_list].copy()
-x = x.loc[:, abs(x.mean() - mf_lrb_inv_design['gap_ratio']) >= 0.0001]
-x = x.loc[:, abs(x.mean() - mf_lrb_inv_design['T_ratio']) >= 0.0001]
-mf_lrb_as_built = pd.DataFrame(x.mean()).T
+# mf_lrb_ida = mf_lrb_val_results[mf_lrb_val_results['ida_level']==1.0]
+# mf_lrb_ida['Bm'] = np.interp(mf_lrb_ida['zeta_e'], zetaRef, BmRef)
+# x = mf_lrb_ida[covariate_list].copy()
+# x = x.loc[:, abs(x.mean() - mf_lrb_inv_design['gap_ratio']) >= 0.0001]
+# x = x.loc[:, abs(x.mean() - mf_lrb_inv_design['T_ratio']) >= 0.0001]
+# mf_lrb_as_built = pd.DataFrame(x.mean()).T
 
-cbf_tfp_ida = cbf_tfp_val_results[cbf_tfp_val_results['ida_level']==1.0]
-cbf_tfp_ida['Bm'] = np.interp(cbf_tfp_ida['zeta_e'], zetaRef, BmRef)
-x = cbf_tfp_ida[covariate_list].copy()
-x = x.loc[:, abs(x.mean() - cbf_tfp_inv_design['gap_ratio']) >= 0.0001]
-x = x.loc[:, abs(x.mean() - cbf_tfp_inv_design['T_ratio']) >= 0.0001]
-cbf_tfp_as_built = pd.DataFrame(x.mean()).T
+# cbf_tfp_ida = cbf_tfp_val_results[cbf_tfp_val_results['ida_level']==1.0]
+# cbf_tfp_ida['Bm'] = np.interp(cbf_tfp_ida['zeta_e'], zetaRef, BmRef)
+# x = cbf_tfp_ida[covariate_list].copy()
+# x = x.loc[:, abs(x.mean() - cbf_tfp_inv_design['gap_ratio']) >= 0.0001]
+# x = x.loc[:, abs(x.mean() - cbf_tfp_inv_design['T_ratio']) >= 0.0001]
+# cbf_tfp_as_built = pd.DataFrame(x.mean()).T
 
-cbf_lrb_ida = cbf_lrb_val_results[cbf_lrb_val_results['ida_level']==1.0]
-cbf_lrb_ida['Bm'] = np.interp(cbf_lrb_ida['zeta_e'], zetaRef, BmRef)
-x = cbf_lrb_ida[covariate_list].copy()
-x = x.loc[:, abs(x.mean() - cbf_lrb_inv_design['gap_ratio']) >= 0.0001]
-x = x.loc[:, abs(x.mean() - cbf_lrb_inv_design['T_ratio']) >= 0.0001]
-cbf_lrb_as_built = pd.DataFrame(x.mean()).T
+# cbf_lrb_ida = cbf_lrb_val_results[cbf_lrb_val_results['ida_level']==1.0]
+# cbf_lrb_ida['Bm'] = np.interp(cbf_lrb_ida['zeta_e'], zetaRef, BmRef)
+# x = cbf_lrb_ida[covariate_list].copy()
+# x = x.loc[:, abs(x.mean() - cbf_lrb_inv_design['gap_ratio']) >= 0.0001]
+# x = x.loc[:, abs(x.mean() - cbf_lrb_inv_design['T_ratio']) >= 0.0001]
+# cbf_lrb_as_built = pd.DataFrame(x.mean()).T
 
-# TODO: asbuilt
 def one_time_pred(X_built, system_name, 
                         impact_clfs, cost_regs, time_regs, repl_regs):
     
@@ -1665,32 +1669,40 @@ def one_time_pred(X_built, system_name,
     ab_repl, ab_repl_var = predict_DV(
         X_built, mdl_impact.gpc, mdl_repl_hit.gpr, mdl_repl_miss.gpr,
         outcome='replacement_freq', return_var=True)
-    
-    ab_performance = {
-        'time': ab_downtime.iloc[0][time_var+'_pred'],
-        'cost': ab_repair_cost.iloc[0][cost_var+'_pred'],
-        'replacement_freq': ab_repl.iloc[0]['replacement_freq'+'_pred'],
-        'time_var': ab_downtime_var[0],
-        'cost_var': ab_repair_cost_var[0],
-        'replacement_freq_var': ab_repl_var[0]}
-    
+    try:
+        ab_performance = {
+            'time': ab_downtime.iloc[0][time_var+'_pred'],
+            'cost': ab_repair_cost.iloc[0][cost_var+'_pred'],
+            'replacement_freq': ab_repl.iloc[0]['replacement_freq'+'_pred'],
+            'time_var': ab_downtime_var[0],
+            'cost_var': ab_repair_cost_var[0],
+            'replacement_freq_var': ab_repl_var[0]}
+    except:
+        ab_performance = {
+            'time': ab_downtime.iloc[0][time_var+'_pred'],
+            'cost': ab_repair_cost.iloc[0][cost_var+'_pred'],
+            'replacement_freq': ab_repl.iloc[0]['replacement_freq'+'_pred'],
+            'time_var': ab_downtime_var.iloc[0][time_var+'_pred'],
+            'cost_var': ab_repair_cost_var.iloc[0][cost_var+'_pred'],
+            'replacement_freq_var': ab_repl_var.iloc[0]['replacement_freq'+'_pred']}
+
     return(ab_performance)
 
-mf_tfp_ab_pred = one_time_pred(
-    mf_tfp_as_built, 'mf_tfp', impact_classification_mdls, cost_regression_mdls, 
-    time_regression_mdls, repl_regression_mdls)
+# mf_tfp_ab_pred = one_time_pred(
+#     mf_tfp_as_built, 'mf_tfp', impact_classification_mdls, cost_regression_mdls, 
+#     time_regression_mdls, repl_regression_mdls)
 
-mf_lrb_ab_pred = one_time_pred(
-    mf_lrb_as_built, 'mf_lrb', impact_classification_mdls, cost_regression_mdls, 
-    time_regression_mdls, repl_regression_mdls)
+# mf_lrb_ab_pred = one_time_pred(
+#     mf_lrb_as_built, 'mf_lrb', impact_classification_mdls, cost_regression_mdls, 
+#     time_regression_mdls, repl_regression_mdls)
 
-cbf_tfp_ab_pred = one_time_pred(
-    cbf_tfp_as_built, 'cbf_tfp', impact_classification_mdls, cost_regression_mdls, 
-    time_regression_mdls, repl_regression_mdls)
+# cbf_tfp_ab_pred = one_time_pred(
+#     cbf_tfp_as_built, 'cbf_tfp', impact_classification_mdls, cost_regression_mdls, 
+#     time_regression_mdls, repl_regression_mdls)
  
-cbf_lrb_ab_pred = one_time_pred(
-    cbf_lrb_as_built, 'cbf_lrb', impact_classification_mdls, cost_regression_mdls, 
-    time_regression_mdls, repl_regression_mdls)
+# cbf_lrb_ab_pred = one_time_pred(
+#     cbf_lrb_as_built, 'cbf_lrb', impact_classification_mdls, cost_regression_mdls, 
+#     time_regression_mdls, repl_regression_mdls)
 
 mf_tfp_inv_pred = one_time_pred(
     pd.DataFrame(mf_tfp_inv_design).T, 'mf_tfp', impact_classification_mdls, cost_regression_mdls, 
@@ -1763,26 +1775,26 @@ p = f(xx_pr, theta_inv, beta_inv)
 p2 = f(xx_pr, theta_inv, b_TOT)
 
 mf_tfp_repl_risk = mf_tfp_inv_pred['replacement_freq']
+mf_tfp_repl_risk_var = mf_tfp_inv_pred['replacement_freq_var']
+upper = mf_tfp_repl_risk+mf_tfp_repl_risk_var**0.5
 
 MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 1)
 ax1.plot(xx_pr, p)
-# ax1.plot(xx_pr, p2)
 ax1.axhline(mf_tfp_repl_risk, linestyle='--', color='black')
-# ax1.axhline(mf_tfp_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
+ax1.axhline(upper, linestyle=':', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
 ax1.text(1.5,mf_tfp_repl_risk+0.02, r'Predicted replacement risk',
           fontsize=subt_font, color='black')
+ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+          fontsize=subt_font, color='black')
 ax1.text(0.6, 0.04, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='steelblue')
-# ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
-#           fontsize=subt_font, color='orange')
 ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
-# ax1.set_xlabel(r'Scale factor', fontsize=axis_font)
 ax1.set_title('MF-TFP', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
     ax1.plot([lvl], [mf_tfp_val_repl[i]], 
@@ -1795,38 +1807,34 @@ ax1.set_ylim([0, 1.0])
 
 theta_base, beta_base = mle_fit_collapse(ida_levels, mf_lrb_val_repl)
 mf_lrb_repl_risk = mf_lrb_inv_pred['replacement_freq']
-
+mf_lrb_repl_risk_var = mf_lrb_inv_pred['replacement_freq_var']
+upper = mf_lrb_repl_risk+mf_lrb_repl_risk_var**0.5
 xx_pr = np.arange(0.01, 4.0, 0.01)
 p = f(xx_pr, theta_base, beta_base)
 p2 = f(xx_pr, theta_base, b_TOT)
 
 MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
-ax4=fig.add_subplot(2, 2, 2)
-ax4.plot(xx_pr, p, label='Best lognormal fit')
-# ax4.plot(xx_pr, p2, label='Adjusted for uncertainty')
-ax4.axhline(mf_lrb_repl_risk, linestyle='--', color='black')
-# ax4.axhline(mf_lrb_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
-ax4.axvline(1.0, linestyle='--', color='black')
-ax4.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
+ax1=fig.add_subplot(2, 2, 2)
+ax1.plot(xx_pr, p, label='Best lognormal fit')
+ax1.axhline(mf_lrb_repl_risk, linestyle='--', color='black')
+ax1.axhline(upper, linestyle=':', color='black')
+ax1.axvline(1.0, linestyle='--', color='black')
+ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
-ax4.text(1.5,mf_lrb_repl_risk+0.02, r'Predicted replacement risk',
+ax1.text(1.5,mf_lrb_repl_risk+0.02, r'Predicted replacement risk',
           fontsize=subt_font, color='black')
-ax4.text(0.6, 0.13, f'{MCE_level:,.4f}',
+ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+          fontsize=subt_font, color='black')
+ax1.text(0.6, 0.13, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='steelblue')
-# ax4.text(0.2, 0.2, f'{MCE_level_unc:,.4f}',
-#           fontsize=subt_font, color='orange')
-
-# ax4.set_ylabel('Collapse probability', fontsize=axis_font)
-# ax4.set_xlabel(r'Scale factor', fontsize=axis_font)
-ax4.set_title('MF-LRB', fontsize=title_font)
+ax1.set_title('MF-LRB', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
-    ax4.plot([lvl], [mf_lrb_val_repl[i]], 
+    ax1.plot([lvl], [mf_lrb_val_repl[i]], 
               marker='x', markersize=15, color="red")
-ax4.grid(True)
-ax4.set_xlim([0, 3.0])
-ax4.set_ylim([0, 1.0])
-# ax4.legend(fontsize=subt_font-2, loc='center right')
+ax1.grid(True)
+ax1.set_xlim([0, 3.0])
+ax1.set_ylim([0, 1.0])
 
 ######
 
@@ -1837,21 +1845,22 @@ p = f(xx_pr, theta_inv, beta_inv)
 p2 = f(xx_pr, theta_inv, b_TOT)
 
 cbf_tfp_repl_risk = cbf_tfp_inv_pred['replacement_freq']
+cbf_tfp_repl_risk_var = cbf_tfp_inv_pred['replacement_freq_var']
+upper = cbf_tfp_repl_risk+cbf_tfp_repl_risk_var**0.5
 
 MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 3)
 ax1.plot(xx_pr, p)
-# ax1.plot(xx_pr, p2)
 ax1.axhline(cbf_tfp_repl_risk, linestyle='--', color='black')
-# ax1.axhline(cbf_tfp_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
+ax1.axhline(upper, linestyle=':', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
 ax1.text(1.5,cbf_tfp_repl_risk+0.02, r'Predicted replacement risk',
           fontsize=subt_font, color='black')
+ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+          fontsize=subt_font, color='black')
 ax1.text(0.6, 0.04, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='steelblue')
-# ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
-#           fontsize=subt_font, color='orange')
 ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -1874,21 +1883,22 @@ p = f(xx_pr, theta_inv, beta_inv)
 p2 = f(xx_pr, theta_inv, b_TOT)
 
 cbf_lrb_repl_risk = cbf_lrb_inv_pred['replacement_freq']
+cbf_lrb_repl_risk_var = cbf_lrb_inv_pred['replacement_freq_var']
+upper = cbf_lrb_repl_risk+cbf_lrb_repl_risk_var**0.5
 
 MCE_level = float(p[xx_pr==1.0])
 MCE_level_unc = float(p2[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 4)
 ax1.plot(xx_pr, p)
-# ax1.plot(xx_pr, p2)
 ax1.axhline(cbf_lrb_repl_risk, linestyle='--', color='black')
-# ax1.axhline(cbf_lrb_ab_repl['replacement_freq_pred'].iloc[0], linestyle=':', color='black')
+ax1.axhline(upper, linestyle=':', color='black')
 ax1.axvline(1.0, linestyle='--', color='black')
 ax1.text(1.5,cbf_lrb_repl_risk+0.02, r'Predicted replacement risk',
           fontsize=subt_font, color='black')
+ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+          fontsize=subt_font, color='black')
 ax1.text(0.6, 0.04, f'{MCE_level:,.4f}',
           fontsize=subt_font, color='steelblue')
-# ax1.text(0.2, 0.12, f'{MCE_level_unc:,.4f}',
-#           fontsize=subt_font, color='orange')
 ax1.text(0.8, 0.65, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 

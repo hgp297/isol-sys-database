@@ -31,7 +31,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_complete_loss.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_normloss.pickle")
     
 main_obj.calculate_collapse()
 
@@ -484,3 +484,34 @@ p_values = fii.summary2().tables[1]['P>|t|']
 
 print("F-test and p-values")
 print(["%.4f" % member for member in p_values])
+
+#%% mediation analysis
+
+df_test = df.copy()
+
+X = df_test[['gap_ratio', 'RI', 'T_ratio', 'zeta_e', 'impacted']]
+y = df_test[cost_var].ravel()
+
+# scaler = preprocessing.StandardScaler().fit(X)
+# X_scaled = scaler.transform(X)
+
+X = np.asarray(X, dtype=float)
+y = np.asarray(y)
+
+import statsmodels.api as sm
+from statsmodels.stats.mediation import Mediation
+
+outcome_model = sm.OLS(y, X)
+res = outcome_model.fit()
+print(res.summary())
+
+mediator = np.asarray(df_test['impacted'])
+mediator_exog = df_test[['gap_ratio', 'RI', 'T_ratio', 'zeta_e']]
+mediator_exog = np.asarray(mediator_exog, dtype=float)
+mediator_model = sm.OLS(mediator, mediator_exog)
+
+# effect of gap ratio
+# causal mediation effect (CME) holds the treatment constant
+# direct effect (DE) holds the mediator constant and varies treatment
+med = Mediation(outcome_model, mediator_model, (1,1), 4).fit()
+med.summary()
