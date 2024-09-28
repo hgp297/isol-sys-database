@@ -97,7 +97,7 @@ import pandas as pd
 import pickle
 
 #### cbf tfp
-run_case = 'cbf_tfp_constructable'
+run_case = 'cbf_tfp_strict'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 
@@ -120,7 +120,7 @@ with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
 
     
 #### mf tfp
-run_case = 'mf_tfp_constructable'
+run_case = 'mf_tfp_strict'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 
@@ -143,7 +143,7 @@ with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
     
     
 #### cbf lrb
-run_case = 'cbf_lrb_constructable'
+run_case = 'cbf_lrb_strict'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 
@@ -166,7 +166,7 @@ with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
     
     
 #### mf lrb
-run_case = 'mf_lrb_constructable'
+run_case = 'mf_lrb_strict'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 

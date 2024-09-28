@@ -1,5 +1,5 @@
 ############################################################################
-#               Causality testing for impact/replacement/collapse
+#               System selection study
 
 ############################################################################
 
@@ -51,7 +51,7 @@ df['log_drift'] = np.log(df['max_drift'])
 df['max_velo'] = df.PFV.apply(max)
 df['max_accel'] = df.PFA.apply(max)
 
-df['T_ratio'] = df['T_m'] / df['T_fb']
+# df['T_ratio'] = df['T_m'] / df['T_fb']
 df['T_ratio_e'] = df['T_m'] / df['T_fbe']
 pi = 3.14159
 g = 386.4
@@ -101,26 +101,83 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
     miss_prob = probs_imp[:,0]
     hit_prob = probs_imp[:,1]
     
+    hit_loss, hit_std = hit_loss_mdl.predict(X, return_std=True)
+    miss_loss, miss_std = miss_loss_mdl.predict(X, return_std=True)
+    
     # weight with probability of collapse
     # E[Loss] = (impact loss)*Pr(impact) + (no impact loss)*Pr(no impact)
     # run SVR_hit model on this dataset
     outcome_str = outcome+'_pred'
     expected_DV_hit = pd.DataFrame(
             {outcome_str:np.multiply(
-                    hit_loss_mdl.predict(X).ravel(),
+                    hit_loss,
                     hit_prob)})
             
     
     # run miss model on this dataset
     expected_DV_miss = pd.DataFrame(
             {outcome_str:np.multiply(
-                    miss_loss_mdl.predict(X).ravel(),
+                    miss_loss,
                     miss_prob)})
     
     expected_DV = expected_DV_hit + expected_DV_miss
     
+    # tower variance
+    # Var[cost] = E[cost^2] - E[cost]^2 = E[E(cost^2|imp)] - expected_DV^2
+    # = (hit_cost^2 + var_hit_cost)*p(hit) + (miss_cost^2 + var_miss_cost)*p(miss) - expected_DV^2
+    '''
     if return_var:
-        pass
+        expected_loss_sq = (hit_std**2 + hit_loss**2)*hit_prob + (miss_std**2 + miss_loss**2)*miss_prob
+        total_var = expected_loss_sq - expected_DV**2
+        return(expected_DV, total_var)
+    '''
+    
+    if return_var:
+        # get probability of impact
+        gpc_obj = impact_pred_mdl._final_estimator
+        base_estimator = gpc_obj.base_estimator_
+        K_func = base_estimator.kernel_
+        W_inv = np.diag(1/base_estimator.W_sr_**2)
+        K_a = K_func(base_estimator.X_train_, base_estimator.X_train_)
+        R_inv = np.linalg.inv(W_inv + K_a)
+        
+        # follow Eq. 3.24 to calculate latent variance
+        gpc_scaler = impact_pred_mdl[0]
+        X_scaled = gpc_scaler.transform(X)
+        K_s = K_func(base_estimator.X_train_, X_scaled)
+        k_ss = np.diagonal(K_func(X_scaled, X_scaled))
+        var_f = k_ss - np.sum((R_inv @ K_s) * K_s, axis=0)
+        
+        # propagate uncertainty (Wikipedia example for f = ae^(bA)) and f = aA^b
+        pi_ = base_estimator.pi_
+        y_train_ = base_estimator.y_train_
+        f_star = K_s.T.dot(y_train_ - pi_)
+        gamma_ = (1 + np.exp(-f_star))
+        prob_var = np.exp(-2*f_star)*var_f/(gamma_**4)
+        
+        # regression model variances
+        hit_var = hit_std**2
+        miss_var = miss_std**2
+        
+        # for now, ignore correlation
+        # is there correlation? is probability of impact correlated with cost given that the building impacted
+        # propagate uncertainty (f = AB)
+        
+        if miss_loss < 1e-8:
+            miss_loss_min = 1e-3
+        else:
+            miss_loss_min = miss_loss
+            
+        impact_side_var = np.multiply(hit_loss, hit_prob)**2*(
+            (hit_var/hit_loss**2) + (prob_var/hit_prob**2) + 0)
+        
+        nonimpact_side_var = np.multiply(miss_loss_min, miss_prob)**2*(
+            (miss_var/miss_loss_min**2) + (prob_var/miss_prob**2) + 0)
+        
+        # propagate uncertainty (f = A + B)
+        total_var = impact_side_var + nonimpact_side_var + 0
+        
+        return(expected_DV, total_var)
     else:
         return(expected_DV)
     
@@ -402,116 +459,228 @@ df_cbf_tfp_o = df_cbf_tfp[df_cbf_tfp['impacted'] == 0]
 df_cbf_lrb_i = df_cbf_lrb[df_cbf_lrb['impacted'] == 1]
 df_cbf_lrb_o = df_cbf_lrb[df_cbf_lrb['impacted'] == 0]
 
+#%% system selector
+# consider: replacement freq, num_stories, num_bays, repair cost
+covariate_list = ['cmp_cost_ratio', 'cmp_time_ratio', 'replacement_freq', 'steel_cost_per_sf']
+clf_struct = GP(df)
+clf_struct.set_covariates(covariate_list)
+clf_struct.set_outcome('superstructure_system', use_ravel=False)
+clf_struct.test_train_split(0.2)
+clf_struct.fit_ensemble()
+clf_struct.fit_svc(neg_wt=False)
+clf_struct.fit_gpc(kernel_name='rbf_iso')
+clf_struct.fit_kernel_logistic(kernel_name='rbf', neg_wt=False)
+# clf_struct.fit_dt()
 
-#%%  variable testing
+clf_isol = GP(df)
+clf_isol.set_covariates(covariate_list)
+clf_isol.set_outcome('isolator_system', use_ravel=False)
+clf_isol.test_train_split(0.2)
+clf_isol.fit_ensemble()
+clf_isol.fit_svc(neg_wt=False)
+clf_isol.fit_gpc(kernel_name='rbf_iso')
+clf_isol.fit_kernel_logistic(kernel_name='rbf', neg_wt=False)
+# clf_isol.fit_dt()
 
-df_hit = df[df['impacted'] == 1]
-df_miss = df[df['impacted'] == 0]
-print('========= Step 1: X (input) direct to Y (cost) ==========')
-from sklearn import preprocessing
+#%%
+plt.close('all')
+#################################
+xvar = 'cmp_time_ratio'
+yvar = 'replacement_freq'
 
-df_test = df.copy()
-
-X = df_test[['gap_ratio', 'RI', 'T_ratio', 'zeta_e']]
-y = df_test[cost_var].ravel()
-
-scaler = preprocessing.StandardScaler().fit(X)
-X_scaled = scaler.transform(X)
-
-X_scaled = np.array(X_scaled, dtype=float)
-y = np.array(y)
-
-import statsmodels.api as sm
-mod = sm.OLS(y, X_scaled)
-fii = mod.fit()
-p_values = fii.summary2().tables[1]['P>|t|']
-
-print("F-test and p-values")
-print(["%.4f" % member for member in p_values])
-
-
-print('========= Step 2: X (input) direct to M (impact) ==========')
-
-X = df_test[['gap_ratio', 'RI', 'T_ratio', 'zeta_e']]
-y = df_test['impacted'].ravel()
-
-scaler = preprocessing.StandardScaler().fit(X)
-X_scaled = scaler.transform(X)
-
-X_scaled = np.array(X_scaled, dtype=float)
-y = np.array(y)
-
-mod = sm.OLS(y, X_scaled)
-fii = mod.fit()
-p_values = fii.summary2().tables[1]['P>|t|']
-
-print("F-test and p-values")
-print(["%.4f" % member for member in p_values])
-
-print('========= Step 3: M (impact) to Y (outcome) ==========')
-
-X = df_test[['impacted']]
-y = df_test[cost_var].ravel()
-
-scaler = preprocessing.StandardScaler().fit(X)
-X_scaled = scaler.transform(X)
-
-X_scaled = np.array(X_scaled, dtype=float)
-y = np.array(y)
-
-mod = sm.OLS(y, X_scaled)
-fii = mod.fit()
-p_values = fii.summary2().tables[1]['P>|t|']
-
-print("F-test and p-values")
-print(["%.4f" % member for member in p_values])
-
-print('========= Step 4: X (input) AND M (impact) to Y (outcome) ==========')
+res = 75
+X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+                                all_vars=covariate_list,
+                                third_var_set = 0.20, fourth_var_set = 52.0)
 
 
-X = df_test[['gap_ratio', 'RI', 'T_ratio', 'zeta_e', 'impacted']]
-y = df_test[cost_var].ravel()
+fig = plt.figure(figsize=(16, 7))
 
-scaler = preprocessing.StandardScaler().fit(X)
-X_scaled = scaler.transform(X)
+color = plt.cm.Set1(np.linspace(0, 1, 10))
 
-X_scaled = np.array(X_scaled, dtype=float)
-y = np.array(y)
+ax=fig.add_subplot(1, 2, 1)
 
-mod = sm.OLS(y, X_scaled)
-fii = mod.fit()
-p_values = fii.summary2().tables[1]['P>|t|']
 
-print("F-test and p-values")
-print(["%.4f" % member for member in p_values])
 
-#%% mediation analysis
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+Z = clf_struct.gpc.predict(X_plot)
 
-df_test = df.copy()
+lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
 
-X = df_test[['gap_ratio', 'RI', 'T_ratio', 'zeta_e', 'impacted']]
-y = df_test[cost_var].ravel()
+Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+Z_classif = Z_numbered.reshape(xx_pl.shape)
 
-# scaler = preprocessing.StandardScaler().fit(X)
-# X_scaled = scaler.transform(X)
+# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+plt.imshow(
+        Z_classif,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.coolwarm_r,
+    )
 
-X = np.asarray(X, dtype=float)
-y = np.asarray(y)
+ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
+           edgecolors='k', alpha = 1.0, label='CBF')
+ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
+           edgecolors='k', alpha = 1.0, label='MF')
+plt.legend(fontsize=axis_font)
 
-import statsmodels.api as sm
-from statsmodels.stats.mediation import Mediation
+ax.set_title(r'Superstructures', fontsize=title_font)
+ax.set_ylabel(r'Replacement freq', fontsize=axis_font)
+ax.set_xlabel(r'Time ratio', fontsize=axis_font)
 
-outcome_model = sm.OLS(y, X)
-res = outcome_model.fit()
-print(res.summary())
+#################################
+xvar = 'cmp_time_ratio'
+yvar = 'replacement_freq'
 
-mediator = np.asarray(df_test['impacted'])
-mediator_exog = df_test[['gap_ratio', 'RI', 'T_ratio', 'zeta_e']]
-mediator_exog = np.asarray(mediator_exog, dtype=float)
-mediator_model = sm.OLS(mediator, mediator_exog)
+res = 75
+X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+                                all_vars=covariate_list,
+                                third_var_set = 0.2, fourth_var_set = 52.0)
 
-# effect of gap ratio
-# causal mediation effect (CME) holds the treatment constant
-# direct effect (DE) holds the mediator constant and varies treatment
-med = Mediation(outcome_model, mediator_model, (3,3), 4).fit()
-print(med.summary())
+
+color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+ax=fig.add_subplot(1, 2, 2)
+
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+Z = clf_isol.gpc.predict(X_plot)
+
+lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+Z_numbered = clf_isol.gpc.predict_proba(X_plot)[:,1]
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+Z_classif = Z_numbered.reshape(xx_pl.shape)
+
+# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+plt.imshow(
+        Z_classif,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.coolwarm_r,
+    )
+
+ax.scatter(df_lrb[xvar], df_lrb[yvar], color=color[0],
+           edgecolors='k', alpha = 1.0, label='LRB')
+ax.scatter(df_tfp[xvar], df_tfp[yvar], color=color[1],
+           edgecolors='k', alpha = 1.0, label='TFP')
+plt.legend(fontsize=axis_font)
+
+ax.set_title(r'Isolators', fontsize=title_font)
+ax.set_ylabel(r'Replacement freq', fontsize=axis_font)
+ax.set_xlabel(r'Time ratio', fontsize=axis_font)
+
+#%%
+#################################
+xvar = 'replacement_freq'
+yvar = 'steel_cost_per_sf'
+
+res = 75
+X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+                                all_vars=covariate_list,
+                                third_var_set = 0.5, fourth_var_set = 0.5)
+
+
+fig = plt.figure(figsize=(16, 7))
+
+color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+ax=fig.add_subplot(1, 2, 1)
+
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+Z = clf_struct.gpc.predict(X_plot)
+
+lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+Z_classif = Z_numbered.reshape(xx_pl.shape)
+
+# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+plt.imshow(
+        Z_classif,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.coolwarm_r,
+    )
+
+ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
+           edgecolors='k', alpha = 1.0, label='CBF')
+ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
+           edgecolors='k', alpha = 1.0, label='MF')
+plt.legend(fontsize=axis_font)
+
+ax.set_title(r'Superstructures', fontsize=title_font)
+ax.set_xlabel(r'Replacement frequency', fontsize=axis_font)
+ax.set_ylabel(r'Steel cost per sf', fontsize=axis_font)
+
+#################################
+xvar = 'replacement_freq'
+yvar = 'steel_cost_per_sf'
+
+res = 75
+X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+                                all_vars=covariate_list,
+                                third_var_set = 0.5, fourth_var_set = 0.5)
+
+
+color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+ax=fig.add_subplot(1, 2, 2)
+
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+Z = clf_isol.gpc.predict(X_plot)
+
+lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+Z_numbered = clf_isol.gpc.predict_proba(X_plot)[:,1]
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+Z_classif = Z_numbered.reshape(xx_pl.shape)
+
+# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+plt.imshow(
+        Z_classif,
+        interpolation="nearest",
+        extent=(xx.min(), xx.max(),
+                yy.min(), yy.max()),
+        aspect="auto",
+        origin="lower",
+        cmap=plt.cm.coolwarm_r,
+    )
+
+ax.scatter(df_lrb[xvar], df_lrb[yvar], color=color[0],
+           edgecolors='k', alpha = 1.0, label='LRB')
+ax.scatter(df_tfp[xvar], df_tfp[yvar], color=color[1],
+           edgecolors='k', alpha = 1.0, label='TFP')
+plt.legend(fontsize=axis_font)
+
+ax.set_title(r'Isolators', fontsize=title_font)
+ax.set_xlabel(r'Replacement frequency', fontsize=axis_font)
+ax.set_ylabel(r'Steel cost per sf', fontsize=axis_font)

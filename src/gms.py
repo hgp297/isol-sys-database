@@ -153,7 +153,6 @@ def scale_ground_motion(input_df, return_list=False,
         filename = str(final_GM['filename'].iloc[ind]) # ground motion name
         gm_name = filename.replace('.AT2', '') # remove extension from file name
         sf = float(final_GM['sf_average_spectral'].iloc[ind])  # scale factor used
-        
         return(gm_name, sf, target_average)
 
 def show_selection(final_GM, target_spectrum, H1s):
