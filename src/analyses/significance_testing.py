@@ -212,7 +212,7 @@ plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("$R_y$", fontsize=axis_font)
 ax.set_ylabel('Cost ratio', fontsize=axis_font)
 ax.legend()
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 2)
 xvar = 'gap_ratio'
@@ -227,7 +227,7 @@ regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("$GR$", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 3)
 xvar = 'T_ratio'
@@ -242,7 +242,7 @@ regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("$T_M/T_{fb}$", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 4)
 xvar = 'zeta_e'
@@ -259,7 +259,7 @@ plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("$\zeta_e$", fontsize=axis_font)
 ax.set_ylabel('Cost ratio', fontsize=axis_font)
 ax.legend()
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 5)
 xvar = 'k_ratio'
@@ -274,7 +274,7 @@ regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("$k_1/k_2$", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 6)
 xvar = 'Q'
@@ -289,7 +289,7 @@ regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("$Q$", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 fig.tight_layout()
 
@@ -324,7 +324,7 @@ plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
 ax.set_xlabel("$R_y$", fontsize=axis_font)
 ax.set_ylabel('Cost ratio', fontsize=axis_font)
 ax.legend()
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 2)
 xvar = 'gap_ratio'
@@ -339,7 +339,7 @@ regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
 ax.set_xlabel("$GR$", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 3)
 xvar = 'T_ratio'
@@ -354,7 +354,7 @@ regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
 ax.set_xlabel("$T_M/T_{fb}$", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 4)
 xvar = 'zeta_e'
@@ -371,7 +371,7 @@ plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
 ax.set_xlabel("$\zeta_e$", fontsize=axis_font)
 ax.set_ylabel('Cost ratio', fontsize=axis_font)
 ax.legend()
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 5)
 xvar = 'k_ratio'
@@ -386,7 +386,7 @@ regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
 ax.set_xlabel("$k_1/k_2$", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 6)
 xvar = 'Q'
@@ -401,7 +401,7 @@ regr.fit(df_tfp[[xvar]], df_tfp[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(3), linewidth=3)
 ax.set_xlabel("$Q$", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 fig.tight_layout()
 
@@ -436,7 +436,7 @@ plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("num stories", fontsize=axis_font)
 ax.set_ylabel('Cost ratio', fontsize=axis_font)
 ax.legend()
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 2)
 xvar = 'bldg_area'
@@ -451,7 +451,7 @@ regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("building area", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 3)
 xvar = 'L_bay'
@@ -466,7 +466,7 @@ regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("L bay", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 4)
 xvar = 'h_story'
@@ -483,7 +483,7 @@ plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("h story", fontsize=axis_font)
 ax.set_ylabel('Cost ratio', fontsize=axis_font)
 ax.legend()
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 5)
 xvar = 'h_bldg'
@@ -498,7 +498,7 @@ regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("h building", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 ax = fig.add_subplot(2, 3, 6)
 xvar = 'L_bldg'
@@ -513,6 +513,6 @@ regr.fit(df_mf[[xvar]], df_mf[['cmp_cost_ratio']])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=cmap(0), linewidth=3)
 ax.set_xlabel("L building", fontsize=axis_font)
-ax.set_ylim([0, 0.2])
+ax.set_ylim([0, 0.3])
 
 fig.tight_layout()
