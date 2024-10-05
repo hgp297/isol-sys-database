@@ -2847,7 +2847,8 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     inv_performance = {
         'time': inv_downtime,
         'cost': inv_repair_cost,
-        'replacement_freq': inv_repl_risk}
+        'replacement_freq': inv_repl_risk,
+        'upfront_cost': inv_upfront_cost}
     
     bldg_area = (config_dict['num_bays']*config_dict['L_bay'])**2 * (config_dict['num_stories'] + 1)
 
@@ -3125,6 +3126,49 @@ def process_results(run_case):
  cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_strict')
 (cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
  cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict')
+
+#%% latex printing
+
+def print_latex_inverse_table(sys_name, design_dict, performance_dict):
+
+    # collect variable: currently working with means of medians
+    cost_var_ida = 'cost_50%'
+    time_var_ida = 'time_l_50%'
+    
+    cost_var = 'cmp_cost_ratio'
+    time_var = 'cmp_time_ratio'
+    
+    GR = design_dict['gap_ratio']
+    Ry = design_dict['RI']
+    T_ratio = design_dict['T_ratio'] # this is the "designed" value
+    zeta = design_dict['zeta_e']
+    GP_cost_ratio = performance_dict['cost']
+    GP_time_ratio = performance_dict['time']
+    GP_repl_risk = performance_dict['replacement_freq']
+    upfront_cost = performance_dict['upfront_cost']
+    
+    # print('Average median repair cost: ',
+    #       f'${val_cost[0]:,.2f}')
+    # print('Repair cost ratio: ', 
+    #       f'{val_cost_ratio[0]:,.3f}')
+    # print('Repair time ratio: ',
+    #       f'{val_downtime_ratio[0]:,.3f}')
+    # print('Estimated replacement frequency: ',
+    #       f'{val_replacement[0]:.2%}')
+    latex_string = f"& {sys_name} & {GR:.2f} & {Ry:.2f} & {T_ratio:.2f} & {zeta:.2f} \
+        & {GP_cost_ratio:.2f} & {GP_time_ratio:.2f} & {GP_repl_risk:.2f} &  \${upfront_cost/1e6:.2f} M \\\\"
+    print(latex_string)
+    return
+
+print_latex_inverse_table('MF-TFP', mf_tfp_inv_design, mf_tfp_inv_performance)   
+print_latex_inverse_table('MF-LRB', mf_lrb_inv_design, mf_lrb_inv_performance)   
+print_latex_inverse_table('CBF-TFP', cbf_tfp_inv_design, cbf_tfp_inv_performance)   
+print_latex_inverse_table('CBF-LRB', cbf_lrb_inv_design, cbf_lrb_inv_performance)   
+
+print_latex_inverse_table('MF-TFP', mf_tfp_strict_design, mf_tfp_strict_performance)   
+print_latex_inverse_table('MF-LRB', mf_lrb_strict_design, mf_lrb_strict_performance)   
+print_latex_inverse_table('CBF-TFP', cbf_tfp_strict_design, cbf_tfp_strict_performance)   
+print_latex_inverse_table('CBF-LRB', cbf_lrb_strict_design, cbf_lrb_strict_performance)   
 
 #%% debrief predictions: try to get predictions of actual ran building
 # two values differ
@@ -3810,6 +3854,697 @@ plt.show()
 
 # plt.savefig('./eng_struc_figures/inverse_dv_distro.pdf')
 
+#%% filter design graphic
+
+# TODO: filter
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+from matplotlib.lines import Line2D
+fig = plt.figure(figsize=(13, 11))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+lvls_cost = np.array([0.2])
+lvls_time = np.array([0.2])
+lvls_repl = np.array([0.1])
+
+res = 100
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.2, fourth_var_set = 0.24)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+
+#### MF-TFP
+
+ax = fig.add_subplot(2, 2, 1)
+# plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_cost_mf_tfp_i.gpr,
+                       mdl_cost_mf_tfp_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cost = Z.reshape(xx_pl.shape)
+
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_time_mf_tfp_i.gpr,
+                       mdl_time_mf_tfp_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_time = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.1])
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_repl_mf_tfp_i.gpr,
+                       mdl_repl_mf_tfp_o.gpr,
+                       outcome=repl_var)
+
+Z = np.array(grid_repl)
+Z_repl = Z.reshape(xx_pl.shape)
+
+
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+ax.grid(visible=True)
+
+
+
+ax.set_title('a) MF-TFP', fontsize=title_font)
+# ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+
+ax.set_xlim([0.35, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+#### MF-LRB
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.35, fourth_var_set = 0.20)
+
+ax = fig.add_subplot(2, 2, 2)
+# plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_cost_mf_lrb_i.gpr,
+                       mdl_cost_mf_lrb_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cost = Z.reshape(xx_pl.shape)
+
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_time_mf_lrb_i.gpr,
+                       mdl_time_mf_lrb_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_time = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.1])
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_repl_mf_lrb_i.gpr,
+                       mdl_repl_mf_lrb_o.gpr,
+                       outcome=repl_var)
+
+Z = np.array(grid_repl)
+Z_repl = Z.reshape(xx_pl.shape)
+
+
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+ax.grid(visible=True)
+
+
+ax.set_title('b) MF-LRB', fontsize=title_font)
+# ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+
+ax.set_xlim([0.35, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+#### CBF-TFP
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 5.79, fourth_var_set = 0.23)
+ax = fig.add_subplot(2, 2, 3)
+# plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_cbf_tfp.gpc,
+                       mdl_cost_cbf_tfp_i.gpr,
+                       mdl_cost_cbf_tfp_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cost = Z.reshape(xx_pl.shape)
+
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_cbf_tfp.gpc,
+                       mdl_time_cbf_tfp_i.gpr,
+                       mdl_time_cbf_tfp_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_time = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.1])
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_cbf_tfp.gpc,
+                       mdl_repl_cbf_tfp_i.gpr,
+                       mdl_repl_cbf_tfp_o.gpr,
+                       outcome=repl_var)
+
+Z = np.array(grid_repl)
+Z_repl = Z.reshape(xx_pl.shape)
+
+
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+ax.grid(visible=True)
+
+
+ax.set_title('c) CBF-TFP', fontsize=title_font)
+# ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+custom_lines = [Line2D([-1], [-1], color='black', 
+                       linestyle='-' ),
+                Line2D([-1], [-1], color='black', 
+                                       linestyle='--' ),
+                Line2D([-1], [-1], color='black', 
+                                       linestyle=':' ),
+                ]
+
+ax.legend(custom_lines, ['Repair cost ratio', 'Repair time ratio', 'Replacement probability'], 
+           fontsize=subt_font)
+
+ax.set_xlim([0.35, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+fig.tight_layout()
+
+#### CBF-LRB
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 4.79, fourth_var_set = 0.21)
+ax = fig.add_subplot(2, 2, 4)
+# plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_cbf_lrb.gpc,
+                       mdl_cost_cbf_lrb_i.gpr,
+                       mdl_cost_cbf_lrb_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cost = Z.reshape(xx_pl.shape)
+
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_cbf_lrb.gpc,
+                       mdl_time_cbf_lrb_i.gpr,
+                       mdl_time_cbf_lrb_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_time = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.1])
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_cbf_lrb.gpc,
+                       mdl_repl_cbf_lrb_i.gpr,
+                       mdl_repl_cbf_lrb_o.gpr,
+                       outcome=repl_var)
+
+Z = np.array(grid_repl)
+Z_repl = Z.reshape(xx_pl.shape)
+
+
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+ax.grid(visible=True)
+
+
+ax.set_title('d) CBF-LRB', fontsize=title_font)
+# ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+
+ax.set_xlim([0.35, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+fig.tight_layout()
+
+# ax.text(1.2, 1.00, 'OK space',
+#           fontsize=axis_font, color='green')
+#%% filter design graphic
+
+# TODO: filter, secondary variables
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+from matplotlib.lines import Line2D
+fig = plt.figure(figsize=(13, 11))
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+lvls_cost = np.array([0.2])
+lvls_time = np.array([0.2])
+lvls_repl = np.array([0.1])
+
+res = 100
+X_plot = make_2D_plotting_space(df_mf[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 0.88, fourth_var_set = 2.25)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+
+#### MF-TFP
+
+ax = fig.add_subplot(2, 2, 1)
+# plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_cost_mf_tfp_i.gpr,
+                       mdl_cost_mf_tfp_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cost = Z.reshape(xx_pl.shape)
+
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_time_mf_tfp_i.gpr,
+                       mdl_time_mf_tfp_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_time = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.1])
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_repl_mf_tfp_i.gpr,
+                       mdl_repl_mf_tfp_o.gpr,
+                       outcome=repl_var)
+
+Z = np.array(grid_repl)
+Z_repl = Z.reshape(xx_pl.shape)
+
+
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+ax.grid(visible=True)
+
+custom_lines = [Line2D([-1], [-1], color='black', 
+                       linestyle='-' ),
+                Line2D([-1], [-1], color='black', 
+                                       linestyle='--' ),
+                Line2D([-1], [-1], color='black', 
+                                       linestyle=':' ),
+                ]
+
+ax.legend(custom_lines, ['Repair cost ratio', 'Repair time ratio', 'Replacement probability'], 
+           fontsize=subt_font)
+
+ax.set_title('a) MF-TFP', fontsize=title_font)
+# ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+
+# ax.set_xlim([0.35, 2.0])
+# ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+# ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+
+#### MF-LRB
+X_plot = make_2D_plotting_space(df_mf[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.19, fourth_var_set = 2.25)
+
+ax = fig.add_subplot(2, 2, 2)
+# plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_cost_mf_lrb_i.gpr,
+                       mdl_cost_mf_lrb_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cost = Z.reshape(xx_pl.shape)
+
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_time_mf_lrb_i.gpr,
+                       mdl_time_mf_lrb_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_time = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.1])
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_repl_mf_lrb_i.gpr,
+                       mdl_repl_mf_lrb_o.gpr,
+                       outcome=repl_var)
+
+Z = np.array(grid_repl)
+Z_repl = Z.reshape(xx_pl.shape)
+
+
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+ax.grid(visible=True)
+
+
+ax.set_title('b) MF-LRB', fontsize=title_font)
+# ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+
+# ax.set_xlim([0.35, 2.0])
+# ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+# ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+# ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+
+#### CBF-TFP
+X_plot = make_2D_plotting_space(df_cbf[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.26, fourth_var_set = 2.16)
+ax = fig.add_subplot(2, 2, 3)
+# plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_cbf_tfp.gpc,
+                       mdl_cost_cbf_tfp_i.gpr,
+                       mdl_cost_cbf_tfp_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cost = Z.reshape(xx_pl.shape)
+
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_cbf_tfp.gpc,
+                       mdl_time_cbf_tfp_i.gpr,
+                       mdl_time_cbf_tfp_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_time = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.1])
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_cbf_tfp.gpc,
+                       mdl_repl_cbf_tfp_i.gpr,
+                       mdl_repl_cbf_tfp_o.gpr,
+                       outcome=repl_var)
+
+Z = np.array(grid_repl)
+Z_repl = Z.reshape(xx_pl.shape)
+
+
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+ax.grid(visible=True)
+
+
+ax.set_title('c) CBF-TFP', fontsize=title_font)
+# ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+
+
+# ax.set_xlim([0.35, 2.0])
+# ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+
+fig.tight_layout()
+
+#### CBF-LRB
+X_plot = make_2D_plotting_space(df_cbf[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.52, fourth_var_set = 1.97)
+ax = fig.add_subplot(2, 2, 4)
+# plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_cbf_lrb.gpc,
+                       mdl_cost_cbf_lrb_i.gpr,
+                       mdl_cost_cbf_lrb_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cost = Z.reshape(xx_pl.shape)
+
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_cbf_lrb.gpc,
+                       mdl_time_cbf_lrb_i.gpr,
+                       mdl_time_cbf_lrb_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_time = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.1])
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_cbf_lrb.gpc,
+                       mdl_repl_cbf_lrb_i.gpr,
+                       mdl_repl_cbf_lrb_o.gpr,
+                       outcome=repl_var)
+
+Z = np.array(grid_repl)
+Z_repl = Z.reshape(xx_pl.shape)
+
+
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+ax.grid(visible=True)
+
+
+ax.set_title('d) CBF-LRB', fontsize=title_font)
+ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+# ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+
+
+# ax.set_xlim([0.35, 2.0])
+# ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+fig.tight_layout()
 #%%
 
 # TODO: plot ideas: sensitivity, filter plot, 3D prediction, 
