@@ -1431,6 +1431,7 @@ class Building:
         vecxz = np.cross(brace_x_axis_R,vecxy_brace) # What OpenSees expects
         vecxz_brace_R = vecxz / np.sqrt(np.sum(vecxz**2))
         
+        # TODO: transform the beams and columns to Corotational
         ops.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
         ops.geomTransf('PDelta', beam_transf_tag, *vecxz_beam) # beams
         ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns

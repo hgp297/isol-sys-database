@@ -430,7 +430,7 @@ for i, pk in enumerate(peaks):
 # print(d_mid)
 
 ops.wipe()
-
+#%%
 ############################################################################
 #              Plot results
 ############################################################################
@@ -492,6 +492,20 @@ plt.grid(True)
 #     disp = ops.nodeDisp(201, 1)
 #     print('Force: %.5f' %fx)
 #     print('Displacement: %.5f' %disp)
+
+# force disp
+fig, ax = plt.subplots()
+plt.plot(disps['displacement'], -forces['force'], color='goldenrod')
+plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+plt.box(False) #remove box
+# ax.spines['top'].set_visible(False)
+# ax.spines['right'].set_visible(False)
+# ax.spines['bottom'].set_visible(False)
+# ax.spines['left'].set_visible(False)
+# plt.title('Force-displacement recorded at end node')
+# plt.ylabel('Force (kip)')
+# plt.xlabel('Displacement (in)')
+# plt.grid(True)
 
 #%% animate
 

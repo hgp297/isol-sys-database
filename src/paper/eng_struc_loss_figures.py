@@ -393,7 +393,7 @@ def loss_percentages(df_main, df_loss, df_max):
     # but working in parallel (2x faster)
     df_main['replacement_time'] = df_main['bldg_area']/1000*365
     df_main['total_cmp_time'] = df_max['time_l_50%']
-    df_main['cmp_replace_time_ratio'] = df['total_cmp_time']/df_main['replacement_time']
+    df_main['cmp_replace_time_ratio'] = df_main['total_cmp_time']/df_main['replacement_time']
     df_main['median_time_ratio'] = df_loss['time_l_50%']/df_main['replacement_time']
     df_main['cmp_time_ratio'] = df_loss['time_l_50%']/df_main['total_cmp_time']
 
@@ -403,7 +403,7 @@ def loss_percentages(df_main, df_loss, df_max):
 
     df_main['impacted'] = pd.to_numeric(df_main['impacted'])
 
-    mask = df['B_50%'].isnull()
+    mask = df_loss['B_50%'].isnull()
 
     df_main['B_50%'].loc[mask] = df_max['B_50%'].loc[mask]
     df_main['C_50%'].loc[mask] = df_max['C_50%'].loc[mask]
@@ -1216,23 +1216,22 @@ plt.show()
 #%%
 
 # TODO: impact classification plot
-
-
+'''
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 22
+axis_font = 32
 title_font = 22
-subt_font = 18
+subt_font = 32
 import matplotlib as mpl
 label_size = 18
 clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-# plt.close('all')
+plt.close('all')
 # make grid and plot classification predictions
 
-fig, ax = plt.subplots(1, 1, figsize=(9,7))
+fig, ax = plt.subplots(1, 1, figsize=(7,6))
 
 xvar = 'gap_ratio'
 yvar = 'T_ratio'
@@ -1245,13 +1244,8 @@ xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 # GPC impact prediction
-Z = mdl_impact_mf_tfp.gpc.predict_proba(X_plot)[:,1]
+Z = mdl_impact_mf_lrb.gpc.predict_proba(X_plot)[:,1]
 
-
-# # kernel logistic impact prediction
-# K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
-# probs_imp = mdl_impact.log_reg_kernel.predict_proba(K_space)
-# Z = probs_imp[:,1]
 
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
@@ -1261,16 +1255,6 @@ xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
 Z_classif = Z.reshape(xx_pl.shape)
 
-# ax1.imshow(
-#         Z,
-#         interpolation="nearest",
-#         extent=(xx.min(), xx.max(),
-#                 yy.min(), yy.max()),
-#         aspect="auto",
-#         origin="lower",
-#         cmap=plt.cm.Greys,
-#     )
-
 plt.imshow(
         Z_classif,
         interpolation="nearest",
@@ -1278,131 +1262,47 @@ plt.imshow(
                 yy.min(), yy.max()),
         aspect="auto",
         origin="lower",
-        cmap=plt.cm.Blues,
+        cmap=plt.cm.RdYlGn_r,
     )
 plt_density = 200
-cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.1, cmap='Blues', vmin=-1,
+cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.5, cmap='binary',
                   levels=np.linspace(0.1,1.0,num=10))
-clabels = plt.clabel(cs, fontsize=clabel_size, colors='black')
+clabels = plt.clabel(cs, fontsize=subt_font, colors='black')
 [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 
 ax.scatter(df_mf_tfp_i[xvar][:plt_density],
             df_mf_tfp_i[yvar][:plt_density],
-            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Impacted')
+            s=120, c='red', marker='X', edgecolors='black', label='Impacted')
 
 ax.scatter(df_mf_tfp_o[xvar][:plt_density],
             df_mf_tfp_o[yvar][:plt_density],
-            s=40, c='azure', edgecolors='k', label='No impact')
-plt.legend(fontsize=axis_font)
+            s=80, c='green', edgecolors='white', label='No impact')
+# plt.legend(fontsize=axis_font)
 
-ax.set_xlim(0.3, 2.0)
-ax.set_title(r'Impact likelihood: $R_y = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
+# ax.set_xlim(0.3, 2.0)
+# ax.set_title(r'Impact likelihood: $R_y = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 
+# ax.grid('off')
+plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
 fig.tight_layout()
 plt.show()
 
 
-####
+#%% nonimpact prediction
+
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 22
-title_font = 22
-subt_font = 18
-import matplotlib as mpl
-label_size = 18
-clabel_size = 16
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-
-# plt.close('all')
-# make grid and plot classification predictions
-
-fig, ax = plt.subplots(1, 1, figsize=(9,7))
-
-xvar = 'T_ratio'
-yvar = 'zeta_e'
-
-res = 75
-X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
-                            all_vars=covariate_list,
-                            third_var_set = 1.0, fourth_var_set = 2.0)
-xx = X_plot[xvar]
-yy = X_plot[yvar]
-
-# GPC impact prediction
-Z = mdl_impact_mf_tfp.gpc.predict_proba(X_plot)[:,1]
-
-
-# # kernel logistic impact prediction
-# K_space = mdl_impact.get_kernel(X_plot, kernel_name='rbf', gamma=0.25)
-# probs_imp = mdl_impact.log_reg_kernel.predict_proba(K_space)
-# Z = probs_imp[:,1]
-
-x_pl = np.unique(xx)
-y_pl = np.unique(yy)
-
-# collapse predictions
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-
-Z_classif = Z.reshape(xx_pl.shape)
-
-# ax1.imshow(
-#         Z,
-#         interpolation="nearest",
-#         extent=(xx.min(), xx.max(),
-#                 yy.min(), yy.max()),
-#         aspect="auto",
-#         origin="lower",
-#         cmap=plt.cm.Greys,
-#     )
-
-plt.imshow(
-        Z_classif,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.Blues,
-    )
-plt_density = 200
-cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.1, cmap='Blues', vmin=-1,
-                  levels=np.linspace(0.1,1.0,num=10))
-clabels = plt.clabel(cs, fontsize=clabel_size, colors='black')
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-
-ax.scatter(df_mf_tfp_i[xvar][:plt_density],
-            df_mf_tfp_i[yvar][:plt_density],
-            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Impacted')
-
-ax.scatter(df_mf_tfp_o[xvar][:plt_density],
-            df_mf_tfp_o[yvar][:plt_density],
-            s=40, c='azure', edgecolors='k', label='No impact')
-plt.legend(fontsize=axis_font)
-
-# ax.set_xlim(0.3, 2.0)
-ax.set_title(r'Impact likelihood: $R_y = 2.0$, $GR = 1.0$', fontsize=title_font)
-ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
-ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
-
-fig.tight_layout()
-plt.show()
-
-
-#%% 3d surf for replacement risk
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
+axis_font = 32
 subt_font = 18
 label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-# plt.close('all')
+plt.close('all')
 
-fig = plt.figure(figsize=(16, 7))
+fig = plt.figure(figsize=(7,6))
 
 
 
@@ -1411,7 +1311,71 @@ xvar = 'gap_ratio'
 yvar = 'RI'
 
 res = 75
-X_plot = make_2D_plotting_space(df_cbf_lrb[covariate_list], res, x_var=xvar, y_var=yvar, 
+X_plot = make_2D_plotting_space(df_mf_lrb_i[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 4.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+Z = mdl_cost_mf_lrb_i.gpr.predict(X_plot)
+# Z, stdev = mdl_cost_miss.predict_gpr_mean_fcn(X_plot)
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 1, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                        linewidth=0, antialiased=False, alpha=0.6,
+                        vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_lrb_i[xvar], df_mf_lrb_i[yvar], df_mf_lrb_i[cost_var], c=df_mf_lrb_i[cost_var],
+            edgecolors='k', alpha = 0.7, cmap='Blues')
+
+# ax.set_zlim([0.0, 0.08])
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+
+ax.set_xlabel('$GR$', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Repair loss', fontsize=axis_font)
+ax.grid()
+plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+# plt.box(False) #remove box
+# ax.set_title(r'GP regression', fontsize=subt_font)
+fig.tight_layout()
+
+#%% 3d surf for replacement risk
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 32
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(7, 6))
+
+
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(df_mf_lrb[covariate_list], res, x_var=xvar, y_var=yvar, 
                             all_vars=covariate_list,
                             third_var_set = 3.0, fourth_var_set = 0.15)
 xx = X_plot[xvar]
@@ -1431,7 +1395,7 @@ xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
 Z_surf = np.array(Z).reshape(xx_pl.shape)
 
-ax=fig.add_subplot(1, 2, 1, projection='3d')
+ax=fig.add_subplot(1, 1, 1, projection='3d')
 surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
                        linewidth=0, antialiased=False, alpha=0.6,
                        vmin=-0.1)
@@ -1439,7 +1403,7 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
-df_sc = df_cbf_lrb[(df_cbf_lrb['T_ratio']<=3.5) & (df_cbf_lrb['T_ratio']>=2.5)]
+df_sc = df_mf_lrb.copy()
 
 ax.scatter(df_sc[xvar], df_sc[yvar], df_sc['replacement_freq'], c=df_sc['replacement_freq'],
            edgecolors='k', alpha = 0.7, cmap='Blues')
@@ -1450,63 +1414,16 @@ zlim = ax.get_zlim()
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
 cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 
-ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_xlabel('$GR$', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
-ax.set_zlabel('Replacement risk', fontsize=axis_font)
-ax.set_title('$T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
-
-#################################
-xvar = 'T_ratio'
-yvar = 'zeta_e'
-
-res = 75
-X_plot = make_2D_plotting_space(df_cbf_lrb[covariate_list], res, x_var=xvar, y_var=yvar, 
-                            all_vars=covariate_list,
-                            third_var_set = 1.0, fourth_var_set = 2.0)
-xx = X_plot[xvar]
-yy = X_plot[yvar]
-
-
-Z = predict_DV(X_plot,
-                       mdl_impact_cbf_lrb.gpc,
-                       mdl_cost_cbf_lrb_i.gpr,
-                       mdl_cost_cbf_lrb_o.gpr,
-                       outcome=repl_var)
-
-
-x_pl = np.unique(xx)
-y_pl = np.unique(yy)
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-
-Z_surf = np.array(Z).reshape(xx_pl.shape)
-
-ax=fig.add_subplot(1, 2, 2, projection='3d')
-surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
-                       linewidth=0, antialiased=False, alpha=0.6,
-                       vmin=-0.1)
-ax.xaxis.pane.fill = False
-ax.yaxis.pane.fill = False
-ax.zaxis.pane.fill = False
-
-df_sc = df_cbf_lrb[(df_cbf_lrb['gap_ratio']<=1.2) & (df_cbf_lrb['gap_ratio']>=0.8)]
-
-ax.scatter(df_sc[xvar], df_sc[yvar], df_sc['replacement_freq'], c=df_sc['replacement_freq'],
-           edgecolors='k', alpha = 0.7, cmap='Blues')
-
-xlim = ax.get_xlim()
-ylim = ax.get_ylim()
-zlim = ax.get_zlim()
-cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
-cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
-
-ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
-ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
-ax.set_zlabel('Replacement risk', fontsize=axis_font)
-ax.set_title('$GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
-fig.tight_layout()
-
+ax.set_zlabel('Repair loss', fontsize=axis_font)
+ax.grid()
+plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+# plt.box(False) #remove box
+# ax.set_title(r'GP regression', fontsize=subt_font)
 fig.tight_layout()
 plt.show()
+'''
 
 #%% targeted contours for all systems
 
@@ -1523,8 +1440,6 @@ def design_line(level, xoffset=0.05, y_loc=0.55, Ry_target=2.0):
     pts[:,0] = Ry_target
 
     lq = interp(pts)
-
-    the_points = np.vstack((pts[:,0], pts[:,1], lq))
 
     theGapIdx = np.argmin(abs(lq - level))
 
@@ -1545,7 +1460,7 @@ label_size = 20
 clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 6))
 
@@ -2714,6 +2629,7 @@ reg_dict = {
     'cbf':reg_cbf
     }
 
+
 #%% Testing the design space
 
 def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
@@ -2878,8 +2794,105 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     print('Predicted replacement risk: ',
           f'{inv_repl_risk:.2%}')
     
-    return(inv_design, inv_performance)
+    return(inv_design, inv_performance, X_design)
 
+#%% dummy design space
+
+# my_targets = {
+#     cost_var: 0.2,
+#     time_var: 0.2,
+#     'replacement_freq': 0.1,
+#     'constructability': -6.0}
+
+# config_dict = {
+#     'num_stories': 4,
+#     'h_story': 13.0,
+#     'num_bays': 4,
+#     'num_frames': 2,
+#     'S_s': 2.2815,
+#     'L_bay': 30.0,
+#     'S_1': 1.017
+#     }
+
+# og_space = make_design_space(10)
+# dummy_design, dummy_performance, dummy_space = grid_search_inverse_design(
+#     10, 'mf_lrb', my_targets, config_dict, 
+#     impact_classification_mdls, cost_regression_mdls, 
+#     time_regression_mdls, repl_regression_mdls,
+#     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
+
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 32
+# subt_font = 18
+# label_size = 12
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+
+
+# ### og space
+# fig = plt.figure(figsize=(7,6))
+
+# #################################
+# xvar = 'gap_ratio'
+# yvar = 'RI'
+# ax=fig.add_subplot(1, 1, 1, projection='3d')
+
+# ax.scatter(og_space[xvar], og_space[yvar], og_space['T_ratio'],
+#             edgecolors='k', depthshade=0.0)
+
+# # ax.set_zlim([0.0, 0.08])
+
+# xlim = ax.get_xlim()
+# ylim = ax.get_ylim()
+# zlim = ax.get_zlim()
+
+# ax.xaxis.pane.fill = False
+# ax.yaxis.pane.fill = False
+# ax.zaxis.pane.fill = False
+
+# ax.set_xlabel('$GR$', fontsize=axis_font)
+# ax.set_ylabel('$R_y$', fontsize=axis_font)
+# ax.set_zlabel('$T_M/T_{fb}$', fontsize=axis_font)
+# ax.grid()
+# # plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+# # plt.box(False) #remove box
+# # ax.set_title(r'GP regression', fontsize=subt_font)
+# fig.tight_layout()
+
+
+# ### filtered space
+# fig = plt.figure(figsize=(7,6))
+
+# #################################
+# xvar = 'gap_ratio'
+# yvar = 'RI'
+# ax=fig.add_subplot(1, 1, 1, projection='3d')
+
+# ax.scatter(dummy_space[xvar], dummy_space[yvar], dummy_space['T_ratio'],
+#             edgecolors='k', depthshade=0.0)
+
+# # ax.set_zlim([0.0, 0.08])
+
+# xlim = ax.get_xlim()
+# ylim = ax.get_ylim()
+# zlim = ax.get_zlim()
+
+# ax.xaxis.pane.fill = False
+# ax.yaxis.pane.fill = False
+# ax.zaxis.pane.fill = False
+
+# ax.set_xlabel('$GR$', fontsize=axis_font)
+# ax.set_ylabel('$R_y$', fontsize=axis_font)
+# ax.set_zlabel('$T_M/T_{fb}$', fontsize=axis_font)
+# ax.grid()
+# # plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+# # plt.box(False) #remove box
+# # ax.set_title(r'GP regression', fontsize=subt_font)
+# fig.tight_layout()
+
+#%% inverse design filters
 ### regular
 config_dict = {
     'num_stories': 4,
@@ -2897,25 +2910,25 @@ my_targets = {
     'replacement_freq': 0.1,
     'constructability': -6.0}
 
-mf_tfp_inv_design, mf_tfp_inv_performance = grid_search_inverse_design(
+mf_tfp_inv_design, mf_tfp_inv_performance, mf_tfp_space = grid_search_inverse_design(
     20, 'mf_tfp', my_targets, config_dict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
-mf_lrb_inv_design, mf_lrb_inv_performance = grid_search_inverse_design(
+mf_lrb_inv_design, mf_lrb_inv_performance, mf_lrb_space = grid_search_inverse_design(
     20, 'mf_lrb', my_targets, config_dict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
-cbf_tfp_inv_design, cbf_tfp_inv_performance = grid_search_inverse_design(
+cbf_tfp_inv_design, cbf_tfp_inv_performance, cbf_tfp_space = grid_search_inverse_design(
     20, 'cbf_tfp', my_targets, config_dict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
-cbf_lrb_inv_design, cbf_lrb_inv_performance = grid_search_inverse_design(
+cbf_lrb_inv_design, cbf_lrb_inv_performance, cbf_lrb_space = grid_search_inverse_design(
     20, 'cbf_lrb', my_targets, config_dict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
@@ -2938,25 +2951,25 @@ my_targets = {
     'replacement_freq': 0.05,
     'constructability': -6.0}
 
-mf_tfp_strict_design, mf_tfp_strict_performance = grid_search_inverse_design(
+mf_tfp_strict_design, mf_tfp_strict_performance, mf_tfp_strict_space = grid_search_inverse_design(
     20, 'mf_tfp', my_targets, config_dict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
-mf_lrb_strict_design, mf_lrb_strict_performance = grid_search_inverse_design(
+mf_lrb_strict_design, mf_lrb_strict_performance, mf_lrb_strict_space = grid_search_inverse_design(
     20, 'mf_lrb', my_targets, config_dict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
-cbf_tfp_strict_design, cbf_tfp_strict_performance = grid_search_inverse_design(
+cbf_tfp_strict_design, cbf_tfp_strict_performance, cbf_tfp_strict_space = grid_search_inverse_design(
     20, 'cbf_tfp', my_targets, config_dict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
-cbf_lrb_strict_design, cbf_lrb_strict_performance = grid_search_inverse_design(
+cbf_lrb_strict_design, cbf_lrb_strict_performance, cbf_lrb_strict_space = grid_search_inverse_design(
     20, 'cbf_lrb', my_targets, config_dict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
@@ -3030,7 +3043,8 @@ cbf_lrb_dict_strict = my_design.to_dict()
 # TODO: validation
 
 def process_results(run_case):
-
+    
+    import numpy as np
     # load in validation and max run
     val_dir = '../../data/validation/'+run_case+'/'
     
@@ -3056,6 +3070,12 @@ def process_results(run_case):
     val_cost_ratio = np.zeros((3,))
     val_downtime_ratio = np.zeros((3,))
     val_downtime = np.zeros((3,))
+    impact_freq = np.zeros((3,))
+    struct_cost = np.zeros((3,))
+    nsc_cost = np.zeros((3,))
+    gap_ratios = np.zeros((3,))
+    T_ratios = np.zeros((3,))
+    
     
     # collect variable: currently working with means of medians
     cost_var_ida = 'cost_50%'
@@ -3073,14 +3093,24 @@ def process_results(run_case):
         val_cost_ratio[i] = val_ida[cost_var].mean()
         val_downtime[i] = loss_ida[time_var_ida].mean()
         val_downtime_ratio[i] = val_ida[time_var].mean()
+        impact_freq[i] = val_ida['impacted'].mean()
+        struct_cost[i] = val_ida['B_50%'].mean()
+        nsc_cost[i] = val_ida['C_50%'].mean() + val_ida['D_50%'].mean() + val_ida['E_50%'].mean() 
+            
         
-    print('==================================')
-    print('   Validation results  (1.0 MCE)  ')
-    print('==================================')
-
-    design_tested = ida_results_df[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
-    design_list = []
+        zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+        BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+        Bm = np.interp(val_ida['zeta_e'], zetaRef, BmRef)
+        
+        gap_ratios_all = (val_ida['constructed_moat']*4*pi**2)/ \
+            (g*(val_ida['sa_tm']/Bm)*val_ida['T_m']**2)
+        gap_ratios[i] = gap_ratios_all.mean()
+            
+        T_ratios[i] = val_ida['T_m'].mean() / val_ida['T_fb'].mean()
     
+    
+    
+    design_list = []
     ss_sys = ida_results_df['superstructure_system'].iloc[0]
     iso_sys = ida_results_df['isolator_system'].iloc[0]
     if ss_sys == 'CBF':
@@ -3092,19 +3122,47 @@ def process_results(run_case):
     else:
         design_list.extend(['mu_1', 'mu_2', 'R_1', 'R_2'])
         
-    design_specifics = ida_results_df[design_list].iloc[0]
     
-    print('System:', ss_sys+'-'+iso_sys)
-    print('Average median repair cost: ',
-          f'${val_cost[0]:,.2f}')
-    print('Repair cost ratio: ', 
-          f'{val_cost_ratio[0]:,.3f}')
-    print('Repair time ratio: ',
-          f'{val_downtime_ratio[0]:,.3f}')
-    print('Estimated replacement frequency: ',
-          f'{val_replacement[0]:.2%}')
-    print(design_tested)
-    print(design_specifics)
+    sys_name = ss_sys+'-'+iso_sys
+    
+    # design_tested = ida_results_df[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+    # design_specifics = ida_results_df[design_list].iloc[0]
+    # print('==================================')
+    # print('   Validation results  (1.0 MCE)  ')
+    # print('==================================')
+    
+    # print('System:', ss_sys+'-'+iso_sys)
+    # print('Average median repair cost: ',
+    #       f'${val_cost[0]:,.2f}')
+    # print('Repair cost ratio: ', 
+    #       f'{val_cost_ratio[0]:,.3f}')
+    # print('Repair time ratio: ',
+    #       f'{val_downtime_ratio[0]:,.3f}')
+    # print('Estimated replacement frequency: ',
+    #       f'{val_replacement[0]:.2%}')
+    # print(design_tested)
+    # print(design_specifics)
+    
+    latex_string = f"& {sys_name} & {val_cost_ratio[0]:.3f} & {val_cost_ratio[1]:.3f} & {val_cost_ratio[2]:.3f} \
+        & {val_downtime_ratio[0]:.3f} & {val_downtime_ratio[1]:.3f} & {val_downtime_ratio[2]:.3f} \
+            & {val_replacement[0]:.3f} & {val_replacement[1]:.3f} & {val_replacement[2]:.3f} \\\\"
+    
+    
+    print(latex_string)  
+    # n_workers = (ida_results_df['bldg_area']/1000).mean()
+
+    # print('Cost total:', ida_results_df['total_cmp_cost'].mean()/1e6)
+    # print('Time total:', ida_results_df['total_cmp_time'].mean()/n_workers)
+    
+    # print('GR:', gap_ratios)
+    # print('TR:', T_ratios)
+    # print('Impact:', impact_freq)
+    # print('Structural cost:', struct_cost/1e6)
+    # print('Non-structural cost:', nsc_cost/1e6)
+    
+    
+    # latex_string = f"& {sys_name} & {mce_cost_ratio:.3f} & {mce_time_ratio:.3f} & {mce_repl_ratio:.3f} \
+    #     & {val_cost_ratio[0]:.2f} & {GP_time_ratio:.2f} & {GP_repl_risk:.2f} &  \${upfront_cost/1e6:.2f} M \\\\"
     
     return(ida_results_df, val_replacement, val_cost, 
            val_cost_ratio, val_downtime, val_downtime_ratio)
@@ -3131,12 +3189,6 @@ def process_results(run_case):
 
 def print_latex_inverse_table(sys_name, design_dict, performance_dict):
 
-    # collect variable: currently working with means of medians
-    cost_var_ida = 'cost_50%'
-    time_var_ida = 'time_l_50%'
-    
-    cost_var = 'cmp_cost_ratio'
-    time_var = 'cmp_time_ratio'
     
     GR = design_dict['gap_ratio']
     Ry = design_dict['RI']
@@ -3155,8 +3207,9 @@ def print_latex_inverse_table(sys_name, design_dict, performance_dict):
     #       f'{val_downtime_ratio[0]:,.3f}')
     # print('Estimated replacement frequency: ',
     #       f'{val_replacement[0]:.2%}')
+    
     latex_string = f"& {sys_name} & {GR:.2f} & {Ry:.2f} & {T_ratio:.2f} & {zeta:.2f} \
-        & {GP_cost_ratio:.2f} & {GP_time_ratio:.2f} & {GP_repl_risk:.2f} &  \${upfront_cost/1e6:.2f} M \\\\"
+        & {GP_cost_ratio:.3f} & {GP_time_ratio:.3f} & {GP_repl_risk:.3f} &  \${upfront_cost/1e6:.2f} M \\\\"
     print(latex_string)
     return
 
@@ -3319,7 +3372,7 @@ title_font=20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 from matplotlib.lines import Line2D
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 13))
 
@@ -3646,7 +3699,7 @@ ax = sns.stripplot(data=df_dt, orient='h', color=inverse_color, alpha=0.4, size=
                    edgecolor=inverse_color, linewidth=1.0)
 meanpointprops = dict(marker='D', markeredgecolor=inverse_color, markersize=10,
                       markerfacecolor=inverse_color)
-
+ax.axvline(0.2, color=inverse_color, linestyle=':')
 sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', color=inverse_color_2,
             width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False)
 ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
@@ -3706,7 +3759,7 @@ meanpointprops = dict(marker='D', markeredgecolor=strict_color_2, markersize=10,
 sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', color=strict_color,
             width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False)
 ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-
+ax.axvline(0.1, color=strict_color, linestyle=':')
 
 plot_predictions(mf_tfp_repair_cost, mf_tfp_repair_cost_var, 0.875, 0, strict_color)
 plot_predictions(mf_lrb_repair_cost, mf_lrb_repair_cost_var, 0.625, 1, strict_color)
@@ -3766,7 +3819,7 @@ meanpointprops = dict(marker='D', markeredgecolor=inverse_color, markersize=10,
 sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', color=inverse_color_2,
             width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False)
 ax.set_xlabel(r'Repair time ratio', fontsize=axis_font)
-
+ax.axvline(0.2, color=inverse_color, linestyle=':')
 
 plot_predictions(mf_tfp_repair_time, mf_tfp_repair_time_var, 0.875, 0, inverse_color_2)
 plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1, inverse_color_2)
@@ -3823,7 +3876,7 @@ meanpointprops = dict(marker='D', markeredgecolor=strict_color_2, markersize=10,
 bp = sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', color=strict_color,
             width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False)
 ax.set_xlabel(r'Repair time ratio', fontsize=axis_font)
-
+ax.axvline(0.1, color=strict_color, linestyle=':')
 
 plot_predictions(mf_tfp_repair_time, mf_tfp_repair_time_var, 0.875, 0, strict_color)
 plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1, strict_color)
@@ -3867,7 +3920,7 @@ label_size = 20
 clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 from matplotlib.lines import Line2D
 fig = plt.figure(figsize=(13, 11))
@@ -3879,6 +3932,10 @@ yvar = 'RI'
 lvls_cost = np.array([0.2])
 lvls_time = np.array([0.2])
 lvls_repl = np.array([0.1])
+
+lvls_cost_enhanced = np.array([0.1])
+lvls_time_enhanced = np.array([0.1])
+lvls_repl_enhanced = np.array([0.05])
 
 res = 100
 X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
@@ -3948,6 +4005,22 @@ cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lv
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
 ax.clabel(cs, fontsize=clabel_size)
 cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
 
 ax.grid(visible=True)
 
@@ -4024,6 +4097,20 @@ cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvl
 ax.clabel(cs, fontsize=clabel_size)
 cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
 
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
+
 ax.grid(visible=True)
 
 
@@ -4069,7 +4156,6 @@ grid_time = predict_DV(X_plot,
 Z = np.array(grid_time)
 Z_time = Z.reshape(xx_pl.shape)
 
-lvls = np.array([0.1])
 grid_repl = predict_DV(X_plot,
                        mdl_impact_cbf_tfp.gpc,
                        mdl_repl_cbf_tfp_i.gpr,
@@ -4096,6 +4182,20 @@ cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lv
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
 ax.clabel(cs, fontsize=clabel_size)
 cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
 
 ax.grid(visible=True)
 
@@ -4182,6 +4282,20 @@ cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvl
 ax.clabel(cs, fontsize=clabel_size)
 cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
 
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
+ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
+
 ax.grid(visible=True)
 
 
@@ -4198,7 +4312,7 @@ ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 fig.tight_layout()
-
+# plt.savefig('./eng_struc_figures/filter_design.pdf')
 # ax.text(1.2, 1.00, 'OK space',
 #           fontsize=axis_font, color='green')
 #%% filter design graphic
@@ -4214,7 +4328,7 @@ label_size = 20
 clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 from matplotlib.lines import Line2D
 fig = plt.figure(figsize=(13, 11))
@@ -4547,4 +4661,4 @@ ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 fig.tight_layout()
 #%%
 
-# TODO: plot ideas: sensitivity, filter plot, 3D prediction, 
+# TODO: plot ideas: sensitivity, 

@@ -114,8 +114,9 @@ class Database:
         # isol_sys_list = ['TFP', 'LRB']
         # isol_wts = [1, 3]
         
-        structs = random.choices(struct_sys_list, k=self.n_generated)
-        isols = random.choices(isol_sys_list, k=self.n_generated, weights=isol_wts)
+        from random import choices
+        structs = choices(struct_sys_list, k=self.n_generated)
+        isols = choices(isol_sys_list, k=self.n_generated, weights=isol_wts)
         system_selection = pd.DataFrame(np.array([structs, isols]).T)
         system_names = ['superstructure_system', 'isolator_system']
         
@@ -367,7 +368,7 @@ class Database:
             all_des = all_des.loc[all_des.index.repeat(repeat)]
             
         # set seed to ensure same GMs are selected
-		import numpy as np
+        import numpy as np
         np.random.seed(seed)
         
         # scale and select ground motion
