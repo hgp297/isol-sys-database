@@ -1,16 +1,21 @@
 [project]
 name = "bearings"
-version = "0.0.0"
+version = "0.0.1"
 authors = [
   {name="Huy G. Pham", email="62033779+hgp297@users.noreply.github.com"}
 ]
+
+description= "Isolated structural database and design"
 
 readme = "README.md"
 
 keywords = [
   "seismic",
   "earthquake",
+  "structural"
 ] 
+
+# TODO: check requirements
 
 [options]
 install_requires = [

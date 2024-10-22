@@ -108,8 +108,7 @@ class Database:
         
         
         
-        import random
-        random.seed(seed)
+        np.random.seed(seed)
         
         # upweigh LRBs to ensure fair split
         # isol_sys_list = ['TFP', 'LRB']
@@ -368,8 +367,8 @@ class Database:
             all_des = all_des.loc[all_des.index.repeat(repeat)]
             
         # set seed to ensure same GMs are selected
-        from random import seed
-        seed(seed)
+		import numpy as np
+        np.random.seed(seed)
         
         # scale and select ground motion
         from gms import scale_ground_motion
