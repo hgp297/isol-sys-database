@@ -17,14 +17,12 @@ keywords = [
 
 # TODO: check requirements
 
-[options]
-install_requires = [
-  "opensees",
+dependencies = [
+  "opensees[py]",
   "numpy",
   "scipy",
   "sympy",
-  "sees",
-  "matplotlib",
+  "matplotlib"
 ]
 
 [project.urls]
