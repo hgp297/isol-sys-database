@@ -1,0 +1,38 @@
+[project]
+name = "bearings"
+version = "0.0.0"
+authors = [
+  {name="Claudio M. Perez", email="50180406+claudioperez@users.noreply.github.com"}
+]
+
+readme = "README.md"
+
+keywords = [
+  "seismic",
+  "earthquake",
+] 
+
+[options]
+install_requires = [
+  "opensees",
+  "numpy",
+  "scipy",
+  "sympy",
+  "sees",
+  "matplotlib",
+]
+
+[project.urls]
+Repository = "http://github.com/hgp297/isol-sys-database"
+
+
+[build-system]
+requires = [
+    "setuptools >= 52.0.2",
+]
+
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
