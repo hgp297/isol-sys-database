@@ -1,6 +1,6 @@
 [project]
-name = "shps"
-version = "0.0.5"
+name = "bearings"
+version = "0.0.0"
 authors = [
   {name="Claudio M. Perez", email="50180406+claudioperez@users.noreply.github.com"}
 ]
@@ -13,8 +13,8 @@ keywords = [
 ] 
 
 [options]
-#packages = find
 install_requires = [
+  "opensees",
   "numpy",
   "scipy",
   "sympy",
@@ -23,10 +23,8 @@ install_requires = [
 ]
 
 [project.urls]
-Repository = "http://github.com/claudioperez/shps"
+Repository = "http://github.com/hgp297/isol-sys-database"
 
-# [project.scripts]
-# shps = "shps.__main__"
 
 [build-system]
 requires = [
@@ -37,5 +35,4 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-exclude = ["shps.extern*", "shps.model*", "site*"]
 
