@@ -18,27 +18,27 @@ sys.path.insert(1, '../src/')
 
 from db import Database
 
-main_obj = Database(50, seed=1)
+main_obj = Database(50)
 
 main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)
 
 main_obj.scale_gms()
+all_designs = main_obj.retained_designs
 
 #%% troubleshoot
 
-all_designs = main_obj.retained_designs
 # # cbf lrb
 # run = main_obj.retained_designs.loc[113]
 
 # cbf tfp
-# run = main_obj.retained_designs.iloc[0]
+# run = main_obj.retained_designs.loc[527]
 
 # # mf lrb
-# run = main_obj.retained_designs.loc[715]
+# run = main_obj.retained_designs.loc[270]
 
 # # mf tfp
-run = main_obj.retained_designs.loc[646]
+run = main_obj.retained_designs.loc[162]
 
 from building import Building
 
@@ -201,8 +201,8 @@ if bldg.isolator_system == 'TFP':
     h1      = 1*inch                # half-height of sliders
     h2      = 4*inch
     
-    L1      = R1 - h1
-    L2      = R2 - h2
+    L1      = R1
+    L2      = R2
 
     # uLim    = 2*d1 + 2*d2 + L1*d2/L2 - L1*d2/L2
     
@@ -360,20 +360,12 @@ wall_elems = bldg.elem_tags['wall']
 #             '-mat', impact_mat_tag,
 #             '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
     
-open('./output/model.out', 'w').close()
-ops.printModel('-file', './output/model.out')
+
 
 ############################################################################
 #              Loading and analysis
 ############################################################################
 
-nEigenJ = 1;                    # how many modes to analyze
-lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
-lambda1 = lambdaN[0];           # eigenvalue mode i = 1
-wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
-T_1 = 2*3.1415/wi      # 1st mode period of the structure
-
-print("T_1 = %.3f s" % T_1)   
 
 monotonic_pattern_tag  = 2
 monotonic_series_tag = 1
@@ -396,10 +388,12 @@ if bldg.isolator_system == 'TFP':
     # line load accounts for Lbay/2 of tributary, we linearly scale
     # to include the remaining portion of Lbldg/2
     ft = 12.0
-    w_total = w_floor.sum()
-    pOuter = w_total*(L_bay/2)*ft* ((L_bldg - L_bay)/L_bay)
-    pInner = w_total*(L_bay)*ft* ((L_bldg - L_bay)/L_bay)
-
+    L_bay = bldg.L_bay
+    L_bldg = bldg.L_bldg
+    n_bays = bldg.num_bays
+    pOuter = w_total*(L_bay/2)*ft* ((L_bldg - L_bay)/L_bay) 
+    pInner = w_total*(L_bay)*ft* ((L_bldg - L_bay)/L_bay) 
+    
     diaph_nds = bldg.node_tags['diaphragm']
     
     for nd in diaph_nds:
@@ -417,6 +411,9 @@ for elem in diaph_elems:
     ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
                 -w_applied, 0.0)
 
+open('./output/model.out', 'w').close()
+ops.printModel('-file', './output/model.out')
+
 nStepGravity = 10  # apply gravity in 10 steps
 tol = 1e-5
 dGravity = 1/nStepGravity
@@ -432,6 +429,15 @@ ops.analyze(nStepGravity)
 
 print("Gravity analysis complete!")
 ops.loadConst('-time', 0.0)
+
+
+nEigenJ = 1;                    # how many modes to analyze
+lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
+lambda1 = lambdaN[0];           # eigenvalue mode i = 1
+wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
+T_1 = 2*3.1415/wi      # 1st mode period of the structure
+
+print("T_1 = %.3f s" % T_1)   
 
 # ------------------------------
 # Recorders
@@ -721,8 +727,8 @@ u_bearing, fs_bearing = isolator.get_backbone(mode='building')
 if bldg.isolator_system == 'LRB':
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
-    plt.plot(-isol_disp['column_0'], isol_shear)
-    plt.plot(u_bearing, fs_bearing, linestyle='--')
+    plt.plot(-isol_disp['column_0'], isol_shear, color='navy', linewidth=1.5)
+    plt.plot(u_bearing, fs_bearing, linestyle='--', color='orange')
     # plt.title('Isolator hystereses (layer only) (LRB)')
     # plt.xlabel('Displ (in)')
     # plt.ylabel('Lateral force (kip)')
@@ -730,8 +736,8 @@ if bldg.isolator_system == 'LRB':
 else:
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
-    plt.plot(isol_disp['column_0'], -isol_shear/isol_axial)
-    plt.plot(u_bearing, fs_bearing, linestyle='--')
+    plt.plot(-isol_disp['column_0'], isol_shear/isol_axial, color='navy', linewidth=1.5)
+    plt.plot(u_bearing, fs_bearing, linestyle='--', color='orange')
     # plt.title('Isolator hystereses (layer only) (TFP)')
     # plt.xlabel('Displ (in)')
     # plt.ylabel('V/N')
@@ -753,7 +759,7 @@ ax.spines['bottom'].set_position('zero')
 ax.spines['right'].set_color('none')
 ax.spines['top'].set_color('none')
 
-
+fig.tight_layout()
 # plt.box(False) #remove box
 # plt.plot(loop[hull.vertices,0], loop[hull.vertices,1], 'r--', lw=2)
 

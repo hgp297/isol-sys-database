@@ -107,17 +107,12 @@ class Database:
                                                                size=self.n_generated)
         config_selection = pd.DataFrame(config_selection)
         
-        
-        
-        random.seed(seed)
-        
         # upweigh LRBs to ensure fair split
         # isol_sys_list = ['TFP', 'LRB']
         # isol_wts = [1, 3]
         
-        from random import choices
-        structs = choices(struct_sys_list, k=self.n_generated)
-        isols = choices(isol_sys_list, k=self.n_generated, weights=isol_wts)
+        structs = random.choices(struct_sys_list, k=self.n_generated)
+        isols = random.choices(isol_sys_list, k=self.n_generated, weights=isol_wts)
         system_selection = pd.DataFrame(np.array([structs, isols]).T)
         system_names = ['superstructure_system', 'isolator_system']
         
@@ -341,7 +336,7 @@ class Database:
         
         self.retained_designs = all_des.groupby(
             'supersystem_drop', group_keys=False).apply(
-            lambda x: x.sample(n=int(self.n_points/n_systems)), include_groups=False)
+            lambda x: x.sample(n=int(self.n_points/n_systems), random_state=985), include_groups=False)
         self.generated_designs = all_des
         
         print('======================================')
