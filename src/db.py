@@ -98,7 +98,8 @@ class Database:
         config_selection = np.empty([self.n_generated, num_categories])
         
         # set seed
-        np.random.seed(seed)
+        import random
+        random.seed(seed)
         
         for index, (key, bounds) in enumerate(config_dict.items()):
             config_selection[:,index] = np.random.randint(bounds[0], 
@@ -108,7 +109,7 @@ class Database:
         
         
         
-        np.random.seed(seed)
+        random.seed(seed)
         
         # upweigh LRBs to ensure fair split
         # isol_sys_list = ['TFP', 'LRB']
@@ -368,8 +369,8 @@ class Database:
             all_des = all_des.loc[all_des.index.repeat(repeat)]
             
         # set seed to ensure same GMs are selected
-        import numpy as np
-        np.random.seed(seed)
+        import random
+        random.seed(seed)
         
         # scale and select ground motion
         from gms import scale_ground_motion

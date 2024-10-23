@@ -18,7 +18,7 @@ sys.path.insert(1, '../src/')
 
 from db import Database
 
-main_obj = Database(50)
+main_obj = Database(50, seed=1)
 
 main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)
@@ -27,6 +27,7 @@ main_obj.scale_gms()
 
 #%% troubleshoot
 
+all_designs = main_obj.retained_designs
 # # cbf lrb
 # run = main_obj.retained_designs.loc[113]
 
@@ -34,10 +35,10 @@ main_obj.scale_gms()
 # run = main_obj.retained_designs.iloc[0]
 
 # # mf lrb
-run = main_obj.retained_designs.loc[702]
+# run = main_obj.retained_designs.loc[715]
 
 # # mf tfp
-# run = main_obj.retained_designs.loc[353]
+run = main_obj.retained_designs.loc[646]
 
 from building import Building
 
@@ -475,7 +476,8 @@ ops.constraints("Plain")
 # currentDisp = 0.0
 ops.analysis("Static")                      # create analysis object
 
-peaks = np.arange(0.0, 30.0, 3.0)
+# TODO: here
+peaks = np.linspace(0.0, bldg.D_m*2, 7)
 peaks = np.append(peaks, peaks[-1])
 steps = 500
 for i, pk in enumerate(peaks):
@@ -626,6 +628,7 @@ for i, pk in enumerate(peaks):
 
 ops.wipe()
 
+#%%
 ################################ plot hysteresis ##############################
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -645,6 +648,8 @@ col_line.insert(0, 'time')
 isol_disp = pd.read_csv(data_dir+'isol_disp.csv', sep=' ', 
                              header=None, names=col_line)
 
+max_d = np.max(np.abs(isol_disp['column_0']))
+
 isol_base_rxn = pd.read_csv(data_dir+'isol_base_rxn.csv', sep=' ', 
                              header=None, names=col_line)
 
@@ -657,7 +662,7 @@ u_bearing, fs_bearing = isolator.get_backbone(mode='building')
 
 if bldg.isolator_system == 'LRB':
     plt.figure()
-    plt.plot(isol_disp['column_0'], -isol_shear)
+    plt.plot(-isol_disp['column_0'], isol_shear)
     plt.plot(u_bearing, fs_bearing, linestyle='--')
     plt.title('Isolator hystereses (layer only) (LRB)')
     plt.xlabel('Displ (in)')
@@ -679,7 +684,78 @@ if bldg.isolator_system == 'LRB':
 else:
     loop = np.array([isol_disp['column_0'], -isol_shear/isol_axial]).T
 hull = ConvexHull(loop)
-plt.plot(loop[hull.vertices,0], loop[hull.vertices,1], 'r--', lw=2)
+# plt.plot(loop[hull.vertices,0], loop[hull.vertices,1], 'r--', lw=2)
+
+#%%
+################################ plot hysteresis ##############################
+import pandas as pd
+import matplotlib.pyplot as plt
+plt.close('all')
+isol_columns = ['time', 'x', 'z', 'rot']
+
+force_columns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz', 
+                'jFx', 'jFy', 'jFz', 'jMx', 'jMy', 'jMz']
+# All hystereses
+from bearing import Bearing
+isolator = Bearing(run)
+
+col_line = ['column_'+str(col)
+               for col in range(0,bldg.num_bays+1)]
+just_cols = col_line.copy()
+col_line.insert(0, 'time')
+isol_disp = pd.read_csv(data_dir+'isol_disp.csv', sep=' ', 
+                             header=None, names=col_line)
+
+max_d = np.max(np.abs(isol_disp['column_0']))
+
+isol_base_rxn = pd.read_csv(data_dir+'isol_base_rxn.csv', sep=' ', 
+                             header=None, names=col_line)
+
+isol_base_vert = pd.read_csv(data_dir+'isol_base_vert.csv', sep=' ', 
+                             header=None, names=col_line)
+
+isol_shear = isol_base_rxn[just_cols].sum(axis=1)
+isol_axial = isol_base_vert[just_cols].sum(axis=1)
+u_bearing, fs_bearing = isolator.get_backbone(mode='building')
+
+if bldg.isolator_system == 'LRB':
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    plt.plot(-isol_disp['column_0'], isol_shear)
+    plt.plot(u_bearing, fs_bearing, linestyle='--')
+    # plt.title('Isolator hystereses (layer only) (LRB)')
+    # plt.xlabel('Displ (in)')
+    # plt.ylabel('Lateral force (kip)')
+    # plt.grid(True)
+else:
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    plt.plot(isol_disp['column_0'], -isol_shear/isol_axial)
+    plt.plot(u_bearing, fs_bearing, linestyle='--')
+    # plt.title('Isolator hystereses (layer only) (TFP)')
+    # plt.xlabel('Displ (in)')
+    # plt.ylabel('V/N')
+    # plt.grid(True)
+
+zeta_target = bldg.zeta_e
+from scipy.spatial import ConvexHull
+if bldg.isolator_system == 'LRB':
+    loop = np.array([isol_disp['column_0'], -isol_shear]).T
+else:
+    loop = np.array([isol_disp['column_0'], -isol_shear/isol_axial]).T
+hull = ConvexHull(loop)
+plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+# Move left y-axis and bottom x-axis to centre, passing through (0,0)
+ax.spines['left'].set_position('zero')
+ax.spines['bottom'].set_position('zero')
+
+# Eliminate upper and right axes
+ax.spines['right'].set_color('none')
+ax.spines['top'].set_color('none')
+
+
+# plt.box(False) #remove box
+# plt.plot(loop[hull.vertices,0], loop[hull.vertices,1], 'r--', lw=2)
 
 #%%
 ########################### barebones hysteresis ##############################
