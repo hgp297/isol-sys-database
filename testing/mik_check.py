@@ -161,7 +161,7 @@ import numpy as np
 L_beam = L_bay
 L_col = h_story
 
-selectedCol = get_shape('W24X55', 'beam')
+selectedCol = get_shape('W33X130', 'beam')
 
 (AgCol, IzCol, IyCol, ZxCol, SxCol, 
  dCol, bfCol, tfCol, twCol) = getProperties(selectedCol)
@@ -350,7 +350,8 @@ ops.recorder('Element', '-ele', 51, '-file', spring_moment, 'localForce')
 
 ops.analysis("Static")                      # create analysis object
 
-peaks = np.arange(0.0, 30.0, 3.0)
+peaks = np.arange(0.0, 7.80*2, 1.5)
+peaks = np.append(peaks, peaks[-1])
 steps = 500
 for i, pk in enumerate(peaks):
     du = (-1.0)**i*(peaks[i] / steps)
@@ -587,7 +588,7 @@ ops.recorder('Element', '-ele', 51, '-file', spring_moment_old, 'localForce')
 
 ops.analysis("Static")                      # create analysis object
 
-peaks = np.arange(0.0, 120.0, 6.0)
+
 steps = 500
 for i, pk in enumerate(peaks):
     du = (-1.0)**i*(peaks[i] / steps)

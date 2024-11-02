@@ -35,10 +35,10 @@ all_designs = main_obj.retained_designs
 # run = main_obj.retained_designs.loc[527]
 
 # # mf lrb
-# run = main_obj.retained_designs.loc[270]
+# run = main_obj.retained_designs.loc[324]
 
 # # mf tfp
-run = main_obj.retained_designs.loc[162]
+run = main_obj.retained_designs.loc[100]
 
 from building import Building
 
@@ -253,7 +253,7 @@ else:
     K_bulk = 290.0*ksi
     G_r = 0.060*ksi
     D_inner = bldg.d_lead
-    D_outer = bldg.d_bearing - 0.5
+    D_outer = bldg.d_bearing - 1.0
     t_shim = 0.13*inch
     t_rubber_whole = bldg.t_r
     n_layers = int(bldg.n_layers)
@@ -455,104 +455,104 @@ ops.recorder('Node', '-file', data_dir+'isol_base_vert.csv',
              *base_nodes, '-dof', 3, 'reaction')
 
 
-################## static cyclical #################
-# create TimeSeries
-ops.timeSeries("Linear", monotonic_series_tag)
-ops.pattern('Plain', monotonic_pattern_tag, monotonic_series_tag)
-ops.load(10, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+# ################## static cyclical #################
+# # create TimeSeries
+# ops.timeSeries("Linear", monotonic_series_tag)
+# ops.pattern('Plain', monotonic_pattern_tag, monotonic_series_tag)
+# ops.load(10, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-tol = 1e-5
+# tol = 1e-5
 
-# ops.system("BandGeneral")   
-# ops.test("NormDispIncr", tol, 15)
+# # ops.system("BandGeneral")   
+# # ops.test("NormDispIncr", tol, 15)
+# # ops.numberer("RCM")
+# # ops.constraints("Plain")
+# # ops.algorithm("Newton")
+
+# ops.test('EnergyIncr', 1.0e-5, 300, 0)
+# ops.algorithm('KrylovNewton')
+# ops.system('UmfPack')
 # ops.numberer("RCM")
 # ops.constraints("Plain")
-# ops.algorithm("Newton")
 
-ops.test('EnergyIncr', 1.0e-5, 300, 0)
-ops.algorithm('KrylovNewton')
-ops.system('UmfPack')
-ops.numberer("RCM")
-ops.constraints("Plain")
+# # du = -0.01*inch
+# # ops.integrator('DisplacementControl', 201, 1, du, 1, du, du)
+# # max_u = -1.5  # Max displacement
+# # n_steps = int(round(max_u/du))
+# # currentDisp = 0.0
+# ops.analysis("Static")                      # create analysis object
 
-# du = -0.01*inch
-# ops.integrator('DisplacementControl', 201, 1, du, 1, du, du)
-# max_u = -1.5  # Max displacement
-# n_steps = int(round(max_u/du))
-# currentDisp = 0.0
-ops.analysis("Static")                      # create analysis object
+# # TODO: here
+# peaks = np.linspace(0.0, bldg.D_m*2, 7)
+# peaks = np.append(peaks, peaks[-1])
+# steps = 500
+# for i, pk in enumerate(peaks):
+#     du = (-1.0)**i*(peaks[i] / steps)
+#     ops.integrator('DisplacementControl', 10, 1, du, 1, du, du)
+#     ops.analyze(steps)
 
-# TODO: here
-peaks = np.linspace(0.0, bldg.D_m*2, 7)
-peaks = np.append(peaks, peaks[-1])
-steps = 500
-for i, pk in enumerate(peaks):
-    du = (-1.0)**i*(peaks[i] / steps)
-    ops.integrator('DisplacementControl', 10, 1, du, 1, du, du)
-    ops.analyze(steps)
+############################### transient
+GMDirection = 1  # ground-motion direction
 
-################################ transient
-# GMDirection = 1  # ground-motion direction
+gm_name = bldg.gm_selected
+scale_factor = bldg.scale_factor
+print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
 
-# gm_name = bldg.gm_selected
-# scale_factor = bldg.scale_factor
-# print('Current ground motion: %s at scale %.2f' % (gm_name, scale_factor))
+ops.constraints('Plain')
+ops.numberer('RCM')
+ops.system('BandGeneral')
 
-# ops.constraints('Plain')
-# ops.numberer('RCM')
-# ops.system('BandGeneral')
+# Convergence Test: tolerance
+tolDynamic          = 1e-5 
 
-# # Convergence Test: tolerance
-# tolDynamic          = 1e-5 
+# Convergence Test: maximum number of iterations that will be performed
+maxIterDynamic      = 100
 
-# # Convergence Test: maximum number of iterations that will be performed
-# maxIterDynamic      = 100
+# Convergence Test: flag used to print information on convergence
+printFlagDynamic    = 0         
 
-# # Convergence Test: flag used to print information on convergence
-# printFlagDynamic    = 0         
+testTypeDynamic     = 'EnergyIncr'
+ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
 
-# testTypeDynamic     = 'EnergyIncr'
-# ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+# algorithmTypeDynamic    = 'Broyden'
+# ops.algorithm(algorithmTypeDynamic, 8)
+algorithmTypeDynamic    = 'Newton'
+ops.algorithm(algorithmTypeDynamic)
 
-# # algorithmTypeDynamic    = 'Broyden'
-# # ops.algorithm(algorithmTypeDynamic, 8)
-# algorithmTypeDynamic    = 'Newton'
-# ops.algorithm(algorithmTypeDynamic)
+# Newmark-integrator gamma parameter (also HHT)
+newmarkGamma = 0.5
+newmarkBeta = 0.25
+ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+ops.analysis('Transient')
 
-# # Newmark-integrator gamma parameter (also HHT)
-# newmarkGamma = 0.5
-# newmarkBeta = 0.25
-# ops.integrator('Newmark', newmarkGamma, newmarkBeta)
+# # TRBDF2 integrator, best with energy
+# ops.integrator('TRBDF2')
 # ops.analysis('Transient')
 
-# # # TRBDF2 integrator, best with energy
-# # ops.integrator('TRBDF2')
-# # ops.analysis('Transient')
+#  ---------------------------------    perform Dynamic Ground-Motion Analysis
+# the following commands are unique to the Uniform Earthquake excitation
 
-# #  ---------------------------------    perform Dynamic Ground-Motion Analysis
-# # the following commands are unique to the Uniform Earthquake excitation
+################ ground motion
+# Uniform EXCITATION: acceleration input
+gm_dir = '../resource/ground_motions/PEERNGARecords_Unscaled/'
+inFile = gm_dir + gm_name + '.AT2'
+outFile = gm_dir + gm_name + '.g3'
 
-# ################# ground motion
-# # # Uniform EXCITATION: acceleration input
-# # gm_dir = '../resource/ground_motions/PEERNGARecords_Unscaled/'
-# # inFile = gm_dir + gm_name + '.AT2'
-# # outFile = gm_dir + gm_name + '.g3'
+  # call procedure to convert the ground-motion file
+from ReadRecord import ReadRecord
+dt, nPts = ReadRecord(inFile, outFile)
+g = 386.4
+GMfatt = g*scale_factor
 
-# #  # call procedure to convert the ground-motion file
-# # from ReadRecord import ReadRecord
-# # dt, nPts = ReadRecord(inFile, outFile)
-# # g = 386.4
-# # GMfatt = g*scale_factor
-
-# # eq_series_tag = 100
-# # eq_pattern_tag = 400
-# # # time series information
-# # ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
-# #                '-filePath', outFile, '-factor', GMfatt)     
-# # # create uniform excitation
-# # ops.pattern('UniformExcitation', eq_pattern_tag, 
-# #             GMDirection, '-accel', eq_series_tag)     
-# ####################
+eq_series_tag = 100
+eq_pattern_tag = 400
+# time series information
+ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
+                '-filePath', outFile, '-factor', GMfatt)     
+# create uniform excitation
+ops.pattern('UniformExcitation', eq_pattern_tag, 
+            GMDirection, '-accel', eq_series_tag)     
+###################
 
 
 # ################## cyclical
@@ -575,69 +575,82 @@ for i, pk in enumerate(peaks):
 #             GMDirection, '-accel', accelSeriesTag)      
 # ####################
 
-# # set up ground-motion-analysis parameters
-# sec = 1.0             
-# dt_transient = 0.005         
-# T_end = 60.0*sec
+# set up ground-motion-analysis parameters
+sec = 1.0             
+dt_transient = 0.005         
+T_end = 60.0*sec
 
-# import numpy as np
-# n_steps = np.floor(T_end/dt_transient)
+import numpy as np
+n_steps = np.floor(T_end/dt_transient)
 
-# # actually perform analysis; returns ok=0 if analysis was successful
+# actually perform analysis; returns ok=0 if analysis was successful
 
-# import time
-# t0 = time.time()
+import time
+t0 = time.time()
 
-# ok = ops.analyze(int(n_steps), dt_transient)   
-# if ok != 0:
-#     ok = 0
-#     curr_time = ops.getTime()
-#     print("Convergence issues at time: ", curr_time)
-#     while (curr_time < T_end) and (ok == 0):
-#         curr_time     = ops.getTime()
-#         ok          = ops.analyze(1, dt_transient)
-#         if ok != 0:
-#             print("Trying Newton with Initial Tangent...")
-#             ops.algorithm('Newton', '-initial')
-#             ok = ops.analyze(1, dt_transient)
-#             if ok == 0:
-#                 print("That worked. Back to Newton")
-#             ops.algorithm(algorithmTypeDynamic)
-#         if ok != 0:
-#             print("Trying Newton with line search ...")
-#             ops.algorithm('NewtonLineSearch')
-#             ok = ops.analyze(1, dt_transient)
-#             if ok == 0:
-#                 print("That worked. Back to Newton")
-#             ops.algorithm(algorithmTypeDynamic)
-#         if ok != 0:
-#             print('Trying Broyden ... ')
-#             algorithmTypeDynamic = 'Broyden'
-#             ops.algorithm(algorithmTypeDynamic, 8)
-#             ok = ops.analyze(1, dt_transient)
-#             if ok == 0:
-#                 print("That worked. Back to Newton")
-#         if ok != 0:
-#             print('Trying BFGS ... ')
-#             algorithmTypeDynamic = 'BFGS'
-#             ops.algorithm(algorithmTypeDynamic)
-#             ok = ops.analyze(1, dt_transient)
-#             if ok == 0:
-#                 print("That worked. Back to Newton")
+ok = ops.analyze(int(n_steps), dt_transient)   
+if ok != 0:
+    ok = 0
+    curr_time = ops.getTime()
+    print("Convergence issues at time: ", curr_time)
+    while (curr_time < T_end) and (ok == 0):
+        curr_time     = ops.getTime()
+        ok          = ops.analyze(1, dt_transient)
+        if ok != 0:
+            print("Trying Newton with Initial Tangent...")
+            ops.algorithm('Newton', '-initial')
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
+            ops.algorithm(algorithmTypeDynamic)
+        if ok != 0:
+            print("Trying Newton with line search ...")
+            ops.algorithm('NewtonLineSearch')
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
+            ops.algorithm(algorithmTypeDynamic)
+        if ok != 0:
+            print('Trying Broyden ... ')
+            algorithmTypeDynamic = 'Broyden'
+            ops.algorithm(algorithmTypeDynamic, 8)
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
+        if ok != 0:
+            print('Trying BFGS ... ')
+            algorithmTypeDynamic = 'BFGS'
+            ops.algorithm(algorithmTypeDynamic)
+            ok = ops.analyze(1, dt_transient)
+            if ok == 0:
+                print("That worked. Back to Newton")
 
-# t_final = ops.getTime()
-# tp = time.time() - t0
-# minutes = tp//60
-# seconds = tp - 60*minutes
-# print('Ground motion done. End time: %.4f s' % t_final)
-# print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
+t_final = ops.getTime()
+tp = time.time() - t0
+minutes = tp//60
+seconds = tp - 60*minutes
+print('Ground motion done. End time: %.4f s' % t_final)
+print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
 
 ops.wipe()
 
 #%%
 ################################ plot hysteresis ##############################
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+
 plt.close('all')
 isol_columns = ['time', 'x', 'z', 'rot']
 
@@ -666,23 +679,21 @@ isol_shear = isol_base_rxn[just_cols].sum(axis=1)
 isol_axial = isol_base_vert[just_cols].sum(axis=1)
 u_bearing, fs_bearing = isolator.get_backbone(mode='building')
 
+fig = plt.figure(figsize=(9, 7))
 if bldg.isolator_system == 'LRB':
-    plt.figure()
-    plt.plot(-isol_disp['column_0'], isol_shear)
-    plt.plot(u_bearing, fs_bearing, linestyle='--')
-    plt.title('Isolator hystereses (layer only) (LRB)')
-    plt.xlabel('Displ (in)')
-    plt.ylabel('Lateral force (kip)')
+    plt.plot(-isol_disp['column_0'], isol_shear, color='black', linewidth=1.5)
+    # plt.plot(u_bearing, fs_bearing, linestyle='--')
+    plt.xlabel('Displacement (in)', fontsize=axis_font)
+    plt.ylabel('Lateral force (kip)', fontsize=axis_font)
     plt.grid(True)
 else:
-    plt.figure()
-    plt.plot(isol_disp['column_0'], -isol_shear/isol_axial)
-    plt.plot(u_bearing, fs_bearing, linestyle='--')
-    plt.title('Isolator hystereses (layer only) (TFP)')
-    plt.xlabel('Displ (in)')
-    plt.ylabel('V/N')
+    plt.plot(-isol_disp['column_0'], isol_shear/isol_axial, color='black', linewidth=1.5)
+    # plt.plot(u_bearing, fs_bearing, linestyle='--')
+    plt.xlabel('Displacement (in)', fontsize=axis_font)
+    plt.ylabel('Normalized lateral force', fontsize=axis_font)
     plt.grid(True)
 
+fig.tight_layout()
 zeta_target = bldg.zeta_e
 from scipy.spatial import ConvexHull
 if bldg.isolator_system == 'LRB':
