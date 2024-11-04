@@ -882,8 +882,8 @@ p1 = ax.bar(risks, df_stack_bars['D_frac'], width=0.35, label='MEP', zorder=3,
             color=cmap(0))
 p1 = ax.bar(risks, df_stack_bars['E_frac'], width=0.35, label='Storage', zorder=3,
             color=cmap(3))
-ax.set_ylabel("Percent component loss", fontsize=axis_font)
-ax.set_xlabel('Replacement risk', fontsize=axis_font)
+ax.set_ylabel("Normalized repair cost", fontsize=axis_font)
+ax.set_xlabel('Replacement \%', fontsize=axis_font)
 
 ax.legend(fontsize=axis_font)
 plt.show()
