@@ -291,6 +291,119 @@ db_string = '../../resource/'
 brace_db = pd.read_csv(db_string+'braceShapes.csv', index_col=None, header=0)  
 
 df['system'] = df['superstructure_system'] +'-' + df['isolator_system']
+
+#%% main predictor
+
+def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
+               outcome='cost_50%', return_var=False):
+    """Returns the expected value of the decision variable based on the total
+    probability law (law of iterated expectation).
+    
+    E[cost] = sum_i sum_j E[cost|impact_j] Pr(impact_j) 
+    
+    Currently, this assumes that the models used are all GPC/GPR.
+    
+    Parameters
+    ----------
+    X: pd dataframe of design points
+    impact_pred_mdl: classification model predicting impact
+    hit_loss_mdl: regression model predicting outcome conditioned on yes impact
+    miss_loss_mdl: regression model predicting outcome conditioned on no impact
+    outcome: desired name for outcome variable
+    
+    Returns
+    -------
+    expected_DV_df: DataFrame of expected DV with single column name outcome+'_pred'
+    """
+        
+    # get probability of impact
+    if 'log_reg_kernel' in impact_pred_mdl.named_steps.keys():
+        probs_imp = impact_pred_mdl.predict_proba(impact_pred_mdl.K_pr)
+    else:
+        probs_imp = impact_pred_mdl.predict_proba(X)
+
+    miss_prob = probs_imp[:,0]
+    hit_prob = probs_imp[:,1]
+    
+    hit_loss, hit_std = hit_loss_mdl.predict(X, return_std=True)
+    miss_loss, miss_std = miss_loss_mdl.predict(X, return_std=True)
+    
+    # weight with probability of collapse
+    # E[Loss] = (impact loss)*Pr(impact) + (no impact loss)*Pr(no impact)
+    # run SVR_hit model on this dataset
+    outcome_str = outcome+'_pred'
+    expected_DV_hit = pd.DataFrame(
+            {outcome_str:np.multiply(
+                    hit_loss,
+                    hit_prob)})
+            
+    
+    # run miss model on this dataset
+    expected_DV_miss = pd.DataFrame(
+            {outcome_str:np.multiply(
+                    miss_loss,
+                    miss_prob)})
+    
+    expected_DV = expected_DV_hit + expected_DV_miss
+    
+    # tower variance
+    # Var[cost] = E[cost^2] - E[cost]^2 = E[E(cost^2|imp)] - expected_DV^2
+    # = (hit_cost^2 + var_hit_cost)*p(hit) + (miss_cost^2 + var_miss_cost)*p(miss) - expected_DV^2
+    '''
+    if return_var:
+        expected_loss_sq = (hit_std**2 + hit_loss**2)*hit_prob + (miss_std**2 + miss_loss**2)*miss_prob
+        total_var = expected_loss_sq - expected_DV**2
+        return(expected_DV, total_var)
+    '''
+    
+    if return_var:
+        # get probability of impact
+        gpc_obj = impact_pred_mdl._final_estimator
+        base_estimator = gpc_obj.base_estimator_
+        K_func = base_estimator.kernel_
+        W_inv = np.diag(1/base_estimator.W_sr_**2)
+        K_a = K_func(base_estimator.X_train_, base_estimator.X_train_)
+        R_inv = np.linalg.inv(W_inv + K_a)
+        
+        # follow Eq. 3.24 to calculate latent variance
+        gpc_scaler = impact_pred_mdl[0]
+        X_scaled = gpc_scaler.transform(X)
+        K_s = K_func(base_estimator.X_train_, X_scaled)
+        k_ss = np.diagonal(K_func(X_scaled, X_scaled))
+        var_f = k_ss - np.sum((R_inv @ K_s) * K_s, axis=0)
+        
+        # propagate uncertainty (Wikipedia example for f = ae^(bA)) and f = aA^b
+        pi_ = base_estimator.pi_
+        y_train_ = base_estimator.y_train_
+        f_star = K_s.T.dot(y_train_ - pi_)
+        gamma_ = (1 + np.exp(-f_star))
+        prob_var = np.exp(-2*f_star)*var_f/(gamma_**4)
+        
+        # regression model variances
+        hit_var = hit_std**2
+        miss_var = miss_std**2
+        
+        # for now, ignore correlation
+        # is there correlation? is probability of impact correlated with cost given that the building impacted
+        # propagate uncertainty (f = AB)
+        
+        if miss_loss < 1e-8:
+            miss_loss_min = 1e-3
+        else:
+            miss_loss_min = miss_loss
+            
+        impact_side_var = np.multiply(hit_loss, hit_prob)**2*(
+            (hit_var/hit_loss**2) + (prob_var/hit_prob**2) + 0)
+        
+        nonimpact_side_var = np.multiply(miss_loss_min, miss_prob)**2*(
+            (miss_var/miss_loss_min**2) + (prob_var/miss_prob**2) + 0)
+        
+        # propagate uncertainty (f = A + B)
+        total_var = impact_side_var + nonimpact_side_var + 0
+        
+        return(expected_DV, total_var)
+    else:
+        return(expected_DV)
 #%%
 # make a generalized 2D plotting grid, defaulted to gap and Ry
 # grid is based on the bounds of input data
@@ -1018,537 +1131,1825 @@ PID_vecs = df['PID']
 
 #%% generalized curve fitting for cost and time
 
-# TODO: should this be real values ($)
 
-def nlls(params, log_x, no_a, no_c):
-    from scipy import stats
-    import numpy as np
-    sigma, beta = params
-    theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(log_x)
-    likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
-    log_likelihood = np.log(likelihood)
-    log_likelihood_sum = np.sum(log_likelihood)
+# def nlls(params, log_x, no_a, no_c):
+#     from scipy import stats
+#     import numpy as np
+#     sigma, beta = params
+#     theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(log_x)
+#     likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
+#     log_likelihood = np.log(likelihood)
+#     log_likelihood_sum = np.sum(log_likelihood)
 
-    return -log_likelihood_sum
+#     return -log_likelihood_sum
 
-def mle_fit_general(x_values, probs, x_init=None):
-    from functools import partial
-    import numpy as np
-    from scipy.optimize import basinhopping
+# def mle_fit_general(x_values, probs, x_init=None):
+#     from functools import partial
+#     import numpy as np
+#     from scipy.optimize import basinhopping
     
-    log_x = np.log(x_values)
-    number_of_analyses = 1000*np.ones(len(x_values))
-    number_of_collapses = np.round(1000*probs)
+#     log_x = np.log(x_values)
+#     number_of_analyses = 1000*np.ones(len(x_values))
+#     number_of_collapses = np.round(1000*probs)
     
-    neg_log_likelihood_sum_partial = partial(
-        nlls, log_x=log_x, no_a=number_of_analyses, no_c=number_of_collapses)
+#     neg_log_likelihood_sum_partial = partial(
+#         nlls, log_x=log_x, no_a=number_of_analyses, no_c=number_of_collapses)
     
-    if x_init is None:
-        x0 = (1, 1)
-    else:
-        x0 = x_init
+#     if x_init is None:
+#         x0 = (1, 1)
+#     else:
+#         x0 = x_init
     
-    bnds = ((1e-6, 0.2), (0.5, 1.5))
+#     bnds = ((1e-6, 0.2), (0.5, 1.5))
     
-    # use basin hopping to avoid local minima
-    minimizer_kwargs={'bounds':bnds}
-    res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
-                       niter=100, seed=985)
+#     # use basin hopping to avoid local minima
+#     minimizer_kwargs={'bounds':bnds}
+#     res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
+#                        niter=100, seed=985)
     
-    return res.x[0], res.x[1]
+#     return res.x[0], res.x[1]
 
-from scipy.stats import norm
-from scipy.stats import ecdf
-f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
-plt.close('all')
+# from scipy.stats import norm
+# from scipy.stats import ecdf
+# f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+# plt.close('all')
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-
-
-fig = plt.figure(figsize=(13, 11))
-
-my_y_var = df_mf_tfp_i[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 18
+# subt_font = 18
+# label_size = 16
+# title_font=20
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
 
 
-# theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+# fig = plt.figure(figsize=(13, 11))
 
-# xx_pr = np.linspace(1e-4, 1.0, 400)
-# p = f(xx_pr, theta_inv, beta_inv)
+# my_y_var = df_mf_tfp_i[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
 
-ax1=fig.add_subplot(2, 2, 1)
-ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
-# ax1.plot(xx_pr, p)
 
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="red")
+# # theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
 
-my_y_var = df_mf_tfp_o[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles 
+# # xx_pr = np.linspace(1e-4, 1.0, 400)
+# # p = f(xx_pr, theta_inv, beta_inv)
 
-ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
-# ax1.plot(xx_pr, p)
+# ax1=fig.add_subplot(2, 2, 1)
+# ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
+# # ax1.plot(xx_pr, p)
 
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="black")
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="red")
 
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# my_y_var = df_mf_tfp_o[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles 
+
+# ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
+# # ax1.plot(xx_pr, p)
+
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="black")
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# # ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+# ax1.set_title('a) MF-TFP', fontsize=title_font)
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
+
+
+
+# ####
+
+# my_y_var = df_mf_lrb_i[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
+
+
+# # theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+# # xx_pr = np.linspace(1e-4, 1.0, 400)
+# # p = f(xx_pr, theta_inv, beta_inv)
+
+# ax1=fig.add_subplot(2, 2, 2)
+# ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
+# # ax1.plot(xx_pr, p)
+
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="red")
+
+# my_y_var = df_mf_lrb_o[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles 
+
+# ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
+# # ax1.plot(xx_pr, p)
+
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="black")
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# # ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+# ax1.set_title('b) MF-LRB', fontsize=title_font)
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
+
+# ####
+# my_y_var = df_cbf_tfp_i[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
+
+
+# # theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+# # xx_pr = np.linspace(1e-4, 1.0, 400)
+# # p = f(xx_pr, theta_inv, beta_inv)
+
+# ax1=fig.add_subplot(2, 2, 3)
+# ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
+# # ax1.plot(xx_pr, p)
+
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="red")
+
+# my_y_var = df_cbf_tfp_o[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles 
+
+# ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
+# # ax1.plot(xx_pr, p)
+
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="black")
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
 # ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-ax1.set_title('a) MF-TFP', fontsize=title_font)
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
+# ax1.set_title('c) CBF-TFP', fontsize=title_font)
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
+
+# ####
+
+# my_y_var = df_cbf_lrb_i[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
 
 
+# # theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
 
-####
+# # xx_pr = np.linspace(1e-4, 1.0, 400)
+# # p = f(xx_pr, theta_inv, beta_inv)
 
-my_y_var = df_mf_lrb_i[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
+# ax1=fig.add_subplot(2, 2, 4)
+# ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
+# # ax1.plot(xx_pr, p)
 
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="red")
 
-# theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+# my_y_var = df_cbf_lrb_o[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles 
 
-# xx_pr = np.linspace(1e-4, 1.0, 400)
-# p = f(xx_pr, theta_inv, beta_inv)
+# ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
+# # ax1.plot(xx_pr, p)
 
-ax1=fig.add_subplot(2, 2, 2)
-ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
-# ax1.plot(xx_pr, p)
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="black")
 
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="red")
-
-my_y_var = df_mf_lrb_o[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles 
-
-ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="black")
-
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
 # ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-ax1.set_title('b) MF-LRB', fontsize=title_font)
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
+# ax1.set_title('d) CBF-LRB', fontsize=title_font)
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
 
-####
-my_y_var = df_cbf_tfp_i[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
-
-
-# theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
-
-# xx_pr = np.linspace(1e-4, 1.0, 400)
-# p = f(xx_pr, theta_inv, beta_inv)
-
-ax1=fig.add_subplot(2, 2, 3)
-ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="red")
-
-my_y_var = df_cbf_tfp_o[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles 
-
-ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="black")
-
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
-ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-ax1.set_title('c) CBF-TFP', fontsize=title_font)
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
-
-####
-
-my_y_var = df_cbf_lrb_i[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
-
-
-# theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
-
-# xx_pr = np.linspace(1e-4, 1.0, 400)
-# p = f(xx_pr, theta_inv, beta_inv)
-
-ax1=fig.add_subplot(2, 2, 4)
-ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="red")
-
-my_y_var = df_cbf_lrb_o[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles 
-
-ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="black")
-
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
-ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-ax1.set_title('d) CBF-LRB', fontsize=title_font)
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
-
-plt.legend(fontsize=axis_font)
-fig.tight_layout()
-plt.show()
-plt.savefig('./dissertation_figures/cost_ecdf.pdf')
+# plt.legend(fontsize=axis_font)
+# fig.tight_layout()
+# plt.show()
+# plt.savefig('./dissertation_figures/cost_ecdf.pdf')
 
 #%%
 
-plt.close('all')
+# plt.close('all')
 
 
-my_y_var = df_mf_tfp_i[time_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
+# my_y_var = df_mf_tfp_i[time_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-fig = plt.figure(figsize=(13, 11))
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 18
+# subt_font = 18
+# label_size = 16
+# title_font=20
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
+# fig = plt.figure(figsize=(13, 11))
 
-my_y_var = df_mf_tfp_i[time_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
+# my_y_var = df_mf_tfp_i[time_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
 
 
-# theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+# # theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
 
-# xx_pr = np.linspace(1e-4, 1.0, 400)
-# p = f(xx_pr, theta_inv, beta_inv)
+# # xx_pr = np.linspace(1e-4, 1.0, 400)
+# # p = f(xx_pr, theta_inv, beta_inv)
 
-ax1=fig.add_subplot(2, 2, 1)
-ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
-# ax1.plot(xx_pr, p)
+# ax1=fig.add_subplot(2, 2, 1)
+# ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
+# # ax1.plot(xx_pr, p)
 
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="red")
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="red")
 
-my_y_var = df_mf_tfp_o[time_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles 
+# my_y_var = df_mf_tfp_o[time_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles 
 
-ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
-# ax1.plot(xx_pr, p)
+# ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
+# # ax1.plot(xx_pr, p)
 
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="black")
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="black")
 
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# # ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+# ax1.set_title('a) MF-TFP', fontsize=title_font)
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
+
+
+
+# ####
+
+# my_y_var = df_mf_lrb_i[time_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
+
+
+# # theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+# # xx_pr = np.linspace(1e-4, 1.0, 400)
+# # p = f(xx_pr, theta_inv, beta_inv)
+
+# ax1=fig.add_subplot(2, 2, 2)
+# ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
+# # ax1.plot(xx_pr, p)
+
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="red")
+
+# my_y_var = df_mf_lrb_o[time_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles 
+
+# ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
+# # ax1.plot(xx_pr, p)
+
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="black")
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# # ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+# ax1.set_title('b) MF-LRB', fontsize=title_font)
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
+
+# ####
+# my_y_var = df_cbf_tfp_i[time_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
+
+
+# # theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+# # xx_pr = np.linspace(1e-4, 1.0, 400)
+# # p = f(xx_pr, theta_inv, beta_inv)
+
+# ax1=fig.add_subplot(2, 2, 3)
+# ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
+# # ax1.plot(xx_pr, p)
+
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="red")
+
+# my_y_var = df_cbf_tfp_o[time_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles 
+
+# ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
+# # ax1.plot(xx_pr, p)
+
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="black")
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
 # ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
-ax1.set_title('a) MF-TFP', fontsize=title_font)
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
+# ax1.set_title('c) CBF-TFP', fontsize=title_font)
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
+
+# ####
+
+# my_y_var = df_cbf_lrb_i[time_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
 
 
+# # theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
 
-####
+# # xx_pr = np.linspace(1e-4, 1.0, 400)
+# # p = f(xx_pr, theta_inv, beta_inv)
 
-my_y_var = df_mf_lrb_i[time_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
+# ax1=fig.add_subplot(2, 2, 4)
+# ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
+# # ax1.plot(xx_pr, p)
 
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="red")
 
-# theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+# my_y_var = df_cbf_lrb_o[time_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles 
 
-# xx_pr = np.linspace(1e-4, 1.0, 400)
-# p = f(xx_pr, theta_inv, beta_inv)
+# ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
+# # ax1.plot(xx_pr, p)
 
-ax1=fig.add_subplot(2, 2, 2)
-ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
-# ax1.plot(xx_pr, p)
+# # ax1.plot([ecdf_values], [ecdf_prob], 
+# #           marker='x', markersize=5, color="black")
 
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="red")
-
-my_y_var = df_mf_lrb_o[time_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles 
-
-ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="black")
-
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
 # ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
-ax1.set_title('b) MF-LRB', fontsize=title_font)
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
-
-####
-my_y_var = df_cbf_tfp_i[time_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
-
-
-# theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
-
-# xx_pr = np.linspace(1e-4, 1.0, 400)
-# p = f(xx_pr, theta_inv, beta_inv)
-
-ax1=fig.add_subplot(2, 2, 3)
-ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="red")
-
-my_y_var = df_cbf_tfp_o[time_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles 
-
-ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="black")
-
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
-ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
-ax1.set_title('c) CBF-TFP', fontsize=title_font)
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
-
-####
-
-my_y_var = df_cbf_lrb_i[time_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
-
-
-# theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
-
-# xx_pr = np.linspace(1e-4, 1.0, 400)
-# p = f(xx_pr, theta_inv, beta_inv)
-
-ax1=fig.add_subplot(2, 2, 4)
-ax1.ecdf(my_y_var, color='red', linewidth=1.5, label='Impacted')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="red")
-
-my_y_var = df_cbf_lrb_o[time_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles 
-
-ax1.ecdf(my_y_var, color='black', linewidth=1.5, label='No impact')
-# ax1.plot(xx_pr, p)
-
-# ax1.plot([ecdf_values], [ecdf_prob], 
-#           marker='x', markersize=5, color="black")
-
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
-ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
-ax1.set_title('d) CBF-LRB', fontsize=title_font)
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
-plt.legend(fontsize=axis_font)
-fig.tight_layout()
-plt.show()
-plt.savefig('./dissertation_figures/time_ecdf.pdf')
+# ax1.set_title('d) CBF-LRB', fontsize=title_font)
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
+# plt.legend(fontsize=axis_font)
+# fig.tight_layout()
+# plt.show()
+# plt.savefig('./dissertation_figures/time_ecdf.pdf')
 
 
 
 #%% generalized curve fitting for cost and time
 
 
-from scipy.stats import norm
-from scipy.stats import ecdf
-f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
-# plt.close('all')
+# from scipy.stats import norm
+# from scipy.stats import ecdf
+# f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+# # plt.close('all')
 
 
-my_y_var = df_mf_tfp_o[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
+# my_y_var = df_mf_tfp_o[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 18
+# subt_font = 18
+# label_size = 16
+# title_font=20
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
 
-fig = plt.figure(figsize=(13 , 11))
+# fig = plt.figure(figsize=(13 , 11))
 
-theta_onv, beta_onv = mle_fit_general(ecdf_values,ecdf_prob, x_onit=(0.03,1))
+# theta_onv, beta_onv = mle_fit_general(ecdf_values,ecdf_prob, x_onit=(0.03,1))
 
-xx_pr = np.linspace(1e-4, 1.0, 400)
-p = f(xx_pr, theta_onv, beta_onv)
+# xx_pr = np.linspace(1e-4, 1.0, 400)
+# p = f(xx_pr, theta_onv, beta_onv)
 
-ax1=fig.add_subplot(2, 2, 1)
-ax1.plot(xx_pr, p)
+# ax1=fig.add_subplot(2, 2, 1)
+# ax1.plot(xx_pr, p)
 
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
-# ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-ax1.set_title('MF-TFP', fontsize=title_font)
-ax1.plot([ecdf_values], [ecdf_prob], 
-          marker='x', markersize=5, color="red")
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# # ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+# ax1.set_title('MF-TFP', fontsize=title_font)
+# ax1.plot([ecdf_values], [ecdf_prob], 
+#           marker='x', markersize=5, color="red")
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
 
 
 
-####
+# ####
 
-my_y_var = df_mf_lrb_o[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
+# my_y_var = df_mf_lrb_o[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 18
+# subt_font = 18
+# label_size = 16
+# title_font=20
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
 
-theta_onv, beta_onv = mle_fit_general(ecdf_values,ecdf_prob, x_onit=(0.03,1))
+# theta_onv, beta_onv = mle_fit_general(ecdf_values,ecdf_prob, x_onit=(0.03,1))
 
-xx_pr = np.linspace(1e-4, 1.0, 400)
-p = f(xx_pr, theta_onv, beta_onv)
+# xx_pr = np.linspace(1e-4, 1.0, 400)
+# p = f(xx_pr, theta_onv, beta_onv)
 
-ax1=fig.add_subplot(2, 2, 2)
-ax1.plot(xx_pr, p)
+# ax1=fig.add_subplot(2, 2, 2)
+# ax1.plot(xx_pr, p)
+
+# # ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# # ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+# ax1.set_title('MF-LRB', fontsize=title_font)
+# ax1.plot([ecdf_values], [ecdf_prob], 
+#           marker='x', markersize=5, color="red")
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
+
+# ####
+
+# my_y_var = df_cbf_tfp_o[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
+
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 18
+# subt_font = 18
+# label_size = 16
+# title_font=20
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
+
+# theta_onv, beta_onv = mle_fit_general(ecdf_values,ecdf_prob, x_onit=(0.01,1))
+
+# xx_pr = np.linspace(1e-4, 1.0, 400)
+# p = f(xx_pr, theta_onv, beta_onv)
+
+# ax1=fig.add_subplot(2, 2, 3)
+# ax1.plot(xx_pr, p)
 
 # ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
 # ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-ax1.set_title('MF-LRB', fontsize=title_font)
-ax1.plot([ecdf_values], [ecdf_prob], 
-          marker='x', markersize=5, color="red")
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
+# ax1.set_title('CBF-TFP', fontsize=title_font)
+# ax1.plot([ecdf_values], [ecdf_prob], 
+#           marker='x', markersize=5, color="red")
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
 
-####
+# ####
 
-my_y_var = df_cbf_tfp_o[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
+# my_y_var = df_cbf_lrb_o[cost_var]
+# res = ecdf(my_y_var)
+# ecdf_prob = res.cdf.probabilities
+# ecdf_values = res.cdf.quantiles
+
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 18
+# subt_font = 18
+# label_size = 16
+# title_font=20
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
+
+# theta_onv, beta_onv = mle_fit_general(ecdf_values,ecdf_prob, x_onit=(0.01,1))
+
+# xx_pr = np.linspace(1e-4, 1.0, 400)
+# p = f(xx_pr, theta_onv, beta_onv)
+
+# ax1=fig.add_subplot(2, 2, 4)
+# ax1.plot(xx_pr, p)
+
+# # ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+# ax1.set_title('CBF-LRB', fontsize=title_font)
+# ax1.plot([ecdf_values], [ecdf_prob], 
+#           marker='x', markersize=5, color="red")
+# ax1.grid(True)
+# # ax1.set_xlim([0, 1.0])
+# # ax1.set_ylim([0, 1.0])
+
+# fig.tight_layout()
+# plt.show()
+
+
+#%% check if conditioned regression is better than raw
+
+#%% impact classification model
+# for each system, make separate impact classification model
+
+mdl_all = GP(df)
+mdl_all.set_covariates(covariate_list)
+
+mdl_impact_cbf_lrb = GP(df_cbf_lrb)
+mdl_impact_cbf_lrb.set_covariates(covariate_list)
+mdl_impact_cbf_lrb.set_outcome('impacted')
+mdl_impact_cbf_lrb.test_train_split(0.2)
+
+mdl_impact_cbf_tfp = GP(df_cbf_tfp)
+mdl_impact_cbf_tfp.set_covariates(covariate_list)
+mdl_impact_cbf_tfp.set_outcome('impacted')
+mdl_impact_cbf_tfp.test_train_split(0.2)
+
+mdl_impact_mf_lrb = GP(df_mf_lrb)
+mdl_impact_mf_lrb.set_covariates(covariate_list)
+mdl_impact_mf_lrb.set_outcome('impacted')
+mdl_impact_mf_lrb.test_train_split(0.2)
+
+mdl_impact_mf_tfp = GP(df_mf_tfp)
+mdl_impact_mf_tfp.set_covariates(covariate_list)
+mdl_impact_mf_tfp.set_outcome('impacted')
+mdl_impact_mf_tfp.test_train_split(0.2)
+
+print('======= impact classification per system ========')
+import time
+t0 = time.time()
+
+mdl_impact_cbf_lrb.fit_gpc(kernel_name='rbf_iso')
+mdl_impact_cbf_tfp.fit_gpc(kernel_name='rbf_iso')
+mdl_impact_mf_lrb.fit_gpc(kernel_name='rbf_iso')
+mdl_impact_mf_tfp.fit_gpc(kernel_name='rbf_iso')
+
+tp = time.time() - t0
+
+print("GPC training for impact done for 4 models in %.3f s" % tp)
+
+# density estimation model to enable constructability 
+print('======= Density estimation per system ========')
+
+t0 = time.time()
+
+mdl_impact_mf_lrb.fit_kde()
+mdl_impact_cbf_lrb.fit_kde()
+mdl_impact_mf_tfp.fit_kde()
+mdl_impact_cbf_tfp.fit_kde()
+
+tp = time.time() - t0
+
+print("KDE training done for 4 models in %.3f s" % tp)
+
+
+impact_classification_mdls = {'mdl_impact_cbf_lrb': mdl_impact_cbf_lrb,
+                        'mdl_impact_cbf_tfp': mdl_impact_cbf_tfp,
+                        'mdl_impact_mf_lrb': mdl_impact_mf_lrb,
+                        'mdl_impact_mf_tfp': mdl_impact_mf_tfp}
+
+#%% regression models: cost
+# goal: E[cost|sys=sys, impact=impact]
+
+mdl_cost_cbf_lrb_i = GP(df_cbf_lrb_i)
+mdl_cost_cbf_lrb_i.set_covariates(covariate_list)
+mdl_cost_cbf_lrb_i.set_outcome(cost_var)
+mdl_cost_cbf_lrb_i.test_train_split(0.2)
+
+mdl_cost_cbf_lrb_o = GP(df_cbf_lrb_o)
+mdl_cost_cbf_lrb_o.set_covariates(covariate_list)
+mdl_cost_cbf_lrb_o.set_outcome(cost_var)
+mdl_cost_cbf_lrb_o.test_train_split(0.2)
+
+mdl_cost_cbf_tfp_i = GP(df_cbf_tfp_i)
+mdl_cost_cbf_tfp_i.set_covariates(covariate_list)
+mdl_cost_cbf_tfp_i.set_outcome(cost_var)
+mdl_cost_cbf_tfp_i.test_train_split(0.2)
+
+mdl_cost_cbf_tfp_o = GP(df_cbf_tfp_o)
+mdl_cost_cbf_tfp_o.set_covariates(covariate_list)
+mdl_cost_cbf_tfp_o.set_outcome(cost_var)
+mdl_cost_cbf_tfp_o.test_train_split(0.2)
+
+mdl_cost_mf_lrb_i = GP(df_mf_lrb_i)
+mdl_cost_mf_lrb_i.set_covariates(covariate_list)
+mdl_cost_mf_lrb_i.set_outcome(cost_var)
+mdl_cost_mf_lrb_i.test_train_split(0.2)
+
+mdl_cost_mf_lrb_o = GP(df_mf_lrb_o)
+mdl_cost_mf_lrb_o.set_covariates(covariate_list)
+mdl_cost_mf_lrb_o.set_outcome(cost_var)
+mdl_cost_mf_lrb_o.test_train_split(0.2)
+
+mdl_cost_mf_tfp_i = GP(df_mf_tfp_i)
+mdl_cost_mf_tfp_i.set_covariates(covariate_list)
+mdl_cost_mf_tfp_i.set_outcome(cost_var)
+mdl_cost_mf_tfp_i.test_train_split(0.2)
+
+mdl_cost_mf_tfp_o = GP(df_mf_tfp_o)
+mdl_cost_mf_tfp_o.set_covariates(covariate_list)
+mdl_cost_mf_tfp_o.set_outcome(cost_var)
+mdl_cost_mf_tfp_o.test_train_split(0.2)
+
+print('======= cost regression per system per impact ========')
+import time
+t0 = time.time()
+
+mdl_cost_cbf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_cbf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_cbf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_cbf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+
+tp = time.time() - t0
+
+print("GPR training for cost done for 8 models in %.3f s" % tp)
+
+cost_regression_mdls = {'mdl_cost_cbf_lrb_i': mdl_cost_cbf_lrb_i,
+                        'mdl_cost_cbf_lrb_o': mdl_cost_cbf_lrb_o,
+                        'mdl_cost_cbf_tfp_i': mdl_cost_cbf_tfp_i,
+                        'mdl_cost_cbf_tfp_o': mdl_cost_cbf_tfp_o,
+                        'mdl_cost_mf_lrb_i': mdl_cost_mf_lrb_i,
+                        'mdl_cost_mf_lrb_o': mdl_cost_mf_lrb_o,
+                        'mdl_cost_mf_tfp_i': mdl_cost_mf_tfp_i,
+                        'mdl_cost_mf_tfp_o': mdl_cost_mf_tfp_o}
+
+#%% regression models: time
+# goal: E[time|sys=sys, impact=impact]
+
+mdl_time_cbf_lrb_i = GP(df_cbf_lrb_i)
+mdl_time_cbf_lrb_i.set_covariates(covariate_list)
+mdl_time_cbf_lrb_i.set_outcome(time_var)
+mdl_time_cbf_lrb_i.test_train_split(0.2)
+
+mdl_time_cbf_lrb_o = GP(df_cbf_lrb_o)
+mdl_time_cbf_lrb_o.set_covariates(covariate_list)
+mdl_time_cbf_lrb_o.set_outcome(time_var)
+mdl_time_cbf_lrb_o.test_train_split(0.2)
+
+mdl_time_cbf_tfp_i = GP(df_cbf_tfp_i)
+mdl_time_cbf_tfp_i.set_covariates(covariate_list)
+mdl_time_cbf_tfp_i.set_outcome(time_var)
+mdl_time_cbf_tfp_i.test_train_split(0.2)
+
+mdl_time_cbf_tfp_o = GP(df_cbf_tfp_o)
+mdl_time_cbf_tfp_o.set_covariates(covariate_list)
+mdl_time_cbf_tfp_o.set_outcome(time_var)
+mdl_time_cbf_tfp_o.test_train_split(0.2)
+
+mdl_time_mf_lrb_i = GP(df_mf_lrb_i)
+mdl_time_mf_lrb_i.set_covariates(covariate_list)
+mdl_time_mf_lrb_i.set_outcome(time_var)
+mdl_time_mf_lrb_i.test_train_split(0.2)
+
+mdl_time_mf_lrb_o = GP(df_mf_lrb_o)
+mdl_time_mf_lrb_o.set_covariates(covariate_list)
+mdl_time_mf_lrb_o.set_outcome(time_var)
+mdl_time_mf_lrb_o.test_train_split(0.2)
+
+mdl_time_mf_tfp_i = GP(df_mf_tfp_i)
+mdl_time_mf_tfp_i.set_covariates(covariate_list)
+mdl_time_mf_tfp_i.set_outcome(time_var)
+mdl_time_mf_tfp_i.test_train_split(0.2)
+
+mdl_time_mf_tfp_o = GP(df_mf_tfp_o)
+mdl_time_mf_tfp_o.set_covariates(covariate_list)
+mdl_time_mf_tfp_o.set_outcome(time_var)
+mdl_time_mf_tfp_o.test_train_split(0.2)
+
+print('======= downtime regression per system per impact ========')
+import time
+t0 = time.time()
+
+mdl_time_cbf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_time_cbf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_time_cbf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_time_cbf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+
+tp = time.time() - t0
+
+print("GPR training for time done for 8 models in %.3f s" % tp)
+
+time_regression_mdls = {'mdl_time_cbf_lrb_i': mdl_time_cbf_lrb_i,
+                        'mdl_time_cbf_lrb_o': mdl_time_cbf_lrb_o,
+                        'mdl_time_cbf_tfp_i': mdl_time_cbf_tfp_i,
+                        'mdl_time_cbf_tfp_o': mdl_time_cbf_tfp_o,
+                        'mdl_time_mf_lrb_i': mdl_time_mf_lrb_i,
+                        'mdl_time_mf_lrb_o': mdl_time_mf_lrb_o,
+                        'mdl_time_mf_tfp_i': mdl_time_mf_tfp_i,
+                        'mdl_time_mf_tfp_o': mdl_time_mf_tfp_o}
+
+#%% regression models: repl
+# goal: E[repl|sys=sys, impact=impact]
+
+mdl_repl_cbf_lrb_i = GP(df_cbf_lrb_i)
+mdl_repl_cbf_lrb_i.set_covariates(covariate_list)
+mdl_repl_cbf_lrb_i.set_outcome('replacement_freq')
+mdl_repl_cbf_lrb_i.test_train_split(0.2)
+
+mdl_repl_cbf_lrb_o = GP(df_cbf_lrb_o)
+mdl_repl_cbf_lrb_o.set_covariates(covariate_list)
+mdl_repl_cbf_lrb_o.set_outcome('replacement_freq')
+mdl_repl_cbf_lrb_o.test_train_split(0.2)
+
+mdl_repl_cbf_tfp_i = GP(df_cbf_tfp_i)
+mdl_repl_cbf_tfp_i.set_covariates(covariate_list)
+mdl_repl_cbf_tfp_i.set_outcome('replacement_freq')
+mdl_repl_cbf_tfp_i.test_train_split(0.2)
+
+mdl_repl_cbf_tfp_o = GP(df_cbf_tfp_o)
+mdl_repl_cbf_tfp_o.set_covariates(covariate_list)
+mdl_repl_cbf_tfp_o.set_outcome('replacement_freq')
+mdl_repl_cbf_tfp_o.test_train_split(0.2)
+
+mdl_repl_mf_lrb_i = GP(df_mf_lrb_i)
+mdl_repl_mf_lrb_i.set_covariates(covariate_list)
+mdl_repl_mf_lrb_i.set_outcome('replacement_freq')
+mdl_repl_mf_lrb_i.test_train_split(0.2)
+
+mdl_repl_mf_lrb_o = GP(df_mf_lrb_o)
+mdl_repl_mf_lrb_o.set_covariates(covariate_list)
+mdl_repl_mf_lrb_o.set_outcome('replacement_freq')
+mdl_repl_mf_lrb_o.test_train_split(0.2)
+
+mdl_repl_mf_tfp_i = GP(df_mf_tfp_i)
+mdl_repl_mf_tfp_i.set_covariates(covariate_list)
+mdl_repl_mf_tfp_i.set_outcome('replacement_freq')
+mdl_repl_mf_tfp_i.test_train_split(0.2)
+
+mdl_repl_mf_tfp_o = GP(df_mf_tfp_o)
+mdl_repl_mf_tfp_o.set_covariates(covariate_list)
+mdl_repl_mf_tfp_o.set_outcome('replacement_freq')
+mdl_repl_mf_tfp_o.test_train_split(0.2)
+
+t0 = time.time()
+
+print('======= replacement regression per system per impact ========')
+
+mdl_repl_cbf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_cbf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_cbf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_cbf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_lrb_i.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_lrb_o.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_tfp_i.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_tfp_o.fit_gpr(kernel_name='rbf_iso')
+
+tp = time.time() - t0
+
+print("GPR training for replacement done for 8 models in %.3f s" % tp)
+
+repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
+                        'mdl_repl_cbf_lrb_o': mdl_repl_cbf_lrb_o,
+                        'mdl_repl_cbf_tfp_i': mdl_repl_cbf_tfp_i,
+                        'mdl_repl_cbf_tfp_o': mdl_repl_cbf_tfp_o,
+                        'mdl_repl_mf_lrb_i': mdl_repl_mf_lrb_i,
+                        'mdl_repl_mf_lrb_o': mdl_repl_mf_lrb_o,
+                        'mdl_repl_mf_tfp_i': mdl_repl_mf_tfp_i,
+                        'mdl_repl_mf_tfp_o': mdl_repl_mf_tfp_o}
+
+#%%
+mdl_cost_cbf_lrb = GP(df_cbf_lrb)
+mdl_cost_cbf_lrb.set_covariates(covariate_list)
+mdl_cost_cbf_lrb.set_outcome(cost_var)
+mdl_cost_cbf_lrb.test_train_split(0.2)
+
+
+mdl_cost_cbf_tfp = GP(df_cbf_tfp)
+mdl_cost_cbf_tfp.set_covariates(covariate_list)
+mdl_cost_cbf_tfp.set_outcome(cost_var)
+mdl_cost_cbf_tfp.test_train_split(0.2)
+
+mdl_cost_mf_lrb = GP(df_mf_lrb)
+mdl_cost_mf_lrb.set_covariates(covariate_list)
+mdl_cost_mf_lrb.set_outcome(cost_var)
+mdl_cost_mf_lrb.test_train_split(0.2)
+
+mdl_cost_mf_tfp = GP(df_mf_tfp)
+mdl_cost_mf_tfp.set_covariates(covariate_list)
+mdl_cost_mf_tfp.set_outcome(cost_var)
+mdl_cost_mf_tfp.test_train_split(0.2)
+
+mdl_cost_cbf_lrb.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_cbf_tfp.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_lrb.fit_gpr(kernel_name='rbf_iso')
+mdl_cost_mf_tfp.fit_gpr(kernel_name='rbf_iso')
+
+
+
+mdl_time_cbf_lrb = GP(df_cbf_lrb)
+mdl_time_cbf_lrb.set_covariates(covariate_list)
+mdl_time_cbf_lrb.set_outcome(time_var)
+mdl_time_cbf_lrb.test_train_split(0.2)
+
+
+mdl_time_cbf_tfp = GP(df_cbf_tfp)
+mdl_time_cbf_tfp.set_covariates(covariate_list)
+mdl_time_cbf_tfp.set_outcome(time_var)
+mdl_time_cbf_tfp.test_train_split(0.2)
+
+mdl_time_mf_lrb = GP(df_mf_lrb)
+mdl_time_mf_lrb.set_covariates(covariate_list)
+mdl_time_mf_lrb.set_outcome(time_var)
+mdl_time_mf_lrb.test_train_split(0.2)
+
+mdl_time_mf_tfp = GP(df_mf_tfp)
+mdl_time_mf_tfp.set_covariates(covariate_list)
+mdl_time_mf_tfp.set_outcome(time_var)
+mdl_time_mf_tfp.test_train_split(0.2)
+
+mdl_time_cbf_lrb.fit_gpr(kernel_name='rbf_iso')
+mdl_time_cbf_tfp.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_lrb.fit_gpr(kernel_name='rbf_iso')
+mdl_time_mf_tfp.fit_gpr(kernel_name='rbf_iso')
+
+
+mdl_repl_cbf_lrb = GP(df_cbf_lrb)
+mdl_repl_cbf_lrb.set_covariates(covariate_list)
+mdl_repl_cbf_lrb.set_outcome(repl_var)
+mdl_repl_cbf_lrb.test_train_split(0.2)
+
+
+mdl_repl_cbf_tfp = GP(df_cbf_tfp)
+mdl_repl_cbf_tfp.set_covariates(covariate_list)
+mdl_repl_cbf_tfp.set_outcome(repl_var)
+mdl_repl_cbf_tfp.test_train_split(0.2)
+
+mdl_repl_mf_lrb = GP(df_mf_lrb)
+mdl_repl_mf_lrb.set_covariates(covariate_list)
+mdl_repl_mf_lrb.set_outcome(repl_var)
+mdl_repl_mf_lrb.test_train_split(0.2)
+
+mdl_repl_mf_tfp = GP(df_mf_tfp)
+mdl_repl_mf_tfp.set_covariates(covariate_list)
+mdl_repl_mf_tfp.set_outcome(repl_var)
+mdl_repl_mf_tfp.test_train_split(0.2)
+
+mdl_repl_cbf_lrb.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_cbf_tfp.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_lrb.fit_gpr(kernel_name='rbf_iso')
+mdl_repl_mf_tfp.fit_gpr(kernel_name='rbf_iso')
+
+
+
+#%%
+print('============= mean squared error of cost regression, no conditioning =======================')
+from sklearn.metrics import mean_squared_error
+# MF TFP - cost
+y_pred = mdl_cost_mf_tfp.gpr.predict(mdl_cost_mf_tfp.X_test)
+mse = mean_squared_error(mdl_cost_mf_tfp.y_test, y_pred)
+print('MF-TFP, cost:', mse)
+
+# MF LRB - cost
+y_pred = mdl_cost_mf_lrb.gpr.predict(mdl_cost_mf_lrb.X_test)
+mse = mean_squared_error(mdl_cost_mf_lrb.y_test, y_pred)
+print('MF-LRB, cost', mse)
+
+# CBF TFP - cost
+y_pred = mdl_cost_cbf_tfp.gpr.predict(mdl_cost_cbf_tfp.X_test)
+mse = mean_squared_error(mdl_cost_cbf_tfp.y_test, y_pred)
+print('CBF-TFP, cost', mse)
+
+# CBF LRB - cost
+y_pred = mdl_cost_cbf_lrb.gpr.predict(mdl_cost_cbf_lrb.X_test)
+mse = mean_squared_error(mdl_cost_cbf_lrb.y_test, y_pred)
+print('CBF-LRB, cost', mse)
+
+print('============= mean squared error of cost regression, impact conditioned =======================')
+from sklearn.metrics import mean_squared_error
+# MF TFP - cost
+y_pred = predict_DV(mdl_cost_mf_tfp.X_test, mdl_impact_mf_tfp.gpc, mdl_cost_mf_tfp_i.gpr, mdl_cost_mf_tfp_o.gpr, 
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_cost_mf_tfp.y_test, y_pred)
+print('MF-TFP, cost:', mse)
+
+# MF LRB - cost
+y_pred = predict_DV(mdl_cost_mf_lrb.X_test, mdl_impact_mf_lrb.gpc, mdl_cost_mf_lrb_i.gpr, mdl_cost_mf_lrb_o.gpr, 
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_cost_mf_lrb.y_test, y_pred)
+print('MF-LRB, cost', mse)
+
+# CBF TFP - cost
+y_pred = predict_DV(mdl_cost_cbf_tfp.X_test, mdl_impact_cbf_tfp.gpc, mdl_cost_cbf_tfp_i.gpr, mdl_cost_cbf_tfp_o.gpr, 
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_cost_cbf_tfp.y_test, y_pred)
+print('CBF-TFP, cost', mse)
+
+# CBF LRB - cost
+y_pred = predict_DV(mdl_cost_cbf_lrb.X_test, mdl_impact_cbf_lrb.gpc, mdl_cost_cbf_lrb_i.gpr, mdl_cost_cbf_lrb_o.gpr, 
+                    outcome=cost_var, return_var=False)
+mse = mean_squared_error(mdl_cost_cbf_lrb.y_test, y_pred)
+print('CBF-LRB, cost', mse)
+
+#%%
+print('============= mean squared error of time regression, no conditioning =======================')
+from sklearn.metrics import mean_squared_error
+# MF TFP - time
+y_pred = mdl_time_mf_tfp.gpr.predict(mdl_time_mf_tfp.X_test)
+mse = mean_squared_error(mdl_time_mf_tfp.y_test, y_pred)
+print('MF-TFP, time:', mse)
+
+# MF LRB - time
+y_pred = mdl_time_mf_lrb.gpr.predict(mdl_time_mf_lrb.X_test)
+mse = mean_squared_error(mdl_time_mf_lrb.y_test, y_pred)
+print('MF-LRB, time', mse)
+
+# CBF TFP - time
+y_pred = mdl_time_cbf_tfp.gpr.predict(mdl_time_cbf_tfp.X_test)
+mse = mean_squared_error(mdl_time_cbf_tfp.y_test, y_pred)
+print('CBF-TFP, time', mse)
+
+# CBF LRB - time
+y_pred = mdl_time_cbf_lrb.gpr.predict(mdl_time_cbf_lrb.X_test)
+mse = mean_squared_error(mdl_time_cbf_lrb.y_test, y_pred)
+print('CBF-LRB, time', mse)
+
+print('============= mean squared error of time regression, impact conditioned =======================')
+from sklearn.metrics import mean_squared_error
+# MF TFP - time
+y_pred = predict_DV(mdl_time_mf_tfp.X_test, mdl_impact_mf_tfp.gpc, mdl_time_mf_tfp_i.gpr, mdl_time_mf_tfp_o.gpr, 
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_time_mf_tfp.y_test, y_pred)
+print('MF-TFP, time:', mse)
+
+# MF LRB - time
+y_pred = predict_DV(mdl_time_mf_lrb.X_test, mdl_impact_mf_lrb.gpc, mdl_time_mf_lrb_i.gpr, mdl_time_mf_lrb_o.gpr, 
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_time_mf_lrb.y_test, y_pred)
+print('MF-LRB, time', mse)
+
+# CBF TFP - time
+y_pred = predict_DV(mdl_time_cbf_tfp.X_test, mdl_impact_cbf_tfp.gpc, mdl_time_cbf_tfp_i.gpr, mdl_time_cbf_tfp_o.gpr, 
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_time_cbf_tfp.y_test, y_pred)
+print('CBF-TFP, time', mse)
+
+# CBF LRB - time
+y_pred = predict_DV(mdl_time_cbf_lrb.X_test, mdl_impact_cbf_lrb.gpc, mdl_time_cbf_lrb_i.gpr, mdl_time_cbf_lrb_o.gpr, 
+                    outcome=time_var, return_var=False)
+mse = mean_squared_error(mdl_time_cbf_lrb.y_test, y_pred)
+print('CBF-LRB, time', mse)
+
+#%%
+print('============= mean squared error of repl regression, no conditioning =======================')
+from sklearn.metrics import mean_squared_error
+# MF TFP - repl
+y_pred = mdl_repl_mf_tfp.gpr.predict(mdl_repl_mf_tfp.X_test)
+mse = mean_squared_error(mdl_repl_mf_tfp.y_test, y_pred)
+print('MF-TFP, repl:', mse)
+
+# MF LRB - repl
+y_pred = mdl_repl_mf_lrb.gpr.predict(mdl_repl_mf_lrb.X_test)
+mse = mean_squared_error(mdl_repl_mf_lrb.y_test, y_pred)
+print('MF-LRB, repl', mse)
+
+# CBF TFP - repl
+y_pred = mdl_repl_cbf_tfp.gpr.predict(mdl_repl_cbf_tfp.X_test)
+mse = mean_squared_error(mdl_repl_cbf_tfp.y_test, y_pred)
+print('CBF-TFP, repl', mse)
+
+# CBF LRB - repl
+y_pred = mdl_repl_cbf_lrb.gpr.predict(mdl_repl_cbf_lrb.X_test)
+mse = mean_squared_error(mdl_repl_cbf_lrb.y_test, y_pred)
+print('CBF-LRB, repl', mse)
+
+print('============= mean squared error of repl regression, impact conditioned =======================')
+from sklearn.metrics import mean_squared_error
+# MF TFP - repl
+y_pred = predict_DV(mdl_repl_mf_tfp.X_test, mdl_impact_mf_tfp.gpc, mdl_repl_mf_tfp_i.gpr, mdl_repl_mf_tfp_o.gpr, 
+                    outcome=repl_var, return_var=False)
+mse = mean_squared_error(mdl_repl_mf_tfp.y_test, y_pred)
+print('MF-TFP, repl:', mse)
+
+# MF LRB - repl
+y_pred = predict_DV(mdl_repl_mf_lrb.X_test, mdl_impact_mf_lrb.gpc, mdl_repl_mf_lrb_i.gpr, mdl_repl_mf_lrb_o.gpr, 
+                    outcome=repl_var, return_var=False)
+mse = mean_squared_error(mdl_repl_mf_lrb.y_test, y_pred)
+print('MF-LRB, repl', mse)
+
+# CBF TFP - repl
+y_pred = predict_DV(mdl_repl_cbf_tfp.X_test, mdl_impact_cbf_tfp.gpc, mdl_repl_cbf_tfp_i.gpr, mdl_repl_cbf_tfp_o.gpr, 
+                    outcome=repl_var, return_var=False)
+mse = mean_squared_error(mdl_repl_cbf_tfp.y_test, y_pred)
+print('CBF-TFP, repl', mse)
+
+# CBF LRB - repl
+y_pred = predict_DV(mdl_repl_cbf_lrb.X_test, mdl_impact_cbf_lrb.gpc, mdl_repl_cbf_lrb_i.gpr, mdl_repl_cbf_lrb_o.gpr, 
+                    outcome=repl_var, return_var=False)
+mse = mean_squared_error(mdl_repl_cbf_lrb.y_test, y_pred)
+print('CBF-LRB, repl', mse)
+
+
+#%% sample for CBF-LRB
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
 subt_font = 18
-label_size = 16
-title_font=20
+label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-theta_onv, beta_onv = mle_fit_general(ecdf_values,ecdf_prob, x_onit=(0.01,1))
+fig = plt.figure(figsize=(16, 7))
 
-xx_pr = np.linspace(1e-4, 1.0, 400)
-p = f(xx_pr, theta_onv, beta_onv)
+xvar = 'gap_ratio'
+yvar = 'RI'
 
-ax1=fig.add_subplot(2, 2, 3)
-ax1.plot(xx_pr, p)
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
 
-ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
-ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-ax1.set_title('CBF-TFP', fontsize=title_font)
-ax1.plot([ecdf_values], [ecdf_prob], 
-          marker='x', markersize=5, color="red")
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
+Z = predict_DV(X_plot, mdl_impact_cbf_lrb.gpc, mdl_cost_cbf_lrb_i.gpr, mdl_cost_cbf_lrb_o.gpr,
+                    outcome=cost_var, return_var=False)
 
-####
 
-my_y_var = df_cbf_lrb_o[cost_var]
-res = ecdf(my_y_var)
-ecdf_prob = res.cdf.probabilities
-ecdf_values = res.cdf.quantiles
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[cost_var], c=df_cbf_lrb[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('CBF-LRB: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = predict_DV(X_plot, mdl_impact_cbf_lrb.gpc, mdl_cost_cbf_lrb_i.gpr, mdl_cost_cbf_lrb_o.gpr,
+                    outcome=cost_var, return_var=False)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[cost_var], c=df_cbf_lrb[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('CBF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+
+#%% sample for CBF-TFP
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
 subt_font = 18
-label_size = 16
-title_font=20
+label_size = 12
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-theta_onv, beta_onv = mle_fit_general(ecdf_values,ecdf_prob, x_onit=(0.01,1))
+fig = plt.figure(figsize=(16, 7))
 
-xx_pr = np.linspace(1e-4, 1.0, 400)
-p = f(xx_pr, theta_onv, beta_onv)
+xvar = 'gap_ratio'
+yvar = 'RI'
 
-ax1=fig.add_subplot(2, 2, 4)
-ax1.plot(xx_pr, p)
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_cbf_tfp.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
 
-# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
-ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-ax1.set_title('CBF-LRB', fontsize=title_font)
-ax1.plot([ecdf_values], [ecdf_prob], 
-          marker='x', markersize=5, color="red")
-ax1.grid(True)
-# ax1.set_xlim([0, 1.0])
-# ax1.set_ylim([0, 1.0])
+Z = predict_DV(X_plot, mdl_impact_cbf_tfp.gpc, mdl_cost_cbf_tfp_i.gpr, mdl_cost_cbf_tfp_o.gpr,
+                    outcome=cost_var, return_var=False)
 
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_tfp[xvar], df_cbf_tfp[yvar], df_cbf_tfp[cost_var], c=df_cbf_tfp[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('CBF-TFP: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_cbf_tfp.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = predict_DV(X_plot, mdl_impact_cbf_tfp.gpc, mdl_cost_cbf_tfp_i.gpr, mdl_cost_cbf_tfp_o.gpr,
+                    outcome=cost_var, return_var=False)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_tfp[xvar], df_cbf_tfp[yvar], df_cbf_tfp[cost_var], c=df_cbf_tfp[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('CBF-TFP: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+
+#%% sample for MF-LRB
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 7))
+
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_mf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+
+Z = predict_DV(X_plot, mdl_impact_mf_lrb.gpc, mdl_cost_mf_lrb_i.gpr, mdl_cost_mf_lrb_o.gpr,
+                    outcome=cost_var, return_var=False)
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_lrb[xvar], df_mf_lrb[yvar], df_mf_lrb[cost_var], c=df_mf_lrb[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('MF-LRB: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_mf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = predict_DV(X_plot, mdl_impact_mf_lrb.gpc, mdl_cost_mf_lrb_i.gpr, mdl_cost_mf_lrb_o.gpr,
+                    outcome=cost_var, return_var=False)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_lrb[xvar], df_mf_lrb[yvar], df_mf_lrb[cost_var], c=df_mf_lrb[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('MF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+
+#%% sample for MF-TFP
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 7))
+
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_mf_tfp.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+
+Z = predict_DV(X_plot, mdl_impact_mf_tfp.gpc, mdl_cost_mf_tfp_i.gpr, mdl_cost_mf_tfp_o.gpr,
+                    outcome=cost_var, return_var=False)
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_tfp[xvar], df_mf_tfp[yvar], df_mf_tfp[cost_var], c=df_mf_tfp[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('MF-TFP: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_mf_tfp.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = predict_DV(X_plot, mdl_impact_mf_tfp.gpc, mdl_cost_mf_tfp_i.gpr, mdl_cost_mf_tfp_o.gpr,
+                    outcome=cost_var, return_var=False)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_tfp[xvar], df_mf_tfp[yvar], df_mf_tfp[cost_var], c=df_mf_tfp[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('MF-TFP: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+
+
+#%% sample unconditioned for CBF-LRB
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 7))
+
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_cost_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+
+Z = mdl_cost_cbf_lrb.gpr.predict(X_plot)
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[cost_var], c=df_cbf_lrb[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('CBF-LRB: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_cost_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = mdl_cost_cbf_lrb.gpr.predict(X_plot)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[cost_var], c=df_cbf_lrb[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('CBF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
 plt.show()
+#%% sample unconditioned for CBF-TFP
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 7))
+
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_cost_cbf_tfp.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+
+Z = mdl_cost_cbf_tfp.gpr.predict(X_plot)
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_tfp[xvar], df_cbf_tfp[yvar], df_cbf_tfp[cost_var], c=df_cbf_tfp[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('CBF-TFP: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_cost_cbf_tfp.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = mdl_cost_cbf_tfp.gpr.predict(X_plot)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_tfp[xvar], df_cbf_tfp[yvar], df_cbf_tfp[cost_var], c=df_cbf_tfp[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('CBF-TFP: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+
+#%% sample unconditioned for MF-TFP
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 7))
+
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_cost_mf_tfp.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+
+Z = mdl_cost_mf_tfp.gpr.predict(X_plot)
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_tfp[xvar], df_mf_tfp[yvar], df_mf_tfp[cost_var], c=df_mf_tfp[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('MF-TFP: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_cost_mf_tfp.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = mdl_cost_mf_tfp.gpr.predict(X_plot)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_tfp[xvar], df_mf_tfp[yvar], df_mf_tfp[cost_var], c=df_mf_tfp[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('MF-TFP: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+
+#%% sample unconditioned for MF-LRB
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 7))
+
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_cost_mf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+
+Z = mdl_cost_mf_lrb.gpr.predict(X_plot)
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_lrb[xvar], df_mf_lrb[yvar], df_mf_lrb[cost_var], c=df_mf_lrb[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('MF-LRB: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_cost_mf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = mdl_cost_mf_lrb.gpr.predict(X_plot)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_mf_lrb[xvar], df_mf_lrb[yvar], df_mf_lrb[cost_var], c=df_mf_lrb[cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+ax.set_zlim([-0.1, 1.1])
+
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Repair cost ratio', fontsize=axis_font)
+ax.set_title('MF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()

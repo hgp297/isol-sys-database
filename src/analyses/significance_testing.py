@@ -105,8 +105,8 @@ df['E_50%'].loc[mask] = df_loss_max['E_50%'].loc[mask]
 
 
 #%% subsets
-# df_miss = df[df['impacted'] == 0]
-df_miss = df.copy()
+df_miss = df[df['impacted'] == 0]
+# df_miss = df.copy()
 
 # remove outlier point
 from scipy import stats
