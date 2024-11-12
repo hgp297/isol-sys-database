@@ -730,6 +730,18 @@ repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
 
 # moment frames that do not impact the wall do not have high replacement
 
+#%%
+
+# plt.figure(figsize=(8,6))
+# plt.scatter(df['gap_ratio'], df['T_ratio'])
+# # plt.xlim([0.5,2.0])
+# # plt.ylim([0.5, 2.25])
+# plt.xlabel('$GR$', fontsize=axis_font)
+# plt.ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+# plt.grid(True)
+# # plt.title('Collapse risk using full 400 points', fontsize=axis_font)
+# plt.show()
+
 #%% engineering data
 
 plt.rcParams["font.family"] = "serif"

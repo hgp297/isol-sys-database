@@ -456,40 +456,40 @@ ops.recorder('Node', '-file', data_dir+'isol_base_vert.csv',
 
 
 # ################## static cyclical #################
-# # create TimeSeries
-# ops.timeSeries("Linear", monotonic_series_tag)
-# ops.pattern('Plain', monotonic_pattern_tag, monotonic_series_tag)
-# ops.load(10, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+# create TimeSeries
+ops.timeSeries("Linear", monotonic_series_tag)
+ops.pattern('Plain', monotonic_pattern_tag, monotonic_series_tag)
+ops.load(10, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-# tol = 1e-5
+tol = 1e-5
 
-# # ops.system("BandGeneral")   
-# # ops.test("NormDispIncr", tol, 15)
-# # ops.numberer("RCM")
-# # ops.constraints("Plain")
-# # ops.algorithm("Newton")
-
-# ops.test('EnergyIncr', 1.0e-5, 300, 0)
-# ops.algorithm('KrylovNewton')
-# ops.system('UmfPack')
+# ops.system("BandGeneral")   
+# ops.test("NormDispIncr", tol, 15)
 # ops.numberer("RCM")
 # ops.constraints("Plain")
+# ops.algorithm("Newton")
 
-# # du = -0.01*inch
-# # ops.integrator('DisplacementControl', 201, 1, du, 1, du, du)
-# # max_u = -1.5  # Max displacement
-# # n_steps = int(round(max_u/du))
-# # currentDisp = 0.0
-# ops.analysis("Static")                      # create analysis object
+ops.test('EnergyIncr', 1.0e-5, 300, 0)
+ops.algorithm('KrylovNewton')
+ops.system('UmfPack')
+ops.numberer("RCM")
+ops.constraints("Plain")
 
-# # TODO: here
-# peaks = np.linspace(0.0, bldg.D_m*2, 7)
-# peaks = np.append(peaks, peaks[-1])
-# steps = 500
-# for i, pk in enumerate(peaks):
-#     du = (-1.0)**i*(peaks[i] / steps)
-#     ops.integrator('DisplacementControl', 10, 1, du, 1, du, du)
-#     ops.analyze(steps)
+# du = -0.01*inch
+# ops.integrator('DisplacementControl', 201, 1, du, 1, du, du)
+# max_u = -1.5  # Max displacement
+# n_steps = int(round(max_u/du))
+# currentDisp = 0.0
+ops.analysis("Static")                      # create analysis object
+
+# TODO: here
+peaks = np.linspace(0.0, bldg.D_m*2, 7)
+peaks = np.append(peaks, peaks[-1])
+steps = 500
+for i, pk in enumerate(peaks):
+    du = (-1.0)**i*(peaks[i] / steps)
+    ops.integrator('DisplacementControl', 10, 1, du, 1, du, du)
+    ops.analyze(steps)
 
 ############################### transient
 GMDirection = 1  # ground-motion direction
@@ -533,25 +533,25 @@ ops.analysis('Transient')
 # the following commands are unique to the Uniform Earthquake excitation
 
 ################ ground motion
-# Uniform EXCITATION: acceleration input
-gm_dir = '../resource/ground_motions/PEERNGARecords_Unscaled/'
-inFile = gm_dir + gm_name + '.AT2'
-outFile = gm_dir + gm_name + '.g3'
+# # Uniform EXCITATION: acceleration input
+# gm_dir = '../resource/ground_motions/PEERNGARecords_Unscaled/'
+# inFile = gm_dir + gm_name + '.AT2'
+# outFile = gm_dir + gm_name + '.g3'
 
-  # call procedure to convert the ground-motion file
-from ReadRecord import ReadRecord
-dt, nPts = ReadRecord(inFile, outFile)
-g = 386.4
-GMfatt = g*scale_factor
+#   # call procedure to convert the ground-motion file
+# from ReadRecord import ReadRecord
+# dt, nPts = ReadRecord(inFile, outFile)
+# g = 386.4
+# GMfatt = g*scale_factor
 
-eq_series_tag = 100
-eq_pattern_tag = 400
-# time series information
-ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
-                '-filePath', outFile, '-factor', GMfatt)     
-# create uniform excitation
-ops.pattern('UniformExcitation', eq_pattern_tag, 
-            GMDirection, '-accel', eq_series_tag)     
+# eq_series_tag = 100
+# eq_pattern_tag = 400
+# # time series information
+# ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
+#                 '-filePath', outFile, '-factor', GMfatt)     
+# # create uniform excitation
+# ops.pattern('UniformExcitation', eq_pattern_tag, 
+#             GMDirection, '-accel', eq_series_tag)     
 ###################
 
 
@@ -735,11 +735,15 @@ isol_shear = isol_base_rxn[just_cols].sum(axis=1)
 isol_axial = isol_base_vert[just_cols].sum(axis=1)
 u_bearing, fs_bearing = isolator.get_backbone(mode='building')
 
+# isol_disp = isol_disp.head(4000)
+# isol_shear = isol_shear.head(4000)
+# isol_axial= isol_axial.head(4000)
+
 if bldg.isolator_system == 'LRB':
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
     plt.plot(-isol_disp['column_0'], isol_shear, color='navy', linewidth=1.5)
-    plt.plot(u_bearing, fs_bearing, linestyle='--', color='orange')
+    plt.plot(u_bearing, fs_bearing, linestyle='--', color='red', linewidth=1.5)
     # plt.title('Isolator hystereses (layer only) (LRB)')
     # plt.xlabel('Displ (in)')
     # plt.ylabel('Lateral force (kip)')
@@ -748,7 +752,7 @@ else:
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
     plt.plot(-isol_disp['column_0'], isol_shear/isol_axial, color='navy', linewidth=1.5)
-    plt.plot(u_bearing, fs_bearing, linestyle='--', color='orange')
+    plt.plot(u_bearing, fs_bearing, linestyle='--', color='red', linewidth=1.5)
     # plt.title('Isolator hystereses (layer only) (TFP)')
     # plt.xlabel('Displ (in)')
     # plt.ylabel('V/N')

@@ -123,8 +123,7 @@ def make_design_space(res, fix_zeta=None):
                                                  res),
                                      np.linspace(0.5, 2.25,
                                                  res),
-                                     np.linspace(2.0, 5.0,
-                                                 res),
+                                     2.0,
                                      fix_zeta)
             
                                  
@@ -137,9 +136,13 @@ def make_design_space(res, fix_zeta=None):
 
 #%% collapse fragility def
 
+label_size=18
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
+
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
 
 # collapse as a probability
 from scipy.stats import lognorm
@@ -769,3 +772,352 @@ config_dict = {
 }
 (W_seis, W_super, w_on_frame, P_on_leaning_column,
        all_w_cases, all_plc_cases) = define_gravity_loads(config_dict)
+
+#%%
+
+
+mdl_doe = GP(df_doe)
+covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
+mdl_doe.set_covariates(covariate_list)
+mdl_doe.set_outcome('collapse_prob')
+
+mdl_doe.fit_gpr(kernel_name=kernel_name)
+
+X_baseline = pd.DataFrame(np.array([[1.0, 2.0, 3.0, 0.15]]),
+                          columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
+
+
+baseline_risk, baseline_fs1 = mdl_doe.gpr.predict(X_baseline, return_std=True)
+baseline_risk = baseline_risk.item()
+baseline_fs2 = baseline_fs1**2
+baseline_fs1 = baseline_fs1.item()
+baseline_fs2 = baseline_fs2.item()
+
+steel_price = 2.0
+coef_dict = get_steel_coefs(df_doe, steel_per_unit=steel_price)
+baseline_costs = calc_upfront_cost(X_baseline, coef_dict, W=W_seis, Ws=W_super)
+
+baseline_total = baseline_costs['total'].item()
+baseline_steel = baseline_costs['steel'].item()
+baseline_land = baseline_costs['land'].item()
+
+risk_thresh = 0.1
+
+print('========== Baseline design (DoE) ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${baseline_total:,.2f}')
+print('Predicted collapse risk: ',
+      f'{baseline_risk:.2%}')
+print(X_baseline)
+T_fbe = 0.925
+Bm = np.interp(X_baseline['zeta_e'], zetaRef, BmRef)
+dm = g*1.017*X_baseline['T_ratio']*0.925/(4*pi**2*Bm)*X_baseline['gap_ratio']
+dm_val = dm.iloc[0]
+print('Displacement capacity (cm):',
+      dm_val*2.54)
+
+design_res = 20
+X_design_cand = make_design_space(design_res, fix_zeta=0.15)
+
+
+t0 = time.time()
+fmu_design, fs1_design = mdl_doe.gpr.predict(X_design_cand, return_std=True)
+fs2_design = fs1_design**2
+
+tp = time.time() - t0
+print("GPR collapse prediction for %d inputs in %.3f s" % (X_design_cand.shape[0],
+                                                                tp))
+
+
+risk_thresh = 0.1
+space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
+ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+import warnings
+warnings.filterwarnings('ignore')
+
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict, W=W_seis, Ws=W_super)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = ok_risk.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+warnings.resetwarnings()
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+T_fbe = 0.925
+Bm = np.interp(best_design['zeta_e'], zetaRef, BmRef)
+dm = g*1.017*best_design['T_ratio']*0.925/(4*pi**2*Bm)*best_design['gap_ratio']
+print('Displacement capacity (cm):',
+      dm*2.54)
+
+risk_thresh = 0.05
+space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
+ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+import warnings
+warnings.filterwarnings('ignore')
+
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict, W=W_seis, Ws=W_super)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = ok_risk.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+warnings.resetwarnings()
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+T_fbe = 0.925
+Bm = np.interp(best_design['zeta_e'], zetaRef, BmRef)
+dm = g*1.017*best_design['T_ratio']*0.925/(4*pi**2*Bm)*best_design['gap_ratio']
+print('Displacement capacity (cm):',
+      dm*2.54)
+
+risk_thresh = 0.025
+space_collapse_pred = pd.DataFrame(fmu_design, columns=['collapse probability'])
+ok_risk = X_design_cand.loc[space_collapse_pred['collapse probability']<=
+                      risk_thresh]
+
+import warnings
+warnings.filterwarnings('ignore')
+
+upfront_costs = calc_upfront_cost(ok_risk, coef_dict, W=W_seis, Ws=W_super)
+cheapest_design_idx = upfront_costs['total'].idxmin()
+design_upfront_cost = upfront_costs['total'].min()
+design_steel_cost = upfront_costs['steel'][cheapest_design_idx]
+design_land_cost = upfront_costs['land'][cheapest_design_idx]
+# least upfront cost of the viable designs
+best_design = ok_risk.loc[cheapest_design_idx]
+design_collapse_risk = space_collapse_pred.iloc[cheapest_design_idx]['collapse probability']
+warnings.resetwarnings()
+
+print('========== Inverse design ============')
+print('Design target', f'{risk_thresh:.2%}')
+print('Upfront cost of selected design: ',
+      f'${design_upfront_cost:,.2f}')
+print('Steel cost of selected design, ',
+      f'${design_steel_cost:,.2f}')
+print('Land cost of selected design, ',
+      f'${design_land_cost:,.2f}')
+print('Predicted collapse risk: ',
+      f'{design_collapse_risk:.2%}')
+print(best_design)
+T_fbe = 0.925
+Bm = np.interp(best_design['zeta_e'], zetaRef, BmRef)
+dm = g*1.017*best_design['T_ratio']*0.925/(4*pi**2*Bm)*best_design['gap_ratio']
+print('Displacement capacity (cm):',
+      dm*2.54)
+
+
+#%% Prediction 3ds
+
+# as an example, let's do gap vs Ry as T evolves
+plt.close('all')
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=20
+axis_font = 18
+subt_font = 18
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+res = 75
+plt_density = 200
+x_var = 'gap_ratio'
+y_var = 'RI'
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_3d, fs1_3d = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_3d = fs1_3d**2
+
+Z_3d = fmu_3d.reshape(xx_pl.shape)
+
+fig = plt.figure(figsize=(11, 9))
+ax=fig.add_subplot(2, 2, 1, projection='3d')
+
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_3d, cmap=plt.cm.Spectral_r,
+                        linewidth=0, antialiased=False,
+                        alpha=0.7, vmin=0, vmax=0.075)
+
+# df = df_doe.copy()
+df = df_doe[(df_doe['T_ratio'] < 2.5)]
+ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density], 
+            df['collapse_prob'][:plt_density],
+            edgecolors='k')
+
+ax.set_xlabel(r'$GR$', fontsize=axis_font, linespacing=0.5)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font, linespacing=1.0)
+ax.set_zlabel(r'Collapse probability', fontsize=axis_font, linespacing=3.0)
+ax.set_title(r'a) $T_M/T_{fb}=2.0$', fontsize=title_font)
+# ax.set_xlim([2, 5])
+ax.set_zlim([0, 1])
+# plt.show()
+
+# #################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.0, fourth_var_set = 0.15)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_3d, fs1_3d = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_3d = fs1_3d**2
+
+Z_3d = fmu_3d.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(2, 2, 2, projection='3d')
+
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_3d, cmap=plt.cm.Spectral_r,
+                        linewidth=0, antialiased=False,
+                        alpha=0.7, vmin=0, vmax=0.075)
+
+df = df_doe[(df_doe['T_ratio'] < 3.5) & (df_doe['T_ratio'] > 2.5)]
+ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density], 
+            df['collapse_prob'][:plt_density],
+            edgecolors='k')
+
+ax.set_xlabel(r'$GR$', fontsize=axis_font, linespacing=0.5)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font, linespacing=1.0)
+ax.set_zlabel(r'Collapse probability', fontsize=axis_font, linespacing=3.0)
+ax.set_title(r'b) $T_M/T_{fb}=3.0$', fontsize=title_font)
+# ax.set_xlim([2, 5])
+ax.set_zlim([0, 1])
+
+# #################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 4.0, fourth_var_set = 0.15)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_3d, fs1_3d = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_3d = fs1_3d**2
+
+Z_3d = fmu_3d.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(2, 2, 3, projection='3d')
+
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_3d, cmap=plt.cm.Spectral_r,
+                        linewidth=0, antialiased=False,
+                        alpha=0.7, vmin=0, vmax=0.075)
+
+df = df_doe[(df_doe['T_ratio'] < 4.5) & (df_doe['T_ratio'] > 3.5)]
+ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density], 
+            df['collapse_prob'][:plt_density],
+            edgecolors='k')
+
+ax.set_xlabel(r'$GR$', fontsize=axis_font, linespacing=0.5)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font, linespacing=1.0)
+ax.set_zlabel(r'Collapse probability', fontsize=axis_font, linespacing=3.0)
+ax.set_title(r'c) $T_M/T_{fb}=4.0$', fontsize=title_font)
+# ax.set_xlim([2, 5])
+ax.set_zlim([0, 1])
+
+# #################################
+
+X_plot = make_2D_plotting_space(mdl_doe.X, res, x_var=x_var, y_var=y_var, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 5.0, fourth_var_set = 0.15)
+xx = X_plot[x_var]
+yy = X_plot[y_var]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+fmu_3d, fs1_3d = mdl_doe.gpr.predict(X_plot, return_std=True)
+fs2_3d = fs1_3d**2
+
+Z_3d = fmu_3d.reshape(xx_pl.shape)
+
+ax=fig.add_subplot(2, 2, 4, projection='3d')
+
+# Plot the surface.
+surf = ax.plot_surface(xx_pl, yy_pl, Z_3d, cmap=plt.cm.Spectral_r,
+                        linewidth=0, antialiased=False,
+                        alpha=0.7, vmin=0, vmax=0.075)
+
+df = df_doe[(df_doe['T_ratio'] > 3.5) ]
+ax.scatter(df[x_var][:plt_density], df[y_var][:plt_density], 
+            df['collapse_prob'][:plt_density],
+            edgecolors='k')
+
+ax.set_xlabel(r'$GR$', fontsize=axis_font, linespacing=0.5)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font, linespacing=1.0)
+ax.set_zlabel(r'Collapse probability', fontsize=axis_font, linespacing=3.0)
+ax.set_title(r'd) $T_M/T_{fb}=5.0$', fontsize=title_font)
+# ax.set_xlim([2, 5])
+ax.set_zlim([0, 1])
+
+fig.tight_layout(w_pad=0.0)
+# plt.savefig('./figures/surf.pdf')
+# plt.show()
+
+#%%
+
+df = df_doe.copy()
+plt.figure(figsize=(8,6))
+# plt.imshow(
+#     Z,
+#     interpolation="nearest",
+#     extent=(xx_pl.min(), xx_pl.max(),
+#             yy_pl.min(), yy_pl.max()),
+#     aspect="auto",
+#     origin="lower",
+#     cmap=plt.cm.Blues,
+# ) 
+plt.scatter(df['gap_ratio'], df['T_ratio'])
+# plt.xlim([0.5,2.0])
+# plt.ylim([0.5, 2.25])
+plt.xlabel('$GR$', fontsize=axis_font)
+plt.ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+plt.grid(True)
+# plt.title('Collapse risk using full 400 points', fontsize=axis_font)
+plt.show()
+
