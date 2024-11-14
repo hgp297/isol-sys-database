@@ -2887,7 +2887,7 @@ ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 fig.tight_layout()
 plt.show()
 
-plt.savefig('./eng_struc_figures/target_contours_Tm_zeta.eps')
+# plt.savefig('./eng_struc_figures/target_contours_Tm_zeta.eps')
 #%% constructability plots
 
 # TODO: KDE
@@ -3829,35 +3829,46 @@ print_latex_inverse_table('MF-LRB', mf_lrb_strict_design, mf_lrb_strict_performa
 print_latex_inverse_table('CBF-TFP', cbf_tfp_strict_design, cbf_tfp_strict_performance)   
 print_latex_inverse_table('CBF-LRB', cbf_lrb_strict_design, cbf_lrb_strict_performance)   
 
+print()
 
 def print_latex_design_table(sys_name, val_results):
 
     typ_design = val_results.iloc[0]
     
+    # moat in cm
     moat = typ_design['constructed_moat']*2.54
     largest_beam = typ_design['beam'][0]
     largest_column = typ_design['column'][0]
+    try:
+        largest_brace = typ_design['brace'][0]
+    except:
+        largest_brace = 'n/a'
     
-    breakpoint()
+    # d bearings in cm, R curvature in mm
     try:
         bearing_param_1 = typ_design['mu_1']
     except:
-        bearing_param_1 = typ_design['d_r']   
+        bearing_param_1 = typ_design['d_lead']*2.54
         
     try:
         bearing_param_2 = typ_design['mu_2']
     except:
-        bearing_param_2 = typ_design['d_r'] 
+        bearing_param_2 = typ_design['d_bearing'] *2.54
         
     try:
-        bearing_param_2 = typ_design['R_1']
+        bearing_param_3 = typ_design['R_1']*25.4
     except:
-        bearing_param_2 = typ_design['d_r'] 
+        bearing_param_3 = typ_design['t_r']* 2.54
         
+    # print as either TFP or LRB
     try:
-        bearing_param_2 = typ_design['R_2']
+        bearing_param_4 = typ_design['R_2']*25.4
+        latex_string = f"& {sys_name} & {moat:.1f} cm & {largest_beam} & {largest_column} & {largest_brace} \
+            & {bearing_param_1:.3f} & {bearing_param_2:.3f} & {bearing_param_3:.0f} mm &  {bearing_param_4:.0f} mm \\\\"
     except:
-        bearing_param_2 = typ_design['d_r'] 
+        bearing_param_4 = typ_design['n_layers'] 
+        latex_string = f"& {sys_name} & {moat:.1f} cm & {largest_beam} & {largest_column} & {largest_brace} \
+            & {bearing_param_1:.1f} cm & {bearing_param_2:.1f} cm & {bearing_param_3:.1f} cm &  {bearing_param_4:.0f}  \\\\"
     
     # print('Average median repair cost: ',
     #       f'${val_cost[0]:,.2f}')
@@ -3868,13 +3879,19 @@ def print_latex_design_table(sys_name, val_results):
     # print('Estimated replacement frequency: ',
     #       f'{val_replacement[0]:.2%}')
     
-    # latex_string = f"& {sys_name} & {GR:.2f} & {Ry:.2f} & {T_ratio:.2f} & {zeta:.2f} \
-    #     & {GP_cost_ratio:.3f} & {GP_time_ratio:.3f} & {GP_repl_risk:.3f} &  \${upfront_cost/1e6:.2f} M \\\\"
-    # print(latex_string)
+    
+    print(latex_string)
     return
 
 print_latex_design_table('MF-TFP', mf_tfp_val_results)
+print_latex_design_table('CBF-TFP', cbf_tfp_val_results)
+print_latex_design_table('MF-TFP', mf_tfp_strict_results)
+print_latex_design_table('CBF-TFP', cbf_tfp_strict_results)
+
 print_latex_design_table('MF-LRB', mf_lrb_val_results)
+print_latex_design_table('CBF-LRB', cbf_lrb_val_results)
+print_latex_design_table('MF-LRB', mf_lrb_strict_results)
+print_latex_design_table('CBF-LRB', cbf_lrb_strict_results)
 #%% debrief predictions: try to get predictions of actual ran building
 # two values differ
 # GR should be different because real ground motion suite has different Sa than design spectrum
@@ -4272,11 +4289,535 @@ custom_lines = [Line2D([-1], [-1], color='white', marker='x', markeredgecolor='b
                 Line2D([-1], [-1], color='black', linestyle=':'),
                 ]
 
-ax1.legend(custom_lines, ['IDA replacement frequency', 'Moderate performance', 'Enhanced performance', 
-                          'Predicted replacement risk', r'Predicted $\mu+\sigma$'], 
+ax1.legend(custom_lines, ['IDA replacement probability', 'Moderate performance', 'Enhanced performance', 
+                          'Predicted replacement probability', r'Predicted $\mu+\sigma$'], 
            fontsize=subt_font-2, loc='center right')
 
-plt.savefig('./eng_struc_figures/inverse_repl_frag.pdf')
+# plt.savefig('./eng_struc_figures/inverse_repl_frag.pdf')
+
+#%% cost validation frag
+
+# print out the results
+ida_levels = [1.0, 1.5, 2.0]
+
+from scipy.stats import norm
+f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 24
+subt_font = 24
+label_size = 22
+title_font=24
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+from matplotlib.lines import Line2D
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 13))
+
+
+## MF-TFP
+
+# regular
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,mf_tfp_val_cost_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+mf_tfp_cost_ratio = mf_tfp_inv_pred['cost']
+mf_tfp_cost_ratio_var = mf_tfp_inv_pred['cost_var']
+upper = mf_tfp_cost_ratio+mf_tfp_cost_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p, color=inverse_color)
+ax1.axhline(mf_tfp_cost_ratio, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
+ax1.axvline(1.0, linestyle=':', color='black')
+# ax1.text(1.5,mf_tfp_cost_ratio+0.02, r'Predicted replacement risk',
+#           fontsize=subt_font, color=inverse_color)
+# ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+#           fontsize=subt_font, color=inverse_color)
+ax1.text(0.55, mf_tfp_cost_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [mf_tfp_val_cost_ratio[i]], 
+              marker='x', markersize=15, color=inverse_color_2)
+
+# strict
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,mf_tfp_strict_cost_ratio)
+p = f(xx_pr, theta_inv, beta_inv)
+
+mf_tfp_cost_ratio = mf_tfp_strict_pred['cost']
+mf_tfp_cost_ratio_var = mf_tfp_strict_pred['cost_var']
+upper = mf_tfp_cost_ratio+mf_tfp_cost_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
+ax1.axhline(mf_tfp_cost_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, mf_tfp_cost_ratio-0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+ax1.set_ylabel('Repair cost ratio', fontsize=axis_font)
+ax1.set_title('a) MF-TFP', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [mf_tfp_strict_cost_ratio[i]], 
+              marker='x', markersize=15, color=strict_color_2)
+    
+ax1.grid(True)
+ax1.set_xlim([0.5, 3.0])
+ax1.set_ylim([0, 1.0])
+
+
+####
+
+# regular
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,mf_lrb_val_cost_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+mf_lrb_cost_ratio = mf_lrb_inv_pred['cost']
+mf_lrb_cost_ratio_var = mf_lrb_inv_pred['cost_var']
+upper = mf_lrb_cost_ratio+mf_lrb_cost_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 2)
+ax1.plot(xx_pr, p, color=inverse_color)
+ax1.axhline(mf_lrb_cost_ratio, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
+ax1.axvline(1.0, linestyle=':', color='black')
+# ax1.text(1.5,mf_lrb_cost_ratio+0.02, r'Predicted replacement risk',
+#           fontsize=subt_font, color=inverse_color)
+# ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+#           fontsize=subt_font, color=inverse_color)
+ax1.text(0.55, mf_lrb_cost_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [mf_lrb_val_cost_ratio[i]], 
+              marker='x', markersize=15, color=inverse_color_2)
+
+# strict
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,mf_lrb_strict_cost_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+mf_lrb_cost_ratio = mf_lrb_strict_pred['cost']
+mf_lrb_cost_ratio_var = mf_lrb_strict_pred['cost_var']
+upper = mf_lrb_cost_ratio+mf_lrb_cost_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
+ax1.axhline(mf_lrb_cost_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, mf_lrb_cost_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+# ax1.set_ylabel('Repair cost ratio', fontsize=axis_font)
+ax1.set_title('b) MF-LRB', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [mf_lrb_strict_cost_ratio[i]], 
+              marker='x', markersize=15, color=strict_color_2)
+    
+ax1.grid(True)
+ax1.set_xlim([0.5, 3.0])
+ax1.set_ylim([0, 1.0])
+
+######
+# regular
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,cbf_tfp_val_cost_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+cbf_tfp_cost_ratio = cbf_tfp_inv_pred['cost']
+cbf_tfp_cost_ratio_var = cbf_tfp_inv_pred['cost_var']
+upper = cbf_tfp_cost_ratio+cbf_tfp_cost_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 3)
+ax1.plot(xx_pr, p, color=inverse_color)
+ax1.axhline(cbf_tfp_cost_ratio, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
+ax1.axvline(1.0, linestyle=':', color='black')
+# ax1.text(1.5,cbf_tfp_cost_ratio+0.02, r'Predicted replacement risk',
+#           fontsize=subt_font, color=inverse_color)
+# ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+#           fontsize=subt_font, color=inverse_color)
+ax1.text(0.55, cbf_tfp_cost_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [cbf_tfp_val_cost_ratio[i]], 
+              marker='x', markersize=15, color=inverse_color_2)
+
+# strict
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,cbf_tfp_strict_cost_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+cbf_tfp_cost_ratio = cbf_tfp_strict_pred['cost']
+cbf_tfp_cost_ratio_var = cbf_tfp_strict_pred['cost_var']
+upper = cbf_tfp_cost_ratio+cbf_tfp_cost_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
+ax1.axhline(cbf_tfp_cost_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, cbf_tfp_cost_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+ax1.set_xlabel('IDA level', fontsize=axis_font)
+ax1.set_ylabel('Repair cost ratio', fontsize=axis_font)
+ax1.set_title('c) CBF-TFP', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [cbf_tfp_strict_cost_ratio[i]], 
+              marker='x', markersize=15, color=strict_color_2)
+    
+ax1.grid(True)
+ax1.set_xlim([0.5, 3.0])
+ax1.set_ylim([0, 1.0])
+
+######
+# regular
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,cbf_lrb_val_cost_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+cbf_lrb_cost_ratio = cbf_lrb_inv_pred['cost']
+cbf_lrb_cost_ratio_var = cbf_lrb_inv_pred['cost_var']
+upper = cbf_lrb_cost_ratio+cbf_lrb_cost_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 4)
+ax1.plot(xx_pr, p, color=inverse_color)
+ax1.axhline(cbf_lrb_cost_ratio, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
+ax1.axvline(1.0, linestyle=':', color='black')
+# ax1.text(1.5,cbf_lrb_cost_ratio+0.02, r'Predicted replacement risk',
+#           fontsize=subt_font, color=inverse_color)
+# ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+#           fontsize=subt_font, color=inverse_color)
+ax1.text(0.55, MCE_level-0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [cbf_lrb_val_cost_ratio[i]], 
+              marker='x', markersize=15, color=inverse_color_2)
+
+# strict
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,cbf_lrb_strict_cost_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+cbf_lrb_cost_ratio = cbf_lrb_strict_pred['cost']
+cbf_lrb_cost_ratio_var = cbf_lrb_strict_pred['cost_var']
+upper = cbf_lrb_cost_ratio+cbf_lrb_cost_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
+ax1.axhline(cbf_lrb_cost_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, MCE_level+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+ax1.set_xlabel('IDA level', fontsize=axis_font)
+ax1.set_title('d) CBF-LRB', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [cbf_lrb_strict_cost_ratio[i]], 
+              marker='x', markersize=15, color=strict_color_2)
+ax1.grid(True)
+ax1.set_xlim([0.5, 3.0])
+ax1.set_ylim([0, 1.0])
+
+fig.tight_layout()
+plt.show()
+
+    
+custom_lines = [Line2D([-1], [-1], color='white', marker='x', markeredgecolor='black'
+                       , markerfacecolor='black', markersize=10),
+                Line2D([-1], [-1], color=inverse_color, linestyle='-'),
+                Line2D([-1], [-1], color=strict_color, linestyle='--'),
+                Line2D([-1], [-1], color='black', linestyle='-.'),
+                Line2D([-1], [-1], color='black', linestyle=':'),
+                ]
+
+ax1.legend(custom_lines, ['IDA repair cost ratio', 'Moderate performance', 'Enhanced performance', 
+                          'Predicted repair cost ratio', r'Predicted $\mu+\sigma$'], 
+           fontsize=subt_font-2, loc='center right')
+
+plt.savefig('./eng_struc_figures/inverse_cost_frag.pdf')
+
+#%% time validation frag
+
+# print out the results
+ida_levels = [1.0, 1.5, 2.0]
+
+from scipy.stats import norm
+f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 24
+subt_font = 24
+label_size = 22
+title_font=24
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+from matplotlib.lines import Line2D
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 13))
+
+
+## MF-TFP
+
+# regular
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,mf_tfp_val_downtime_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+mf_tfp_downtime_ratio = mf_tfp_inv_pred['time']
+mf_tfp_downtime_ratio_var = mf_tfp_inv_pred['time_var']
+upper = mf_tfp_downtime_ratio+mf_tfp_downtime_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p, color=inverse_color)
+ax1.axhline(mf_tfp_downtime_ratio, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
+ax1.axvline(1.0, linestyle=':', color='black')
+# ax1.text(1.5,mf_tfp_downtime_ratio+0.02, r'Predicted replacement risk',
+#           fontsize=subt_font, color=inverse_color)
+# ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+#           fontsize=subt_font, color=inverse_color)
+ax1.text(0.55, mf_tfp_downtime_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [mf_tfp_val_downtime_ratio[i]], 
+              marker='x', markersize=15, color=inverse_color_2)
+
+# strict
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,mf_tfp_strict_downtime_ratio)
+p = f(xx_pr, theta_inv, beta_inv)
+
+mf_tfp_downtime_ratio = mf_tfp_strict_pred['time']
+mf_tfp_downtime_ratio_var = mf_tfp_strict_pred['time_var']
+upper = mf_tfp_downtime_ratio+mf_tfp_downtime_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
+ax1.axhline(mf_tfp_downtime_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, mf_tfp_downtime_ratio-0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+ax1.set_ylabel('Downtime ratio', fontsize=axis_font)
+ax1.set_title('a) MF-TFP', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [mf_tfp_strict_downtime_ratio[i]], 
+              marker='x', markersize=15, color=strict_color_2)
+    
+ax1.grid(True)
+ax1.set_xlim([0.5, 3.0])
+ax1.set_ylim([0, 1.0])
+
+
+####
+
+# regular
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,mf_lrb_val_downtime_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+mf_lrb_downtime_ratio = mf_lrb_inv_pred['time']
+mf_lrb_downtime_ratio_var = mf_lrb_inv_pred['time_var']
+upper = mf_lrb_downtime_ratio+mf_lrb_downtime_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 2)
+ax1.plot(xx_pr, p, color=inverse_color)
+ax1.axhline(mf_lrb_downtime_ratio, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
+ax1.axvline(1.0, linestyle=':', color='black')
+# ax1.text(1.5,mf_lrb_downtime_ratio+0.02, r'Predicted replacement risk',
+#           fontsize=subt_font, color=inverse_color)
+# ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+#           fontsize=subt_font, color=inverse_color)
+ax1.text(0.55, mf_lrb_downtime_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [mf_lrb_val_downtime_ratio[i]], 
+              marker='x', markersize=15, color=inverse_color_2)
+
+# strict
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,mf_lrb_strict_downtime_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+mf_lrb_downtime_ratio = mf_lrb_strict_pred['time']
+mf_lrb_downtime_ratio_var = mf_lrb_strict_pred['time_var']
+upper = mf_lrb_downtime_ratio+mf_lrb_downtime_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
+ax1.axhline(mf_lrb_downtime_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, mf_lrb_downtime_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+# ax1.set_ylabel('Repair time ratio', fontsize=axis_font)
+ax1.set_title('b) MF-LRB', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [mf_lrb_strict_downtime_ratio[i]], 
+              marker='x', markersize=15, color=strict_color_2)
+    
+ax1.grid(True)
+ax1.set_xlim([0.5, 3.0])
+ax1.set_ylim([0, 1.0])
+
+######
+# regular
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,cbf_tfp_val_downtime_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+cbf_tfp_downtime_ratio = cbf_tfp_inv_pred['time']
+cbf_tfp_downtime_ratio_var = cbf_tfp_inv_pred['time_var']
+upper = cbf_tfp_downtime_ratio+cbf_tfp_downtime_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 3)
+ax1.plot(xx_pr, p, color=inverse_color)
+ax1.axhline(cbf_tfp_downtime_ratio, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
+ax1.axvline(1.0, linestyle=':', color='black')
+# ax1.text(1.5,cbf_tfp_downtime_ratio+0.02, r'Predicted replacement risk',
+#           fontsize=subt_font, color=inverse_color)
+# ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+#           fontsize=subt_font, color=inverse_color)
+ax1.text(0.55, cbf_tfp_downtime_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [cbf_tfp_val_downtime_ratio[i]], 
+              marker='x', markersize=15, color=inverse_color_2)
+
+# strict
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,cbf_tfp_strict_downtime_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+cbf_tfp_downtime_ratio = cbf_tfp_strict_pred['time']
+cbf_tfp_downtime_ratio_var = cbf_tfp_strict_pred['time_var']
+upper = cbf_tfp_downtime_ratio+cbf_tfp_downtime_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
+ax1.axhline(cbf_tfp_downtime_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, cbf_tfp_downtime_ratio+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+ax1.set_xlabel('IDA level', fontsize=axis_font)
+ax1.set_ylabel('Downtime ratio', fontsize=axis_font)
+ax1.set_title('c) CBF-TFP', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [cbf_tfp_strict_downtime_ratio[i]], 
+              marker='x', markersize=15, color=strict_color_2)
+    
+ax1.grid(True)
+ax1.set_xlim([0.5, 3.0])
+ax1.set_ylim([0, 1.0])
+
+######
+# regular
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,cbf_lrb_val_downtime_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+cbf_lrb_downtime_ratio = cbf_lrb_inv_pred['time']
+cbf_lrb_downtime_ratio_var = cbf_lrb_inv_pred['time_var']
+upper = cbf_lrb_downtime_ratio+cbf_lrb_downtime_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1=fig.add_subplot(2, 2, 4)
+ax1.plot(xx_pr, p, color=inverse_color)
+ax1.axhline(cbf_lrb_downtime_ratio, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
+ax1.axvline(1.0, linestyle=':', color='black')
+# ax1.text(1.5,cbf_lrb_downtime_ratio+0.02, r'Predicted replacement risk',
+#           fontsize=subt_font, color=inverse_color)
+# ax1.text(1.5,upper+0.02, r'$+1\sigma$',
+#           fontsize=subt_font, color=inverse_color)
+ax1.text(0.55, MCE_level-0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
+          fontsize=subt_font, color='black')
+
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [cbf_lrb_val_downtime_ratio[i]], 
+              marker='x', markersize=15, color=inverse_color_2)
+
+# strict
+theta_inv, beta_inv = mle_fit_collapse(ida_levels,cbf_lrb_strict_downtime_ratio)
+xx_pr = np.arange(0.01, 4.0, 0.01)
+p = f(xx_pr, theta_inv, beta_inv)
+
+cbf_lrb_downtime_ratio = cbf_lrb_strict_pred['time']
+cbf_lrb_downtime_ratio_var = cbf_lrb_strict_pred['time_var']
+upper = cbf_lrb_downtime_ratio+cbf_lrb_downtime_ratio_var**0.5
+
+MCE_level = float(p[xx_pr==1.0])
+ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
+ax1.axhline(cbf_lrb_downtime_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, MCE_level+0.01, f'{MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+ax1.set_xlabel('IDA level', fontsize=axis_font)
+ax1.set_title('d) CBF-LRB', fontsize=title_font)
+for i, lvl in enumerate(ida_levels):
+    ax1.plot([lvl], [cbf_lrb_strict_downtime_ratio[i]], 
+              marker='x', markersize=15, color=strict_color_2)
+ax1.grid(True)
+ax1.set_xlim([0.5, 3.0])
+ax1.set_ylim([0, 1.0])
+
+fig.tight_layout()
+plt.show()
+
+    
+custom_lines = [Line2D([-1], [-1], color='white', marker='x', markeredgecolor='black'
+                       , markerfacecolor='black', markersize=10),
+                Line2D([-1], [-1], color=inverse_color, linestyle='-'),
+                Line2D([-1], [-1], color=strict_color, linestyle='--'),
+                Line2D([-1], [-1], color='black', linestyle='-.'),
+                Line2D([-1], [-1], color='black', linestyle=':'),
+                ]
+
+ax1.legend(custom_lines, ['IDA downtime ratio', 'Moderate performance', 'Enhanced performance', 
+                          'Predicted downtime ratio', r'Predicted $\mu+\sigma$'], 
+           fontsize=subt_font-2, loc='center right')
+
+plt.savefig('./eng_struc_figures/inverse_time_frag.pdf')
 
 #%% cost validation distr
 
@@ -4575,7 +5116,7 @@ ax.set_xlim([-0.05, 1.05])
 fig.tight_layout()
 plt.show()
 
-plt.savefig('./eng_struc_figures/inverse_dv_distro.pdf')
+# plt.savefig('./eng_struc_figures/inverse_dv_distro.pdf')
 
 #%% filter design graphic
 
@@ -4995,7 +5536,7 @@ ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 fig.tight_layout()
-plt.savefig('./eng_struc_figures/filter_design.pdf')
+# plt.savefig('./eng_struc_figures/filter_design.pdf')
 # ax.text(1.2, 1.00, 'OK space',
 #           fontsize=axis_font, color='green')
 #%% filter design graphic
@@ -5381,14 +5922,19 @@ def mle_fit_general(x_values, probs, x_init=None):
     # use basin hopping to avoid local minima
     minimizer_kwargs={'bounds':bnds}
     res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
-                       niter=100, seed=985)
+                       niter=10, seed=985)
     
     return res.x[0], res.x[1]
 
 from scipy.stats import ecdf
 f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
-# plt.close('all')
+plt.close('all')
 
+# moderate designs
+cbf_tfp_ida = cbf_tfp_val_results[cbf_tfp_val_results['ida_level']==1.0]
+mf_tfp_ida = mf_tfp_val_results[mf_tfp_val_results['ida_level']==1.0]
+cbf_lrb_ida = cbf_lrb_val_results[cbf_lrb_val_results['ida_level']==1.0]
+mf_lrb_ida = mf_lrb_val_results[mf_lrb_val_results['ida_level']==1.0]
 
 my_y_var = mf_tfp_ida[cost_var]
 res = ecdf(my_y_var)
@@ -5404,9 +5950,10 @@ title_font=20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-fig = plt.figure(figsize=(16, 13))
+fig = plt.figure(figsize=(13, 9))
 
-theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+theta_inv, beta_inv = mle_fit_general(
+    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.5))
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -5430,16 +5977,8 @@ res = ecdf(my_y_var)
 ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-
-theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+theta_inv, beta_inv = mle_fit_general(
+    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.25))
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -5463,16 +6002,8 @@ res = ecdf(my_y_var)
 ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-
-theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.01,1))
+theta_inv, beta_inv = mle_fit_general(
+    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -5496,16 +6027,8 @@ res = ecdf(my_y_var)
 ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
-
-theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.01,1))
+theta_inv, beta_inv = mle_fit_general(
+    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -5524,6 +6047,7 @@ ax1.grid(True)
 
 fig.tight_layout()
 plt.show()
+
 #%%
 
 # plt.close('all')
@@ -5567,14 +6091,6 @@ res = ecdf(my_y_var)
 ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
 
 theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.04,1))
 
@@ -5600,14 +6116,6 @@ res = ecdf(my_y_var)
 ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
-mpl.rcParams['xtick.labelsize'] = label_size 
-mpl.rcParams['ytick.labelsize'] = label_size 
 
 theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
 
