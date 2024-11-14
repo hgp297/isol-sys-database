@@ -445,6 +445,9 @@ df_mf['dummy_index'] = df_mf['replacement_freq'] + df_mf['index']*1e-9
 df_mf_o = df_mf[df_mf['impacted'] == 0]
 df_cbf_o = df_cbf[df_cbf['impacted'] == 0]
 
+df_tfp_o = df_tfp[df_tfp['impacted'] == 0]
+df_lrb_o = df_lrb[df_lrb['impacted'] == 0]
+
 df_mf_tfp = df_tfp[df_tfp['superstructure_system'] == 'MF']
 df_mf_lrb = df_lrb[df_lrb['superstructure_system'] == 'MF']
 
@@ -730,6 +733,158 @@ repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
 
 # moment frames that do not impact the wall do not have high replacement
 
+#%% collapse fragility def
+
+# TODO: definitions
+import numpy as np
+from scipy.stats import norm
+inv_norm = norm.ppf(0.84)
+# collapse as a probability
+from scipy.stats import lognorm
+from math import log, exp
+
+plt.rcParams["text.usetex"] = True
+x = np.linspace(0, 0.15, 200)
+mu = log(0.1)- 0.25*inv_norm
+sigma = 0.25;
+
+ln_dist = lognorm(s=sigma, scale=exp(mu))
+p = ln_dist.cdf(np.array(x))
+
+# plt.close('all')
+fig = plt.figure(figsize=(13, 6))
+ax = fig.add_subplot(1, 2, 1)
+# ax = plt.subplots(1, 1, figsize=(8,6))
+
+ax.plot(x, p, label='Collapse', color='blue')
+
+mu_irr = log(0.01)
+ln_dist_irr = lognorm(s=0.3, scale=exp(mu_irr))
+p_irr = ln_dist_irr.cdf(np.array(x))
+
+ax.plot(x, p_irr, color='red', label='Irreparable')
+
+axis_font = 20
+subt_font = 18
+xleft = 0.15
+ax.set_ylim([0,1])
+ax.set_xlim([0, xleft])
+ax.set_ylabel('Limit state probability', fontsize=axis_font)
+# ax.set_xlabel('Drift ratio', fontsize=axis_font)
+
+ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='blue', linestyle=":")
+ax.hlines(y=0.5, xmin=exp(mu), xmax=0.15, color='blue', linestyle=":")
+ax.text(0.105, 0.52, r'PID = 0.078', fontsize=axis_font, color='blue')
+ax.plot([exp(mu)], [0.5], marker='*', markersize=15, color="blue", linestyle=":")
+
+ax.vlines(x=0.1, ymin=0, ymax=0.84, color='blue', linestyle=":")
+ax.hlines(y=0.84, xmin=0.1, xmax=xleft, color='blue', linestyle=":")
+ax.text(0.105, 0.87, r'PID = 0.10', fontsize=axis_font, color='blue')
+ax.plot([0.10], [0.84], marker='*', markersize=15, color="blue", linestyle=":")
+
+lower= ln_dist.ppf(0.16)
+ax.vlines(x=lower, ymin=0, ymax=0.16, color='blue', linestyle=":")
+ax.hlines(y=0.16, xmin=lower, xmax=xleft, color='blue', linestyle=":")
+ax.text(0.105, 0.19, r'PID = 0.061', fontsize=axis_font, color='blue')
+ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
+
+
+ax.hlines(y=0.5, xmin=0.0, xmax=exp(mu_irr), color='red', linestyle=":")
+lower = ln_dist_irr.ppf(0.16)
+ax.hlines(y=0.16, xmin=0.0, xmax=lower, color='red', linestyle=":")
+upper = ln_dist_irr.ppf(0.84)
+ax.hlines(y=0.84, xmin=0.0, xmax=upper, color='red', linestyle=":")
+ax.plot([lower], [0.16], marker='*', markersize=15, color="red", linestyle=":")
+ax.plot([0.01], [0.5], marker='*', markersize=15, color="red", linestyle=":")
+ax.plot([upper], [0.84], marker='*', markersize=15, color="red", linestyle=":")
+ax.vlines(x=upper, ymin=0, ymax=0.84, color='red', linestyle=":")
+ax.vlines(x=0.01, ymin=0, ymax=0.5, color='red', linestyle=":")
+ax.vlines(x=lower, ymin=0, ymax=0.16, color='red', linestyle=":")
+
+ax.text(0.005, 0.19, r'RID = 0.007', fontsize=axis_font, color='red')
+ax.text(0.005, 0.87, r'RID = 0.013', fontsize=axis_font, color='red')
+ax.text(0.005, 0.53, r'RID = 0.010', fontsize=axis_font, color='red')
+
+ax.set_title('a) MF replacement fragility definition', fontsize=axis_font)
+ax.grid()
+label_size = 16
+clabel_size = 12
+
+ax.legend(fontsize=label_size, loc='upper center')
+
+# cbf
+inv_norm = norm.ppf(0.9)
+# collapse as a probability
+
+x = np.linspace(0, 0.08, 200)
+mu = log(0.05)- 0.55*inv_norm
+sigma = 0.55;
+
+ln_dist = lognorm(s=sigma, scale=exp(mu))
+p = ln_dist.cdf(np.array(x))
+
+# plt.close('all')
+ax = fig.add_subplot(1, 2, 2)
+
+ax.plot(x, p, label='Collapse', color='blue')
+
+mu_irr = log(0.005)
+ln_dist_irr = lognorm(s=0.3, scale=exp(mu_irr))
+p_irr = ln_dist_irr.cdf(np.array(x))
+
+ax.plot(x, p_irr, color='red', label='Irreparable')
+
+axis_font = 20
+subt_font = 18
+xleft = 0.08
+ax.set_ylim([0,1])
+ax.set_xlim([0, xleft])
+ax.set_ylabel('Limit state probability', fontsize=axis_font)
+ax.set_xlabel('Drift ratio', fontsize=axis_font)
+
+ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='blue', linestyle=":")
+ax.hlines(y=0.5, xmin=exp(mu), xmax=0.15, color='blue', linestyle=":")
+ax.text(0.055, 0.52, r'PID = 0.025', fontsize=axis_font, color='blue')
+ax.plot([exp(mu)], [0.5], marker='*', markersize=15, color="blue", linestyle=":")
+
+ax.vlines(x=0.05, ymin=0, ymax=0.9, color='blue', linestyle=":")
+ax.hlines(y=0.9, xmin=0.05, xmax=xleft, color='blue', linestyle=":")
+ax.text(0.055, 0.84, r'PID = 0.05', fontsize=axis_font, color='blue')
+ax.plot([0.05], [0.9], marker='*', markersize=15, color="blue", linestyle=":")
+
+lower= ln_dist.ppf(0.16)
+ax.vlines(x=lower, ymin=0, ymax=0.16, color='blue', linestyle=":")
+ax.hlines(y=0.16, xmin=lower, xmax=xleft, color='blue', linestyle=":")
+ax.text(0.055, 0.19, r'PID = 0.014', fontsize=axis_font, color='blue')
+ax.plot([lower], [0.16], marker='*', markersize=15, color="blue", linestyle=":")
+
+
+ax.hlines(y=0.5, xmin=0.0, xmax=exp(mu_irr), color='red', linestyle=":")
+lower = ln_dist_irr.ppf(0.16)
+ax.hlines(y=0.16, xmin=0.0, xmax=lower, color='red', linestyle=":")
+upper = ln_dist_irr.ppf(0.84)
+ax.hlines(y=0.84, xmin=0.0, xmax=upper, color='red', linestyle=":")
+ax.plot([lower], [0.16], marker='*', markersize=15, color="red", linestyle=":")
+ax.plot([0.005], [0.5], marker='*', markersize=15, color="red", linestyle=":")
+ax.plot([upper], [0.84], marker='*', markersize=15, color="red", linestyle=":")
+ax.vlines(x=upper, ymin=0, ymax=0.84, color='red', linestyle=":")
+ax.vlines(x=0.005, ymin=0, ymax=0.5, color='red', linestyle=":")
+ax.vlines(x=lower, ymin=0, ymax=0.16, color='red', linestyle=":")
+
+ax.text(0.005, 0.19, r'RID = 0.0037', fontsize=axis_font, color='red')
+ax.text(0.005, 0.87, r'RID = 0.0067', fontsize=axis_font, color='red')
+ax.text(0.005, 0.53, r'RID = 0.005', fontsize=axis_font, color='red')
+
+ax.set_title('b) CBF replacement fragility definition', fontsize=axis_font)
+ax.grid()
+label_size = 16
+clabel_size = 12
+
+ax.legend(fontsize=label_size, loc='lower center')
+fig.tight_layout()
+plt.show()
+# plt.savefig('./eng_struc_figures/replacement_def.eps')
+
 #%%
 
 # plt.figure(figsize=(8,6))
@@ -742,6 +897,34 @@ repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
 # # plt.title('Collapse risk using full 400 points', fontsize=axis_font)
 # plt.show()
 
+from scipy import stats
+# df_test = df[np.abs(stats.zscore(df['max_accel'])) < 2].copy()
+df_test = df[df['gap_ratio'] > 1.0]
+df_tfp_test = df_test[df_test['isolator_system'] == 'TFP']
+df_lrb_test = df_test[df_test['isolator_system'] == 'LRB']
+# df_test = df.copy()
+# plt.close('all')
+fig = plt.figure(figsize=(8,6))
+import seaborn as sns
+my_var = time_var
+ax = fig.add_subplot(1, 1, 1)
+bx = sns.boxplot(y=my_var, x= "isolator_system", data=df_test,  showfliers=False,
+            boxprops={'facecolor': 'none'},
+            width=0.5, ax=ax)
+sp = sns.stripplot(x='isolator_system', y=my_var, data=df_test, ax=ax, jitter=True,
+              alpha=0.3, s=5, color='blue')
+
+val = df_tfp_test[time_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+# ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_lrb_test[time_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+# ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+# ax.set_zlim([-0.05, 0.2])
+plt.show()
 #%% engineering data
 
 plt.rcParams["font.family"] = "serif"
@@ -892,9 +1075,6 @@ def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
                   facecolor = c, edgecolor='navy', linewidth=0.5)
     ax_histy.hist(y, bins=bin_y, orientation='horizontal', alpha = 0.5, weights=np.ones(len(x)) / len(x),
                   facecolor = c, edgecolor='navy', linewidth=0.5)
-    
-df_cbf = df[df['superstructure_system'] == 'CBF']
-df_mf = df[df['superstructure_system'] == 'MF']
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -947,19 +1127,220 @@ ax.set_ylim([0.1, 0.25])
 
 # plt.savefig('./eng_struc_figures/input_scatterhist.pdf')
 
+
+#%% seaborn scatter with histogram: Bearing data
+
+# def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
+#     # no labels
+#     ax_histx.tick_params(axis="x", labelbottom=False)
+#     ax_histy.tick_params(axis="y", labelleft=False)
+
+#     # the scatter plot:
+#     ax.scatter(x, y, alpha=alpha, edgecolors='black', s=25, facecolors=c,
+#                label=label)
+
+#     # now determine nice limits by hand:
+#     binwidth = 0.25
+#     xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+#     lim = (int(xymax/binwidth) + 1) * binwidth
+
+#     bins = np.arange(-lim, lim + binwidth, binwidth)
+    
+#     if y.name == 'zeta_e':
+#         binwidth = 0.02
+#         xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+#         lim = (int(xymax/binwidth) + 1) * binwidth
+        
+#         bin_y = np.arange(-lim, lim + binwidth, binwidth)
+        
+#     elif y.name == 'RI':
+#         binwidth = 0.15
+#         xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+#         lim = (int(xymax/binwidth) + 1) * binwidth
+        
+#         bin_y = np.arange(-lim, lim + binwidth, binwidth)
+        
+#     elif y.name=='T_ratio' or y.name=='T_ratio_e' or 'k_ratio':
+#         binwidth = 1.0
+#         xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+#         lim = (int(xymax/binwidth) + 1) * binwidth
+        
+#         bin_y = np.arange(-lim, lim + binwidth, binwidth)
+        
+#     if x.name == 'Q':
+#         binwidth = 0.01
+#         xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+#         lim = (int(xymax/binwidth) + 1) * binwidth
+        
+#         bin_x = np.arange(-lim, lim + binwidth, binwidth)
+#     elif x.name == 'T_ratio' or x.name=='T_ratio_e':
+#         binwidth = 1.0
+#         xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+#         lim = (int(xymax/binwidth) + 1) * binwidth
+        
+#         bin_x = np.arange(-lim, lim + binwidth, binwidth)
+#     else:
+#         bin_x = bins
+#     ax_histx.hist(x, bins=bin_x, alpha = 0.5, weights=np.ones(len(x)) / len(x),
+#                   facecolor = c, edgecolor='navy', linewidth=0.5)
+#     ax_histy.hist(y, bins=bin_y, orientation='horizontal', alpha = 0.5, weights=np.ones(len(x)) / len(x),
+#                   facecolor = c, edgecolor='navy', linewidth=0.5)
+
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 20
+# subt_font = 18
+# import matplotlib as mpl
+# label_size = 16
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
+
+# # plt.close('all')
+# # Start with a square Figure.
+# fig = plt.figure(figsize=(13, 6), layout='constrained')
+
+# # Add a gridspec with two rows and two columns and a ratio of 1 to 4 between
+# # the size of the marginal axes and the main axes in both directions.
+# # Also adjust the subplot parameters for a square plot.
+# gs = fig.add_gridspec(2, 4,  width_ratios=(5, 1, 5, 1), height_ratios=(1, 5),
+#                       left=0.1, right=0.9, bottom=0.1, top=0.9,
+#                       wspace=0., hspace=0.)
+# # # Create the Axes.
+# # fig = plt.figure(figsize=(13, 10))
+# # ax1=fig.add_subplot(2, 2, 1)
+
+# ax = fig.add_subplot(gs[1, 0])
+# ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+# ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+# # Draw the scatter plot and marginals.
+# scatter_hist(df_lrb['gap_ratio'], df_lrb['RI'], 'navy', 0.9, ax, ax_histx, ax_histy,
+#              label='LRB')
+# scatter_hist(df_tfp['gap_ratio'], df_tfp['RI'], 'orange', 0.3, ax, ax_histx, ax_histy,
+#              label='TFP')
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax.set_xlim([0.3, 2.0])
+# ax.set_ylim([0.5, 2.25])
+# ax.legend(fontsize=label_size)
+
+# ax = fig.add_subplot(gs[1, 2])
+# ax_histx = fig.add_subplot(gs[0, 2], sharex=ax)
+# ax_histy = fig.add_subplot(gs[1, 3], sharey=ax)
+# # Draw the scatter plot and marginals.
+# scatter_hist(df_lrb['T_ratio'], df_lrb['zeta_e'], 'navy', 0.9, ax, ax_histx, ax_histy)
+# scatter_hist(df_tfp['T_ratio'], df_tfp['zeta_e'], 'orange', 0.3, ax, ax_histx, ax_histy)
+
+# ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+# ax.set_ylabel(r'$\zeta_M$', fontsize=axis_font)
+# ax.set_xlim([1.0, 12.0])
+ax.set_ylim([0.1, 0.25])
+
+#%% breakdown of outcomes by variable
+
+# mf_tfp_color = 'royalblue'
+# mf_lrb_color = 'cornflowerblue'
+# cbf_tfp_color = 'darkred'
+# cbf_lrb_color = 'firebrick'
+
+# plt.rcParams["font.family"] = "serif"
+# plt.rcParams["mathtext.fontset"] = "dejavuserif"
+# axis_font = 24
+# subt_font = 20
+# import matplotlib as mpl
+# label_size = 20
+# mpl.rcParams['xtick.labelsize'] = label_size 
+# mpl.rcParams['ytick.labelsize'] = label_size 
+# plt.close('all')
+# fig = plt.figure(figsize=(13, 11))
+# cmap = plt.cm.tab10
+
+# from sklearn import linear_model
+# regr = linear_model.LinearRegression()
+
+# ax = fig.add_subplot(2, 2, 3)
+# xvar = 'gap_ratio'
+# x_1d = np.linspace(df[xvar].min(), df[xvar].max(), 200).reshape(-1, 1)
+# ax.scatter(df_lrb[xvar], df_lrb[cost_var], alpha=0.7, color=cbf_tfp_color, label='LRB')
+# regr.fit(df_lrb[[xvar]], df_lrb[[cost_var]])
+# y_pred = regr.predict(x_1d)
+# plt.plot(x_1d, y_pred, color=cbf_tfp_color, linewidth=3)
+
+# ax.scatter(df_tfp[xvar], df_tfp[cost_var], alpha=0.7, color=mf_tfp_color, label='TFP')
+# regr.fit(df_tfp[[xvar]], df_tfp[[cost_var]])
+# y_pred = regr.predict(x_1d)
+# plt.plot(x_1d, y_pred, color=mf_tfp_color, linewidth=3)
+# ax.set_xlabel("$GR$", fontsize=axis_font)
+
+# ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
+# ax.legend(fontsize=axis_font)
+# # ax.set_ylim([-0.02, 0.3])
+# ax.grid()
+
+# ax = fig.add_subplot(2, 2, 1)
+# xvar = 'RI'
+# x_1d = np.linspace(df[xvar].min(), df[xvar].max(), 200).reshape(-1, 1)
+# ax.scatter(df_lrb[xvar], df_lrb[cost_var], alpha=0.7, color=cbf_tfp_color, label='LRB')
+# regr.fit(df_lrb[[xvar]], df_lrb[[cost_var]])
+# y_pred = regr.predict(x_1d)
+# plt.plot(x_1d, y_pred, color=cbf_tfp_color, linewidth=3)
+
+# ax.scatter(df_tfp[xvar], df_tfp[cost_var], alpha=0.7, color=mf_tfp_color, label='TFP')
+# regr.fit(df_tfp[[xvar]], df_tfp[[cost_var]])
+# y_pred = regr.predict(x_1d)
+# plt.plot(x_1d, y_pred, color=mf_tfp_color, linewidth=3)
+# ax.set_xlabel("$R_y$", fontsize=axis_font)
+# ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
+# # ax.set_ylim([-0.02, 0.3])
+# ax.grid()
+
+# ax = fig.add_subplot(2, 2, 2)
+# xvar = 'T_ratio'
+# x_1d = np.linspace(df[xvar].min(), df[xvar].max(), 200).reshape(-1, 1)
+# ax.scatter(df_lrb[xvar], df_lrb[cost_var], alpha=0.7, color=cbf_tfp_color, label='LRB')
+# regr.fit(df_lrb[[xvar]], df_lrb[[cost_var]])
+# y_pred = regr.predict(x_1d)
+# plt.plot(x_1d, y_pred, color=cbf_tfp_color, linewidth=3)
+
+# ax.scatter(df_tfp[xvar], df_tfp[cost_var], alpha=0.7, color=mf_tfp_color, label='TFP')
+# regr.fit(df_tfp[[xvar]], df_tfp[[cost_var]])
+# y_pred = regr.predict(x_1d)
+# plt.plot(x_1d, y_pred, color=mf_tfp_color, linewidth=3)
+# ax.set_xlabel("$T_M/T_{fb}$", fontsize=axis_font)
+# # ax.set_ylim([-0.02, 0.3])
+# ax.grid()
+
+# ax = fig.add_subplot(2, 2, 4)
+# xvar = 'zeta_e'
+# x_1d = np.linspace(df[xvar].min(), df[xvar].max(), 200).reshape(-1, 1)
+# ax.scatter(df_lrb[xvar], df_lrb[cost_var], alpha=0.7, color=cbf_tfp_color, label='LRB')
+# regr.fit(df_lrb[[xvar]], df_lrb[[cost_var]])
+# y_pred = regr.predict(x_1d)
+# plt.plot(x_1d, y_pred, color=cbf_tfp_color, linewidth=3)
+
+# ax.scatter(df_tfp[xvar], df_tfp[cost_var], alpha=0.7, color=mf_tfp_color, label='TFP')
+# regr.fit(df_tfp[[xvar]], df_tfp[[cost_var]])
+# y_pred = regr.predict(x_1d)
+# plt.plot(x_1d, y_pred, color=mf_tfp_color, linewidth=3)
+# ax.set_xlabel("$\zeta_M$", fontsize=axis_font)
+# # ax.set_ylim([-0.02, 0.3])
+# ax.grid()
+
+# fig.tight_layout()
+
+
 #%% breakdown of outcomes by variable
 
 mf_tfp_color = 'royalblue'
 mf_lrb_color = 'cornflowerblue'
-cbf_tfp_color = 'darksalmon'
-cbf_lrb_color = 'lightsalmon'
+cbf_tfp_color = 'darkred'
+cbf_lrb_color = 'firebrick'
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 20
-subt_font = 18
+axis_font = 24
+subt_font = 20
 import matplotlib as mpl
-label_size = 16
+label_size = 20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
@@ -969,7 +1350,7 @@ cmap = plt.cm.tab10
 from sklearn import linear_model
 regr = linear_model.LinearRegression()
 
-ax = fig.add_subplot(2, 2, 1)
+ax = fig.add_subplot(2, 2, 3)
 xvar = 'gap_ratio'
 x_1d = np.linspace(df[xvar].min(), df[xvar].max(), 200).reshape(-1, 1)
 ax.scatter(df_cbf_o[xvar], df_cbf_o[cost_var], alpha=0.7, color=cbf_tfp_color, label='CBF')
@@ -982,12 +1363,13 @@ regr.fit(df_mf_o[[xvar]], df_mf_o[[cost_var]])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=mf_tfp_color, linewidth=3)
 ax.set_xlabel("$GR$", fontsize=axis_font)
+
 ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
-ax.legend()
+ax.legend(fontsize=axis_font)
 ax.set_ylim([-0.02, 0.3])
 ax.grid()
 
-ax = fig.add_subplot(2, 2, 2)
+ax = fig.add_subplot(2, 2, 1)
 xvar = 'RI'
 x_1d = np.linspace(df[xvar].min(), df[xvar].max(), 200).reshape(-1, 1)
 ax.scatter(df_cbf_o[xvar], df_cbf_o[cost_var], alpha=0.7, color=cbf_tfp_color, label='CBF')
@@ -1000,10 +1382,11 @@ regr.fit(df_mf_o[[xvar]], df_mf_o[[cost_var]])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=mf_tfp_color, linewidth=3)
 ax.set_xlabel("$R_y$", fontsize=axis_font)
+ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
 ax.set_ylim([-0.02, 0.3])
 ax.grid()
 
-ax = fig.add_subplot(2, 2, 3)
+ax = fig.add_subplot(2, 2, 2)
 xvar = 'T_ratio'
 x_1d = np.linspace(df[xvar].min(), df[xvar].max(), 200).reshape(-1, 1)
 ax.scatter(df_cbf_o[xvar], df_cbf_o[cost_var], alpha=0.7, color=cbf_tfp_color, label='CBF')
@@ -1015,7 +1398,6 @@ ax.scatter(df_mf_o[xvar], df_mf_o[cost_var], alpha=0.7, color=mf_tfp_color, labe
 regr.fit(df_mf_o[[xvar]], df_mf_o[[cost_var]])
 y_pred = regr.predict(x_1d)
 plt.plot(x_1d, y_pred, color=mf_tfp_color, linewidth=3)
-ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
 ax.set_xlabel("$T_M/T_{fb}$", fontsize=axis_font)
 ax.set_ylim([-0.02, 0.3])
 ax.grid()
@@ -1046,9 +1428,9 @@ fig.tight_layout()
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
+axis_font = 22
+subt_font = 22
+label_size = 20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
@@ -1059,6 +1441,7 @@ import seaborn as sns
 
 fig = plt.figure(figsize=(13, 9))
 
+cats = ['No', 'Yes']
 
 ### cost
 ax = fig.add_subplot(3, 4, 1)
@@ -1067,8 +1450,22 @@ bx = sns.boxplot(y=cost_var, x= "impacted", data=df_mf_tfp,  showfliers=False,
             width=0.5, ax=ax)
 sp = sns.stripplot(x='impacted', y=cost_var, data=df_mf_tfp, ax=ax, jitter=True,
               alpha=0.3, s=5, color=mf_tfp_color)
+
+
+val = df_mf_tfp_o[cost_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_mf_tfp_i[cost_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 ax.set_title('MF-TFP', fontsize=subt_font)
 ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
 # ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1080,8 +1477,20 @@ bx = sns.boxplot(y=cost_var, x= "impacted", data=df_mf_lrb,  showfliers=False,
             width=0.5, ax=ax)
 sns.stripplot(x='impacted', y=cost_var, data=df_mf_lrb, ax=ax, jitter=True,
               alpha=0.3, s=5, color=mf_lrb_color)
+
+val = df_mf_lrb_o[cost_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_mf_lrb_i[cost_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 ax.set_title('MF-LRB', fontsize=subt_font)
 # ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
 # ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1093,8 +1502,21 @@ bx = sns.boxplot(y=cost_var, x= "impacted", data=df_cbf_tfp,  showfliers=False,
             width=0.5, ax=ax)
 sns.stripplot(x='impacted', y=cost_var, data=df_cbf_tfp, ax=ax, jitter=True,
               alpha=0.3, s=5, color=cbf_tfp_color)
+
+val = df_cbf_tfp_o[cost_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_cbf_tfp_i[cost_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 ax.set_title('CBF-TFP', fontsize=subt_font)
 # ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
 # ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1106,8 +1528,22 @@ bx = sns.boxplot(y=cost_var, x= "impacted", data=df_cbf_lrb,  showfliers=False,
             width=0.5, ax=ax)
 sns.stripplot(x='impacted', y=cost_var, data=df_cbf_lrb, ax=ax, jitter=True,
               alpha=0.3, s=5, color=cbf_lrb_color)
+
+val = df_cbf_lrb_o[cost_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_cbf_lrb_i[cost_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+
+
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 ax.set_title('CBF-LRB', fontsize=subt_font)
 # ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
 # ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1120,10 +1556,23 @@ bx = sns.boxplot(y=time_var, x= "impacted", data=df_mf_tfp,  showfliers=False,
             width=0.5, ax=ax)
 sp = sns.stripplot(x='impacted', y=time_var, data=df_mf_tfp, ax=ax, jitter=True,
               alpha=0.3, s=5, color=mf_tfp_color)
+
+val = df_mf_tfp_o[time_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_mf_tfp_i[time_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 # ax.set_title('MF-TFP', fontsize=subt_font)
-ax.set_ylabel('Repair time ratio', fontsize=axis_font)
+ax.set_ylabel('Downtime ratio', fontsize=axis_font)
 # ax.set_xlabel('Impact', fontsize=axis_font)
 # ax.set_yscale('log')
 
@@ -1133,8 +1582,21 @@ bx = sns.boxplot(y=time_var, x= "impacted", data=df_mf_lrb,  showfliers=False,
             width=0.5, ax=ax)
 sns.stripplot(x='impacted', y=time_var, data=df_mf_lrb, ax=ax, jitter=True,
               alpha=0.3, s=5, color=mf_lrb_color)
+
+val = df_mf_lrb_o[time_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_mf_lrb_i[time_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 # ax.set_title('MF-LRB', fontsize=subt_font)
 # ax.set_ylabel('Repair time ratio', fontsize=axis_font)
 # ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1146,8 +1608,20 @@ bx = sns.boxplot(y=time_var, x= "impacted", data=df_cbf_tfp,  showfliers=False,
             width=0.5, ax=ax)
 sns.stripplot(x='impacted', y=time_var, data=df_cbf_tfp, ax=ax, jitter=True,
               alpha=0.3, s=5, color=cbf_tfp_color)
+
+val = df_cbf_tfp_o[time_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_cbf_tfp_i[time_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 # ax.set_title('CBF-TFP', fontsize=subt_font)
 # ax.set_ylabel('Repair time ratio', fontsize=axis_font)
 # ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1159,8 +1633,20 @@ bx = sns.boxplot(y=time_var, x= "impacted", data=df_cbf_lrb,  showfliers=False,
             width=0.5, ax=ax)
 sns.stripplot(x='impacted', y=time_var, data=df_cbf_lrb, ax=ax, jitter=True,
               alpha=0.3, s=5, color=cbf_lrb_color)
+
+val = df_cbf_lrb_o[time_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_cbf_lrb_i[time_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 # ax.set_title('CBF-LRB', fontsize=subt_font)
 # ax.set_ylabel('Repair time ratio', fontsize=axis_font)
 # ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1174,8 +1660,20 @@ bx = sns.boxplot(y=repl_var, x= "impacted", data=df_mf_tfp,  showfliers=False,
             width=0.5, ax=ax)
 sp = sns.stripplot(x='impacted', y=repl_var, data=df_mf_tfp, ax=ax, jitter=True,
               alpha=0.3, s=5, color=mf_tfp_color)
+
+val = df_mf_tfp_o[repl_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_mf_tfp_i[repl_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 # ax.set_title('MF-TFP', fontsize=subt_font)
 ax.set_ylabel('Replacement frequency', fontsize=axis_font)
 ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1187,8 +1685,21 @@ bx = sns.boxplot(y=repl_var, x= "impacted", data=df_mf_lrb,  showfliers=False,
             width=0.5, ax=ax)
 sns.stripplot(x='impacted', y=repl_var, data=df_mf_lrb, ax=ax, jitter=True,
               alpha=0.3, s=5, color=mf_lrb_color)
+
+val = df_mf_lrb_o[repl_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_mf_lrb_i[repl_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 # ax.set_title('MF-LRB', fontsize=subt_font)
 # ax.set_ylabel('Repair repl ratio', fontsize=axis_font)
 ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1200,8 +1711,20 @@ bx = sns.boxplot(y=repl_var, x= "impacted", data=df_cbf_tfp,  showfliers=False,
             width=0.5, ax=ax)
 sns.stripplot(x='impacted', y=repl_var, data=df_cbf_tfp, ax=ax, jitter=True,
               alpha=0.3, s=5, color=cbf_tfp_color)
+
+val = df_cbf_tfp_o[repl_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_cbf_tfp_i[repl_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 # ax.set_title('CBF-TFP', fontsize=subt_font)
 # ax.set_ylabel('Repair repl ratio', fontsize=axis_font)
 ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1213,8 +1736,20 @@ bx = sns.boxplot(y=repl_var, x= "impacted", data=df_cbf_lrb,  showfliers=False,
             width=0.5, ax=ax)
 sns.stripplot(x='impacted', y=repl_var, data=df_cbf_lrb, ax=ax, jitter=True,
               alpha=0.3, s=5, color=cbf_lrb_color)
+
+val = df_cbf_lrb_o[repl_var].median()
+ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+
+val = df_cbf_lrb_i[repl_var].median()
+ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+
 bx.set(xlabel=None)
 bx.set(ylabel=None)
+ax.set_xticklabels(cats)
 # ax.set_title('CBF-LRB', fontsize=subt_font)
 # ax.set_ylabel('Repair repl ratio', fontsize=axis_font)
 ax.set_xlabel('Impact', fontsize=axis_font)
@@ -1228,7 +1763,7 @@ plt.show()
 #%%
 
 # TODO: impact classification plot
-'''
+
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 32
@@ -1240,10 +1775,11 @@ clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-plt.close('all')
+# plt.close('all')
 # make grid and plot classification predictions
 
-fig, ax = plt.subplots(1, 1, figsize=(7,6))
+fig = plt.figure(figsize=(13,7))
+ax = fig.add_subplot(1, 2, 1)
 
 xvar = 'gap_ratio'
 yvar = 'T_ratio'
@@ -1267,17 +1803,71 @@ xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
 Z_classif = Z.reshape(xx_pl.shape)
 
-plt.imshow(
-        Z_classif,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.RdYlGn_r,
-    )
+# plt.imshow(
+#         Z_classif,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.RdYlGn_r,
+#     )
 plt_density = 200
-cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.5, cmap='binary',
+cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.5, cmap='RdYlGn_r',
+                  levels=np.linspace(0.1,1.0,num=10))
+clabels = plt.clabel(cs, fontsize=subt_font, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+
+ax.scatter(df_mf_lrb_i[xvar][:plt_density],
+            df_mf_lrb_i[yvar][:plt_density],
+            s=120, c='red', marker='X', edgecolors='black', label='Impacted')
+
+ax.scatter(df_mf_lrb_o[xvar][:plt_density],
+            df_mf_lrb_o[yvar][:plt_density],
+            s=80, c='green', edgecolors='white', label='No impact')
+# plt.legend(fontsize=axis_font)
+
+# ax.set_xlim(0.3, 2.0)
+ax.set_title(r'LRB impact', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+
+####
+
+ax = fig.add_subplot(1, 2, 2)
+xvar = 'gap_ratio'
+yvar = 'T_ratio'
+
+res = 75
+X_plot = make_2D_plotting_space(df_mf[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+# GPC impact prediction
+Z = mdl_impact_mf_tfp.gpc.predict_proba(X_plot)[:,1]
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_classif = Z.reshape(xx_pl.shape)
+
+# plt.imshow(
+#         Z_classif,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.RdYlGn_r,
+#     )
+plt_density = 200
+cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.5, cmap='RdYlGn_r',
                   levels=np.linspace(0.1,1.0,num=10))
 clabels = plt.clabel(cs, fontsize=subt_font, colors='black')
 [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
@@ -1292,19 +1882,18 @@ ax.scatter(df_mf_tfp_o[xvar][:plt_density],
 # plt.legend(fontsize=axis_font)
 
 # ax.set_xlim(0.3, 2.0)
-# ax.set_title(r'Impact likelihood: $R_y = 2.0$, $\zeta_M = 0.15$', fontsize=title_font)
+ax.set_title(r'TFP impact', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
-ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 
 # ax.grid('off')
-plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+# plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
 fig.tight_layout()
 plt.show()
 
 
 #%% nonimpact prediction
 
-
+'''
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 32
@@ -1366,9 +1955,9 @@ plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #r
 # plt.box(False) #remove box
 # ax.set_title(r'GP regression', fontsize=subt_font)
 fig.tight_layout()
-
+'''
 #%% 3d surf for replacement risk
-
+'''
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 32
@@ -1515,9 +2104,12 @@ strs = ['MF-TFP']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
+# manual_locations = [(0.5, 1.0), (1.05, 1.25), (0.8, 1.25), (0.85, 0.85)]
+# plt.clabel(cs, inline=1, fontsize=clabel_size, manual=manual_locations)
+
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, inline_spacing=-10.0)
 # [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-design_line(0.2, xoffset=-0.1, y_loc=0.55, Ry_target=2.0)
+design_line(0.2, xoffset=-0.1, y_loc=1.5, Ry_target=2.0)
 
 ## MF-LRB
 grid_cost = predict_DV(X_plot,
@@ -1536,8 +2128,8 @@ strs = ['MF-LRB']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, manual=[(0.75, 0.7)], inline_spacing=-10.0)
+[txt.set_bbox(dict(boxstyle='square, pad=0', facecolor='white', edgecolor='none')) for txt in clabels]
 design_line(0.2, xoffset=0.05, y_loc=0.55, Ry_target=2.0)
 
 ## CBF-TFP
@@ -1558,7 +2150,7 @@ for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
 clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.2, xoffset=-0.1, y_loc=0.55, Ry_target=2.0)
 
 ## CBF-LRB
@@ -1578,8 +2170,8 @@ strs = ['CBF-LRB']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, manual=[(1.2, 1.75)])
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.2, xoffset=0.05, y_loc=1.45, Ry_target=2.0)
 
 ax.set_xlim([0.3, 1.5])
@@ -1612,8 +2204,8 @@ strs = ['MF-TFP']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, inline_spacing=-10.0)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.2, xoffset=-0.1, y_loc=1.25, Ry_target=2.0)
 
 ## MF-LRB
@@ -1633,8 +2225,9 @@ strs = ['MF-LRB']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, inline_spacing=-10.0,
+                    manual=[(0.8, 0.75)])
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.2, xoffset=-.1, y_loc=0.55, Ry_target=2.0)
 
 ## CBF-TFP
@@ -1655,7 +2248,7 @@ for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
 clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.2, xoffset=0.03, y_loc=0.55, Ry_target=2.0)
 
 ## CBF-LRB
@@ -1675,8 +2268,9 @@ strs = ['CBF-LRB']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, inline_spacing=-10.0,
+                    manual=[(1.25, 1.7)])
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.2, xoffset=0.04, y_loc=1.25, Ry_target=2.0)
 
 ax.set_xlim([0.3, 1.5])
@@ -1710,8 +2304,8 @@ strs = ['MF-TFP']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, inline_spacing=-10.0)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.1, xoffset=-.1, y_loc=1.4, Ry_target=2.0)
 
 ## MF-LRB
@@ -1731,8 +2325,8 @@ strs = ['MF-LRB']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, inline_spacing=-10.0)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.1, xoffset=-.1, y_loc=1.4, Ry_target=2.0)
 
 ## CBF-TFP
@@ -1752,8 +2346,8 @@ strs = ['CBF-TFP']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, inline_spacing=-10.0)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.1, xoffset=-0.1, y_loc=1.4, Ry_target=2.0)
 
 ## CBF-LRB
@@ -1773,8 +2367,8 @@ strs = ['CBF-LRB']
 for l, s in zip(cs.levels, strs):
     fmt[l] = s
 
-clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size)
-# [txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+clabels = ax.clabel(cs, cs.levels[::2], fmt=fmt, fontsize=clabel_size, inline_spacing=-10.0)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 design_line(0.1, xoffset=-.1, y_loc=1.4, Ry_target=2.0)
 
 ax.set_xlim([0.3, 1.5])
@@ -2080,7 +2674,7 @@ grid_cost = predict_DV(X_plot,
 Z = np.array(grid_cost)
 Z_cont = Z.reshape(xx_pl.shape)
 
-cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=0,
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5,
                  levels=lvls)
 
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2106,7 +2700,7 @@ grid_repl = predict_DV(X_plot,
 Z = np.array(grid_repl)
 Z_cont = Z.reshape(xx_pl.shape)
 
-cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=0,
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5,
                  levels=lvls)
 
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2133,7 +2727,7 @@ grid_cost = predict_DV(X_plot,
 Z = np.array(grid_cost)
 Z_cont = Z.reshape(xx_pl.shape)
 
-cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=0,
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5,
                  levels=lvls)
 
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2159,7 +2753,7 @@ grid_repl = predict_DV(X_plot,
 Z = np.array(grid_repl)
 Z_cont = Z.reshape(xx_pl.shape)
 
-cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=0,
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5,
                  levels=lvls)
 
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2198,7 +2792,7 @@ grid_cost = predict_DV(X_plot,
 Z = np.array(grid_cost)
 Z_cont = Z.reshape(xx_pl.shape)
 
-cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Oranges', vmin=0,
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Reds', vmin=-0.5,
                  levels=lvls)
 
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2224,7 +2818,7 @@ grid_repl = predict_DV(X_plot,
 Z = np.array(grid_repl)
 Z_cont = Z.reshape(xx_pl.shape)
 
-cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Oranges', vmin=0,
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Reds', vmin=-0.5,
                  levels=lvls)
 
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2250,7 +2844,7 @@ grid_cost = predict_DV(X_plot,
 Z = np.array(grid_cost)
 Z_cont = Z.reshape(xx_pl.shape)
 
-cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Oranges', vmin=0,
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Reds', vmin=-0.5,
                  levels=lvls)
 
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2276,7 +2870,7 @@ grid_repl = predict_DV(X_plot,
 Z = np.array(grid_repl)
 Z_cont = Z.reshape(xx_pl.shape)
 
-cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Oranges', vmin=0,
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Reds', vmin=-0.5,
                  levels=lvls)
 
 clabels = ax.clabel(cs, fontsize=clabel_size)
@@ -2293,7 +2887,7 @@ ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 fig.tight_layout()
 plt.show()
 
-# plt.savefig('./eng_struc_figures/target_contours_Tm_zeta.eps')
+plt.savefig('./eng_struc_figures/target_contours_Tm_zeta.eps')
 #%% constructability plots
 
 # TODO: KDE
@@ -2329,30 +2923,30 @@ xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
 Z_dens = log_dens.reshape(xx_pl.shape)
 
-plt.imshow(
-        Z_dens,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.Blues,
-    )
+# plt.imshow(
+#         Z_dens,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.Blues,
+#     )
 
 
 lvls = np.arange(-20, -2, 2)
-cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
-clabels = plt.clabel(cs, fontsize=14, colors='black')
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='binary')
+clabels = plt.clabel(cs, fontsize=20, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
 
 ax.scatter(df_mf_lrb[xvar],
             df_mf_lrb[yvar],
-            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Replacement')
+            s=40, c='gray', marker='v', edgecolors='black', label='Replacement')
 
 ax.set_title(r'Density of MF-LRB: $R_y = 2.0$, $\zeta_M = 0.20$', fontsize=title_font)
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
-
+ax.grid()
 
 ax=fig.add_subplot(2, 2, 2)
 
@@ -2383,30 +2977,30 @@ xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
 Z_dens = log_dens.reshape(xx_pl.shape)
 
-plt.imshow(
-        Z_dens,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.Blues,
-    )
+# plt.imshow(
+#         Z_dens,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.Blues,
+#     )
 plt_density = 200
 
 lvls = np.arange(-20, -2, 2)
-cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
-clabels = plt.clabel(cs, fontsize=14, colors='black')
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='binary')
+clabels = plt.clabel(cs, fontsize=20, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
 
 ax.scatter(df_cbf_lrb[xvar],
             df_cbf_lrb[yvar],
-            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Replacement')
+            s=40, c='gray', marker='v', edgecolors='black', label='Replacement')
 
 ax.set_title(r'Density of CBF-LRB: $R_y = 2.0$, $\zeta_M = 0.20$', fontsize=title_font)
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
-
+ax.grid()
 
 
 #### TFPs
@@ -2440,29 +3034,29 @@ xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
 Z_dens = log_dens.reshape(xx_pl.shape)
 
-plt.imshow(
-        Z_dens,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.Blues,
-    )
+# plt.imshow(
+#         Z_dens,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.Blues,
+#     )
 
 lvls = np.arange(-20, -2, 2)
-cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
-clabels = plt.clabel(cs, fontsize=14, colors='black')
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='binary')
+clabels = plt.clabel(cs, fontsize=20, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
 
 ax.scatter(df_mf_tfp[xvar],
             df_mf_tfp[yvar],
-            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Replacement')
+            s=40, c='gray', marker='v', edgecolors='black', label='Replacement')
 
 ax.set_title(r'Density of MF-TFP: $R_y = 2.0$, $\zeta_M = 0.20$', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
-
+ax.grid()
 
 ax=fig.add_subplot(2, 2, 4)
 
@@ -2493,29 +3087,29 @@ xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
 Z_dens = log_dens.reshape(xx_pl.shape)
 
-plt.imshow(
-        Z_dens,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.Blues,
-    )
+# plt.imshow(
+#         Z_dens,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.Blues,
+#     )
 
 lvls = np.arange(-20, -2, 2)
-cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='Reds')
-clabels = plt.clabel(cs, fontsize=14, colors='black')
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
+cs = plt.contour(xx_pl, yy_pl, Z_dens, levels=lvls, linewidths=1.1, cmap='binary')
+clabels = plt.clabel(cs, fontsize=20, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
 
 ax.scatter(df_cbf_tfp[xvar],
             df_cbf_tfp[yvar],
-            s=40, c='darkblue', marker='v', edgecolors='crimson', label='Replacement')
+            s=40, c='gray', marker='v', edgecolors='black', label='Replacement')
 
 ax.set_title(r'Density of CBF-TFP: $R_y = 2.0$, $\zeta_M = 0.20$', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
-
+ax.grid()
 fig.tight_layout()
 plt.show()
 
@@ -3235,6 +3829,52 @@ print_latex_inverse_table('MF-LRB', mf_lrb_strict_design, mf_lrb_strict_performa
 print_latex_inverse_table('CBF-TFP', cbf_tfp_strict_design, cbf_tfp_strict_performance)   
 print_latex_inverse_table('CBF-LRB', cbf_lrb_strict_design, cbf_lrb_strict_performance)   
 
+
+def print_latex_design_table(sys_name, val_results):
+
+    typ_design = val_results.iloc[0]
+    
+    moat = typ_design['constructed_moat']*2.54
+    largest_beam = typ_design['beam'][0]
+    largest_column = typ_design['column'][0]
+    
+    breakpoint()
+    try:
+        bearing_param_1 = typ_design['mu_1']
+    except:
+        bearing_param_1 = typ_design['d_r']   
+        
+    try:
+        bearing_param_2 = typ_design['mu_2']
+    except:
+        bearing_param_2 = typ_design['d_r'] 
+        
+    try:
+        bearing_param_2 = typ_design['R_1']
+    except:
+        bearing_param_2 = typ_design['d_r'] 
+        
+    try:
+        bearing_param_2 = typ_design['R_2']
+    except:
+        bearing_param_2 = typ_design['d_r'] 
+    
+    # print('Average median repair cost: ',
+    #       f'${val_cost[0]:,.2f}')
+    # print('Repair cost ratio: ', 
+    #       f'{val_cost_ratio[0]:,.3f}')
+    # print('Repair time ratio: ',
+    #       f'{val_downtime_ratio[0]:,.3f}')
+    # print('Estimated replacement frequency: ',
+    #       f'{val_replacement[0]:.2%}')
+    
+    # latex_string = f"& {sys_name} & {GR:.2f} & {Ry:.2f} & {T_ratio:.2f} & {zeta:.2f} \
+    #     & {GP_cost_ratio:.3f} & {GP_time_ratio:.3f} & {GP_repl_risk:.3f} &  \${upfront_cost/1e6:.2f} M \\\\"
+    # print(latex_string)
+    return
+
+print_latex_design_table('MF-TFP', mf_tfp_val_results)
+print_latex_design_table('MF-LRB', mf_lrb_val_results)
 #%% debrief predictions: try to get predictions of actual ran building
 # two values differ
 # GR should be different because real ground motion suite has different Sa than design spectrum
@@ -3336,7 +3976,7 @@ cbf_lrb_strict_pred = one_time_pred(
     time_regression_mdls, repl_regression_mdls)
 
 #%% MLE fragility curves
-
+# TODO: replacement frag curves
 def neg_log_likelihood_sum(params, im_l, no_a, no_c):
     from scipy import stats
     import numpy as np
@@ -3366,8 +4006,10 @@ def mle_fit_collapse(ida_levels, pr_collapse):
 
 inverse_color = 'darkblue'
 inverse_color_2 = 'royalblue'
-strict_color = 'darkorange'
-strict_color_2 = 'brown'
+strict_color = 'darkred'
+strict_color_2 = 'firebrick'
+
+
 
 # print out the results
 ida_levels = [1.0, 1.5, 2.0]
@@ -3377,10 +4019,10 @@ f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 18
-subt_font = 18
-label_size = 16
-title_font=20
+axis_font = 24
+subt_font = 24
+label_size = 22
+title_font=24
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 from matplotlib.lines import Line2D
@@ -3402,16 +4044,16 @@ upper = mf_tfp_repl_risk+mf_tfp_repl_risk_var**0.5
 MCE_level = float(p[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 1)
 ax1.plot(xx_pr, p, color=inverse_color)
-ax1.axhline(mf_tfp_repl_risk, linestyle='-.', color=inverse_color)
-ax1.axhline(upper, linestyle=':', color=inverse_color)
+ax1.axhline(mf_tfp_repl_risk, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
 ax1.axvline(1.0, linestyle=':', color='black')
 # ax1.text(1.5,mf_tfp_repl_risk+0.02, r'Predicted replacement risk',
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.65, mf_tfp_repl_risk+0.01, f'{MCE_level:,.4f}',
+ax1.text(0.55, mf_tfp_repl_risk+0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
-ax1.text(0.8, 0.655, r'$MCE_R$ level', rotation=90,
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
@@ -3431,8 +4073,8 @@ upper = mf_tfp_repl_risk+mf_tfp_repl_risk_var**0.5
 
 MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
-ax1.axhline(mf_tfp_repl_risk, linestyle='-.', color=strict_color)
-ax1.axhline(upper, linestyle=':', color=strict_color)
+ax1.axhline(mf_tfp_repl_risk, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
 ax1.text(1.1, mf_tfp_repl_risk-0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
 
@@ -3443,7 +4085,7 @@ for i, lvl in enumerate(ida_levels):
               marker='x', markersize=15, color=strict_color_2)
     
 ax1.grid(True)
-ax1.set_xlim([0, 3.0])
+ax1.set_xlim([0.5, 3.0])
 ax1.set_ylim([0, 1.0])
 
 
@@ -3461,16 +4103,16 @@ upper = mf_lrb_repl_risk+mf_lrb_repl_risk_var**0.5
 MCE_level = float(p[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 2)
 ax1.plot(xx_pr, p, color=inverse_color)
-ax1.axhline(mf_lrb_repl_risk, linestyle='-.', color=inverse_color)
-ax1.axhline(upper, linestyle=':', color=inverse_color)
+ax1.axhline(mf_lrb_repl_risk, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
 ax1.axvline(1.0, linestyle=':', color='black')
 # ax1.text(1.5,mf_lrb_repl_risk+0.02, r'Predicted replacement risk',
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.65, mf_lrb_repl_risk+0.01, f'{MCE_level:,.4f}',
+ax1.text(0.55, mf_lrb_repl_risk+0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
-ax1.text(0.8, 0.655, r'$MCE_R$ level', rotation=90,
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
@@ -3490,9 +4132,9 @@ upper = mf_lrb_repl_risk+mf_lrb_repl_risk_var**0.5
 
 MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
-ax1.axhline(mf_lrb_repl_risk, linestyle='-.', color=strict_color)
-ax1.axhline(upper, linestyle=':', color=strict_color)
-ax1.text(1.1, mf_lrb_repl_risk-0.01, f'{MCE_level:,.4f}',
+ax1.axhline(mf_lrb_repl_risk, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, mf_lrb_repl_risk+0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
@@ -3502,7 +4144,7 @@ for i, lvl in enumerate(ida_levels):
               marker='x', markersize=15, color=strict_color_2)
     
 ax1.grid(True)
-ax1.set_xlim([0, 3.0])
+ax1.set_xlim([0.5, 3.0])
 ax1.set_ylim([0, 1.0])
 
 ######
@@ -3518,16 +4160,16 @@ upper = cbf_tfp_repl_risk+cbf_tfp_repl_risk_var**0.5
 MCE_level = float(p[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 3)
 ax1.plot(xx_pr, p, color=inverse_color)
-ax1.axhline(cbf_tfp_repl_risk, linestyle='-.', color=inverse_color)
-ax1.axhline(upper, linestyle=':', color=inverse_color)
+ax1.axhline(cbf_tfp_repl_risk, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
 ax1.axvline(1.0, linestyle=':', color='black')
 # ax1.text(1.5,cbf_tfp_repl_risk+0.02, r'Predicted replacement risk',
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.65, cbf_tfp_repl_risk+0.01, f'{MCE_level:,.4f}',
+ax1.text(0.55, cbf_tfp_repl_risk+0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
-ax1.text(0.8, 0.655, r'$MCE_R$ level', rotation=90,
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
@@ -3547,9 +4189,9 @@ upper = cbf_tfp_repl_risk+cbf_tfp_repl_risk_var**0.5
 
 MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
-ax1.axhline(cbf_tfp_repl_risk, linestyle='-.', color=strict_color)
-ax1.axhline(upper, linestyle=':', color=strict_color)
-ax1.text(1.1, cbf_tfp_repl_risk-0.01, f'{MCE_level:,.4f}',
+ax1.axhline(cbf_tfp_repl_risk, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
+ax1.text(1.1, cbf_tfp_repl_risk+0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
@@ -3559,7 +4201,7 @@ for i, lvl in enumerate(ida_levels):
               marker='x', markersize=15, color=strict_color_2)
     
 ax1.grid(True)
-ax1.set_xlim([0, 3.0])
+ax1.set_xlim([0.5, 3.0])
 ax1.set_ylim([0, 1.0])
 
 ######
@@ -3575,16 +4217,16 @@ upper = cbf_lrb_repl_risk+cbf_lrb_repl_risk_var**0.5
 MCE_level = float(p[xx_pr==1.0])
 ax1=fig.add_subplot(2, 2, 4)
 ax1.plot(xx_pr, p, color=inverse_color)
-ax1.axhline(cbf_lrb_repl_risk, linestyle='-.', color=inverse_color)
-ax1.axhline(upper, linestyle=':', color=inverse_color)
+ax1.axhline(cbf_lrb_repl_risk, linestyle='-.', color=inverse_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
 ax1.axvline(1.0, linestyle=':', color='black')
 # ax1.text(1.5,cbf_lrb_repl_risk+0.02, r'Predicted replacement risk',
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.65, MCE_level-0.01, f'{MCE_level:,.4f}',
+ax1.text(0.55, MCE_level-0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
-ax1.text(0.8, 0.655, r'$MCE_R$ level', rotation=90,
+ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
@@ -3604,8 +4246,8 @@ upper = cbf_lrb_repl_risk+cbf_lrb_repl_risk_var**0.5
 
 MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
-ax1.axhline(cbf_lrb_repl_risk, linestyle='-.', color=strict_color)
-ax1.axhline(upper, linestyle=':', color=strict_color)
+ax1.axhline(cbf_lrb_repl_risk, linestyle='-.', color=strict_color, linewidth=1.5)
+ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
 ax1.text(1.1, MCE_level+0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
 
@@ -3615,7 +4257,7 @@ for i, lvl in enumerate(ida_levels):
     ax1.plot([lvl], [cbf_lrb_strict_repl[i]], 
               marker='x', markersize=15, color=strict_color_2)
 ax1.grid(True)
-ax1.set_xlim([0, 3.0])
+ax1.set_xlim([0.5, 3.0])
 ax1.set_ylim([0, 1.0])
 
 fig.tight_layout()
@@ -3632,9 +4274,9 @@ custom_lines = [Line2D([-1], [-1], color='white', marker='x', markeredgecolor='b
 
 ax1.legend(custom_lines, ['IDA replacement frequency', 'Moderate performance', 'Enhanced performance', 
                           'Predicted replacement risk', r'Predicted $\mu+\sigma$'], 
-           fontsize=subt_font)
+           fontsize=subt_font-2, loc='center right')
 
-# plt.savefig('./eng_struc_figures/inverse_repl_frag.pdf')
+plt.savefig('./eng_struc_figures/inverse_repl_frag.pdf')
 
 #%% cost validation distr
 
@@ -3651,7 +4293,7 @@ def plot_predictions(mean, var, y_middle, y_bar, color):
     ax.axvline(lower, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     ax.axvline(upper, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     
-plt.close('all')
+# plt.close('all')
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -3661,9 +4303,20 @@ import matplotlib as mpl
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
+PROPS = {
+    'boxprops':{'facecolor':'none', 'edgecolor':'white'},
+    'medianprops':{'color':'white'},
+    'whiskerprops':{'color':'white'},
+    'capprops':{'color':'white'}
+}
 
 # fig, axes = plt.subplots(1, 1, 
 #                          figsize=(10, 6))
+
+inverse_color = 'darkblue'
+inverse_color_2 = 'royalblue'
+strict_color = 'darkred'
+strict_color_2 = 'red'
 
 fig = plt.figure(figsize=(13, 8))
 
@@ -3709,21 +4362,22 @@ ax=fig.add_subplot(2, 2, 1)
 plt.setp(ax, xticks=np.arange(0.0, 1.1, step=0.1))
 ax = sns.stripplot(data=df_dt, orient='h', color=inverse_color, alpha=0.4, size=4,
                    edgecolor=inverse_color, linewidth=1.0)
-meanpointprops = dict(marker='D', markeredgecolor=inverse_color, markersize=10,
-                      markerfacecolor=inverse_color)
+meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
+                      markerfacecolor=inverse_color_2, zorder=20)
 ax.axvline(0.2, color=inverse_color, linestyle=':')
-sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', color=inverse_color_2,
-            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False)
+sns.boxplot(data=df_dt, saturation=0.0, ax=ax, orient='h',
+            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False,
+            **PROPS)
 ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
 
 
-plot_predictions(mf_tfp_repair_cost, mf_tfp_repair_cost_var, 0.875, 0, inverse_color_2)
-plot_predictions(mf_lrb_repair_cost, mf_lrb_repair_cost_var, 0.625, 1, inverse_color_2)
-plot_predictions(cbf_tfp_repair_cost, cbf_tfp_repair_cost_var, 0.375, 2, inverse_color_2)
-plot_predictions(cbf_lrb_repair_cost, cbf_lrb_repair_cost_var, 0.125, 3, inverse_color_2)
-
+plot_predictions(mf_tfp_repair_cost, mf_tfp_repair_cost_var, 0.875, 0, 'gray')
+plot_predictions(mf_lrb_repair_cost, mf_lrb_repair_cost_var, 0.625, 1, 'gray')
+plot_predictions(cbf_tfp_repair_cost, cbf_tfp_repair_cost_var, 0.375, 2, 'gray')
+plot_predictions(cbf_lrb_repair_cost, cbf_lrb_repair_cost_var, 0.125, 3, 'gray')
+ax.set_xlim([-0.05, 1.05])
 ax.grid(visible=True)
-
+ax.set_title('a) Moderate performance, cost', fontsize=title_font)
 ### strict
 ax=fig.add_subplot(2, 2, 3)
 plt.setp(ax, xticks=np.arange(0.0, 1.1, step=0.1))
@@ -3763,23 +4417,24 @@ mf_tfp_repair_cost_var = mf_tfp_strict_pred['cost_var']
 cbf_lrb_repair_cost_var = cbf_lrb_strict_pred['cost_var']
 mf_lrb_repair_cost_var = mf_lrb_strict_pred['cost_var']
 
-ax = sns.stripplot(data=df_dt, orient='h', color=strict_color_2, alpha=0.4, size=4,
+ax = sns.stripplot(data=df_dt, orient='h', color=strict_color, alpha=0.4, size=4,
                     edgecolor=strict_color, linewidth=1.0)
-meanpointprops = dict(marker='D', markeredgecolor=strict_color_2, markersize=10,
-                      markerfacecolor=strict_color_2)
+meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
+                      markerfacecolor=strict_color_2, zorder=20)
 
-sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', color=strict_color,
-            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False)
+sns.boxplot(data=df_dt, saturation=0.0, ax=ax, orient='h',
+            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False,
+            **PROPS)
 ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
 ax.axvline(0.1, color=strict_color, linestyle=':')
 
-plot_predictions(mf_tfp_repair_cost, mf_tfp_repair_cost_var, 0.875, 0, strict_color)
-plot_predictions(mf_lrb_repair_cost, mf_lrb_repair_cost_var, 0.625, 1, strict_color)
-plot_predictions(cbf_tfp_repair_cost, cbf_tfp_repair_cost_var, 0.375, 2, strict_color)
-plot_predictions(cbf_lrb_repair_cost, cbf_lrb_repair_cost_var, 0.125, 3, strict_color)
-
+plot_predictions(mf_tfp_repair_cost, mf_tfp_repair_cost_var, 0.875, 0, 'gray')
+plot_predictions(mf_lrb_repair_cost, mf_lrb_repair_cost_var, 0.625, 1, 'gray')
+plot_predictions(cbf_tfp_repair_cost, cbf_tfp_repair_cost_var, 0.375, 2, 'gray')
+plot_predictions(cbf_lrb_repair_cost, cbf_lrb_repair_cost_var, 0.125, 3, 'gray')
+ax.set_xlim([-0.05, 1.05])
 ax.grid(visible=True)
-
+ax.set_title('c) Enhanced performance, cost', fontsize=title_font)
 
 ###### time
 
@@ -3825,22 +4480,24 @@ ax=fig.add_subplot(2, 2, 2)
 plt.setp(ax, xticks=np.arange(0.0, 1.1, step=0.1))
 ax = sns.stripplot(data=df_dt, orient='h', color=inverse_color, alpha=0.4, size=4,
                    edgecolor=inverse_color, linewidth=1.0)
-meanpointprops = dict(marker='D', markeredgecolor=inverse_color, markersize=10,
-                      markerfacecolor=inverse_color)
+meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
+                      markerfacecolor=inverse_color_2, zorder=20)
 
-sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', color=inverse_color_2,
-            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False)
+sns.boxplot(data=df_dt, saturation=0.0, ax=ax, orient='h',
+            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False,
+            **PROPS)
 ax.set_xlabel(r'Repair time ratio', fontsize=axis_font)
 ax.axvline(0.2, color=inverse_color, linestyle=':')
 
-plot_predictions(mf_tfp_repair_time, mf_tfp_repair_time_var, 0.875, 0, inverse_color_2)
-plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1, inverse_color_2)
-plot_predictions(cbf_tfp_repair_time, cbf_tfp_repair_time_var, 0.375, 2, inverse_color_2)
-plot_predictions(cbf_lrb_repair_time, cbf_lrb_repair_time_var, 0.125, 3, inverse_color_2)
+plot_predictions(mf_tfp_repair_time, mf_tfp_repair_time_var, 0.875, 0, 'gray')
+plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1, 'gray')
+plot_predictions(cbf_tfp_repair_time, cbf_tfp_repair_time_var, 0.375, 2, 'gray')
+plot_predictions(cbf_lrb_repair_time, cbf_lrb_repair_time_var, 0.125, 3, 'gray')
 
 ax.grid(visible=True)
 ax.axes.yaxis.set_ticklabels([])
-
+ax.set_xlim([-0.05, 1.05])
+ax.set_title('b) Moderate performance, downtime', fontsize=title_font)
 ### strict
 ax=fig.add_subplot(2, 2, 4)
 plt.setp(ax, xticks=np.arange(0.0, 1.1, step=0.1))
@@ -3880,44 +4537,45 @@ mf_tfp_repair_time_var = mf_tfp_strict_pred['time_var']
 cbf_lrb_repair_time_var = cbf_lrb_strict_pred['time_var']
 mf_lrb_repair_time_var = mf_lrb_strict_pred['time_var']
 
-ax = sns.stripplot(data=df_dt, orient='h', color=strict_color_2, alpha=0.4, size=4,
+ax = sns.stripplot(data=df_dt, orient='h', color=strict_color, alpha=0.4, size=4,
                     edgecolor=strict_color, linewidth=1.0)
-meanpointprops = dict(marker='D', markeredgecolor=strict_color_2, markersize=10,
-                      markerfacecolor=strict_color_2)
+meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
+                      markerfacecolor=strict_color_2, zorder=20)
 
-bp = sns.boxplot(data=df_dt, saturation=0.8, ax=ax, orient='h', color=strict_color,
-            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False)
+sns.boxplot(data=df_dt, saturation=0.0, ax=ax, orient='h',
+            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False,
+            **PROPS)
 ax.set_xlabel(r'Repair time ratio', fontsize=axis_font)
 ax.axvline(0.1, color=strict_color, linestyle=':')
 
-plot_predictions(mf_tfp_repair_time, mf_tfp_repair_time_var, 0.875, 0, strict_color)
-plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1, strict_color)
-plot_predictions(cbf_tfp_repair_time, cbf_tfp_repair_time_var, 0.375, 2, strict_color)
-plot_predictions(cbf_lrb_repair_time, cbf_lrb_repair_time_var, 0.125, 3, strict_color)
+plot_predictions(mf_tfp_repair_time, mf_tfp_repair_time_var, 0.875, 0, 'gray')
+plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1, 'gray')
+plot_predictions(cbf_tfp_repair_time, cbf_tfp_repair_time_var, 0.375, 2, 'gray')
+plot_predictions(cbf_lrb_repair_time, cbf_lrb_repair_time_var, 0.125, 3, 'gray')
 
 ax.grid(visible=True)
 ax.axes.yaxis.set_ticklabels([])
+ax.set_title('d) Enhanced performance, downtime', fontsize=title_font)
 
 import matplotlib.patches as mpatches
-custom_lines = [mpatches.Patch(facecolor='dimgray', edgecolor='black'),
+custom_lines = [
                 Line2D([-1], [-1], color='white', marker='o', markeredgecolor='black',
                        alpha=0.3, markerfacecolor='lightgray', markersize=3),
                 Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
                        , markerfacecolor='gray', markersize=10),
                 Line2D([-1], [-1], color='lightgray', marker='v', markeredgecolor='black',
-                       linestyle='--' , markerfacecolor='lightgray', markersize=10),
-                mpatches.Patch(facecolor=inverse_color_2, edgecolor='black'),
-                mpatches.Patch(facecolor=strict_color, edgecolor='black')
+                       markerfacecolor='gray', markersize=10)
                 ]
 
-ax.legend(custom_lines, ['IDA boxplot', 'IDA run median consequence', 'Mean of IDA runs', 
-                         'Predicted consequence', 'Moderate performance', 'Enhanced performance'], 
+ax.legend(custom_lines, ['IDA run median consequence', 'Mean of IDA runs', 
+                         'Predicted consequence'], 
            fontsize=subt_font)
 
+ax.set_xlim([-0.05, 1.05])
 fig.tight_layout()
 plt.show()
 
-# plt.savefig('./eng_struc_figures/inverse_dv_distro.pdf')
+plt.savefig('./eng_struc_figures/inverse_dv_distro.pdf')
 
 #%% filter design graphic
 
@@ -3925,11 +4583,11 @@ plt.show()
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-title_font=22
-axis_font = 22
-subt_font = 20
-label_size = 20
-clabel_size = 16
+title_font=24
+axis_font = 24
+subt_font = 22
+label_size = 24
+clabel_size = 22
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 # plt.close('all')
@@ -4006,33 +4664,36 @@ Z_repl = Z.reshape(xx_pl.shape)
 
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size, manual=[(.7, 1.7)])
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
 
 
 
-cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
-                colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+#                 colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
-                colors='black', linestyles='dashed', levels=lvls_time_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+#                 colors='black', linestyles='dashed', levels=lvls_time_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
 
 ax.grid(visible=True)
 
@@ -4049,6 +4710,9 @@ ax.set_ylim([0.5, 2.25])
 ax.grid(visible=True)
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+ax.legend(custom_lines, ['Repair cost ratio', 'Repair time ratio', 'Replacement probability'], 
+           fontsize=subt_font, loc='lower right')
 
 #### MF-LRB
 X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
@@ -4097,31 +4761,34 @@ Z_repl = Z.reshape(xx_pl.shape)
 
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size, manual=[(0.9, 1.5)])
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
-                colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+#                 colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
-                colors='black', linestyles='dashed', levels=lvls_time_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+#                 colors='black', linestyles='dashed', levels=lvls_time_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
 
 ax.grid(visible=True)
 
@@ -4183,31 +4850,34 @@ Z_repl = Z.reshape(xx_pl.shape)
 
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size, manual=[(1.0, 1.25)])
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
-                colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+#                 colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
-                colors='black', linestyles='dashed', levels=lvls_time_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+#                 colors='black', linestyles='dashed', levels=lvls_time_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
 
 ax.grid(visible=True)
 
@@ -4224,8 +4894,6 @@ custom_lines = [Line2D([-1], [-1], color='black',
                                        linestyle=':' ),
                 ]
 
-ax.legend(custom_lines, ['Repair cost ratio', 'Repair time ratio', 'Replacement probability'], 
-           fontsize=subt_font)
 
 ax.set_xlim([0.35, 2.0])
 ax.set_ylim([0.5, 2.25])
@@ -4282,31 +4950,34 @@ Z_repl = Z.reshape(xx_pl.shape)
 
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
-ax.clabel(cs, fontsize=clabel_size)
+clabels = ax.clabel(cs, fontsize=clabel_size)
+[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
 cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
-                colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+#                 colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
-                colors='black', linestyles='dashed', levels=lvls_time_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+#                 colors='black', linestyles='dashed', levels=lvls_time_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
 
-cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
-ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
+# cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
 
 ax.grid(visible=True)
 
@@ -4324,7 +4995,7 @@ ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 fig.tight_layout()
-# plt.savefig('./eng_struc_figures/filter_design.pdf')
+plt.savefig('./eng_struc_figures/filter_design.pdf')
 # ax.text(1.2, 1.00, 'OK space',
 #           fontsize=axis_font, color='green')
 #%% filter design graphic
@@ -4673,4 +5344,359 @@ ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 fig.tight_layout()
 #%%
 
-# TODO: plot ideas: sensitivity, 
+#%% generalized curve fitting for cost and time
+
+# TODO: should this be real values ($)
+
+def nlls(params, log_x, no_a, no_c):
+    from scipy import stats
+    import numpy as np
+    sigma, beta = params
+    theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(log_x)
+    likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
+    log_likelihood = np.log(likelihood)
+    log_likelihood_sum = np.sum(log_likelihood)
+
+    return -log_likelihood_sum
+
+def mle_fit_general(x_values, probs, x_init=None):
+    from functools import partial
+    import numpy as np
+    from scipy.optimize import basinhopping
+    
+    log_x = np.log(x_values)
+    number_of_analyses = 1000*np.ones(len(x_values))
+    number_of_collapses = np.round(1000*probs)
+    
+    neg_log_likelihood_sum_partial = partial(
+        nlls, log_x=log_x, no_a=number_of_analyses, no_c=number_of_collapses)
+    
+    if x_init is None:
+        x0 = (1, 1)
+    else:
+        x0 = x_init
+    
+    bnds = ((1e-6, 0.2), (0.5, 1.5))
+    
+    # use basin hopping to avoid local minima
+    minimizer_kwargs={'bounds':bnds}
+    res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
+                       niter=100, seed=985)
+    
+    return res.x[0], res.x[1]
+
+from scipy.stats import ecdf
+f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+# plt.close('all')
+
+
+my_y_var = mf_tfp_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 13))
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('MF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = mf_lrb_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 2)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('MF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_tfp_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.01,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 3)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('CBF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_lrb_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.01,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 4)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('CBF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+fig.tight_layout()
+plt.show()
+#%%
+
+# plt.close('all')
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+my_y_var = mf_tfp_ida[time_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+fig = plt.figure(figsize=(16, 13))
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.05,1.0))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+ax1.set_title('MF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = mf_lrb_ida[time_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.04,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 2)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+ax1.set_title('MF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_tfp_ida[time_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.03,1))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 3)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+ax1.set_title('CBF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_lrb_ida[time_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+theta_inv, beta_inv = mle_fit_general(ecdf_values,ecdf_prob, x_init=(0.2,0.5))
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 4)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair time ratio', fontsize=axis_font)
+ax1.set_title('CBF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+fig.tight_layout()
+
+#%% difference between designed and actual GR and T ratio
+
+# moderate designs
+cbf_tfp_ida = cbf_tfp_val_results[cbf_tfp_val_results['ida_level']==1.0]
+mf_tfp_ida = mf_tfp_val_results[mf_tfp_val_results['ida_level']==1.0]
+cbf_lrb_ida = cbf_lrb_val_results[cbf_lrb_val_results['ida_level']==1.0]
+mf_lrb_ida = mf_lrb_val_results[mf_lrb_val_results['ida_level']==1.0]
+
+
+print(mf_tfp_ida['gap_ratio'].mean().diff())
+print(mf_lrb_ida['gap_ratio'].mean().diff())
+print(cbf_tfp_ida['gap_ratio'].mean().diff())
+print(cbf_lrb_ida['gap_ratio'].mean().diff())
+
+print(mf_tfp_ida['T_ratio'].mean().diff())
+print(mf_lrb_ida['T_ratio'].mean().diff())
+print(cbf_tfp_ida['T_ratio'].mean().diff())
+print(cbf_lrb_ida['T_ratio'].mean().diff())
+
+# enhanced designs
+cbf_tfp_ida = cbf_tfp_strict_results[cbf_tfp_strict_results['ida_level']==1.0]
+mf_tfp_ida = mf_tfp_strict_results[mf_tfp_strict_results['ida_level']==1.0]
+cbf_lrb_ida = cbf_lrb_strict_results[cbf_lrb_strict_results['ida_level']==1.0]
+mf_lrb_ida = mf_lrb_strict_results[mf_lrb_strict_results['ida_level']==1.0]
+
+
+print(mf_tfp_ida['gap_ratio'].mean().diff())
+print(mf_lrb_ida['gap_ratio'].mean().diff())
+print(cbf_tfp_ida['gap_ratio'].mean().diff())
+print(cbf_lrb_ida['gap_ratio'].mean().diff())
+
+print(mf_tfp_ida['T_ratio'].mean().diff())
+print(mf_lrb_ida['T_ratio'].mean().diff())
+print(cbf_tfp_ida['T_ratio'].mean().diff())
+print(cbf_lrb_ida['T_ratio'].mean().diff())
+
+#%% TODO: system selection
+
+
