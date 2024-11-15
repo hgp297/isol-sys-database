@@ -519,7 +519,10 @@ def design_LRB(param_df, reduce_bearings=False, bypass_disp_check=False):
     
     # converge on t_r necessary to achieve rho_k
     # if this succeeds, no guesswork is necessary on shims and layers
-    S_pad_trial = 20.0
+    if bypass_disp_check:
+        S_pad_trial = 10.0
+    else:
+        S_pad_trial = 20.0
     from scipy.optimize import minimize_scalar
     res = minimize_scalar(iterate_bearing_height,
                           args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
