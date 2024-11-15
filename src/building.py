@@ -227,15 +227,33 @@ class Building:
         from math import ceil
         isol_type = self.isolator_system
         if isol_type == 'LRB':
-            n_edge_bearings = n_bays+1
-            total_addl_bearings = n_edge_bearings - 2
-            
-            left_bearings = ceil(total_addl_bearings/2)
-            right_bearings = total_addl_bearings - left_bearings
-            addl_isol_elems = ([isol_elems[0]+10*(j+1) 
-                               for j in range(left_bearings)] + 
-                               [isol_elems[-1]+10*(j+1) 
-                                for j in range(right_bearings)])
+            # check if num bearings have been reduced
+            # reduction number is fixed at 8 for now
+            if int(self.N_lb) < 4*n_bays:
+                print('LRB reduction active.')
+                # remove 4 from each of the y-dir edge frames
+                n_edge_bearings = (n_bays + 1) - 4
+                
+                # at minimum, keep one bearing
+                # this would be incorrect only for <5-bay structures that need reduced bearings
+                total_addl_bearings = max(n_edge_bearings - 2, 0)
+                
+                left_bearings = ceil(total_addl_bearings/2)
+                right_bearings = total_addl_bearings - left_bearings
+                addl_isol_elems = ([isol_elems[0]+10*(j+1) 
+                                   for j in range(left_bearings)] + 
+                                   [isol_elems[-1]+10*(j+1) 
+                                    for j in range(right_bearings)])
+            else:
+                n_edge_bearings = n_bays+1
+                total_addl_bearings = n_edge_bearings - 2
+                
+                left_bearings = ceil(total_addl_bearings/2)
+                right_bearings = total_addl_bearings - left_bearings
+                addl_isol_elems = ([isol_elems[0]+10*(j+1) 
+                                   for j in range(left_bearings)] + 
+                                   [isol_elems[-1]+10*(j+1) 
+                                    for j in range(right_bearings)])
             
             isol_elems = isol_elems + addl_isol_elems
         
