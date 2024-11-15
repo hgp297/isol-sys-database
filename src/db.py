@@ -1391,20 +1391,21 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
             
         # check to see if bearing design succeeded
         # if failed (particularly for inverse design), reduce bearings
+        # TODO: implement or remove this
         if lrb_designs.shape[0] < 1:
             all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row, reduce_bearings=True),
-                                           axis='columns', result_type='expand')
+                                            axis='columns', result_type='expand')
             
             
             all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
-                                       'N_lb', 'S_pad', 'S_2',
-                                       'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m', 'buckling_fail']
+                                        'N_lb', 'S_pad', 'S_2',
+                                        'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m', 'buckling_fail']
             
             # keep the designs that look sensible
             lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
-                                               3*all_lrb_designs['d_lead']) &
+                                                3*all_lrb_designs['d_lead']) &
                                               (all_lrb_designs['d_bearing'] <=
-                                               6*all_lrb_designs['d_lead']) &
+                                                6*all_lrb_designs['d_lead']) &
                                               (all_lrb_designs['d_lead'] <= 
                                                 all_lrb_designs['t_r']) &
                                               (all_lrb_designs['t_r'] > 4.0) &
