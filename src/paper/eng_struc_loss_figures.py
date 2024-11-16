@@ -190,7 +190,6 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                            third_var_set = None, fourth_var_set = None,
                            x_bounds=None, y_bounds=None):
-    
     if x_bounds == None:
         x_min = min(X[x_var])
         x_max = max(X[x_var])
@@ -3385,9 +3384,16 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     
     
     # select best viable design
+    structural_system = system_name.split('_')[0]
+    # if structural_system == 'MF':
+    #     upfront_costs = calc_upfront_cost(
+    #         X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
+    # else:
+    #     upfront_costs = calc_upfront_cost(
+    #         X_design, config_dict=config_dict, steel_cost_dict=reg_dict,
+    #         land_cost_per_sqft=1978/(3.28**2))
     upfront_costs = calc_upfront_cost(
         X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
-    structural_system = system_name.split('_')[0]
     cheapest_idx = upfront_costs['total_'+structural_system].idxmin()
     inv_upfront_cost = upfront_costs['total_'+structural_system].min()
 
@@ -3813,6 +3819,7 @@ def process_results(run_case):
 (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
  cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_constructable')
 
+# NOTE: the _redux runs bypassed displacement vs d_bearing check for LRBs
 (mf_tfp_strict_results, mf_tfp_strict_repl, mf_tfp_strict_cost, mf_tfp_strict_cost_ratio, 
  mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_strict')
 (mf_lrb_strict_results, mf_lrb_strict_repl, mf_lrb_strict_cost, mf_lrb_strict_cost_ratio, 
@@ -3820,8 +3827,10 @@ def process_results(run_case):
 (cbf_tfp_strict_results, cbf_tfp_strict_repl, cbf_tfp_strict_cost, cbf_tfp_strict_cost_ratio, 
  cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_strict')
 (cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
- cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict')
+ cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict_redux')
 
+(mf_lrb_off_results, mf_lrb_off_repl, mf_lrb_off_cost, mf_lrb_off_cost_ratio, 
+ mf_lrb_off_downtime, mf_lrb_off_downtime_ratio) = process_results('mf_lrb_strict_redux')
 #%% latex printing
 
 def print_latex_inverse_table(sys_name, design_dict, performance_dict):
@@ -5283,6 +5292,14 @@ ax.grid(visible=True)
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
+custom_lines = [Line2D([-1], [-1], color='black', 
+                       linestyle='-' ),
+                Line2D([-1], [-1], color='black', 
+                                       linestyle='--' ),
+                Line2D([-1], [-1], color='black', 
+                                       linestyle=':' ),
+                ]
+
 ax.legend(custom_lines, ['Repair cost ratio', 'Repair time ratio', 'Replacement probability'], 
            fontsize=subt_font, loc='lower right')
 
@@ -5457,14 +5474,6 @@ ax.grid(visible=True)
 ax.set_title('c) CBF-TFP', fontsize=title_font)
 # ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
-
-custom_lines = [Line2D([-1], [-1], color='black', 
-                       linestyle='-' ),
-                Line2D([-1], [-1], color='black', 
-                                       linestyle='--' ),
-                Line2D([-1], [-1], color='black', 
-                                       linestyle=':' ),
-                ]
 
 
 ax.set_xlim([0.35, 2.0])
@@ -6243,24 +6252,24 @@ print(cbf_lrb_ida['T_ratio'].mean().diff())
 #%% loss component breakdown
 
 # TODO: component breakdown
-def component_fractions(df):
+def component_fractions(loss_df):
     
-    df['cost_50%'] = df['cmp_cost_ratio'] * df['total_cmp_cost']
-    df['cost_compare'] = df['B_50%'] + df['C_50%'] + df['D_50%'] + df['E_50%'] 
-    df['difference'] = df['cost_50%'] / df['cost_compare']
+    loss_df['cost_50%'] = loss_df['cmp_cost_ratio'] * loss_df['total_cmp_cost']
+    loss_df['cost_compare'] = loss_df['B_50%'] + loss_df['C_50%'] + loss_df['D_50%'] + loss_df['E_50%'] 
+    loss_df['difference'] = loss_df['cost_50%'] / loss_df['cost_compare']
     
     
-    df['B_frac'] = df['B_50%']*df['difference'] / df['total_cmp_cost']
-    df['C_frac'] = df['C_50%']*df['difference'] / df['total_cmp_cost']
-    df['D_frac'] = df['D_50%']*df['difference'] / df['total_cmp_cost']
-    df['E_frac'] = df['E_50%']*df['difference'] / df['total_cmp_cost']
+    loss_df['B_frac'] = loss_df['B_50%']*loss_df['difference'] / loss_df['total_cmp_cost']
+    loss_df['C_frac'] = loss_df['C_50%']*loss_df['difference'] / loss_df['total_cmp_cost']
+    loss_df['D_frac'] = loss_df['D_50%']*loss_df['difference'] / loss_df['total_cmp_cost']
+    loss_df['E_frac'] = loss_df['E_50%']*loss_df['difference'] / loss_df['total_cmp_cost']
     
-    # df['B_frac'] = df['B_50%'] / df['total_cmp_cost']
-    # df['C_frac'] = df['C_50%'] / df['total_cmp_cost']
-    # df['D_frac'] = df['D_50%'] / df['total_cmp_cost']
-    # df['E_frac'] = df['E_50%'] / df['total_cmp_cost']
+    # loss_df['B_frac'] = loss_df['B_50%'] / loss_df['total_cmp_cost']
+    # loss_df['C_frac'] = loss_df['C_50%'] / loss_df['total_cmp_cost']
+    # loss_df['D_frac'] = loss_df['D_50%'] / loss_df['total_cmp_cost']
+    # loss_df['E_frac'] = loss_df['E_50%'] / loss_df['total_cmp_cost']
     
-    df_stack_bars = df[['B_frac', 'C_frac', 'D_frac', 'E_frac']].mean()
+    df_stack_bars = loss_df[['B_frac', 'C_frac', 'D_frac', 'E_frac']].mean()
     
     # df['cmp_cost_ratio'].mean()
     
@@ -6292,7 +6301,7 @@ df_stack = pd.DataFrame({'MF-TFP':mf_tfp_components, 'MF-LRB':mf_lrb_components,
                         'CBF-TFP':cbf_tfp_components, 'CBF-LRB':cbf_lrb_components}).T
 
 
-plt.close('all')
+# plt.close('all')
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
