@@ -3548,7 +3548,7 @@ def modified_IK_params(shape, L):
 #              Brace geometry
 ###############################################################################
 def determine_collapse(nds, h_story, drift_limit):
-    import openseespy.opensees as ops
+    import opensees.openseespy as ops
     import numpy as np
     disp_array = np.array([ops.nodeDisp(node, 1) 
                                for node in nds])
