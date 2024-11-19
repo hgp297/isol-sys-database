@@ -143,7 +143,7 @@ import pickle
     
     
 #### cbf lrb
-run_case = 'cbf_lrb_strict_redux'
+run_case = 'cbf_lrb_strict_hs'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 
@@ -166,7 +166,7 @@ with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
     
     
 #### mf lrb
-run_case = 'mf_lrb_strict_redux'
+run_case = 'mf_lrb_strict_hs'
 validation_path = '../data/validation/'+run_case+'/'
 loss_path = '../data/validation/'+run_case+'/'
 

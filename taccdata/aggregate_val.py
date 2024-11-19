@@ -3,7 +3,7 @@ import sys
 # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(1, '../src/')
 
-run_case = 'mf_lrb_strict_redux'
+run_case = 'cbf_lrb_strict_hs'
 
 def agg_data(run_case):
     pickle_path = './data/validation/'+run_case+'/'
@@ -24,8 +24,11 @@ def agg_data(run_case):
     for i in range(row_num):
         # try to run 200 rows, stop whenever we stop finding rows
         file_str = 'row_'+ str(i) +'.pickle'
+        csv_str = 'row_'+ str(i) +'.csv'
         try:
             cur_obj = pd.read_pickle(pickle_path+file_str)
+        except ModuleNotFoundError:
+            cur_obj = pd.read_csv(pickle_path+csv_str)
         except:
             break
         

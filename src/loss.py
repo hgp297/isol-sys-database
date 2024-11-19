@@ -173,6 +173,11 @@ class Loss_Analysis:
         all_beams = self.beam
         all_cols = self.column
         
+        if type(all_cols) == str:
+            from ast import literal_eval
+            all_cols = literal_eval(self.column)
+            all_beams = literal_eval(self.beam)
+        
         # column base plates
         n_col_base = (n_bays+1)**2
         base_col_wt = float(all_cols[0].split('X',1)[1])
@@ -288,6 +293,11 @@ class Loss_Analysis:
         
         all_cols = self.column
         all_braces = self.brace
+        
+        if type(all_cols) == str:
+            from ast import literal_eval
+            all_cols = literal_eval(self.column)
+            all_braces = literal_eval(self.brace)
         
         # column base plates
         n_col_base = (n_bays+1)**2
@@ -561,16 +571,17 @@ class Loss_Analysis:
         self.components = total_cmps
         
     def process_EDP(self, df_edp=None):
-
-        # from ast import literal_eval
-        # PID = literal_eval(self.PID)
-        # PFV = literal_eval(self.PFV)
-        # PFA = literal_eval(self.PFA)
         
         if df_edp is None:
             PID = self.PID
             PFV = self.PFV
             PFA = self.PFA
+            
+            if type(PID) == str:
+                from ast import literal_eval
+                PID = literal_eval(self.PID)
+                PFV = literal_eval(self.PFV)
+                PFA = literal_eval(self.PFA)
             # max_isol_disp = self.max_isol_disp
             
             PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
@@ -586,6 +597,7 @@ class Loss_Analysis:
             all_edps = PFA + PFV + PID + PFA + PFV + PID
             all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
                          PFA_names_2 + PFV_names_2 + PID_names_2)
+            
             edp_df = pd.DataFrame([all_edps], columns = all_names)
             
             
@@ -740,7 +752,12 @@ class Loss_Analysis:
         #                                        run_data['accMax2'],
         #                                        run_data['accMax3'])
         
-        PID_all = self.PID
+        if type(self.PID) == str:
+            from ast import literal_eval
+            PID_all = literal_eval(self.PID)
+        else:
+            PID_all = self.PID
+            
         if mode != 'maximize':
             demand_sample_ext[('SA_Tm',0,1)] = self.sa_tm
             demand_sample_ext[('PID_all',0,1)] = max(PID_all)
@@ -930,6 +947,7 @@ class Loss_Analysis:
             additional_fragility_db,  # This is the extra fragility data we've just created
             'PelicunDefault/damage_DB_FEMA_P58_2nd.csv' # and this is a table with the default P58 data    
         ])
+        
         
         ### 3.3.5 Damage Process
         # 
