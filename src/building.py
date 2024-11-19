@@ -19,6 +19,8 @@ class Building:
         
     # import attributes as building characteristics from pd.Series
     def __init__(self, design):
+        self._model = None 
+
         for key, value in design.items():
             setattr(self, key, value)
             
@@ -26,11 +28,11 @@ class Building:
         import opensees.openseespy as ops
         
         connected_nodes = []
-        for ele in ops.getEleTags():
-            for nd in ops.eleNodes(ele):
+        for ele in self._model.getEleTags():
+            for nd in self._model.eleNodes(ele):
                 connected_nodes.append(nd)
         
-        defined_nodes = ops.getNodeTags()
+        defined_nodes = self._model.getNodeTags()
      
         # Use XOR operator, ^
         return list(set(connected_nodes) ^ set(defined_nodes))
@@ -386,13 +388,15 @@ class Building:
 ###############################################################################
 
     def model_moment_frame(self):
-        
+
         # import OpenSees and libraries
         import opensees.openseespy as ops
         
         # remove existing model
-        ops.wipe()
-        ops.wipeAnalysis()
+        if self._model is not None:
+            self._model.wipe()
+            del self._model
+            self._model = None
 
         # units: in, kip, s
         # dimensions
@@ -416,7 +420,7 @@ class Building:
         # set modelbuilder
         # x = horizontal, y = in-plane, z = vertical
         # command: model('basic', '-ndm', ndm, '-ndf', ndf=ndm*(ndm+1)/2)
-        ops.model('basic', '-ndm', 3, '-ndf', 6)
+        self._model = ops.Model(ndm=3, ndf=6)
         
         # model gravity masses corresponding to the frame placed on building edge
         import numpy as np
@@ -444,17 +448,17 @@ class Building:
         # base nodes
         base_nodes = self.node_tags['base']
         for idx, nd in enumerate(base_nodes):
-            ops.node(nd, idx*L_beam, 0.0*ft, -1.0*ft)
-            ops.fix(nd, 1, 1, 1, 1, 1, 1)
+            self._model.node(nd, idx*L_beam, 0.0*ft, -1.0*ft)
+            self._model.fix(nd, 1, 1, 1, 1, 1, 1)
         
         # wall nodes (should only be two)
         n_bays = int(self.num_bays)
         
         wall_nodes = self.node_tags['wall']
-        ops.node(wall_nodes[0], 0.0*ft, 0.0*ft, 0.0*ft)
-        ops.node(wall_nodes[1], n_bays*L_beam, 0.0*ft, 0.0*ft)
+        self._model.node(wall_nodes[0], 0.0*ft, 0.0*ft, 0.0*ft)
+        self._model.node(wall_nodes[1], n_bays*L_beam, 0.0*ft, 0.0*ft)
         for nd in wall_nodes:
-            ops.fix(nd, 1, 1, 1, 1, 1, 1)
+            self._model.fix(nd, 1, 1, 1, 1, 1, 1)
         
         # structure nodes
         floor_nodes = self.node_tags['floor']
@@ -463,7 +467,7 @@ class Building:
             # get multiplier for location from node number
             bay = nd%10
             fl = (nd//10)%10 - 1
-            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            self._model.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
             
             # assign masses, in direction of motion and stiffness
             # DOF list: X, Y, Z, rotX, rotY, rotZ
@@ -472,11 +476,11 @@ class Building:
             else:
                 m_nd = m_grav_inner[fl]
             negligible = 1e-15
-            ops.mass(nd, m_nd, m_nd, m_nd,
+            self._model.mass(nd, m_nd, m_nd, m_nd,
                      negligible, negligible, negligible)
             
             # restrain out of plane motion
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
             
         # leaning column nodes
         leaning_nodes = self.node_tags['leaning']
@@ -484,16 +488,16 @@ class Building:
             
             # get multiplier for location from node number
             floor = (nd//10)%10 - 1
-            ops.node(nd, (n_bays+1)*L_beam, 0.0*ft, floor*L_col)
+            self._model.node(nd, (n_bays+1)*L_beam, 0.0*ft, floor*L_col)
             m_nd = m_lc[floor]
-            ops.mass(nd, m_nd, m_nd, m_nd,
+            self._model.mass(nd, m_nd, m_nd, m_nd,
                      negligible, negligible, negligible)
             
             # bottom is roller, otherwise, restrict OOP motion
             if floor == 0:
-                ops.fix(nd, 0, 1, 1, 1, 0, 1)
+                self._model.fix(nd, 0, 1, 1, 1, 0, 1)
             else:
-                ops.fix(nd, 0, 1, 0, 1, 0, 1)
+                self._model.fix(nd, 0, 1, 0, 1, 0, 1)
         
         # spring nodes
         spring_nodes = self.node_tags['spring']
@@ -503,7 +507,7 @@ class Building:
             # get multiplier for location from node number
             bay = parent_nd%10
             fl = parent_nd//10 - 1
-            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            self._model.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
             
         lc_spr_nodes = self.node_tags['lc_spring']
         for nd in lc_spr_nodes:
@@ -512,7 +516,7 @@ class Building:
             # get multiplier for location from node number
             bay = parent_nd%10
             fl = parent_nd//10 - 1
-            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            self._model.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
             
         print('Nodes placed.')
 ################################################################################
@@ -557,8 +561,8 @@ class Building:
         # Frame link (stiff elements)
         A_rigid = 1000.0         # define area of truss section
         I_rigid = 1e6        # moment of inertia for p-delta columns
-        ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
-        ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
+        self._model.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
+        self._model.uniaxialMaterial('Elastic', torsion_mat_tag, J)
     
 ################################################################################
 # define spring materials
@@ -576,7 +580,7 @@ class Building:
             # columns
             if mem_tag == 1:
                 # Create zero length element (spring), rotations allowed about local z axis
-                ops.element('zeroLength', eleID, nodeI, nodeJ,
+                self._model.element('zeroLength', eleID, nodeI, nodeJ,
                     '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                     torsion_mat_tag, elastic_mat_tag, matID, 
                     '-dir', 1, 2, 3, 4, 5, 6,
@@ -585,7 +589,7 @@ class Building:
             # beams
             if mem_tag == 2:
                 # Create zero length element (spring), rotations allowed about local z axis
-                ops.element('zeroLength', eleID, nodeI, nodeJ,
+                self._model.element('zeroLength', eleID, nodeI, nodeJ,
                     '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                     torsion_mat_tag, elastic_mat_tag, matID, 
                     '-dir', 1, 2, 3, 4, 5, 6, 
@@ -619,7 +623,7 @@ class Building:
              kappa_col, thu_col) = modified_IK_params(current_col, L_col)
             
 
-            ops.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
+            self._model.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
                                   thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
                                   thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
                                   lam_col, lam_col, lam_col,
@@ -648,7 +652,7 @@ class Building:
              kappa_beam, thu_beam) = modified_IK_params(current_beam, L_beam)
             
 
-            ops.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
+            self._model.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
                                   thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
                                   thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
                                   lam_beam, lam_beam, lam_beam,
@@ -706,23 +710,23 @@ class Building:
         col_transf_tag    = 2
         
         # beam geometry
-        xyz_i = ops.nodeCoord(10)
-        xyz_j = ops.nodeCoord(11)
+        xyz_i = self._model.nodeCoord(10)
+        xyz_j = self._model.nodeCoord(11)
         beam_x_axis = np.subtract(xyz_j, xyz_i)
         vecxy_beam = [0, 0, 1] # Use any vector in local x-y, but not local x
         vecxz = np.cross(beam_x_axis,vecxy_beam) # What OpenSees expects
         vecxz_beam = vecxz / np.sqrt(np.sum(vecxz**2))
         
         # column geometry
-        xyz_i = ops.nodeCoord(10)
-        xyz_j = ops.nodeCoord(20)
+        xyz_i = self._model.nodeCoord(10)
+        xyz_j = self._model.nodeCoord(20)
         col_x_axis = np.subtract(xyz_j, xyz_i)
         vecxy_col = [1, 0, 0] # Use any vector in local x-y, but not local x
         vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
         vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
     
-        ops.geomTransf('Linear', beam_transf_tag, *vecxz_beam) # beams
-        ops.geomTransf('Corotational', col_transf_tag, *vecxz_col) # columns
+        self._model.geomTransf('Linear', beam_transf_tag, *vecxz_beam) # beams
+        self._model.geomTransf('Corotational', col_transf_tag, *vecxz_col) # columns
         
         # outside of concentrated plasticity zones, use elastic beam columns
         # define the columns
@@ -750,7 +754,7 @@ class Building:
             Iz_col_mod = Iz_col*(n_mik+1)/n_mik
             Iy_col_mod = Iy_col*(n_mik+1)/n_mik
             
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         Ag_col, Es, Gs, J, Iy_col_mod, Iz_col_mod, col_transf_tag)
         
         # define the beams
@@ -778,7 +782,7 @@ class Building:
             Iz_beam_mod = Iz_beam*(n_mik+1)/n_mik
             Iy_beam_mod = Iy_beam*(n_mik+1)/n_mik
             
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
                         beam_transf_tag)
         
@@ -790,7 +794,7 @@ class Building:
         k_lc = 1e-9*kip/inch
     
         # Create the material (spring)
-        ops.uniaxialMaterial('Elastic', lc_spring_mat_tag, k_lc)
+        self._model.uniaxialMaterial('Elastic', lc_spring_mat_tag, k_lc)
         
         # define leaning column
         lc_elems = self.elem_tags['leaning']
@@ -799,7 +803,7 @@ class Building:
             j_nd = (elem_tag - col_id + 10)*10 + 6
             
             # create elastic members
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, col_transf_tag)
         
         lc_spr_elems = self.elem_tags['lc_spring']
@@ -808,7 +812,7 @@ class Building:
             parent_nd = spr_nd//10
             
             # create zero length element (spring), rotations allowed about local Z axis
-            ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
+            self._model.element('zeroLength', elem_tag, parent_nd, spr_nd,
                 '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                 torsion_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
                 '-dir', 1, 2, 3, 4, 5, 6, '-orient', *col_x_axis, *vecxy_col)
@@ -821,14 +825,14 @@ class Building:
         for elem_tag in truss_elems:
             i_nd = elem_tag - truss_id
             j_nd = elem_tag - truss_id + 1
-            ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
+            self._model.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
             
         diaph_id = self.elem_ids['diaphragm']
         diaph_elems = self.elem_tags['diaphragm']
         for elem_tag in diaph_elems:
             i_nd = elem_tag - diaph_id
             j_nd = elem_tag - diaph_id + 1
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, beam_transf_tag)
             
 ################################################################################
@@ -857,14 +861,14 @@ class Building:
             # friction pendulum system
             # kv = EASlider/hSlider
             kv = 6*1000*kip/inch
-            ops.uniaxialMaterial('Elastic', fps_vert_tag, kv)
-            ops.uniaxialMaterial('Elastic', fps_rot_tag, 10.0)
+            self._model.uniaxialMaterial('Elastic', fps_vert_tag, kv)
+            self._model.uniaxialMaterial('Elastic', fps_rot_tag, 10.0)
     
     
             # Define friction model for FP elements
             # command: frictionModel Coulomb tag mu
-            ops.frictionModel('Coulomb', friction_1_tag, self.mu_1)
-            ops.frictionModel('Coulomb', friction_2_tag, self.mu_2)
+            self._model.frictionModel('Coulomb', friction_1_tag, self.mu_1)
+            self._model.frictionModel('Coulomb', friction_2_tag, self.mu_2)
     
     
             # define 2-D isolation layer 
@@ -883,7 +887,7 @@ class Building:
                     p_vert = p_outer
                 else:
                     p_vert = p_inner
-                ops.element('TripleFrictionPendulum', elem_tag, i_nd, j_nd,
+                self._model.element('TripleFrictionPendulum', elem_tag, i_nd, j_nd,
                             friction_1_tag, friction_2_tag, friction_2_tag,
                             fps_vert_tag, fps_rot_tag, fps_rot_tag, fps_rot_tag,
                             L1, L2, L2, d1, d2, d2,
@@ -959,7 +963,7 @@ class Building:
                     i_nd = base_id + bay_pos
                     j_nd = i_nd - base_id + 10
                     
-                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                self._model.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                             G_r, K_bulk, D_inner, D_outer,
                             t_shim, t_layer, n_layers, *addl_params)
   
@@ -999,17 +1003,17 @@ class Building:
     
         moat_gap = self.D_m * self.moat_ampli
     
-        ops.uniaxialMaterial('ImpactMaterial', impact_mat_tag, 
+        self._model.uniaxialMaterial('ImpactMaterial', impact_mat_tag, 
                              K1, K2, -delY, -moat_gap)
         
         # command: element('zeroLength', eleTag, *eleNodes, '-mat', *matTags, 
         #   '-dir', *dirs, <'-doRayleigh', rFlag=0>, <'-orient', *vecx, *vecyp>)
         wall_elems = self.elem_tags['wall']
         
-        ops.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
+        self._model.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
                     '-mat', impact_mat_tag,
                     '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
-        ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
+        self._model.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
                     '-mat', impact_mat_tag,
                     '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         
@@ -1029,8 +1033,10 @@ class Building:
         import opensees.openseespy as ops
         
         # remove existing model
-        ops.wipe()
-        ops.wipeAnalysis()
+        if self._model is not None:
+            self._model.wipe()
+            del self._model 
+            self._model = None
 
         # units: in, kip, s
         # dimensions
@@ -1054,7 +1060,7 @@ class Building:
         # set modelbuilder
         # x = horizontal, y = in-plane, z = vertical
         # command: model('basic', '-ndm', ndm, '-ndf', ndf=ndm*(ndm+1)/2)
-        ops.model('basic', '-ndm', 3, '-ndf', 6)
+        self._model = ops.Model(ndm=3, ndf=6)
         
         self.number_nodes()
         
@@ -1093,8 +1099,8 @@ class Building:
         # base nodes
         base_nodes = self.node_tags['base']
         for idx, nd in enumerate(base_nodes):
-            ops.node(nd, idx*L_beam, 0.0*ft, -1.0*ft)
-            ops.fix(nd, 1, 1, 1, 1, 1, 1)
+            self._model.node(nd, idx*L_beam, 0.0*ft, -1.0*ft)
+            self._model.fix(nd, 1, 1, 1, 1, 1, 1)
         
         # wall nodes (should only be two)
         n_bays = int(self.num_bays)
@@ -1103,10 +1109,10 @@ class Building:
         n_start = round(n_bays/2 - n_braced/2)
         
         wall_nodes = self.node_tags['wall']
-        ops.node(wall_nodes[0], 0.0*ft, 0.0*ft, 0.0*ft)
-        ops.node(wall_nodes[1], n_bays*L_beam, 0.0*ft, 0.0*ft)
+        self._model.node(wall_nodes[0], 0.0*ft, 0.0*ft, 0.0*ft)
+        self._model.node(wall_nodes[1], n_bays*L_beam, 0.0*ft, 0.0*ft)
         for nd in wall_nodes:
-            ops.fix(nd, 1, 1, 1, 1, 1, 1)
+            self._model.fix(nd, 1, 1, 1, 1, 1, 1)
         
         # structure nodes
         floor_nodes = self.node_tags['floor']
@@ -1119,7 +1125,7 @@ class Building:
             # get multiplier for location from node number
             bay = nd%10
             fl = (nd//10)%10 - 1
-            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            self._model.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
             
             # assign masses, in direction of motion and stiffness
             # DOF list: X, Y, Z, rotX, rotY, rotZ
@@ -1134,11 +1140,11 @@ class Building:
             else:
                 m_nd = m_grav_inner[fl]
             negligible = 1e-15
-            ops.mass(nd, m_nd, negligible, m_nd,
+            self._model.mass(nd, m_nd, negligible, m_nd,
                      negligible, negligible, negligible)
             
             # restrain out of plane motion
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
             
         # fix out-of-plane translations, we do this for every node
         # no torsion, no twisting, no oop translation
@@ -1149,16 +1155,16 @@ class Building:
             
             # get multiplier for location from node number
             floor = (nd//10)%10 - 1
-            ops.node(nd, (n_bays+1)*L_beam, 0.0*ft, floor*L_col)
+            self._model.node(nd, (n_bays+1)*L_beam, 0.0*ft, floor*L_col)
             m_nd = m_lc[floor]
-            ops.mass(nd, m_nd, negligible, m_nd,
+            self._model.mass(nd, m_nd, negligible, m_nd,
                      negligible, negligible, negligible)
             
             # bottom is roller, otherwise, restrict OOP motion
             if floor == 0:
-                ops.fix(nd, 0, 1, 1, 1, 0, 1)
+                self._model.fix(nd, 0, 1, 1, 1, 0, 1)
             else:
-                ops.fix(nd, 0, 1, 0, 1, 0, 1)
+                self._model.fix(nd, 0, 1, 0, 1, 0, 1)
                 
         # brace nodes
         ofs = 0.25
@@ -1175,10 +1181,10 @@ class Building:
             z_coord = fl*L_col
             
             m_nd = m_grav_brace[fl]
-            ops.node(nd, x_coord, 0.0*ft, z_coord)
-            ops.mass(nd, m_nd, negligible, m_nd,
+            self._model.node(nd, x_coord, 0.0*ft, z_coord)
+            self._model.mass(nd, m_nd, negligible, m_nd,
                      negligible, negligible, negligible)
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
             
         # mid brace node adjusted to have camber of 0.1% L_eff
         # L_eff is defined as L_diag - offset
@@ -1191,8 +1197,8 @@ class Building:
             # # values returned are already in inches
             # x_coord, z_coord = mid_brace_coord(nd, L_beam, L_col, offset=ofs)
             
-            ops.node(nd, x_coord, 0.0*ft, z_coord)
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            self._model.node(nd, x_coord, 0.0*ft, z_coord)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
         
         # spring nodes
         spring_nodes = self.node_tags['spring']
@@ -1234,25 +1240,25 @@ class Building:
             # if nd in col_brace_bay_node:
             #     if nd%10 == 6:
             #         y_offset = d_beam/2
-            #         ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col-y_offset)
+            #         self._model.node(nd, bay*L_beam, 0.0*ft, fl*L_col-y_offset)
             #     else:
             #         y_offset = 1.2*L_gp
-            #         ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col+y_offset)
+            #         self._model.node(nd, bay*L_beam, 0.0*ft, fl*L_col+y_offset)
                     
             # if it's a beam spring, place it +/- d_col to the right/left of the column node
             if nd in beam_brace_bay_node:
                 x_offset = d_col/2
                 if nd%10 == 7:
-                    ops.node(nd, bay*L_beam-x_offset, 0.0*ft, fl*L_col) 
+                    self._model.node(nd, bay*L_beam-x_offset, 0.0*ft, fl*L_col) 
                 else:
-                    ops.node(nd, bay*L_beam+x_offset, 0.0*ft, fl*L_col)
+                    self._model.node(nd, bay*L_beam+x_offset, 0.0*ft, fl*L_col)
                     
             # otherwise, it is a gravity frame node and can just overlap the main node
             else:
-                ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+                self._model.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
                 
             
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
             
         lc_spr_nodes = self.node_tags['lc_spring']
         for nd in lc_spr_nodes:
@@ -1261,8 +1267,8 @@ class Building:
             # get multiplier for location from node number
             bay = parent_nd%10
             fl = parent_nd//10 - 1
-            ops.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            self._model.node(nd, bay*L_beam, 0.0*ft, fl*L_col)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
             
         brace_beam_spr_nodes = self.node_tags['brace_beam_spring']
         for nd in brace_beam_spr_nodes:
@@ -1278,10 +1284,10 @@ class Building:
             
             # place the node with the offset l/r of midpoint according to suffix
             if nd%10 == 3:
-                ops.node(nd, x_coord-x_offset, 0.0*ft, z_coord)
+                self._model.node(nd, x_coord-x_offset, 0.0*ft, z_coord)
             else:
-                ops.node(nd, x_coord+x_offset, 0.0*ft, z_coord)
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+                self._model.node(nd, x_coord+x_offset, 0.0*ft, z_coord)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
             
         for nd in brace_beam_tab_nodes:
             parent_nd = nd//10
@@ -1292,10 +1298,10 @@ class Building:
             
             x_offset = d_col/2
             if nd%10 == 5:
-                ops.node(nd, bay*L_beam-x_offset, 0.0*ft, fl*L_col) 
+                self._model.node(nd, bay*L_beam-x_offset, 0.0*ft, fl*L_col) 
             else:
-                ops.node(nd, bay*L_beam+x_offset, 0.0*ft, fl*L_col)
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+                self._model.node(nd, bay*L_beam+x_offset, 0.0*ft, fl*L_col)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
             
         # each end has offset/2*L_diagonal assigned to gusset plate offset
         brace_bot_gp_nodes = self.node_tags['brace_bottom_spring']
@@ -1304,15 +1310,15 @@ class Building:
             
             # values returned are already in inches
             x_coord, z_coord = bot_gp_coord(nd, L_beam, L_col, offset=ofs)
-            ops.node(nd, x_coord, 0.0*ft, z_coord)
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            self._model.node(nd, x_coord, 0.0*ft, z_coord)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
         brace_top_gp_nodes = self.node_tags['brace_top_spring']
         
         for nd in brace_top_gp_nodes:
             # values returned are already in inches
             x_coord, z_coord = top_gp_coord(nd, L_beam, L_col, offset=ofs)
-            ops.node(nd, x_coord, 0.0*ft, z_coord)
-            ops.fix(nd, 0, 1, 0, 1, 0, 1)
+            self._model.node(nd, x_coord, 0.0*ft, z_coord)
+            self._model.fix(nd, 0, 1, 0, 1, 0, 1)
         print('Nodes placed.')
         
 ################################################################################
@@ -1362,7 +1368,7 @@ class Building:
         # Frame link (stiff elements)
         A_rigid = 1000.0         # define area of truss section
         I_rigid = 1e6        # moment of inertia for p-delta columns
-        ops.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
+        self._model.uniaxialMaterial('Elastic', elastic_mat_tag, Es)
         
         # minimal stiffness elements (ghosts)
         if convergence_mode==True:
@@ -1372,7 +1378,7 @@ class Building:
         
         # A_ghost = 1.0
         E_ghost = 100.0
-        ops.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
+        self._model.uniaxialMaterial('Elastic', ghost_mat_tag, E_ghost)
         
         # define material: Steel02
         # command: uniaxialMaterial('Steel01', matTag, Fy, E0, b, a1, a2, a3, a4)
@@ -1381,16 +1387,16 @@ class Building:
         R0 = 22
         cR1 = 0.925
         cR2 = 0.25
-        ops.uniaxialMaterial('Elastic', torsion_mat_tag, J)
+        self._model.uniaxialMaterial('Elastic', torsion_mat_tag, J)
         
-        # ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+        # self._model.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
         
         if convergence_mode==True:
-            ops.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
+            self._model.uniaxialMaterial('Steel02', steel_mat_tag, Fy, Es, b, R0, cR1, cR2)
         else:
-            ops.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
+            self._model.uniaxialMaterial('Steel02', steel_no_fatigue, Fy, Es, b, 
                                   R0, cR1, cR2)
-            ops.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
+            self._model.uniaxialMaterial('Fatigue', steel_mat_tag, steel_no_fatigue,
                                  '-E0', 0.07, '-m', -0.3, '-min', -1e7, '-max', 1e7)
         
         # GP section: thin plate
@@ -1402,7 +1408,7 @@ class Building:
         My_GP = (W_w*t_gp**2/6)*Fy_gp
         K_rot_GP = Es/L_avg * (W_w*t_gp**3/12)
         b_GP = 0.01
-        ops.uniaxialMaterial('Steel02', gp_mat_tag, My_GP, K_rot_GP, b_GP, 
+        self._model.uniaxialMaterial('Steel02', gp_mat_tag, My_GP, K_rot_GP, b_GP, 
                              R0, cR1, cR2)
 
 ################################################################################
@@ -1419,8 +1425,8 @@ class Building:
         
         # this is different from moment frame
         # beam geometry
-        xyz_i = ops.nodeCoord(10)
-        xyz_j = ops.nodeCoord(11)
+        xyz_i = self._model.nodeCoord(10)
+        xyz_j = self._model.nodeCoord(11)
         beam_x_axis = np.subtract(xyz_j, xyz_i)
         vecxy_beam = [0, 0, 1] # Use any vector in local x-y, but not local x
         vecxz = np.cross(beam_x_axis,vecxy_beam) # What OpenSees expects
@@ -1428,16 +1434,16 @@ class Building:
         
         
         # column geometry
-        xyz_i = ops.nodeCoord(10)
-        xyz_j = ops.nodeCoord(20)
+        xyz_i = self._model.nodeCoord(10)
+        xyz_j = self._model.nodeCoord(20)
         col_x_axis = np.subtract(xyz_j, xyz_i)
         vecxy_col = [1, 0, 0] # Use any vector in local x-y, but not local x
         vecxz = np.cross(col_x_axis,vecxy_col) # What OpenSees expects
         vecxz_col = vecxz / np.sqrt(np.sum(vecxz**2))
         
         # brace geometry (left)
-        xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10)
-        xyz_j = ops.nodeCoord(brace_top_nodes[0])
+        xyz_i = self._model.nodeCoord(brace_top_nodes[0]//10 - 10)
+        xyz_j = self._model.nodeCoord(brace_top_nodes[0])
         brace_x_axis_L = np.subtract(xyz_j, xyz_i)
         brace_x_axis_L = brace_x_axis_L / np.sqrt(np.sum(brace_x_axis_L**2))
         vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
@@ -1445,8 +1451,8 @@ class Building:
         vecxz_brace_L = vecxz / np.sqrt(np.sum(vecxz**2))
         
         # brace geometry (right)
-        xyz_i = ops.nodeCoord(brace_top_nodes[0]//10 - 10 + 1)
-        xyz_j = ops.nodeCoord(brace_top_nodes[0])
+        xyz_i = self._model.nodeCoord(brace_top_nodes[0]//10 - 10 + 1)
+        xyz_j = self._model.nodeCoord(brace_top_nodes[0])
         brace_x_axis_R = np.subtract(xyz_j, xyz_i)
         brace_x_axis_R = brace_x_axis_R / np.sqrt(np.sum(brace_x_axis_R**2))
         vecxy_brace = [0, 1, 0] # Use any vector in local x-y, but not local x
@@ -1454,11 +1460,12 @@ class Building:
         vecxz_brace_R = vecxz / np.sqrt(np.sum(vecxz**2))
         
         # TODO: transform the beams and columns to Corotational
-        ops.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
-        ops.geomTransf('PDelta', beam_transf_tag, *vecxz_beam) # beams
-        ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
-        ops.geomTransf('Corotational', brace_transf_tag_L, *vecxz_brace_L) # braces
-        ops.geomTransf('Corotational', brace_transf_tag_R, *vecxz_brace_R) # braces
+        self._model.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
+        self._model.geomTransf('PDelta', beam_transf_tag, *vecxz_beam) # beams
+        self._model.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
+        self._model.geomTransf('Corotational', brace_transf_tag_L, *vecxz_brace_L) # braces
+        self._model.geomTransf('Corotational', brace_transf_tag_R, *vecxz_brace_R) # braces
+
 
 ################################################################################
 # define spring materials
@@ -1479,7 +1486,7 @@ class Building:
             # columns
             if mem_tag == 1:
                 # Create zero length element (spring), rotations allowed about local z axis
-                ops.element('zeroLength', eleID, nodeI, nodeJ,
+                self._model.element('zeroLength', eleID, nodeI, nodeJ,
                     '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                     torsion_mat_tag, elastic_mat_tag, matID, 
                     '-dir', 1, 2, 3, 4, 5, 6,
@@ -1488,7 +1495,7 @@ class Building:
             # beams
             if mem_tag == 2:
                 # Create zero length element (spring), rotations allowed about local z axis
-                ops.element('zeroLength', eleID, nodeI, nodeJ,
+                self._model.element('zeroLength', eleID, nodeI, nodeJ,
                     '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                     torsion_mat_tag, elastic_mat_tag, matID, 
                     '-dir', 1, 2, 3, 4, 5, 6, 
@@ -1522,7 +1529,7 @@ class Building:
              kappa_col, thu_col) = modified_IK_params(current_col, L_col)
             
             
-            ops.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
+            self._model.uniaxialMaterial('IMKBilin', current_col_sec, Ke_col,
                                   thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
                                   thp_col, thpc_col, thu_col, My_col, McMy, kappa_col,
                                   lam_col, lam_col, lam_col,
@@ -1550,7 +1557,7 @@ class Building:
              kappa_beam, thu_beam) = modified_IK_params(current_beam, L_beam)
             
 
-            ops.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
+            self._model.uniaxialMaterial('IMKBilin', current_beam_sec, Ke_beam,
                                   thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
                                   thp_beam, thpc_beam, thu_beam, My_beam, McMy, kappa_beam,
                                   lam_beam, lam_beam, lam_beam,
@@ -1663,7 +1670,7 @@ class Building:
             Iz_col_mod = Iz_col*(n_mik+1)/n_mik
             Iy_col_mod = Iy_col*(n_mik+1)/n_mik
             
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         Ag_col, Es, Gs, J, Iy_col_mod, Iz_col_mod, col_transf_tag)
             
         ###################### beams #############################
@@ -1704,7 +1711,7 @@ class Building:
             Iz_beam_mod = Iz_beam*(n_mik+1)/n_mik
             Iy_beam_mod = Iy_beam*(n_mik+1)/n_mik
             
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         Ag_beam, Es, Gs, J, Iy_beam_mod, Iz_beam_mod,
                         beam_transf_tag)
         
@@ -1729,34 +1736,34 @@ class Building:
             
             current_col_sec = col_sec + fl_col + 1
             
-            ops.section('Fiber', current_col_sec, '-GJ', Gs*J)
-            ops.patch('rect', steel_mat_tag, 
+            self._model.section('Fiber', current_col_sec, '-GJ', Gs*J)
+            self._model.patch('rect', steel_mat_tag, 
                 1, nff,  d_col/2-tf_col, -bf_col/2, d_col/2, bf_col/2)
-            ops.patch('rect', steel_mat_tag, 
+            self._model.patch('rect', steel_mat_tag, 
                 1, nff, -d_col/2, -bf_col/2, -d_col/2+tf_col, bf_col/2)
-            ops.patch('rect', steel_mat_tag,
+            self._model.patch('rect', steel_mat_tag,
                 nfw, 1, -d_col/2+tf_col, -tw_col/2, d_col/2-tf_col, tw_col/2)
             
             
             current_col_int = col_int + fl_col + 1
             n_IP = 4
-            ops.beamIntegration('Lobatto', current_col_int, 
+            self._model.beamIntegration('Lobatto', current_col_int, 
                                 current_col_sec, n_IP)
         
         # define the columns
         
         # # column section: fiber wide flange section
-        # ops.section('Fiber', col_sec_tag, '-GJ', Gs*J)
-        # ops.patch('rect', steel_mat_tag, 
+        # self._model.section('Fiber', col_sec_tag, '-GJ', Gs*J)
+        # self._model.patch('rect', steel_mat_tag, 
         #     1, nff,  d_col/2-tf_col, -bf_col/2, d_col/2, bf_col/2)
-        # ops.patch('rect', steel_mat_tag, 
+        # self._model.patch('rect', steel_mat_tag, 
         #     1, nff, -d_col/2, -bf_col/2, -d_col/2+tf_col, bf_col/2)
-        # ops.patch('rect', steel_mat_tag,
+        # self._model.patch('rect', steel_mat_tag,
         #     nfw, 1, -d_col/2+tf_col, -tw_col, d_col/2-tf_col, tw_col)
         
         # # use a distributed plasticity integration with 4 IPs
         # n_IP = 4
-        # ops.beamIntegration('Lobatto', col_int_tag, col_sec_tag, n_IP)
+        # self._model.beamIntegration('Lobatto', col_int_tag, col_sec_tag, n_IP)
         
         col_id = self.elem_ids['col']
         col_elems = self.elem_tags['col']
@@ -1775,7 +1782,7 @@ class Building:
             col_floor = i_nd // 100
             
             col_int_tag = col_floor + col_int
-            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                         col_transf_tag, col_int_tag)
             
         ###################### beams #############################
@@ -1792,17 +1799,17 @@ class Building:
             # e.g. first beams nodes at 2x -> tag 132 and 172
             current_brace_beam_sec = beam_sec + fl_beam + 2
             
-            ops.section('Fiber', current_brace_beam_sec, '-GJ', Gs*J)
-            ops.patch('rect', steel_mat_tag, 
+            self._model.section('Fiber', current_brace_beam_sec, '-GJ', Gs*J)
+            self._model.patch('rect', steel_mat_tag, 
                 1, nff,  d_beam/2-tf_beam, -bf_beam/2, d_beam/2, bf_beam/2)
-            ops.patch('rect', steel_mat_tag, 
+            self._model.patch('rect', steel_mat_tag, 
                 1, nff, -d_beam/2, -bf_beam/2, -d_beam/2+tf_beam, bf_beam/2)
-            ops.patch('rect', steel_mat_tag,
+            self._model.patch('rect', steel_mat_tag,
                 nfw, 1, -d_beam/2+tf_beam, -tw_beam/2, d_beam/2-tf_beam, tw_beam/2)
             
             
             current_brace_beam_int = beam_int + fl_beam + 2
-            ops.beamIntegration('Lobatto', current_brace_beam_int, 
+            self._model.beamIntegration('Lobatto', current_brace_beam_int, 
                                 current_brace_beam_sec, n_IP)
         
         brace_beam_id = self.elem_ids['brace_beam']
@@ -1823,7 +1830,7 @@ class Building:
                 beam_floor = parent_i_nd // 10
                 
             brace_beam_int_tag = beam_floor + beam_int
-            ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_beam_transf_tag, brace_beam_int_tag)
         '''
         
@@ -1840,20 +1847,20 @@ class Building:
             # brace section: HSS section
             brace_sec_tag = br_sec + fl_br + 1
             
-            ops.section('Fiber', brace_sec_tag, '-GJ', Gs*J)
+            self._model.section('Fiber', brace_sec_tag, '-GJ', Gs*J)
             # web
-            ops.patch('rect', steel_mat_tag, nfw, nff,  
+            self._model.patch('rect', steel_mat_tag, nfw, nff,  
                       d_brace/2-t_brace, -d_brace/2, d_brace/2, d_brace/2)
-            ops.patch('rect', steel_mat_tag, nfw, nff, 
+            self._model.patch('rect', steel_mat_tag, nfw, nff, 
                       -d_brace/2, -d_brace/2, -d_brace/2+t_brace, d_brace/2)
             # flange
-            ops.patch('rect', steel_mat_tag, nfw, nff, 
+            self._model.patch('rect', steel_mat_tag, nfw, nff, 
                       -d_brace/2+t_brace, -d_brace/2, d_brace/2-t_brace, -d_brace/2+t_brace)
-            ops.patch('rect', steel_mat_tag, nfw, nff, 
+            self._model.patch('rect', steel_mat_tag, nfw, nff, 
                       -d_brace/2+t_brace, d_brace/2-t_brace, d_brace/2-t_brace, d_brace/2)
             
             brace_int_tag = br_int + fl_br + 1
-            ops.beamIntegration('Lobatto', brace_int_tag, 
+            self._model.beamIntegration('Lobatto', brace_int_tag, 
                                 brace_sec_tag, n_IP)
         
         brace_id = self.elem_ids['brace']
@@ -1892,7 +1899,7 @@ class Building:
             
             current_brace_int = j_floor - 1 + br_int
             
-            ops.element('dispBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('dispBeamColumn', elem_tag, i_nd, j_nd, 
                         brace_transf_tag, current_brace_int, '-iter', 100, 1e-7)
         
         
@@ -1906,7 +1913,7 @@ class Building:
                 j_nd = (parent_i_nd + 10)*100 + 16
             else:
                 j_nd = (parent_i_nd + 9)*100 + 15
-            ops.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
+            self._model.element('corotTruss', elem_tag, i_nd, j_nd, A_ghost, ghost_mat_tag)
             
         ###################### Gusset plates #############################
         
@@ -1923,19 +1930,19 @@ class Building:
             # since imperfection is in x-z plane, we allow GP-stiff rotation 
             # pin around y to enable buckling
             if link_tag%10 == 4:
-                ops.element('zeroLength', link_tag, i_nd, j_nd,
+                self._model.element('zeroLength', link_tag, i_nd, j_nd,
                     '-mat', torsion_mat_tag, gp_mat_tag, 
                     '-dir', 4, 5, 
                     '-orient', *brace_x_axis_L, *vecxy_brace)
             else:
-                ops.element('zeroLength', link_tag, i_nd, j_nd,
+                self._model.element('zeroLength', link_tag, i_nd, j_nd,
                     '-mat', torsion_mat_tag, gp_mat_tag, 
                     '-dir', 4, 5, 
                     '-orient', *brace_x_axis_R, *vecxy_brace)
                 
             # global z-rotation is restrained
             # removed DOF 6 here
-            ops.equalDOF(i_nd, j_nd, 1, 3)
+            self._model.equalDOF(i_nd, j_nd, 1, 3)
             
         # at top, outer (GP non rigid nodes are 5 and 6)
         brace_top_gp_spring_link = [link for link in brace_top_links
@@ -1948,19 +1955,19 @@ class Building:
             # put the correct local x-axis
             # torsional stiffness around local-x, GP stiffness around local-z
             if link_tag%10 == 6:
-                ops.element('zeroLength', link_tag, i_nd, j_nd,
+                self._model.element('zeroLength', link_tag, i_nd, j_nd,
                     '-mat', torsion_mat_tag, gp_mat_tag, 
                     '-dir', 4, 6, 
                     '-orient', *brace_x_axis_L, *vecxy_brace)
             else:
-                ops.element('zeroLength', link_tag, i_nd, j_nd,
+                self._model.element('zeroLength', link_tag, i_nd, j_nd,
                     '-mat', torsion_mat_tag, gp_mat_tag, 
                     '-dir', 4, 6, 
                     '-orient', *brace_x_axis_R, *vecxy_brace)
                 
             # global z-rotation is restrained
             # removed DOF 6 here
-            ops.equalDOF(j_nd, i_nd, 1, 3)
+            self._model.equalDOF(j_nd, i_nd, 1, 3)
             
 ################################################################################
 # define rigid links in the braced bays
@@ -1982,7 +1989,7 @@ class Building:
             else:
                 brace_transf_tag = brace_transf_tag_R
                 
-            ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_transf_tag)
             
@@ -2000,7 +2007,7 @@ class Building:
             else:
                 brace_transf_tag = brace_transf_tag_R
                 
-            ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_transf_tag)
         
@@ -2017,7 +2024,7 @@ class Building:
                 i_nd = outer_nd
                 j_nd = outer_nd // 10
                 
-            ops.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', link_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         brace_beam_transf_tag)
         
@@ -2030,7 +2037,7 @@ class Building:
         #         parent_nd = (nd//10)*10 + 9
         #     else:
         #         parent_nd = (nd//10)*10 + 7
-        #     ops.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
+        #     self._model.equalDOF(parent_nd, nd, 1, 2, 3, 4, 6)
             
         
         # ModIMKPinching material calibrated to match closely with Elkady's Pinching4
@@ -2055,7 +2062,7 @@ class Building:
         kappa_res_st = 0.901
         thu_st = 0.08
 
-        ops.uniaxialMaterial('IMKPinching', 333, K0_st, 
+        self._model.uniaxialMaterial('IMKPinching', 333, K0_st, 
                              thp_st, thpc_st, thu_st, My_st, 1/0.521, kappa_res_st,
                              thp_st, thpc_st, thu_st, My_st, 1/0.521, kappa_res_st,
                              lam_st, lam_st, lam_st, lam_st,
@@ -2079,13 +2086,13 @@ class Building:
         # rf_st = 0.40
         # uf_st = 0.05
 
-        # ops.uniaxialMaterial('Pinching4', 332, M_1, th1, M_2, th2, M_3, th3, M_4, th4,
+        # self._model.uniaxialMaterial('Pinching4', 332, M_1, th1, M_2, th2, M_3, th3, M_4, th4,
         #                      -M_1, -th1, -M_2, -th2,- M_3, -th3, -M_4, -th4,
         #                      rd_st, rf_st, uf_st,  rd_st, rf_st, uf_st,   
         #                      0.0, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, 0.0,   
         #                      0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 'energy')
 
-        # ops.uniaxialMaterial('MinMax', 333, 332, '-min', -0.08, '-max', 0.08)
+        # self._model.uniaxialMaterial('MinMax', 333, 332, '-min', -0.08, '-max', 0.08)
 
         for nd in shear_tab_pins:
             elem_tag = nd + spr_id
@@ -2117,17 +2124,17 @@ class Building:
             i_nd = (elem_tag - beam_id)*10 + 9
             j_nd = (elem_tag - beam_id + 1)*10 + 7
             
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         beam_transf_tag)
             
-            # ops.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
+            # self._model.element('forceBeamColumn', elem_tag, i_nd, j_nd, 
             #             beam_transf_tag, grav_beam_int_tag)
         
         # place pin joints for all gravity beams
         for nd in grav_beam_spring_nodes:
             parent_nd = nd // 10
-            ops.equalDOF(parent_nd, nd, 1, 3)
+            self._model.equalDOF(parent_nd, nd, 1, 3)
             
         # place ghost trusses along braced frame beams to ensure horizontal movement
         # run this truss to midway
@@ -2135,12 +2142,12 @@ class Building:
             i_nd = elem_tag - beam_id
             # j_nd = i_nd + 1
             j_nd = i_nd*10 + 1
-            ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
+            self._model.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
             
             tag_2 = elem_tag*10
             i_nd = j_nd
             j_nd = (i_nd//10) + 1
-            ops.element('Truss', tag_2, i_nd, j_nd, A_rigid, elastic_mat_tag)
+            self._model.element('Truss', tag_2, i_nd, j_nd, A_rigid, elastic_mat_tag)
             
        
         # place gravity columns:
@@ -2152,7 +2159,7 @@ class Building:
             i_nd = (elem_tag - col_id)*10 + 8
             j_nd = (elem_tag - col_id + 10)*10 + 6
             
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, 
                         col_transf_tag)
             
@@ -2161,9 +2168,9 @@ class Building:
         for nd in grav_col_spring_nodes:
             parent_nd = nd // 10
             if (parent_nd//10 == 1):
-                ops.equalDOF(parent_nd, nd, 1, 3)
+                self._model.equalDOF(parent_nd, nd, 1, 3)
             else:
-                ops.equalDOF(parent_nd, nd, 1, 3, 5)
+                self._model.equalDOF(parent_nd, nd, 1, 3, 5)
             
 ################################################################################
 # define leaning column
@@ -2173,7 +2180,7 @@ class Building:
         k_lc = 1e-9*kip/inch
     
         # Create the material (spring)
-        ops.uniaxialMaterial('Elastic', lc_spring_mat_tag, k_lc)
+        self._model.uniaxialMaterial('Elastic', lc_spring_mat_tag, k_lc)
         
         # define leaning column
         lc_elems = self.elem_tags['leaning']
@@ -2182,7 +2189,7 @@ class Building:
             j_nd = (elem_tag - col_id + 10)*10 + 6
             
             # create elastic members
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, col_transf_tag)
         
         lc_spr_elems = self.elem_tags['lc_spring']
@@ -2191,7 +2198,7 @@ class Building:
             parent_nd = spr_nd//10
             
             # create zero length element (spring), rotations allowed about local Z axis
-            ops.element('zeroLength', elem_tag, parent_nd, spr_nd,
+            self._model.element('zeroLength', elem_tag, parent_nd, spr_nd,
                 '-mat', elastic_mat_tag, elastic_mat_tag, elastic_mat_tag, 
                 torsion_mat_tag, elastic_mat_tag, lc_spring_mat_tag, 
                 '-dir', 1, 2, 3, 4, 5, 6, '-orient', *col_x_axis, *vecxy_col)
@@ -2204,14 +2211,14 @@ class Building:
         for elem_tag in truss_elems:
             i_nd = elem_tag - truss_id
             j_nd = elem_tag - truss_id + 1
-            ops.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
+            self._model.element('Truss', elem_tag, i_nd, j_nd, A_rigid, elastic_mat_tag)
             
         diaph_id = self.elem_ids['diaphragm']
         diaph_elems = self.elem_tags['diaphragm']
         for elem_tag in diaph_elems:
             i_nd = elem_tag - diaph_id
             j_nd = elem_tag - diaph_id + 1
-            ops.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
+            self._model.element('elasticBeamColumn', elem_tag, i_nd, j_nd, 
                         A_rigid, Es, Gs, J, I_rigid, I_rigid, beam_transf_tag)
             
 ################################################################################
@@ -2240,14 +2247,14 @@ class Building:
             # friction pendulum system
             # kv = EASlider/hSlider
             kv = 6*1000*kip/inch
-            ops.uniaxialMaterial('Elastic', fps_vert_tag, kv)
-            ops.uniaxialMaterial('Elastic', fps_rot_tag, 10.0)
+            self._model.uniaxialMaterial('Elastic', fps_vert_tag, kv)
+            self._model.uniaxialMaterial('Elastic', fps_rot_tag, 10.0)
     
     
             # Define friction model for FP elements
             # command: frictionModel Coulomb tag mu
-            ops.frictionModel('Coulomb', friction_1_tag, self.mu_1)
-            ops.frictionModel('Coulomb', friction_2_tag, self.mu_2)
+            self._model.frictionModel('Coulomb', friction_1_tag, self.mu_1)
+            self._model.frictionModel('Coulomb', friction_2_tag, self.mu_2)
     
     
             # define 2-D isolation layer 
@@ -2266,7 +2273,7 @@ class Building:
                     p_vert = p_outer
                 else:
                     p_vert = p_inner
-                ops.element('TripleFrictionPendulum', elem_tag, i_nd, j_nd,
+                self._model.element('TripleFrictionPendulum', elem_tag, i_nd, j_nd,
                             friction_1_tag, friction_2_tag, friction_2_tag,
                             fps_vert_tag, fps_rot_tag, fps_rot_tag, fps_rot_tag,
                             L1, L2, L2, d1, d2, d2,
@@ -2341,7 +2348,7 @@ class Building:
                     i_nd = base_id + bay_pos
                     j_nd = i_nd - base_id + 10
                     
-                ops.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
+                self._model.element('LeadRubberX', elem_tag, i_nd, j_nd, Fy_LRB, alpha,
                             G_r, K_bulk, D_inner, D_outer,
                             t_shim, t_layer, n_layers, *addl_params)
   
@@ -2381,17 +2388,17 @@ class Building:
     
         moat_gap = self.D_m * self.moat_ampli
     
-        ops.uniaxialMaterial('ImpactMaterial', impact_mat_tag, 
+        self._model.uniaxialMaterial('ImpactMaterial', impact_mat_tag, 
                              K1, K2, -delY, -moat_gap)
         
         # command: element('zeroLength', eleTag, *eleNodes, '-mat', *matTags, 
         #   '-dir', *dirs, <'-doRayleigh', rFlag=0>, <'-orient', *vecx, *vecyp>)
         wall_elems = self.elem_tags['wall']
         
-        ops.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
+        self._model.element('zeroLength', wall_elems[0], wall_nodes[0], 10,
                     '-mat', impact_mat_tag,
                     '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
-        ops.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
+        self._model.element('zeroLength', wall_elems[1], 10+n_bays, wall_nodes[1], 
                     '-mat', impact_mat_tag,
                     '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
         
@@ -2419,10 +2426,10 @@ class Building:
         p_lc = plc_cases['1.0D+0.5L']
         
         # create TimeSeries
-        ops.timeSeries("Linear", grav_series)
+        self._model.timeSeries("Linear", grav_series)
 
         # create plain load pattern
-        ops.pattern('Plain', grav_pattern, grav_series)
+        self._model.pattern('Plain', grav_pattern, grav_series)
         
         if superstructure_system == 'CBF':
             # get elements
@@ -2446,14 +2453,14 @@ class Building:
                 attached_node = elem - brace_beam_id
                 floor_idx = int(str(attached_node)[0]) - 1
                 w_applied = w_floor[floor_idx]
-                ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                self._model.eleLoad('-ele', elem, '-type', '-beamUniform', 
                             -w_applied, 0.0)
                 
             for elem in grav_beams:
                 attached_node = elem - beam_id
                 floor_idx = attached_node//10 - 1 
                 w_applied = w_floor[floor_idx]
-                ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                self._model.eleLoad('-ele', elem, '-type', '-beamUniform', 
                             -w_applied, 0.0)
                 
         elif superstructure_system == 'MF':
@@ -2464,14 +2471,14 @@ class Building:
                 attached_node = elem - beam_id
                 floor_idx = attached_node//10 - 1 
                 w_applied = w_floor[floor_idx]
-                ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+                self._model.eleLoad('-ele', elem, '-type', '-beamUniform', 
                             -w_applied, 0.0)
          
         # line loads on diaphragm
         diaph_elems = self.elem_tags['diaphragm']
         for elem in diaph_elems:
             w_applied = w_floor[0]
-            ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
+            self._model.eleLoad('-ele', elem, '-type', '-beamUniform', 
                         -w_applied, 0.0)
         
         # point loads on LC
@@ -2479,7 +2486,8 @@ class Building:
         for nd in lc_nodes:
             floor_idx = nd//10 - 1
             p_applied = p_lc[floor_idx]
-            ops.load(nd, 0, 0, -p_applied, 0, 0, 0)
+            self._model.load(nd, 0, 0, -p_applied, 0, 0, 0, 
+                             pattern=grav_pattern)
             
         # The following assumes two lateral frames. If more, then fix
         isol_sys = self.isolator_system
@@ -2499,9 +2507,11 @@ class Building:
             
             for nd in diaph_nds:
                 if (nd%10 == 0) or (nd%10 == n_bays):
-                    ops.load(nd, 0, 0, -pOuter, 0, 0, 0)
+                    self._model.load(nd, (0, 0, -pOuter, 0, 0, 0), 
+                                     pattern=grav_pattern)
                 else:
-                    ops.load(nd, 0, 0, -pInner, 0, 0, 0)
+                    self._model.load(nd, (0, 0, -pInner, 0, 0, 0), 
+                                     pattern=grav_pattern)
         
         # ------------------------------
         # Start of analysis generation: gravity
@@ -2511,37 +2521,35 @@ class Building:
         tol = 1e-5
         dGravity = 1/nStepGravity
 
-        ops.system("BandGeneral")
-        ops.test("NormDispIncr", tol, 15)
-        ops.numberer("RCM")
-        ops.constraints("Plain")
-        ops.integrator("LoadControl", dGravity)
-        ops.algorithm("Newton")
-        ops.analysis("Static")
-        ops.analyze(nStepGravity)
+        self._model.system("BandGeneral")
+        self._model.test("NormDispIncr", tol, 15)
+        self._model.numberer("RCM")
+        self._model.constraints("Plain")
+        self._model.integrator("LoadControl", dGravity)
+        self._model.algorithm("Newton")
+        self._model.analysis("Static")
+        self._model.analyze(nStepGravity)
 
         print("Gravity analysis complete!")
 
-        ops.loadConst('-time', 0.0)
+        self._model.loadConst(time=0.0)
         
     def refix(self, nodeTag, action):
-        import opensees.openseespy as ops
         for j in range(1,7):
-            ops.remove('sp', nodeTag, j)
+            self._model.remove('sp', nodeTag, j)
         if(action == "fix"):
-            ops.fix(nodeTag,  1, 1, 1, 1, 1, 1)
+            self._model.fix(nodeTag,  1, 1, 1, 1, 1, 1)
         elif(action == "unfix"):
-            ops.fix(nodeTag,  0, 1, 0, 1, 0, 1)
+            self._model.fix(nodeTag,  0, 1, 0, 1, 0, 1)
         elif(action == 'fix_lc'):
-            ops.fix(nodeTag,  1, 1, 1, 1, 0, 1)
+            self._model.fix(nodeTag,  1, 1, 1, 1, 0, 1)
         elif(action == 'unfix_lc'):
-            ops.fix(nodeTag,  0, 1, 1, 1, 0, 1)
+            self._model.fix(nodeTag,  0, 1, 1, 1, 0, 1)
          
     def run_eigen(self):
-        import opensees.openseespy as ops
         
         nEigenJ = 1;                    # how many modes to analyze
-        lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
+        lambdaN  = self._model.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
         lambda1 = lambdaN[0];           # eigenvalue mode i = 1
         wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
         T_1 = 2*3.1415/wi      # 1st mode period of the structure
@@ -2591,7 +2599,7 @@ class Building:
             betaKInit   = 0.0
             a1 = 2*zeta[0]/wi
         
-        all_elems = ops.getEleTags()
+        all_elems = self._model.getEleTags()
 
         # elems that don't need damping
         wall_elems = self.elem_tags['wall']
@@ -2607,13 +2615,13 @@ class Building:
         
         # stiffness proportional
         if method == 'SP':
-            ops.region(regTag, '-ele',
+            self._model.region(regTag, '-ele',
                 *damped_elems,
                 '-rayleigh', 0.0, betaK, betaKInit, a1)
             print('Structure damped with %0.1f%% at frequency %0.2f Hz' % 
                   (zeta[0]*100, wi))
         elif method == 'Rayleigh':
-            ops.region(regTag, '-ele',
+            self._model.region(regTag, '-ele',
                 *damped_elems,
                 '-rayleigh', x[0], betaK, betaKInit, x[1])
             
@@ -2654,12 +2662,12 @@ class Building:
             top_node = min(brace_tops)
             mid_node = min(brace_mids)
             bottom_node = min(brace_bottoms)
-            ops.recorder('Node', '-file', data_dir+'brace_node_disp.csv','-time',
+            self._model.recorder('Node', '-file', data_dir+'brace_node_disp.csv','-time',
                 '-node', bottom_node, mid_node, top_node, 
                 '-dof', 1, 3, 'disp')
             
             # force at corresponding top node
-            ops.recorder('Node','-node', top_node,
+            self._model.recorder('Node','-node', top_node,
                          '-file', data_dir+'brace_top_node_force.csv', 
                          '-dof', 1, 3, 'reaction')
             
@@ -2667,10 +2675,10 @@ class Building:
             brace_ghosts = self.elem_tags['brace_ghosts']
             bottom_left_ghost = min(brace_ghosts)
             bottom_right_ghost = bottom_left_ghost + 98
-            ops.recorder('Element','-ele', bottom_left_ghost,
+            self._model.recorder('Element','-ele', bottom_left_ghost,
                          '-file',data_dir+'left_ghost_deformation.csv', '-time',
                          'deformations')
-            ops.recorder('Element','-ele', bottom_right_ghost,
+            self._model.recorder('Element','-ele', bottom_right_ghost,
                          '-file',data_dir+'right_ghost_deformation.csv', '-time',
                          'deformations')
             
@@ -2683,11 +2691,11 @@ class Building:
             selected_brace = get_shape(self.brace[0],'brace')
             d_brace = selected_brace.iloc[0]['b']
             
-            ops.recorder('Element','-ele', bottom_left_brace,
+            self._model.recorder('Element','-ele', bottom_left_brace,
                          '-file',data_dir+'brace_left.csv', '-time',
                          'section','fiber', 0.0, -d_brace/2, 'stressStrain')
             
-            ops.recorder('Element','-ele', bottom_right_brace,
+            self._model.recorder('Element','-ele', bottom_right_brace,
                          '-file',data_dir+'brace_right.csv', '-time',
                          'section','fiber', 0.0, -d_brace/2, 'stressStrain')
             
@@ -2701,15 +2709,15 @@ class Building:
             inner_col_nds = [nd+1 for nd in outer_col_nds]
             
         # lateral frame story displacement
-        ops.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
                      '-node', *outer_col_nds, '-dof', 1, 'disp')
-        ops.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
                      '-node', *inner_col_nds, '-dof', 1, 'disp')
         
         # vertical frame story displacement
-        ops.recorder('Node', '-file', data_dir+'outer_col_vert.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'outer_col_vert.csv','-time',
                      '-node', *outer_col_nds, '-dof', 3, 'disp')
-        ops.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
                      '-node', *inner_col_nds, '-dof', 3, 'disp')
         
         # if lead rubber bearing, take a non-edge bearing 
@@ -2724,26 +2732,25 @@ class Building:
             isol_node = isol_elem - isol_id - base_id + 10
         
         # isolator node displacement of outer column
-        ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', 
+        self._model.recorder('Node', '-file', data_dir+'isolator_displacement.csv', 
                      '-time', '-node', isol_node, '-dof', 1, 3, 5, 'disp')
         
         # isolator response of beneath outer column
-        ops.recorder('Element', '-file', data_dir+'isolator_forces.csv',
+        self._model.recorder('Element', '-file', data_dir+'isolator_forces.csv',
                      '-time', '-ele', isol_elem, 'localForce')
         
         base_nodes = self.node_tags['base']
         wall_nodes = self.node_tags['wall']
         
         ground_nodes = base_nodes + wall_nodes
-        ops.recorder('Node', '-file', data_dir+'ground_rxn.csv', 
+        self._model.recorder('Node', '-file', data_dir+'ground_rxn.csv', 
                      '-time', '-node', 
                      *ground_nodes, '-dof', 1, 'reaction')
         
         # Set lateral load pattern with a Linear TimeSeries
         pushover_pattern_tag  = 400
         pushover_series_tag   = 4
-        ops.timeSeries("Linear", pushover_series_tag)
-        ops.pattern('Plain', pushover_pattern_tag, pushover_series_tag)
+        ops.pattern('Plain', pushover_pattern_tag, "Linear")
 
         import time
         t0 = time.time()
@@ -2754,12 +2761,13 @@ class Building:
         # Create nodal loads at outer column nodes
         #    nd    FX  FY  FZ MX MY MZ
         for fl_idx, Fx in enumerate(Fx_vec):
-            ops.load(outer_col_nds[fl_idx+1], Fx, 0.0, 0.0, 0.0, 0.0, 0.0)
+            self._model.load(outer_col_nds[fl_idx+1], (Fx, 0.0, 0.0, 0.0, 0.0, 0.0),
+                     pattern=pushover_pattern_tag)
         
         #----------------------------------------------------
         # Start of modifications to analysis for push over
         # ----------------------------------------------------
-        ops.wipeAnalysis()
+        self._model.wipeAnalysis()
 
         # units: in, kip, s
         # dimensions
@@ -2770,7 +2778,7 @@ class Building:
 
         # Change the integration scheme to be displacement control
         #                             node dof init Jd min max
-        ops.integrator('DisplacementControl', outer_col_nds[-1], 1, dU, 1, dU, dU)
+        self._model.integrator('DisplacementControl', outer_col_nds[-1], 1, dU, 1, dU, dU)
         
         # ------------------------------
         # Finally perform the analysis
@@ -2782,20 +2790,20 @@ class Building:
         ok = 0
 
         # Create the system of equation, a sparse solver with partial pivoting
-        ops.system('UmfPack')
+        self._model.system('UmfPack')
 
         # Create the constraint handler, the transformation method
-        ops.constraints('Plain')
+        self._model.constraints('Plain')
 
         # Create the DOF numberer, the reverse Cuthill-McKee algorithm
-        ops.numberer('RCM')
+        self._model.numberer('RCM')
 
-        ops.test('NormUnbalance', 1.0e-3, 4000)
-        ops.algorithm('Newton')
+        self._model.test('NormUnbalance', 1.0e-3, 4000)
+        self._model.algorithm('Newton')
         # Create the analysis object
-        ops.analysis('Static')
+        self._model.analysis('Static')
 
-        ok = ops.analyze(nSteps)
+        ok = self._model.analyze(nSteps)
         # for gravity analysis, load control is fine, 0.1 is the load factor increment 
         # (http://opensees.berkeley.edu/wiki/index.php/Load_Control)
 
@@ -2811,20 +2819,20 @@ class Building:
 
                 if ok != 0:
                     if j < 4:
-                        ops.algorithm(algoList[j], '-initial')
+                        self._model.algorithm(algoList[j], '-initial')
                         
                     else:
-                        ops.algorithm(algoList[j])
+                        self._model.algorithm(algoList[j])
                         
-                    ops.test(testList[i], 1e-3, 1000)
-                    ok = ops.analyze(nSteps)                            
+                    self._model.test(testList[i], 1e-3, 1000)
+                    ok = self._model.analyze(nSteps)                            
                     print(testList[i], algoList[j], ok)             
                     if ok == 0:
                         break
                 else:
                     continue
         
-        ops.wipe()
+        self._model.wipe()
         
         tp = time.time() - t0
         minutes = tp//60
@@ -2873,12 +2881,12 @@ class Building:
             top_node = min(brace_tops)
             mid_node = min(brace_mids)
             bottom_node = min(brace_bottoms)
-            ops.recorder('Node', '-file', data_dir+'brace_node_disp.csv','-time',
+            self._model.recorder('Node', '-file', data_dir+'brace_node_disp.csv','-time',
                 '-node', bottom_node, mid_node, top_node, 
                 '-dof', 1, 3, 'disp')
             
             # force at corresponding top node
-            ops.recorder('Node','-node', top_node,
+            self._model.recorder('Node','-node', top_node,
                          '-file', data_dir+'brace_top_node_force.csv', 
                          '-dof', 1, 3, 'reaction')
             '''
@@ -2887,10 +2895,10 @@ class Building:
             brace_ghosts = self.elem_tags['brace_ghosts']
             bottom_left_ghost = min(brace_ghosts)
             bottom_right_ghost = bottom_left_ghost + 98
-            ops.recorder('Element','-ele', bottom_left_ghost,
+            self._model.recorder('Element','-ele', bottom_left_ghost,
                          '-file',data_dir+'left_ghost_deformation.csv', '-time',
                          'deformations')
-            ops.recorder('Element','-ele', bottom_right_ghost,
+            self._model.recorder('Element','-ele', bottom_right_ghost,
                          '-file',data_dir+'right_ghost_deformation.csv', '-time',
                          'deformations')
             
@@ -2903,18 +2911,18 @@ class Building:
             selected_brace = get_shape(self.brace[0],'brace')
             d_brace = selected_brace.iloc[0]['b']
             
-            ops.recorder('Element','-ele', bottom_left_brace,
+            self._model.recorder('Element','-ele', bottom_left_brace,
                          '-file',data_dir+'brace_left_str.csv', '-time',
                          'section','fiber', 0.0, -d_brace/2, 'stressStrain')
             
-            ops.recorder('Element','-ele', bottom_right_brace,
+            self._model.recorder('Element','-ele', bottom_right_brace,
                          '-file',data_dir+'brace_right_str.csv', '-time',
                          'section','fiber', 0.0, -d_brace/2, 'stressStrain')
             
-            ops.recorder('Element','-ele', bottom_left_brace, '-time',
+            self._model.recorder('Element','-ele', bottom_left_brace, '-time',
                          '-file',data_dir+'brace_left_force.csv', 'basicForce')
             
-            ops.recorder('Element','-ele', bottom_right_brace, '-time',
+            self._model.recorder('Element','-ele', bottom_right_brace, '-time',
                          '-file',data_dir+'brace_right_force.csv', 'basicForce')
             
         else:
@@ -2944,55 +2952,55 @@ class Building:
         # ops.printModel('-file', data_dir+'model.out')
         
         # lateral frame story displacement
-        ops.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'outer_col_disp.csv','-time',
                      '-node', *outer_col_nds, '-dof', 1, 'disp')
-        ops.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'inner_col_disp.csv','-time',
                      '-node', *inner_col_nds, '-dof', 1, 'disp')
         
         # vertical frame story displacement
-        ops.recorder('Node', '-file', data_dir+'outer_col_vert.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'outer_col_vert.csv','-time',
                      '-node', *outer_col_nds, '-dof', 3, 'disp')
-        ops.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'inner_col_vert.csv','-time',
                      '-node', *inner_col_nds, '-dof', 3, 'disp')
         
         # lateral frame story velocity
-        ops.recorder('Node', '-file', data_dir+'outer_col_vel.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'outer_col_vel.csv','-time',
                      '-node', *outer_col_nds, '-dof', 1, 'vel')
-        ops.recorder('Node', '-file', data_dir+'inner_col_vel.csv','-time',
+        self._model.recorder('Node', '-file', data_dir+'inner_col_vel.csv','-time',
                      '-node', *inner_col_nds, '-dof', 1, 'vel')
         
         
         # isolator node displacement of outer column
-        ops.recorder('Node', '-file', data_dir+'isolator_displacement.csv', 
+        self._model.recorder('Node', '-file', data_dir+'isolator_displacement.csv', 
                      '-time', '-node', isol_node, '-dof', 1, 3, 5, 'disp')
         
         # isolator response of beneath outer column
-        ops.recorder('Element', '-file', data_dir+'isolator_forces.csv',
+        self._model.recorder('Element', '-file', data_dir+'isolator_forces.csv',
                      '-time', '-ele', isol_elem, 'localForce')
         
         base_nodes = self.node_tags['base']
         
         if isol_system == 'LRB':
-            ops.recorder('Node', '-file', data_dir+'lrb_disp.csv', 
+            self._model.recorder('Node', '-file', data_dir+'lrb_disp.csv', 
                          '-time', '-node', *isol_nodes_all, '-dof', 1, 'disp')
         elif isol_system == 'TFP':
-            ops.recorder('Node', '-file', data_dir+'tfp_disp.csv', 
+            self._model.recorder('Node', '-file', data_dir+'tfp_disp.csv', 
                          '-time', '-node', *isol_nodes_all, '-dof', 1, 'disp')
-            ops.recorder('Node', '-file', data_dir+'tfp_base_vert.csv', 
+            self._model.recorder('Node', '-file', data_dir+'tfp_base_vert.csv', 
                          '-time', '-node', 
                          *base_nodes, '-dof', 3, 'reaction')
         
-        ops.recorder('Node', '-file', data_dir+'base_rxn.csv', 
+        self._model.recorder('Node', '-file', data_dir+'base_rxn.csv', 
                      '-time', '-node', 
                      *base_nodes, '-dof', 1, 'reaction')
         
-        ops.recorder('Node', '-file', data_dir+'diaph_rxn.csv', 
+        self._model.recorder('Node', '-file', data_dir+'diaph_rxn.csv', 
                      '-time', '-node', 
                      *isol_nodes_all, '-dof', 1, 'reaction')
         
         story_1_nodes = [x+10 for x in isol_nodes_all]
         
-        ops.recorder('Node', '-file', data_dir+'story_1_rxn.csv', 
+        self._model.recorder('Node', '-file', data_dir+'story_1_rxn.csv', 
                      '-time', '-node', 
                      *story_1_nodes, '-dof', 1, 'reaction')
         
@@ -3000,14 +3008,14 @@ class Building:
         # beam force?
         # column force?
         
-        ops.recorder('Element', '-file', data_dir+'impact_forces.csv', 
+        self._model.recorder('Element', '-file', data_dir+'impact_forces.csv', 
                      '-time', '-ele', *walls, 'basicForce')
-        ops.recorder('Element', '-file', data_dir+'impact_disp.csv', 
+        self._model.recorder('Element', '-file', data_dir+'impact_disp.csv', 
                      '-time', '-ele', *walls, 'basicDeformation')
         
         # diaphragm?
         diaph_elems = self.elem_tags['diaphragm']
-        ops.recorder('Element', '-file', data_dir+'diaphragm_forces.csv', 
+        self._model.recorder('Element', '-file', data_dir+'diaphragm_forces.csv', 
                      '-time', '-ele', diaph_elems[0], 'basicForce')
         
         # leaning column?
@@ -3064,7 +3072,7 @@ class Building:
             # algorithmTypeDynamic    = 'Broyden'
             # ops.algorithm(algorithmTypeDynamic, 8)
             algorithmTypeDynamic    = 'Newton'
-            ops.algorithm(algorithmTypeDynamic)
+            self._model.algorithm(algorithmTypeDynamic)
             
             # Convergence Test: tolerance
             testTypeDynamic     = 'NormDispIncr'
@@ -3073,12 +3081,12 @@ class Building:
             # Newmark-integrator gamma parameter (also HHT)
             newmarkGamma = 0.5
             newmarkBeta = 0.25
-            ops.integrator('Newmark', newmarkGamma, newmarkBeta)
-            # ops.integrator('CentralDifference')
+            self._model.integrator('Newmark', newmarkGamma, newmarkBeta)
+            # self._model.integrator('CentralDifference')
         
-        ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+        self._model.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
             
-        ops.analysis('Transient')
+        self._model.analysis('Transient')
 
         #  ---------------------------------    perform Dynamic Ground-Motion Analysis
         # the following commands are unique to the Uniform Earthquake excitation
@@ -3096,17 +3104,17 @@ class Building:
         eq_series_tag = 100
         eq_pattern_tag = 400
         # time series information
-        ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
+        self._model.timeSeries('Path', eq_series_tag, '-dt', dt, 
                        '-filePath', outFile, '-factor', GMfatt)     
         # create uniform excitation
-        ops.pattern('UniformExcitation', eq_pattern_tag, 
+        self._model.pattern('UniformExcitation', eq_pattern_tag, 
                     GMDirection, '-accel', eq_series_tag)          
 
         # set recorder for absolute acceleration (requires time series defined)
-        ops.recorder('Node', '-file', data_dir+'outer_col_acc.csv',
+        self._model.recorder('Node', '-file', data_dir+'outer_col_acc.csv',
                      '-timeSeries', eq_series_tag, '-time',
                      '-node', *outer_col_nds, '-dof', 1, 'accel')
-        ops.recorder('Node', '-file', data_dir+'inner_col_acc.csv',
+        self._model.recorder('Node', '-file', data_dir+'inner_col_acc.csv',
                      '-timeSeries', eq_series_tag, '-time',
                      '-node', *inner_col_nds, '-dof', 1, 'accel')
         
@@ -3119,7 +3127,7 @@ class Building:
         t0 = time.time()
         
         # Convergence loop, careful with Broyden/BFGS with energy
-        ok = ops.analyze(n_steps, dt_transient)   
+        ok = self._model.analyze(n_steps, dt_transient)   
         
         # drift limits triggering halt to analysis
         cbf_drift_limit = 0.10
@@ -3127,40 +3135,40 @@ class Building:
         
         # if good collapse, halt. if non-convergent collapse, discard and retry
         if superstructure_system == 'MF':
-            collapse_status = determine_collapse(outer_col_nds, h_story, mf_drift_limit)
+            collapse_status = determine_collapse(self._model, self._model, outer_col_nds, h_story, mf_drift_limit)
         else:
-            collapse_status = determine_collapse(outer_col_nds, h_story, cbf_drift_limit)
+            collapse_status = determine_collapse(self._model, outer_col_nds, h_story, cbf_drift_limit)
         
         if collapse_status == 'collapse':
             ok = 0
             print('Collapse occurred (MF drift 0.2 | CBF drift 0.1).')
         elif collapse_status == 'non-convergence':
             ok = -3
-            t_final = ops.getTime()
+            t_final = self._model.getTime()
             tp = time.time() - t0
             minutes = tp//60
             seconds = tp - 60*minutes
             print('Drift is beyond convergence. Ending...')
             print('Ground motion done. End time: %.4f s' % t_final)
             print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
-            ops.wipe()
+            self._model.wipe()
             return(ok)
             
         # If analysis failed reasonably
         if ok != 0:
-            ops.analysis('Transient')
-            curr_time = ops.getTime()
+            self._model.analysis('Transient')
+            curr_time = self._model.getTime()
             print("Convergence issues at time: ", curr_time)
             # The analysis will be time-controlled and is done for the remaining time
                 
             if superstructure_system == 'MF':
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):
-                    curr_time     = ops.getTime()
-                    ok = ops.analyze(1, dt_transient)
+                    curr_time     = self._model.getTime()
+                    ok = self._model.analyze(1, dt_transient)
                         
                     if ok != 0:
-                        collapse_status = determine_collapse(
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, mf_drift_limit)
                         if collapse_status == 'collapse':
                             print('Collapse triggered.')
@@ -3171,13 +3179,13 @@ class Building:
                             ok = -3
                             break
                         print("Trying Newton with line search ...")
-                        ops.algorithm('NewtonLineSearch')
-                        ok = ops.analyze(1, dt_transient)
+                        self._model.algorithm('NewtonLineSearch')
+                        ok = self._model.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
-                            ops.algorithm('Newton')
+                            self._model.algorithm('Newton')
                     if ok != 0:
-                        collapse_status = determine_collapse(
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, mf_drift_limit)
                         if collapse_status == 'collapse':
                             print('Collapse triggered.')
@@ -3189,13 +3197,13 @@ class Building:
                             break
                         print('Trying Broyden ... ')
                         algorithmTypeDynamic = 'Broyden'
-                        ops.algorithm(algorithmTypeDynamic)
-                        ok = ops.analyze(1, dt_transient)
+                        self._model.algorithm(algorithmTypeDynamic)
+                        ok = self._model.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
-                            ops.algorithm('Newton')
+                            self._model.algorithm('Newton')
                     if ok != 0:
-                        collapse_status = determine_collapse(
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, mf_drift_limit)
                         if collapse_status == 'collapse':
                             print('Collapse triggered.')
@@ -3207,19 +3215,19 @@ class Building:
                             break
                         print('Trying BFGS ... ')
                         algorithmTypeDynamic = 'BFGS'
-                        ops.algorithm(algorithmTypeDynamic)
-                        ok = ops.analyze(1, dt_transient)
+                        self._model.algorithm(algorithmTypeDynamic)
+                        ok = self._model.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to Newton")
-                            ops.algorithm('Newton')
+                            self._model.algorithm('Newton')
             else:
                 ok = 0
                 while (curr_time < T_end) and (ok == 0):
-                    curr_time     = ops.getTime()
-                    ok = ops.analyze(1, dt_transient)
+                    curr_time     = self._model.getTime()
+                    ok = self._model.analyze(1, dt_transient)
                     
                     if ok != 0:
-                        collapse_status = determine_collapse(
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status == 'collapse':
                             print('Collapse triggered.')
@@ -3231,13 +3239,13 @@ class Building:
                             break
                         
                         print("Trying Newton with line search ...")
-                        ops.algorithm('NewtonLineSearch')
-                        ok = ops.analyze(1, dt_transient)
+                        self._model.algorithm('NewtonLineSearch')
+                        ok = self._model.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to KrylovNewton")
-                            ops.algorithm('KrylovNewton')
+                            self._model.algorithm('KrylovNewton')
                     if ok != 0:
-                        collapse_status = determine_collapse(
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status == 'collapse':
                             print('Collapse triggered.')
@@ -3248,13 +3256,13 @@ class Building:
                             ok = -3
                             break
                         print('Trying Broyden ... ')
-                        ops.algorithm('Broyden')
-                        ok = ops.analyze(1, dt_transient)
+                        self._model.algorithm('Broyden')
+                        ok = self._model.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to KrylovNewton")
-                            ops.algorithm('KrylovNewton')
+                            self._model.algorithm('KrylovNewton')
                     if ok != 0:
-                        collapse_status = determine_collapse(
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status == 'collapse':
                             print('Collapse triggered.')
@@ -3265,13 +3273,13 @@ class Building:
                             ok = -3
                             break
                         print('Trying BFGS ... ')
-                        ops.algorithm('BFGS')
-                        ok = ops.analyze(1, dt_transient)
+                        self._model.algorithm('BFGS')
+                        ok = self._model.analyze(1, dt_transient)
                         if ok == 0:
                             print("That worked. Back to KrylovNewton")
-                            ops.algorithm('KrylovNewton')
+                            self._model.algorithm('KrylovNewton')
                     if ok != 0:
-                        collapse_status = determine_collapse(
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status == 'collapse':
                             print('Collapse triggered.')
@@ -3281,14 +3289,14 @@ class Building:
                             print('Drift is beyond convergence. Ending...')
                             ok = -3
                             break
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         print("Trying KrylovNewton with 1/5 dt for 10 steps ...")
-                        ops.algorithm('KrylovNewton')
-                        ok = ops.analyze(10, dt_transient/5.0)
+                        self._model.algorithm('KrylovNewton')
+                        ok = self._model.analyze(10, dt_transient/5.0)
                         if ok == 0:
                             print("That worked. Back to regular dt.")
                     if ok != 0:
-                        collapse_status = determine_collapse(
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status == 'collapse':
                             print('Collapse triggered.')
@@ -3298,14 +3306,14 @@ class Building:
                             print('Drift is beyond convergence. Ending...')
                             ok = -3
                             break
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         print("Trying KrylovNewton with 1/10 dt for 10 steps ...")
-                        ops.algorithm('KrylovNewton')
-                        ok = ops.analyze(10, dt_transient/10.0)
+                        self._model.algorithm('KrylovNewton')
+                        ok = self._model.analyze(10, dt_transient/10.0)
                         if ok == 0:
                             print("That worked. Back to regular dt.")
                     if ok != 0:
-                        collapse_status = determine_collapse(
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status == 'collapse':
                             print('Collapse triggered.')
@@ -3315,10 +3323,10 @@ class Building:
                             print('Drift is beyond convergence. Ending...')
                             ok = -3
                             break
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         print("Trying KrylovNewton with 1/100 dt for 10 steps ...")
-                        ops.algorithm('KrylovNewton')
-                        ok = ops.analyze(10, dt_transient/100.0)
+                        self._model.algorithm('KrylovNewton')
+                        ok = self._model.analyze(10, dt_transient/100.0)
                         if ok == 0:
                             print("That worked. Back to regular dt.")
                     if ok != 0:
@@ -3326,12 +3334,12 @@ class Building:
             '''
             else:
                 ok = 0
-                curr_time     = ops.getTime()
+                curr_time     = self._model.getTime()
                 
                 while (curr_time < T_end) and (ok == 0):
                     
                     # check for collapse first
-                    collapse_status = determine_collapse(
+                    collapse_status = determine_collapse(self._model, 
                         outer_col_nds, h_story, cbf_drift_limit)
                     if collapse_status:
                         print('Collapse triggered.')
@@ -3341,116 +3349,116 @@ class Building:
                         ok = -1
                     
                     if ok != 0:
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         remaining_time = T_end - curr_time
                         remaining_steps = int(np.floor(remaining_time / (dt_transient/2.0)))
                         print("Trying KrylovNewton with 1/2 dt for 10 steps ...")
-                        ops.algorithm('KrylovNewton')
-                        ok = ops.analyze(10, dt_transient/2.0)
-                        collapse_status = determine_collapse(
+                        self._model.algorithm('KrylovNewton')
+                        ok = self._model.analyze(10, dt_transient/2.0)
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status:
                             ok = 0
                        
                     if ok != 0:
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         remaining_time = T_end - curr_time
                         remaining_steps = int(np.floor(remaining_time / dt_transient))
                         print("Going back to original ...")
-                        ops.test('EnergyIncr', 1.0e-2, 100, 0)
-                        ops.algorithm('KrylovNewton')
-                        ok = ops.analyze(remaining_steps, dt_transient)
-                        collapse_status = determine_collapse(
+                        self._model.test('EnergyIncr', 1.0e-2, 100, 0)
+                        self._model.algorithm('KrylovNewton')
+                        ok = self._model.analyze(remaining_steps, dt_transient)
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status:
                             ok = 0
                     if ok != 0:
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         remaining_time = T_end - curr_time
                         remaining_steps = int(np.floor(remaining_time / 0.001))
                         print("Trying KrylovNewton with 0.001 dt for 10 steps ...")
-                        ops.test('EnergyIncr', 1.0e-2, 100, 0)
-                        ops.algorithm('KrylovNewton')
-                        ok = ops.analyze(remaining_steps, 0.001)
-                        collapse_status = determine_collapse(
+                        self._model.test('EnergyIncr', 1.0e-2, 100, 0)
+                        self._model.algorithm('KrylovNewton')
+                        ok = self._model.analyze(remaining_steps, 0.001)
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status:
                             ok = 0
                     if ok != 0:
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         remaining_time = T_end - curr_time
                         remaining_steps = int(np.floor(remaining_time / (dt_transient/2.0)))
                         print("Going back to 1/2 dt for 10 steps ...")
-                        ops.algorithm('KrylovNewton')
-                        ok = ops.analyze(10, dt_transient/2.0)
-                        collapse_status = determine_collapse(
+                        self._model.algorithm('KrylovNewton')
+                        ok = self._model.analyze(10, dt_transient/2.0)
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status:
                             ok = 0
                     if ok != 0:
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         remaining_time = T_end - curr_time
                         remaining_steps = int(np.floor(remaining_time / 0.0001))
                         print("Trying KrylovNewton with 0.0001 dt for 5 steps ...")
-                        ops.test('EnergyIncr', 1.0e-2, 100, 0)
-                        ops.algorithm('KrylovNewton')
-                        ok = ops.analyze(5, 0.001)
-                        collapse_status = determine_collapse(
+                        self._model.test('EnergyIncr', 1.0e-2, 100, 0)
+                        self._model.algorithm('KrylovNewton')
+                        ok = self._model.analyze(5, 0.001)
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status:
                             ok = 0
                     if ok != 0:
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         remaining_time = T_end - curr_time
                         remaining_steps = int(np.floor(remaining_time / dt_transient))
                         print("Going back to original ...")
-                        ops.test('EnergyIncr', 1.0e-2, 100, 0)
-                        ops.algorithm('KrylovNewton')
-                        ok = ops.analyze(remaining_steps, dt_transient)
-                        collapse_status = determine_collapse(
+                        self._model.test('EnergyIncr', 1.0e-2, 100, 0)
+                        self._model.algorithm('KrylovNewton')
+                        ok = self._model.analyze(remaining_steps, dt_transient)
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status:
                             ok = 0
                     if ok != 0:
-                        curr_time     = ops.getTime()
+                        curr_time     = self._model.getTime()
                         remaining_time = T_end - curr_time
                         remaining_steps = int(np.floor(remaining_time / 0.0001))
                         print("Trying Newton with fixed iters ...")
-                        ops.test('FixedNumIter', 50)
-                        ops.integrator('NewmarkHSFixedNumIter', 0.5, 0.25)
-                        ops.algorithm('Newton')
-                        ok = ops.analyze(10, dt_transient)
-                        collapse_status = determine_collapse(
+                        self._model.test('FixedNumIter', 50)
+                        self._model.integrator('NewmarkHSFixedNumIter', 0.5, 0.25)
+                        self._model.algorithm('Newton')
+                        ok = self._model.analyze(10, dt_transient)
+                        collapse_status = determine_collapse(self._model, 
                             outer_col_nds, h_story, cbf_drift_limit)
                         if collapse_status:
                             ok = 0
                         
-                    curr_time     = ops.getTime()
+                    curr_time     = self._model.getTime()
             '''
         
             # # cutting time convergence loop
             # else:
             #     ok = 0
             #     while (curr_time < T_end) and (ok == 0):
-            #         curr_time     = ops.getTime()
-            #         ok = ops.analyze(1, dt_transient)
+            #         curr_time     = self._model.getTime()
+            #         ok = self._model.analyze(1, dt_transient)
             #         if ok != 0:
             #             print("Cutting time step for ten step...")
-            #             ops.algorithm('NewtonLineSearch')
-            #             ok = ops.analyze(10, dt_transient/10)
+            #             self._model.algorithm('NewtonLineSearch')
+            #             ok = self._model.analyze(10, dt_transient/10)
             #             if ok == 0:
             #                 print("That worked. Back to Newton")
-            #                 ops.algorithm('Newton')
+            #                 self._model.algorithm('Newton')
             #         if ok != 0:
             #             print('CBF convergence loop exhausted. Ending run...')
                 
-        t_final = ops.getTime()
+        t_final = self._model.getTime()
         tp = time.time() - t0
         minutes = tp//60
         seconds = tp - 60*minutes
         print('Ground motion done. End time: %.4f s' % t_final)
         print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
-        ops.wipe()
+        self._model.wipe()
         
         return(ok)
 ###############################################################################
@@ -3541,10 +3549,9 @@ def modified_IK_params(shape, L):
 ###############################################################################
 #              Brace geometry
 ###############################################################################
-def determine_collapse(nds, h_story, drift_limit):
-    import openseespy.opensees as ops
+def determine_collapse(model, nds, h_story, drift_limit):
     import numpy as np
-    disp_array = np.array([ops.nodeDisp(node, 1) 
+    disp_array = np.array([model.nodeDisp(node, 1)
                                for node in nds])
     drift_array = np.abs(np.diff(disp_array)/(h_story*12.0))
     if np.any(drift_array > drift_limit) and np.all(drift_array < 1.5):
@@ -3553,16 +3560,16 @@ def determine_collapse(nds, h_story, drift_limit):
         return 'non-convergence'
     else:
         return 'okay'
-    
-    
+
+
 def bot_gp_coord(nd, L_bay, h_story, offset=0.25):
     # from node number, get the parent node it's attached to
     bot_nd = nd//100
-    
+
     # get the bottom node's coordinates
     bot_x_coord = (bot_nd%10)*L_bay
     bot_y_coord = (bot_nd//10 - 1)*h_story
-    
+
     # if last number is 1 or 2, brace connects nw
     # if last number is 3 or 4, brace connects ne
     goes_ne = [3, 4]

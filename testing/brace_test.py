@@ -148,7 +148,7 @@ def compressive_brace_strength(Ag, ry, Lc_r):
 ############################################################################
 
 # import OpenSees and libraries
-import openseespy.opensees as ops
+import opensees.openseespy as ops
 
 # remove existing model
 ops.wipe()
