@@ -3041,6 +3041,9 @@ class Building:
             testTypeDynamic     = 'EnergyIncr'
             tolDynamic = 1e-8
             
+            
+            ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+            
             # algorithmTypeDynamic    = 'Broyden'
             # ops.algorithm(algorithmTypeDynamic, 8)
             algorithmTypeDynamic    = 'KrylovNewton'
@@ -3061,14 +3064,18 @@ class Building:
             # Convergence Test: flag used to print information on convergence
             printFlagDynamic    = 0  
             
+            
+            # Convergence Test: tolerance
+            testTypeDynamic     = 'NormDispIncr'
+            tolDynamic = 1e-8
+            
+            ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
+            
             # algorithmTypeDynamic    = 'Broyden'
             # ops.algorithm(algorithmTypeDynamic, 8)
             algorithmTypeDynamic    = 'Newton'
             ops.algorithm(algorithmTypeDynamic)
             
-            # Convergence Test: tolerance
-            testTypeDynamic     = 'NormDispIncr'
-            tolDynamic = 1e-8
             
             # Newmark-integrator gamma parameter (also HHT)
             newmarkGamma = 0.5
@@ -3076,7 +3083,6 @@ class Building:
             ops.integrator('Newmark', newmarkGamma, newmarkBeta)
             # ops.integrator('CentralDifference')
         
-        ops.test(testTypeDynamic, tolDynamic, maxIterDynamic, printFlagDynamic)
             
         ops.analysis('Transient')
 
