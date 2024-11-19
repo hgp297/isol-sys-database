@@ -335,7 +335,7 @@ class Building:
         
         # remove existing model
         ops.wipe()
-        ops.wipeAnalysis()
+        # ops.wipeAnalysis()
 
         # units: in, kip, s
         # dimensions
@@ -961,7 +961,7 @@ class Building:
         
         # remove existing model
         ops.wipe()
-        ops.wipeAnalysis()
+        # ops.wipeAnalysis()
 
         # units: in, kip, s
         # dimensions
