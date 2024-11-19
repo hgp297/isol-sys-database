@@ -98,17 +98,14 @@ class Database:
         config_selection = np.empty([self.n_generated, num_categories])
         
         # set seed
-        np.random.seed(seed)
+        import random
+        random.seed(seed)
         
         for index, (key, bounds) in enumerate(config_dict.items()):
             config_selection[:,index] = np.random.randint(bounds[0], 
                                                                high=bounds[1]+1, 
                                                                size=self.n_generated)
         config_selection = pd.DataFrame(config_selection)
-        
-        
-        
-        np.random.seed(seed)
         
         # upweigh LRBs to ensure fair split
         # isol_sys_list = ['TFP', 'LRB']
@@ -339,7 +336,7 @@ class Database:
         
         self.retained_designs = all_des.groupby(
             'supersystem_drop', group_keys=False).apply(
-            lambda x: x.sample(n=int(self.n_points/n_systems)), include_groups=False)
+            lambda x: x.sample(n=int(self.n_points/n_systems), random_state=985), include_groups=False)
         self.generated_designs = all_des
         
         print('======================================')
@@ -367,8 +364,8 @@ class Database:
             all_des = all_des.loc[all_des.index.repeat(repeat)]
             
         # set seed to ensure same GMs are selected
-		import numpy as np
-        np.random.seed(seed)
+        import random
+        random.seed(seed)
         
         # scale and select ground motion
         from gms import scale_ground_motion
@@ -1393,21 +1390,47 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
             lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
             
         # check to see if bearing design succeeded
-        # if failed (particularly for inverse design), reduce bearings
+        # hacky solution: just skip the displacement check
         if lrb_designs.shape[0] < 1:
-            all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row, reduce_bearings=True),
-                                           axis='columns', result_type='expand')
+            all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row, bypass_disp_check=True),
+                                            axis='columns', result_type='expand')
             
             
             all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
-                                       'N_lb', 'S_pad', 'S_2',
-                                       'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m', 'buckling_fail']
+                                        'N_lb', 'S_pad', 'S_2',
+                                        'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m', 'buckling_fail']
             
             # keep the designs that look sensible
             lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
-                                               3*all_lrb_designs['d_lead']) &
+                                                3*all_lrb_designs['d_lead']) &
                                               (all_lrb_designs['d_bearing'] <=
-                                               6*all_lrb_designs['d_lead']) &
+                                                6*all_lrb_designs['d_lead']) &
+                                              (all_lrb_designs['d_lead'] <= 
+                                                all_lrb_designs['t_r']) &
+                                              (all_lrb_designs['t_r'] > 4.0) &
+                                              (all_lrb_designs['t_r'] < 35.0) &
+                                              (all_lrb_designs['buckling_fail'] == 0) &
+                                              (all_lrb_designs['zeta_loop'] <= 0.25)]
+            
+            lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
+            
+        
+        # if failed (particularly for inverse design), reduce bearings
+        # TODO: implement or remove this
+        if lrb_designs.shape[0] < 1:
+            all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row, reduce_bearings=True),
+                                            axis='columns', result_type='expand')
+            
+            
+            all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
+                                        'N_lb', 'S_pad', 'S_2',
+                                        'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m', 'buckling_fail']
+            
+            # keep the designs that look sensible
+            lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
+                                                3*all_lrb_designs['d_lead']) &
+                                              (all_lrb_designs['d_bearing'] <=
+                                                6*all_lrb_designs['d_lead']) &
                                               (all_lrb_designs['d_lead'] <= 
                                                 all_lrb_designs['t_r']) &
                                               (all_lrb_designs['t_r'] > 4.0) &

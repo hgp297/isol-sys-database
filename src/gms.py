@@ -159,28 +159,52 @@ def show_selection(final_GM, target_spectrum, H1s):
 
     import matplotlib.pyplot as plt
     import numpy as np
+    import matplotlib as mpl
+    plt.rcParams["text.usetex"] = True
+    plt.rcParams["font.family"] = "serif"
+    plt.rcParams["mathtext.fontset"] = "dejavuserif"
+    title_font=20
+    axis_font = 18
+    subt_font = 18
+    label_size = 16
+    mpl.rcParams['xtick.labelsize'] = label_size 
+    mpl.rcParams['ytick.labelsize'] = label_size 
+    
     plt.close('all')
-    plt.figure()
-    plt.plot(target_spectrum['Period (sec)'], target_spectrum['Target pSa (g)'])
+    fig= plt.figure(figsize=(7,6))
+    ax1=fig.add_subplot(1, 1, 1)
+    plt.plot(target_spectrum['Period (sec)'], target_spectrum['Target pSa (g)'], color='red',
+             label='Target design spectrum')
     running_sum = np.zeros(target_spectrum.shape[0])
     for idx, row in final_GM.iterrows():
         new_str = 'RSN-'+str(row['RSN'])+' Horizontal-1 pSa (g)'
         row_spectrum = H1s[new_str]
         scaled_row = row_spectrum * row['sf_average_spectral']
         running_sum = running_sum + np.array(scaled_row)
-        plt.plot(target_spectrum['Period (sec)'], scaled_row,
-                 linewidth=0.5, alpha=0.3)
+        plt.plot(target_spectrum['Period (sec)'], scaled_row, color='black',
+                 linewidth=0.5, alpha=0.1)
     running_average = running_sum / final_GM.shape[0]
-    plt.plot(target_spectrum['Period (sec)'], running_average, linestyle='--')
+    plt.plot(target_spectrum['Period (sec)'], running_average, linestyle='--', color='black',
+             label='Average of GM spectra')
     # plt.axvline(t_lower, linestyle=':', color='red')
     # plt.axvline(t_upper, linestyle=':', color='red')
     # plt.axvline(T_m, linestyle='--', color='red')
     # plt.axhline(target_average, linestyle=':', color='black')    
-    plt.xlabel(r'Period $T_n$ (s)', fontsize = 20)
-    plt.ylabel(r'Spectral acceleration $Sa$ (g)', fontsize = 20)
-    plt.xlim([0, 7])
+    # ax1.text(T_m-0.3, 4.1, r'$T_M$', rotation=90,
+    #           fontsize=subt_font, color='red')
+    # ax1.text(t_lower-0.3, 4.1, r'$0.2T_M$', rotation=90,
+    #           fontsize=subt_font, color='red')
+    # ax1.text(t_upper-0.3, 4.1, r'$1.5T_M$', rotation=90,
+    #           fontsize=subt_font, color='red')
+    # ax1.text(2.7, target_average+0.05, r'Spectral average over range',
+    #           fontsize=subt_font, color='black')
+    plt.xlabel(r'$T_n$ (s)', fontsize = axis_font)
+    plt.ylabel(r'$Sa$ (g)', fontsize = axis_font)
+    plt.xlim([0, 5])
     plt.ylim([0, 2*2.5])
     plt.grid(True)
+    plt.legend(fontsize=subt_font, loc='center right')
+    fig.tight_layout()
 
 # this creates a damped spectrum based on real zeta e value and extracts value
 def get_gm_ST(input_df, T_query):

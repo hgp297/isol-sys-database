@@ -24,6 +24,7 @@ main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)
 
 main_obj.scale_gms()
+all_designs = main_obj.retained_designs
 
 #%% troubleshoot
 
@@ -31,13 +32,13 @@ main_obj.scale_gms()
 # run = main_obj.retained_designs.loc[113]
 
 # cbf tfp
-run = main_obj.retained_designs.iloc[0]
+# run = main_obj.retained_designs.loc[527]
 
 # # mf lrb
-# run = main_obj.retained_designs.loc[704]
+# run = main_obj.retained_designs.loc[324]
 
 # # mf tfp
-# run = main_obj.retained_designs.loc[68]
+run = main_obj.retained_designs.loc[100]
 
 from building import Building
 
@@ -200,8 +201,8 @@ if bldg.isolator_system == 'TFP':
     h1      = 1*inch                # half-height of sliders
     h2      = 4*inch
     
-    L1      = R1 - h1
-    L2      = R2 - h2
+    L1      = R1
+    L2      = R2
 
     # uLim    = 2*d1 + 2*d2 + L1*d2/L2 - L1*d2/L2
     
@@ -252,7 +253,7 @@ else:
     K_bulk = 290.0*ksi
     G_r = 0.060*ksi
     D_inner = bldg.d_lead
-    D_outer = bldg.d_bearing - 0.5
+    D_outer = bldg.d_bearing - 1.0
     t_shim = 0.13*inch
     t_rubber_whole = bldg.t_r
     n_layers = int(bldg.n_layers)
@@ -359,20 +360,12 @@ wall_elems = bldg.elem_tags['wall']
 #             '-mat', impact_mat_tag,
 #             '-dir', 1, '-orient', 1, 0, 0, 0, 1, 0)
     
-open('./output/model.out', 'w').close()
-ops.printModel('-file', './output/model.out')
+
 
 ############################################################################
 #              Loading and analysis
 ############################################################################
 
-nEigenJ = 1;                    # how many modes to analyze
-lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
-lambda1 = lambdaN[0];           # eigenvalue mode i = 1
-wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
-T_1 = 2*3.1415/wi      # 1st mode period of the structure
-
-print("T_1 = %.3f s" % T_1)   
 
 monotonic_pattern_tag  = 2
 monotonic_series_tag = 1
@@ -395,10 +388,12 @@ if bldg.isolator_system == 'TFP':
     # line load accounts for Lbay/2 of tributary, we linearly scale
     # to include the remaining portion of Lbldg/2
     ft = 12.0
-    w_total = w_floor.sum()
-    pOuter = w_total*(L_bay/2)*ft* ((L_bldg - L_bay)/L_bay)
-    pInner = w_total*(L_bay)*ft* ((L_bldg - L_bay)/L_bay)
-
+    L_bay = bldg.L_bay
+    L_bldg = bldg.L_bldg
+    n_bays = bldg.num_bays
+    pOuter = w_total*(L_bay/2)*ft* ((L_bldg - L_bay)/L_bay) 
+    pInner = w_total*(L_bay)*ft* ((L_bldg - L_bay)/L_bay) 
+    
     diaph_nds = bldg.node_tags['diaphragm']
     
     for nd in diaph_nds:
@@ -416,6 +411,9 @@ for elem in diaph_elems:
     ops.eleLoad('-ele', elem, '-type', '-beamUniform', 
                 -w_applied, 0.0)
 
+open('./output/model.out', 'w').close()
+ops.printModel('-file', './output/model.out')
+
 nStepGravity = 10  # apply gravity in 10 steps
 tol = 1e-5
 dGravity = 1/nStepGravity
@@ -432,6 +430,15 @@ ops.analyze(nStepGravity)
 print("Gravity analysis complete!")
 ops.loadConst('-time', 0.0)
 
+
+nEigenJ = 1;                    # how many modes to analyze
+lambdaN  = ops.eigen(nEigenJ);       # eigenvalue analysis for nEigenJ modes
+lambda1 = lambdaN[0];           # eigenvalue mode i = 1
+wi = lambda1**(0.5)    # w1 (1st mode circular frequency)
+T_1 = 2*3.1415/wi      # 1st mode period of the structure
+
+print("T_1 = %.3f s" % T_1)   
+
 # ------------------------------
 # Recorders
 # ------------------------------
@@ -447,6 +454,44 @@ ops.recorder('Node', '-file', data_dir+'isol_base_vert.csv',
              '-time', '-node', 
              *base_nodes, '-dof', 3, 'reaction')
 
+
+# ################## static cyclical #################
+# create TimeSeries
+ops.timeSeries("Linear", monotonic_series_tag)
+ops.pattern('Plain', monotonic_pattern_tag, monotonic_series_tag)
+ops.load(10, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+tol = 1e-5
+
+# ops.system("BandGeneral")   
+# ops.test("NormDispIncr", tol, 15)
+# ops.numberer("RCM")
+# ops.constraints("Plain")
+# ops.algorithm("Newton")
+
+ops.test('EnergyIncr', 1.0e-5, 300, 0)
+ops.algorithm('KrylovNewton')
+ops.system('UmfPack')
+ops.numberer("RCM")
+ops.constraints("Plain")
+
+# du = -0.01*inch
+# ops.integrator('DisplacementControl', 201, 1, du, 1, du, du)
+# max_u = -1.5  # Max displacement
+# n_steps = int(round(max_u/du))
+# currentDisp = 0.0
+ops.analysis("Static")                      # create analysis object
+
+# TODO: here
+peaks = np.linspace(0.0, bldg.D_m*2, 7)
+peaks = np.append(peaks, peaks[-1])
+steps = 500
+for i, pk in enumerate(peaks):
+    du = (-1.0)**i*(peaks[i] / steps)
+    ops.integrator('DisplacementControl', 10, 1, du, 1, du, du)
+    ops.analyze(steps)
+
+############################### transient
 GMDirection = 1  # ground-motion direction
 
 gm_name = bldg.gm_selected
@@ -487,26 +532,48 @@ ops.analysis('Transient')
 #  ---------------------------------    perform Dynamic Ground-Motion Analysis
 # the following commands are unique to the Uniform Earthquake excitation
 
-# Uniform EXCITATION: acceleration input
-gm_dir = '../resource/ground_motions/PEERNGARecords_Unscaled/'
-inFile = gm_dir + gm_name + '.AT2'
-outFile = gm_dir + gm_name + '.g3'
+################ ground motion
+# # Uniform EXCITATION: acceleration input
+# gm_dir = '../resource/ground_motions/PEERNGARecords_Unscaled/'
+# inFile = gm_dir + gm_name + '.AT2'
+# outFile = gm_dir + gm_name + '.g3'
 
- # call procedure to convert the ground-motion file
-from ReadRecord import ReadRecord
-dt, nPts = ReadRecord(inFile, outFile)
-g = 386.4
-GMfatt = g*scale_factor
+#   # call procedure to convert the ground-motion file
+# from ReadRecord import ReadRecord
+# dt, nPts = ReadRecord(inFile, outFile)
+# g = 386.4
+# GMfatt = g*scale_factor
 
-eq_series_tag = 100
-eq_pattern_tag = 400
-# time series information
-ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
-               '-filePath', outFile, '-factor', GMfatt)     
-# create uniform excitation
-ops.pattern('UniformExcitation', eq_pattern_tag, 
-            GMDirection, '-accel', eq_series_tag)          
+# eq_series_tag = 100
+# eq_pattern_tag = 400
+# # time series information
+# ops.timeSeries('Path', eq_series_tag, '-dt', dt, 
+#                 '-filePath', outFile, '-factor', GMfatt)     
+# # create uniform excitation
+# ops.pattern('UniformExcitation', eq_pattern_tag, 
+#             GMDirection, '-accel', eq_series_tag)     
+###################
 
+
+# ################## cyclical
+# dt = 0.01
+# dispSeriesTag = 101
+# velSeriesTag = 102
+# accelSeriesTag = 103
+
+# ops.timeSeries('Path', dispSeriesTag, '-dt', dt, 
+#                 '-filePath', './motions/LDDisp.txt', '-factor', 300.0)   
+# ops.timeSeries('Path', velSeriesTag, '-dt', dt, 
+#                 '-filePath', './motions/LDVel.txt', '-factor', 1.0) 
+# ops.timeSeries('Path', accelSeriesTag, '-dt', dt, 
+#                 '-filePath', './motions/LDAcc.txt', '-factor', 150.0) 
+
+# # eq_series_tag = 100
+# cyclic_pattern_tag = 400
+
+# ops.pattern('UniformExcitation', cyclic_pattern_tag, 
+#             GMDirection, '-accel', accelSeriesTag)      
+# ####################
 
 # set up ground-motion-analysis parameters
 sec = 1.0             
@@ -567,6 +634,76 @@ print('Analysis time elapsed %dm %ds.' % (minutes, seconds))
 
 ops.wipe()
 
+#%%
+################################ plot hysteresis ##############################
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 20
+subt_font = 18
+import matplotlib as mpl
+label_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+
+plt.close('all')
+isol_columns = ['time', 'x', 'z', 'rot']
+
+force_columns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz', 
+                'jFx', 'jFy', 'jFz', 'jMx', 'jMy', 'jMz']
+# All hystereses
+from bearing import Bearing
+isolator = Bearing(run)
+
+col_line = ['column_'+str(col)
+               for col in range(0,bldg.num_bays+1)]
+just_cols = col_line.copy()
+col_line.insert(0, 'time')
+isol_disp = pd.read_csv(data_dir+'isol_disp.csv', sep=' ', 
+                             header=None, names=col_line)
+
+max_d = np.max(np.abs(isol_disp['column_0']))
+
+isol_base_rxn = pd.read_csv(data_dir+'isol_base_rxn.csv', sep=' ', 
+                             header=None, names=col_line)
+
+isol_base_vert = pd.read_csv(data_dir+'isol_base_vert.csv', sep=' ', 
+                             header=None, names=col_line)
+
+isol_shear = isol_base_rxn[just_cols].sum(axis=1)
+isol_axial = isol_base_vert[just_cols].sum(axis=1)
+u_bearing, fs_bearing = isolator.get_backbone(mode='building')
+
+fig = plt.figure(figsize=(9, 7))
+if bldg.isolator_system == 'LRB':
+    plt.plot(-isol_disp['column_0'], isol_shear, color='black', linewidth=1.5)
+    # plt.plot(u_bearing, fs_bearing, linestyle='--')
+    plt.xlabel('Displacement (in)', fontsize=axis_font)
+    plt.ylabel('Lateral force (kip)', fontsize=axis_font)
+    plt.grid(True)
+else:
+    plt.plot(-isol_disp['column_0'], isol_shear/isol_axial, color='black', linewidth=1.5)
+    # plt.plot(u_bearing, fs_bearing, linestyle='--')
+    plt.xlabel('Displacement (in)', fontsize=axis_font)
+    plt.ylabel('Normalized lateral force', fontsize=axis_font)
+    plt.grid(True)
+
+fig.tight_layout()
+zeta_target = bldg.zeta_e
+from scipy.spatial import ConvexHull
+if bldg.isolator_system == 'LRB':
+    loop = np.array([isol_disp['column_0'], -isol_shear]).T
+else:
+    loop = np.array([isol_disp['column_0'], -isol_shear/isol_axial]).T
+hull = ConvexHull(loop)
+# plt.plot(loop[hull.vertices,0], loop[hull.vertices,1], 'r--', lw=2)
+
+#%%
 ################################ plot hysteresis ##############################
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -578,6 +715,71 @@ force_columns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz',
 # All hystereses
 from bearing import Bearing
 isolator = Bearing(run)
+
+col_line = ['column_'+str(col)
+               for col in range(0,bldg.num_bays+1)]
+just_cols = col_line.copy()
+col_line.insert(0, 'time')
+isol_disp = pd.read_csv(data_dir+'isol_disp.csv', sep=' ', 
+                             header=None, names=col_line)
+
+max_d = np.max(np.abs(isol_disp['column_0']))
+
+isol_base_rxn = pd.read_csv(data_dir+'isol_base_rxn.csv', sep=' ', 
+                             header=None, names=col_line)
+
+isol_base_vert = pd.read_csv(data_dir+'isol_base_vert.csv', sep=' ', 
+                             header=None, names=col_line)
+
+isol_shear = isol_base_rxn[just_cols].sum(axis=1)
+isol_axial = isol_base_vert[just_cols].sum(axis=1)
+u_bearing, fs_bearing = isolator.get_backbone(mode='building')
+
+# isol_disp = isol_disp.head(4000)
+# isol_shear = isol_shear.head(4000)
+# isol_axial= isol_axial.head(4000)
+
+if bldg.isolator_system == 'LRB':
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    plt.plot(-isol_disp['column_0'], isol_shear, color='navy', linewidth=1.5)
+    plt.plot(u_bearing, fs_bearing, linestyle='--', color='red', linewidth=1.5)
+    # plt.title('Isolator hystereses (layer only) (LRB)')
+    # plt.xlabel('Displ (in)')
+    # plt.ylabel('Lateral force (kip)')
+    # plt.grid(True)
+else:
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    plt.plot(-isol_disp['column_0'], isol_shear/isol_axial, color='navy', linewidth=1.5)
+    plt.plot(u_bearing, fs_bearing, linestyle='--', color='red', linewidth=1.5)
+    # plt.title('Isolator hystereses (layer only) (TFP)')
+    # plt.xlabel('Displ (in)')
+    # plt.ylabel('V/N')
+    # plt.grid(True)
+
+zeta_target = bldg.zeta_e
+from scipy.spatial import ConvexHull
+if bldg.isolator_system == 'LRB':
+    loop = np.array([isol_disp['column_0'], -isol_shear]).T
+else:
+    loop = np.array([isol_disp['column_0'], -isol_shear/isol_axial]).T
+hull = ConvexHull(loop)
+plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+# Move left y-axis and bottom x-axis to centre, passing through (0,0)
+ax.spines['left'].set_position('zero')
+ax.spines['bottom'].set_position('zero')
+
+# Eliminate upper and right axes
+ax.spines['right'].set_color('none')
+ax.spines['top'].set_color('none')
+
+fig.tight_layout()
+# plt.box(False) #remove box
+# plt.plot(loop[hull.vertices,0], loop[hull.vertices,1], 'r--', lw=2)
+
+#%%
+########################### barebones hysteresis ##############################
 
 col_line = ['column_'+str(col)
                for col in range(0,bldg.num_bays+1)]
@@ -598,31 +800,17 @@ u_bearing, fs_bearing = isolator.get_backbone(mode='building')
 
 if bldg.isolator_system == 'LRB':
     plt.figure()
-    plt.plot(isol_disp['column_0'], -isol_shear)
-    plt.plot(u_bearing, fs_bearing, linestyle='--')
-    plt.title('Isolator hystereses (layer only) (LRB)')
-    plt.xlabel('Displ (in)')
-    plt.ylabel('Lateral force (kip)')
-    plt.grid(True)
+    plt.plot(-isol_disp['column_0'], isol_shear, color='navy', linewidth=1.5)
+    # plt.grid(True)
 else:
     plt.figure()
-    plt.plot(isol_disp['column_0'], -isol_shear/isol_axial)
-    plt.plot(u_bearing, fs_bearing, linestyle='--')
-    plt.title('Isolator hystereses (layer only) (TFP)')
-    plt.xlabel('Displ (in)')
-    plt.ylabel('V/N')
-    plt.grid(True)
+    plt.plot(-isol_disp['column_0'], isol_shear/isol_axial)
+    # plt.grid(True)
+    
+plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+plt.box(False) #remove box
 
 ########################### equivalent damping ################################
-zeta_target = bldg.zeta_e
-from scipy.spatial import ConvexHull
-if bldg.isolator_system == 'LRB':
-    loop = np.array([isol_disp['column_0'], -isol_shear]).T
-else:
-    loop = np.array([isol_disp['column_0'], -isol_shear/isol_axial]).T
-hull = ConvexHull(loop)
-plt.plot(loop[hull.vertices,0], loop[hull.vertices,1], 'r--', lw=2)
-
 def PolyArea(x,y):
     return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
 
