@@ -8,8 +8,6 @@ run_case = 'cbf_lrb_strict_hs'
 def agg_data(run_case):
     pickle_path = './data/validation/'+run_case+'/'
     
-    # TODO: make directory if not present
-    
     from db import Database
     
     # generate holder dfs
@@ -25,6 +23,8 @@ def agg_data(run_case):
         # try to run 200 rows, stop whenever we stop finding rows
         file_str = 'row_'+ str(i) +'.pickle'
         csv_str = 'row_'+ str(i) +'.csv'
+        
+        # TODO: something weird happens here if new numpy is used to pickle?
         try:
             cur_obj = pd.read_pickle(pickle_path+file_str)
         except ModuleNotFoundError:

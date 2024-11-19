@@ -3385,15 +3385,17 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     
     # select best viable design
     structural_system = system_name.split('_')[0]
-    # if structural_system == 'MF':
-    #     upfront_costs = calc_upfront_cost(
-    #         X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
-    # else:
-    #     upfront_costs = calc_upfront_cost(
-    #         X_design, config_dict=config_dict, steel_cost_dict=reg_dict,
-    #         land_cost_per_sqft=1978/(3.28**2))
-    upfront_costs = calc_upfront_cost(
-        X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
+    
+    if structural_system == 'MF':
+        upfront_costs = calc_upfront_cost(
+            X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
+    else:
+        upfront_costs = calc_upfront_cost(
+            X_design, config_dict=config_dict, steel_cost_dict=reg_dict,
+            land_cost_per_sqft=1978/(3.28**2))
+        
+    # upfront_costs = calc_upfront_cost(
+    #     X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
     cheapest_idx = upfront_costs['total_'+structural_system].idxmin()
     inv_upfront_cost = upfront_costs['total_'+structural_system].min()
 
@@ -3537,14 +3539,21 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
 
 #%% inverse design filters
 ### regular
-config_dict = {
-    'num_stories': 4,
-    'h_story': 13.0,
-    'num_bays': 4,
+ns = 4
+hs = 13.
+nb = 6
+Lb = 30.
+
+config_dict_moderate = {
+    'num_stories': ns,
+    'h_story': hs,
+    'num_bays': nb,
     'num_frames': 2,
     'S_s': 2.2815,
-    'L_bay': 30.0,
-    'S_1': 1.017
+    'L_bay': Lb,
+    'S_1': 1.017,
+    'h_bldg': hs*ns,
+    'L_bldg': Lb*nb
     }
 
 my_targets = {
@@ -3554,38 +3563,46 @@ my_targets = {
     'constructability': -6.0}
 
 mf_tfp_inv_design, mf_tfp_inv_performance, mf_tfp_space = grid_search_inverse_design(
-    20, 'mf_tfp', my_targets, config_dict, 
+    20, 'mf_tfp', my_targets, config_dict_moderate, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
 mf_lrb_inv_design, mf_lrb_inv_performance, mf_lrb_space = grid_search_inverse_design(
-    20, 'mf_lrb', my_targets, config_dict, 
+    20, 'mf_lrb', my_targets, config_dict_moderate, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
 cbf_tfp_inv_design, cbf_tfp_inv_performance, cbf_tfp_space = grid_search_inverse_design(
-    20, 'cbf_tfp', my_targets, config_dict, 
+    20, 'cbf_tfp', my_targets, config_dict_moderate, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
 cbf_lrb_inv_design, cbf_lrb_inv_performance, cbf_lrb_space = grid_search_inverse_design(
-    20, 'cbf_lrb', my_targets, config_dict, 
+    20, 'cbf_lrb', my_targets, config_dict_moderate, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
+#%%
 ### strict
-config_dict = {
-    'num_stories': 4,
-    'h_story': 13.0,
-    'num_bays': 4,
+ns = 4
+hs = 13.
+nb = 6
+Lb = 30.
+
+config_dict_strict = {
+    'num_stories': ns,
+    'h_story': hs,
+    'num_bays': nb,
     'num_frames': 2,
     'S_s': 2.2815,
-    'L_bay': 30.0,
-    'S_1': 1.017
+    'L_bay': Lb,
+    'S_1': 1.017,
+    'h_bldg': hs*ns,
+    'L_bldg': Lb*nb
     }
 
 my_targets = {
@@ -3595,47 +3612,69 @@ my_targets = {
     'constructability': -6.0}
 
 mf_tfp_strict_design, mf_tfp_strict_performance, mf_tfp_strict_space = grid_search_inverse_design(
-    20, 'mf_tfp', my_targets, config_dict, 
+    20, 'mf_tfp', my_targets, config_dict_strict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
 mf_lrb_strict_design, mf_lrb_strict_performance, mf_lrb_strict_space = grid_search_inverse_design(
-    20, 'mf_lrb', my_targets, config_dict, 
+    20, 'mf_lrb', my_targets, config_dict_strict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
 cbf_tfp_strict_design, cbf_tfp_strict_performance, cbf_tfp_strict_space = grid_search_inverse_design(
-    20, 'cbf_tfp', my_targets, config_dict, 
+    20, 'cbf_tfp', my_targets, config_dict_strict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
 cbf_lrb_strict_design, cbf_lrb_strict_performance, cbf_lrb_strict_space = grid_search_inverse_design(
-    20, 'cbf_lrb', my_targets, config_dict, 
+    20, 'cbf_lrb', my_targets, config_dict_strict, 
     impact_classification_mdls, cost_regression_mdls, 
     time_regression_mdls, repl_regression_mdls,
     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 
 #%% design the systems
 
+
+from db import prepare_ida_util
+import json
 ### regular
+
+print ('======== designing moderate structures ==========')
 my_design = mf_tfp_inv_design.copy()
 my_design['superstructure_system'] = 'MF'
 my_design['isolator_system'] = 'TFP'
 my_design['k_ratio'] = 10
 
 mf_tfp_dict = my_design.to_dict()
+ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/',
+                                 config_dict=config_dict_moderate)
 
+print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
+
+with open('../inputs/mf_tfp_moderate.in', 'w') as file:
+    file.write(json.dumps(mf_tfp_dict))
+    file.close()
 
 my_design = cbf_tfp_inv_design.copy()
 my_design['superstructure_system'] = 'CBF'
 my_design['isolator_system'] = 'TFP'
 my_design['k_ratio'] = 7
 
+
 cbf_tfp_dict = my_design.to_dict()
     
+ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/',
+                                 config_dict=config_dict_moderate)
+
+print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
+
+with open('../inputs/cbf_tfp_moderate.in', 'w') as file:
+    file.write(json.dumps(cbf_tfp_dict))
+    file.close()
+
 
 my_design = mf_lrb_inv_design.copy()
 my_design['superstructure_system'] = 'MF'
@@ -3644,6 +3683,16 @@ my_design['k_ratio'] = 10
 
 mf_lrb_dict = my_design.to_dict()
 
+ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/',
+                                 config_dict=config_dict_moderate)
+
+print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
+
+with open('../inputs/mf_lrb_moderate.in', 'w') as file:
+    file.write(json.dumps(mf_lrb_dict))
+    file.close()
+
+
 my_design = cbf_lrb_inv_design.copy()
 my_design['superstructure_system'] = 'CBF'
 my_design['isolator_system'] = 'LRB'
@@ -3651,14 +3700,34 @@ my_design['k_ratio'] = 10
 
 cbf_lrb_dict = my_design.to_dict()
 
+ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/',
+                                 config_dict=config_dict_moderate)
+
+with open('../inputs/cbf_lrb_moderate.in', 'w') as file:
+    file.write(json.dumps(cbf_lrb_dict))
+    file.close()
+    
+print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
+
 ### strict
+
+print ('======== designing enhanced structures ==========')
+
 my_design = mf_tfp_strict_design.copy()
 my_design['superstructure_system'] = 'MF'
 my_design['isolator_system'] = 'TFP'
-my_design['k_ratio'] = 10
+my_design['k_ratio'] = 7
 
 mf_tfp_dict_strict = my_design.to_dict()
 
+ida_mf_tfp_df_strict = prepare_ida_util(mf_tfp_dict_strict, db_string='../../resource/',
+                                 config_dict=config_dict_strict)
+
+print('Length of MF-TFP IDA:', len(ida_mf_tfp_df_strict))
+
+with open('../inputs/mf_tfp_enhanced.in', 'w') as file:
+    file.write(json.dumps(mf_tfp_dict_strict))
+    file.close()
 
 my_design = cbf_tfp_strict_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -3667,6 +3736,14 @@ my_design['k_ratio'] = 7
 
 cbf_tfp_dict_strict = my_design.to_dict()
     
+ida_cbf_tfp_df_strict = prepare_ida_util(cbf_tfp_dict_strict, db_string='../../resource/',
+                                 config_dict=config_dict_strict)
+
+print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df_strict))
+
+with open('../inputs/cbf_tfp_enhanced.in', 'w') as file:
+    file.write(json.dumps(cbf_tfp_dict_strict))
+    file.close()
 
 my_design = mf_lrb_strict_design.copy()
 my_design['superstructure_system'] = 'MF'
@@ -3675,12 +3752,30 @@ my_design['k_ratio'] = 10
 
 mf_lrb_dict_strict = my_design.to_dict()
 
+ida_mf_lrb_df_strict = prepare_ida_util(mf_lrb_dict_strict, db_string='../../resource/',
+                                 config_dict=config_dict_strict)
+
+print('Length of MF-LRB IDA:', len(ida_mf_lrb_df_strict))
+
+with open('../inputs/mf_lrb_enhanced.in', 'w') as file:
+    file.write(json.dumps(mf_lrb_dict_strict))
+    file.close()
+
 my_design = cbf_lrb_strict_design.copy()
 my_design['superstructure_system'] = 'CBF'
 my_design['isolator_system'] = 'LRB'
 my_design['k_ratio'] = 10
 
 cbf_lrb_dict_strict = my_design.to_dict()
+
+ida_cbf_lrb_df_strict = prepare_ida_util(cbf_lrb_dict_strict, db_string='../../resource/',
+                                 config_dict=config_dict_strict)
+
+print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df_strict))
+
+with open('../inputs/cbf_lrb_enhanced.in', 'w') as file:
+    file.write(json.dumps(cbf_lrb_dict_strict))
+    file.close()
 
 #%% generalized results of inverse design
 # TODO: validation
@@ -3823,11 +3918,11 @@ def process_results(run_case):
 (mf_tfp_strict_results, mf_tfp_strict_repl, mf_tfp_strict_cost, mf_tfp_strict_cost_ratio, 
  mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_strict')
 (mf_lrb_strict_results, mf_lrb_strict_repl, mf_lrb_strict_cost, mf_lrb_strict_cost_ratio, 
- mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_strict')
+ mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_strict_hs')
 (cbf_tfp_strict_results, cbf_tfp_strict_repl, cbf_tfp_strict_cost, cbf_tfp_strict_cost_ratio, 
  cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_strict')
 (cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
- cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict_redux')
+ cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict_hs')
 
 (mf_lrb_off_results, mf_lrb_off_repl, mf_lrb_off_cost, mf_lrb_off_cost_ratio, 
  mf_lrb_off_downtime, mf_lrb_off_downtime_ratio) = process_results('mf_lrb_strict_redux')
