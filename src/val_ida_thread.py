@@ -24,7 +24,16 @@ def ida_run_row(row_num, run_case_str):
     # use db to prepare all IDA runs, then grab the assigned row
     from db import prepare_ida_util
     import pandas as pd
-    ida_df = prepare_ida_util(design_dict)
+    
+    try:
+        with open(input_path+run_case_str+'.cfg') as f: 
+            data = f.read() 
+        run_config = json.loads(data)
+        ida_df = prepare_ida_util(design_dict, config_dict=run_config)
+    except:
+        ida_df = prepare_ida_util(design_dict)
+    
+    
     
     assert row_num <= len(ida_df)-1
     

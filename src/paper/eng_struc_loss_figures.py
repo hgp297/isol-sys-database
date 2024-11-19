@@ -3657,6 +3657,10 @@ print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 with open('../inputs/mf_tfp_moderate.in', 'w') as file:
     file.write(json.dumps(mf_tfp_dict))
     file.close()
+    
+with open('../inputs/mf_tfp_moderate.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_moderate))
+    file.close()
 
 my_design = cbf_tfp_inv_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -3673,6 +3677,10 @@ print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
 with open('../inputs/cbf_tfp_moderate.in', 'w') as file:
     file.write(json.dumps(cbf_tfp_dict))
+    file.close()
+    
+with open('../inputs/cbf_tfp_moderate.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_moderate))
     file.close()
 
 
@@ -3691,6 +3699,10 @@ print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
 with open('../inputs/mf_lrb_moderate.in', 'w') as file:
     file.write(json.dumps(mf_lrb_dict))
     file.close()
+    
+with open('../inputs/mf_lrb_moderate.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_moderate))
+    file.close()
 
 
 my_design = cbf_lrb_inv_design.copy()
@@ -3705,6 +3717,10 @@ ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/',
 
 with open('../inputs/cbf_lrb_moderate.in', 'w') as file:
     file.write(json.dumps(cbf_lrb_dict))
+    file.close()
+    
+with open('../inputs/cbf_lrb_moderate.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_moderate))
     file.close()
     
 print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
@@ -3728,6 +3744,10 @@ print('Length of MF-TFP IDA:', len(ida_mf_tfp_df_strict))
 with open('../inputs/mf_tfp_enhanced.in', 'w') as file:
     file.write(json.dumps(mf_tfp_dict_strict))
     file.close()
+    
+with open('../inputs/mf_tfp_enhanced.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_strict))
+    file.close()
 
 my_design = cbf_tfp_strict_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -3745,6 +3765,11 @@ with open('../inputs/cbf_tfp_enhanced.in', 'w') as file:
     file.write(json.dumps(cbf_tfp_dict_strict))
     file.close()
 
+with open('../inputs/cbf_tfp_enhanced.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_strict))
+    file.close()
+
+
 my_design = mf_lrb_strict_design.copy()
 my_design['superstructure_system'] = 'MF'
 my_design['isolator_system'] = 'LRB'
@@ -3760,6 +3785,11 @@ print('Length of MF-LRB IDA:', len(ida_mf_lrb_df_strict))
 with open('../inputs/mf_lrb_enhanced.in', 'w') as file:
     file.write(json.dumps(mf_lrb_dict_strict))
     file.close()
+    
+
+with open('../inputs/mf_lrb_enhanced.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_strict))
+    file.close()    
 
 my_design = cbf_lrb_strict_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -3776,7 +3806,11 @@ print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df_strict))
 with open('../inputs/cbf_lrb_enhanced.in', 'w') as file:
     file.write(json.dumps(cbf_lrb_dict_strict))
     file.close()
+    
 
+with open('../inputs/cbf_lrb_enhanced.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_strict))
+    file.close()
 #%% generalized results of inverse design
 # TODO: validation
 
