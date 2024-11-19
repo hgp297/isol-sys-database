@@ -2806,19 +2806,19 @@ class Building:
                     4: 'RaphsonNewton',5: 'PeriodicNewton', 
                     6: 'BFGS', 7: 'Broyden', 8: 'NewtonLineSearch'}
                     
-        for i in testList:
-            for j in algoList:
+        for i in algoList:
+            for j in testList:
 
                 if ok != 0:
-                    if j < 4:
-                        ops.algorithm(algoList[j], '-initial')
+                    if i < 4:
+                        ops.algorithm(algoList[i], '-initial')
                         
                     else:
-                        ops.algorithm(algoList[j])
+                        ops.algorithm(algoList[i])
                         
                     ops.test(testList[i], 1e-3, 1000)
                     ok = ops.analyze(nSteps)                            
-                    print(testList[i], algoList[j], ok)             
+                    print(testList[j], algoList[i], ok)             
                     if ok == 0:
                         break
                 else:
@@ -3033,21 +3033,21 @@ class Building:
             # Convergence Test: flag used to print information on convergence
             printFlagDynamic    = 0  
             
+            # # Convergence Test: tolerance
+            # testTypeDynamic = 'EnergyIncr'
+            # tolDynamic = 1e-6
+            
+            # Convergence Test: tolerance
+            testTypeDynamic     = 'EnergyIncr'
+            tolDynamic = 1e-8
+            
             # algorithmTypeDynamic    = 'Broyden'
             # ops.algorithm(algorithmTypeDynamic, 8)
             algorithmTypeDynamic    = 'KrylovNewton'
             ops.algorithm(algorithmTypeDynamic)
             
-            # # Convergence Test: tolerance
-            # testTypeDynamic = 'EnergyIncr'
-            # tolDynamic = 1e-6
-            
             # # TRBDF2 integrator, best with energy
             # ops.integrator('TRBDF2')
-            
-            # Convergence Test: tolerance
-            testTypeDynamic     = 'EnergyIncr'
-            tolDynamic = 1e-8
             
             # Newmark-integrator gamma parameter (also HHT)
             newmarkGamma = 0.5
