@@ -452,7 +452,7 @@ def iterate_on_Q(Q_guess, S_1, T_m, zeta_target, rho_k, W_tot):
     
     return(err)   
 
-def design_LRB(param_df, reduce_bearings=False):
+def design_LRB(param_df, reduce_bearings=False, bypass_disp_check=False):
     
     # read in parameters
     T_m = param_df['T_m']
@@ -471,6 +471,7 @@ def design_LRB(param_df, reduce_bearings=False):
     if reduce_bearings:
         N_lb = N_lb - 8
         N_sl = N_sl + 8
+        print('Warning: designing for 8 less bearings.')
     
     # converge design on Q
     # design will achieve T_m, Q, rho_k as specified
@@ -518,7 +519,10 @@ def design_LRB(param_df, reduce_bearings=False):
     
     # converge on t_r necessary to achieve rho_k
     # if this succeeds, no guesswork is necessary on shims and layers
-    S_pad_trial = 20.0
+    if bypass_disp_check:
+        S_pad_trial = 10.0
+    else:
+        S_pad_trial = 20.0
     from scipy.optimize import minimize_scalar
     res = minimize_scalar(iterate_bearing_height,
                           args=(D_m, k_M, Q_L, rho_k, N_lb, S_pad_trial),
@@ -684,9 +688,12 @@ def design_LRB(param_df, reduce_bearings=False):
     
     # buckling loads and pressure check
     # displacement
-    if moat_ampli*D_m/d_r > 1.0:
-        # can be helped by reducing N_lb
-        return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)
+    if not bypass_disp_check:
+        if moat_ampli*D_m/d_r > 1.0:
+            # can be helped by reducing N_lb
+            return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)
+    else:
+        print('Warning: bypassing displacement vs. d_bearing check.')
     if lam_strain > 3.0:
         return(1.0, 1.0, 1.0, 1.0, 1, 1, 1., 1., T_e, k_e, Q, zeta_loop, D_m, 1)
     # buckling load

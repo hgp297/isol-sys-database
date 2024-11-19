@@ -63,6 +63,8 @@ df['Bm'] = np.interp(df['zeta_e'], zetaRef, BmRef)
 df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
     (g*(df['sa_tm']/df['Bm'])*df['T_m']**2)
 
+df['k2'] = (df['k_e']*df['D_m'] - df['Q'])/df['D_m']
+df['k1'] = df['k_ratio'] * df['k2']
 df_loss = main_obj.loss_data
 
 max_obj = pd.read_pickle("../../data/loss/structural_db_complete_max_loss.pickle")

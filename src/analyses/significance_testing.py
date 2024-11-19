@@ -106,6 +106,7 @@ df['E_50%'].loc[mask] = df_loss_max['E_50%'].loc[mask]
 
 #%% subsets
 df_miss = df[df['impacted'] == 0]
+# df_miss = df.copy()
 
 # remove outlier point
 from scipy import stats
@@ -130,11 +131,14 @@ y = df_test[cost_var].ravel()
 scaler = preprocessing.StandardScaler().fit(X)
 X_scaled = scaler.transform(X)
 
-from sklearn.feature_selection import r_regression
+from sklearn.feature_selection import r_regression, f_regression
 
 r_results = r_regression(X_scaled,y)
+f_results, p_values = f_regression(X_scaled, y)
 print("Pearson's R test: GR, Ry, T_ratio, k_ratio, zeta, Q")
 print(["%.4f" % member for member in r_results])
+print("F test p-values: GR, Ry, T_ratio, k_ratio, zeta, Q")
+print(["%.4f" % member for member in p_values])
 
 print('========= stats for repair time ==========')
 X = df_test[['gap_ratio', 'RI', 'T_ratio', 'k_ratio', 'zeta_e' ,'Q']]
@@ -144,8 +148,11 @@ scaler = preprocessing.StandardScaler().fit(X)
 X_scaled = scaler.transform(X)
 
 r_results = r_regression(X_scaled,y)
+f_results, p_values = f_regression(X_scaled, y)
 print("Pearson's R test: GR, Ry, T_ratio, k_ratio, zeta, Q")
 print(["%.4f" % member for member in r_results])
+print("F test p-values: GR, Ry, T_ratio, k_ratio, zeta, Q")
+print(["%.4f" % member for member in p_values])
 #%% Tfbe regression
 
 plt.close('all')

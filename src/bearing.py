@@ -23,11 +23,14 @@ class Bearing:
         for key, value in design.items():
             setattr(self, key, value)
             
-    def get_backbone(self, mode='single'):
+    def get_backbone(self, mode='single', D_m=None):
         bearing_type = self.isolator_system
         
         # design displacement
-        D_m = self.D_m
+        if D_m is None:
+            D_m = self.D_m
+        else:
+            pass
         
         if mode=='single':
             if bearing_type == 'LRB':

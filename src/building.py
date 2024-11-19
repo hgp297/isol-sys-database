@@ -227,15 +227,33 @@ class Building:
         from math import ceil
         isol_type = self.isolator_system
         if isol_type == 'LRB':
-            n_edge_bearings = n_bays+1
-            total_addl_bearings = n_edge_bearings - 2
-            
-            left_bearings = ceil(total_addl_bearings/2)
-            right_bearings = total_addl_bearings - left_bearings
-            addl_isol_elems = ([isol_elems[0]+10*(j+1) 
-                               for j in range(left_bearings)] + 
-                               [isol_elems[-1]+10*(j+1) 
-                                for j in range(right_bearings)])
+            # check if num bearings have been reduced
+            # reduction number is fixed at 8 for now
+            if int(self.N_lb) < 4*n_bays:
+                print('LRB reduction active.')
+                # remove 4 from each of the y-dir edge frames
+                n_edge_bearings = (n_bays + 1) - 4
+                
+                # at minimum, keep one bearing
+                # this would be incorrect only for <5-bay structures that need reduced bearings
+                total_addl_bearings = max(n_edge_bearings - 2, 0)
+                
+                left_bearings = ceil(total_addl_bearings/2)
+                right_bearings = total_addl_bearings - left_bearings
+                addl_isol_elems = ([isol_elems[0]+10*(j+1) 
+                                   for j in range(left_bearings)] + 
+                                   [isol_elems[-1]+10*(j+1) 
+                                    for j in range(right_bearings)])
+            else:
+                n_edge_bearings = n_bays+1
+                total_addl_bearings = n_edge_bearings - 2
+                
+                left_bearings = ceil(total_addl_bearings/2)
+                right_bearings = total_addl_bearings - left_bearings
+                addl_isol_elems = ([isol_elems[0]+10*(j+1) 
+                                   for j in range(left_bearings)] + 
+                                   [isol_elems[-1]+10*(j+1) 
+                                    for j in range(right_bearings)])
             
             isol_elems = isol_elems + addl_isol_elems
         
@@ -1001,7 +1019,11 @@ class Building:
         # assert (not float_nodes == True), 'Some nodes are not connected.'
         
         print('Elements placed.')
-        
+
+###############################################################################
+#              BRACED FRAME OPENSEES MODELING
+###############################################################################
+
     def model_braced_frame(self, convergence_mode=False):
         # import OpenSees and libraries
         import opensees.openseespy as ops
@@ -1431,6 +1453,7 @@ class Building:
         vecxz = np.cross(brace_x_axis_R,vecxy_brace) # What OpenSees expects
         vecxz_brace_R = vecxz / np.sqrt(np.sum(vecxz**2))
         
+        # TODO: transform the beams and columns to Corotational
         ops.geomTransf('PDelta', brace_beam_transf_tag, *vecxz_beam) # beams
         ops.geomTransf('PDelta', beam_transf_tag, *vecxz_beam) # beams
         ops.geomTransf('PDelta', col_transf_tag, *vecxz_col) # columns
@@ -2252,6 +2275,7 @@ class Building:
             # LRB modeling
             # dimensions. Material parameters should not be edited without 
             # modifying design script
+            # TODO: check if D_outer should be -1.0...
             K_bulk = 290.0*ksi
             G_r = 0.060*ksi
             D_inner = self.d_lead
