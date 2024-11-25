@@ -32,6 +32,7 @@ class Bearing:
         else:
             pass
         
+        # breakpoint()
         if mode=='single':
             if bearing_type == 'LRB':
                 Q_L = self.Q * self.W / self.N_lb
@@ -44,9 +45,18 @@ class Bearing:
             if bearing_type == 'LRB':
                 Q_L = self.Q * self.W / 2
                 k_M = self.k_e * self.W / 2
+                print(f'Q_L: {Q_L:.1f}, k: {k_M:.1f}')
+                print(f'Q: {self.Q:.3f}, k: {self.k_e:.5f}')
+                print(f'W: {self.W:.1f}')
+                print(f'Tm: {self.T_e:.2f} s')
             else:
                 Q_L = self.Q
                 k_M = self.k_e
+                
+                print(f'Q: {Q_L*self.W/2:.1f}, k: {k_M*self.W/2:.1f}')
+                print(f'Q: {self.Q:.3f}, k: {self.k_e:.5f}')
+                print(f'W: {self.W:.1f}')
+                print(f'Tm: {self.T_e:.2f} s')
         
         # from Q, zeta, and T_m
         k_2 = (k_M*D_m - Q_L)/D_m

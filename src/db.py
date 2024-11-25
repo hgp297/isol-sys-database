@@ -1329,13 +1329,18 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
     
     
     # attempt to design all TFPs
+    # TODO: here
     if df_tfp.shape[0] > 0:
         t0 = time.time()
         all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP(row, mu_1=mu_1_force),
-                                       axis='columns', result_type='expand')
+                                        axis='columns', result_type='expand')
+        
+        
+        # all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP_legacy(row),
+        #                                 axis='columns', result_type='expand')
         
         all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
-                                   'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m']
+                                    'T_e', 'k_e', 'Q', 'zeta_loop', 'D_m']
         
         if filter_designs == False:
             tfp_designs = all_tfp_designs

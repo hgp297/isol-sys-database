@@ -3,7 +3,7 @@ import sys
 # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(1, '../src/')
 
-run_case = 'cbf_lrb_strict_hs'
+# run_case = 'mf_lrb_enhanced'
 
 def agg_data(run_case):
     pickle_path = './data/validation/'+run_case+'/'
@@ -56,4 +56,9 @@ def agg_data(run_case):
         pickle.dump(dummy_obj, f)
         
 
-agg_data(run_case)
+agg_data('mf_tfp_moderate')
+agg_data('cbf_tfp_moderate')
+agg_data('mf_lrb_moderate')
+agg_data('mf_tfp_enhanced')
+agg_data('cbf_tfp_enhanced')
+agg_data('mf_lrb_enhanced')

@@ -3654,13 +3654,13 @@ ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/',
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
-with open('../inputs/mf_tfp_moderate.in', 'w') as file:
-    file.write(json.dumps(mf_tfp_dict))
-    file.close()
+# with open('../inputs/mf_tfp_moderate.in', 'w') as file:
+#     file.write(json.dumps(mf_tfp_dict))
+#     file.close()
     
-with open('../inputs/mf_tfp_moderate.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_moderate))
-    file.close()
+# with open('../inputs/mf_tfp_moderate.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_moderate))
+#     file.close()
 
 my_design = cbf_tfp_inv_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -3675,13 +3675,13 @@ ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/',
 
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
-with open('../inputs/cbf_tfp_moderate.in', 'w') as file:
-    file.write(json.dumps(cbf_tfp_dict))
-    file.close()
+# with open('../inputs/cbf_tfp_moderate.in', 'w') as file:
+#     file.write(json.dumps(cbf_tfp_dict))
+#     file.close()
     
-with open('../inputs/cbf_tfp_moderate.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_moderate))
-    file.close()
+# with open('../inputs/cbf_tfp_moderate.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_moderate))
+#     file.close()
 
 
 my_design = mf_lrb_inv_design.copy()
@@ -3696,13 +3696,13 @@ ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/',
 
 print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
 
-with open('../inputs/mf_lrb_moderate.in', 'w') as file:
-    file.write(json.dumps(mf_lrb_dict))
-    file.close()
+# with open('../inputs/mf_lrb_moderate.in', 'w') as file:
+#     file.write(json.dumps(mf_lrb_dict))
+#     file.close()
     
-with open('../inputs/mf_lrb_moderate.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_moderate))
-    file.close()
+# with open('../inputs/mf_lrb_moderate.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_moderate))
+#     file.close()
 
 
 my_design = cbf_lrb_inv_design.copy()
@@ -3715,13 +3715,13 @@ cbf_lrb_dict = my_design.to_dict()
 ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/',
                                  config_dict=config_dict_moderate)
 
-with open('../inputs/cbf_lrb_moderate.in', 'w') as file:
-    file.write(json.dumps(cbf_lrb_dict))
-    file.close()
+# with open('../inputs/cbf_lrb_moderate.in', 'w') as file:
+#     file.write(json.dumps(cbf_lrb_dict))
+#     file.close()
     
-with open('../inputs/cbf_lrb_moderate.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_moderate))
-    file.close()
+# with open('../inputs/cbf_lrb_moderate.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_moderate))
+#     file.close()
     
 print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
 
@@ -3741,13 +3741,13 @@ ida_mf_tfp_df_strict = prepare_ida_util(mf_tfp_dict_strict, db_string='../../res
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df_strict))
 
-with open('../inputs/mf_tfp_enhanced.in', 'w') as file:
-    file.write(json.dumps(mf_tfp_dict_strict))
-    file.close()
+# with open('../inputs/mf_tfp_enhanced.in', 'w') as file:
+#     file.write(json.dumps(mf_tfp_dict_strict))
+#     file.close()
     
-with open('../inputs/mf_tfp_enhanced.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_strict))
-    file.close()
+# with open('../inputs/mf_tfp_enhanced.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_strict))
+#     file.close()
 
 my_design = cbf_tfp_strict_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -3761,13 +3761,13 @@ ida_cbf_tfp_df_strict = prepare_ida_util(cbf_tfp_dict_strict, db_string='../../r
 
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df_strict))
 
-with open('../inputs/cbf_tfp_enhanced.in', 'w') as file:
-    file.write(json.dumps(cbf_tfp_dict_strict))
-    file.close()
+# with open('../inputs/cbf_tfp_enhanced.in', 'w') as file:
+#     file.write(json.dumps(cbf_tfp_dict_strict))
+#     file.close()
 
-with open('../inputs/cbf_tfp_enhanced.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_strict))
-    file.close()
+# with open('../inputs/cbf_tfp_enhanced.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_strict))
+#     file.close()
 
 
 my_design = mf_lrb_strict_design.copy()
@@ -3782,14 +3782,14 @@ ida_mf_lrb_df_strict = prepare_ida_util(mf_lrb_dict_strict, db_string='../../res
 
 print('Length of MF-LRB IDA:', len(ida_mf_lrb_df_strict))
 
-with open('../inputs/mf_lrb_enhanced.in', 'w') as file:
-    file.write(json.dumps(mf_lrb_dict_strict))
-    file.close()
+# with open('../inputs/mf_lrb_enhanced.in', 'w') as file:
+#     file.write(json.dumps(mf_lrb_dict_strict))
+#     file.close()
     
 
-with open('../inputs/mf_lrb_enhanced.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_strict))
-    file.close()    
+# with open('../inputs/mf_lrb_enhanced.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_strict))
+#     file.close()    
 
 my_design = cbf_lrb_strict_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -3803,14 +3803,14 @@ ida_cbf_lrb_df_strict = prepare_ida_util(cbf_lrb_dict_strict, db_string='../../r
 
 print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df_strict))
 
-with open('../inputs/cbf_lrb_enhanced.in', 'w') as file:
-    file.write(json.dumps(cbf_lrb_dict_strict))
-    file.close()
+# with open('../inputs/cbf_lrb_enhanced.in', 'w') as file:
+#     file.write(json.dumps(cbf_lrb_dict_strict))
+#     file.close()
     
 
-with open('../inputs/cbf_lrb_enhanced.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_strict))
-    file.close()
+# with open('../inputs/cbf_lrb_enhanced.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_strict))
+#     file.close()
 #%% generalized results of inverse design
 # TODO: validation
 
@@ -3939,27 +3939,45 @@ def process_results(run_case):
     return(ida_results_df, val_replacement, val_cost, 
            val_cost_ratio, val_downtime, val_downtime_ratio)
     
+# (mf_tfp_val_results, mf_tfp_val_repl, mf_tfp_val_cost, mf_tfp_val_cost_ratio, 
+#  mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_constructable')
+# (mf_lrb_val_results, mf_lrb_val_repl, mf_lrb_val_cost, mf_lrb_val_cost_ratio, 
+#  mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_constructable')
+# (cbf_tfp_val_results, cbf_tfp_val_repl, cbf_tfp_val_cost, cbf_tfp_val_cost_ratio, 
+#  cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_constructable')
+# (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
+#  cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_constructable')
+
 (mf_tfp_val_results, mf_tfp_val_repl, mf_tfp_val_cost, mf_tfp_val_cost_ratio, 
- mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_constructable')
+ mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_moderate')
 (mf_lrb_val_results, mf_lrb_val_repl, mf_lrb_val_cost, mf_lrb_val_cost_ratio, 
- mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_constructable')
+ mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_moderate')
 (cbf_tfp_val_results, cbf_tfp_val_repl, cbf_tfp_val_cost, cbf_tfp_val_cost_ratio, 
- cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_constructable')
+ cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_moderate')
 (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
- cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_constructable')
+ cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_moderate')
 
 # NOTE: the _redux runs bypassed displacement vs d_bearing check for LRBs
-(mf_tfp_strict_results, mf_tfp_strict_repl, mf_tfp_strict_cost, mf_tfp_strict_cost_ratio, 
- mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_strict')
-(mf_lrb_strict_results, mf_lrb_strict_repl, mf_lrb_strict_cost, mf_lrb_strict_cost_ratio, 
- mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_strict_hs')
-(cbf_tfp_strict_results, cbf_tfp_strict_repl, cbf_tfp_strict_cost, cbf_tfp_strict_cost_ratio, 
- cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_strict')
-(cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
- cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict_hs')
+# (mf_tfp_strict_results, mf_tfp_strict_repl, mf_tfp_strict_cost, mf_tfp_strict_cost_ratio, 
+#  mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_strict')
+# (mf_lrb_strict_results, mf_lrb_strict_repl, mf_lrb_strict_cost, mf_lrb_strict_cost_ratio, 
+#  mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_strict_hs')
+# (cbf_tfp_strict_results, cbf_tfp_strict_repl, cbf_tfp_strict_cost, cbf_tfp_strict_cost_ratio, 
+#  cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_strict')
+# (cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
+#  cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict_hs')
 
-(mf_lrb_off_results, mf_lrb_off_repl, mf_lrb_off_cost, mf_lrb_off_cost_ratio, 
- mf_lrb_off_downtime, mf_lrb_off_downtime_ratio) = process_results('mf_lrb_strict_redux')
+(mf_tfp_strict_results, mf_tfp_strict_repl, mf_tfp_strict_cost, mf_tfp_strict_cost_ratio, 
+ mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_enhanced')
+(mf_lrb_strict_results, mf_lrb_strict_repl, mf_lrb_strict_cost, mf_lrb_strict_cost_ratio, 
+ mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_enhanced')
+(cbf_tfp_strict_results, cbf_tfp_strict_repl, cbf_tfp_strict_cost, cbf_tfp_strict_cost_ratio, 
+ cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_enhanced')
+(cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
+ cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_enhanced')
+
+# (mf_lrb_off_results, mf_lrb_off_repl, mf_lrb_off_cost, mf_lrb_off_cost_ratio, 
+#  mf_lrb_off_downtime, mf_lrb_off_downtime_ratio) = process_results('mf_lrb_strict_redux')
 #%% latex printing
 
 def print_latex_inverse_table(sys_name, design_dict, performance_dict):
@@ -4212,7 +4230,7 @@ title_font=24
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 from matplotlib.lines import Line2D
-# plt.close('all')
+plt.close('all')
 
 fig = plt.figure(figsize=(16, 13))
 
@@ -4462,7 +4480,7 @@ ax1.legend(custom_lines, ['IDA replacement probability', 'Moderate performance',
                           'Predicted replacement probability', r'Predicted $\mu+\sigma$'], 
            fontsize=subt_font-2, loc='center right')
 
-# plt.savefig('./eng_struc_figures/inverse_repl_frag.pdf')
+plt.savefig('./eng_struc_figures/inverse_repl_frag.pdf')
 
 #%% cost validation frag
 
@@ -5003,7 +5021,7 @@ def plot_predictions(mean, var, y_middle, y_bar, color):
     ax.axvline(lower, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     ax.axvline(upper, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     
-# plt.close('all')
+plt.close('all')
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -5014,10 +5032,10 @@ mpl.rcParams['xtick.labelsize'] = label_size
 mpl.rcParams['ytick.labelsize'] = label_size 
 
 PROPS = {
-    'boxprops':{'facecolor':'none', 'edgecolor':'white'},
-    'medianprops':{'color':'white'},
-    'whiskerprops':{'color':'white'},
-    'capprops':{'color':'white'}
+    'boxprops':{'facecolor':'none', 'edgecolor':'None'},
+    'medianprops':{'color':'None'},
+    'whiskerprops':{'color':'None'},
+    'capprops':{'color':'None'}
 }
 
 # fig, axes = plt.subplots(1, 1, 
@@ -6445,7 +6463,7 @@ mpl.rcParams['ytick.labelsize'] = label_size
 fig = plt.figure(figsize=(16, 7))
 ax = fig.add_subplot(1, 2, 1)
 systems = ['MF-TFP', 'MF-LRB', 'CBF-TFP', 'CBF-LRB']
-category_name = ['Structure \& fa\c{c}ade',
+category_name = ['Structure \& cladding',
                  'Fitouts',
                  'MEP',
                  'Storage']

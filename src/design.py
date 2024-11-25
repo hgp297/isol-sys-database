@@ -996,6 +996,7 @@ def design_TFP_legacy(param_df):
             mu_2 = mu_2.real
             u_a = u_a.real
             zeta_loop = zeta_loop.real
+            breakpoint()
         
     else:
         rho_k = param_df['k_ratio']
@@ -1054,7 +1055,7 @@ def design_TFP_legacy(param_df):
         zeta_loop   = W_e/(2*pi*k_e*D_m**2)
         T_e = 2*pi*(1/(g*k_e))**0.5
     
-    return(mu_1, mu_2, R_1, R_2, T_e, k_e, zeta_loop, D_m)
+    return(mu_1, mu_2, R_1, R_2, T_e, k_e, Q, zeta_loop, D_m)
 
 
 def get_properties(shape):
