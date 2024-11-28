@@ -996,7 +996,6 @@ def design_TFP_legacy(param_df):
             mu_2 = mu_2.real
             u_a = u_a.real
             zeta_loop = zeta_loop.real
-            breakpoint()
         
     else:
         rho_k = param_df['k_ratio']

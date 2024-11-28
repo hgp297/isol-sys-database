@@ -3386,7 +3386,7 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     # select best viable design
     structural_system = system_name.split('_')[0]
     
-    if structural_system == 'MF':
+    if structural_system.upper() == 'MF':
         upfront_costs = calc_upfront_cost(
             X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
     else:
@@ -3396,6 +3396,11 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
         
     # upfront_costs = calc_upfront_cost(
     #     X_design, config_dict=config_dict, steel_cost_dict=reg_dict)
+    
+    # compare = X_design.copy()
+    # compare['cost'] = upfront_costs['total_'+structural_system]
+    # compare['repair'] = space_repair_cost[space_repair_cost.index.isin(X_design.index)]
+    
     cheapest_idx = upfront_costs['total_'+structural_system].idxmin()
     inv_upfront_cost = upfront_costs['total_'+structural_system].min()
 
@@ -3443,22 +3448,218 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
 
 #%% dummy design space
 
-# my_targets = {
-#     cost_var: 0.2,
-#     time_var: 0.2,
-#     'replacement_freq': 0.1,
-#     'constructability': -6.0}
+### regular
+ns = 4
+hs = 13.
+nb = 6
+Lb = 30.
 
-# config_dict = {
-#     'num_stories': 4,
-#     'h_story': 13.0,
-#     'num_bays': 4,
-#     'num_frames': 2,
-#     'S_s': 2.2815,
-#     'L_bay': 30.0,
-#     'S_1': 1.017
-#     }
+config_dict_moderate = {
+    'num_stories': ns,
+    'h_story': hs,
+    'num_bays': nb,
+    'num_frames': 2,
+    'S_s': 2.2815,
+    'L_bay': Lb,
+    'S_1': 1.017,
+    'h_bldg': hs*ns,
+    'L_bldg': Lb*nb
+    }
 
+my_targets = {
+    cost_var: 0.2,
+    time_var: 0.2,
+    'replacement_freq': 0.1,
+    'constructability': -6.0}
+
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 13))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+# lvls = np.array([0.2])
+lvls = np.arange(0.00, .25, 0.05)
+
+
+####### MFs
+res = 100
+X_plot = make_2D_plotting_space(df_mf[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 2.87, fourth_var_set = 0.23)
+
+X_sc = make_2D_plotting_space(df_mf[covariate_list], 20, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 2.87, fourth_var_set = 0.23)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+## mf-TFP: cost
+ax = fig.add_subplot(2, 2, 1)
+# plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_cost_mf_lrb_i.gpr,
+                       mdl_cost_mf_lrb_o.gpr,
+                       outcome=cost_var)
+
+qual_cost = predict_DV(X_sc,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_cost_mf_lrb_i.gpr,
+                       mdl_cost_mf_lrb_o.gpr,
+                       outcome=cost_var)
+X_sc_qual_cost = X_sc[qual_cost[cost_var+'_pred'] < 0.2]
+sc = ax.scatter(X_sc_qual_cost[xvar], X_sc_qual_cost[yvar], c='white', edgecolors='black', s=10)
+
+Z = np.array(grid_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5, levels=lvls)
+
+clabels = ax.clabel(cs, fontsize=clabel_size)
+ax.set_xlim([0.5, 2.0])
+ax.set_ylim([0.5, 2.3])
+
+
+ax.grid(visible=True)
+ax.set_title(r'MF-LRB: repair cost', fontsize=title_font)
+# ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+## mf-TFP: replacement
+ax = fig.add_subplot(2, 2, 2)
+# plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_repl_mf_lrb_i.gpr,
+                       mdl_repl_mf_lrb_o.gpr,
+                       outcome=repl_var)
+
+
+qual_cost = predict_DV(X_sc,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_repl_mf_lrb_i.gpr,
+                       mdl_repl_mf_lrb_o.gpr,
+                       outcome=repl_var)
+X_sc_qual_repl = X_sc[qual_cost[repl_var+'_pred'] < 0.1]
+sc = ax.scatter(X_sc_qual_repl[xvar], X_sc_qual_repl[yvar], c='white', edgecolors='black', s=10)
+
+
+Z = np.array(grid_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5, levels=lvls)
+
+clabels = ax.clabel(cs, fontsize=clabel_size)
+ax.set_xlim([0.5, 2.0])
+ax.set_ylim([0.5, 2.3])
+
+
+ax.grid(visible=True)
+ax.set_title(r'MF-LRB: Replacement', fontsize=title_font)
+# ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+
+## mf-TFP: constructability
+ax = fig.add_subplot(2, 2, 3)
+# plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
+lvl_kde = np.arange(-9, -2, 1)
+kde_scr = mdl_impact_mf_lrb.kde.score_samples(X_plot)
+
+qual_cost = mdl_impact_mf_lrb.kde.score_samples(X_sc)
+X_sc_qual_kde = X_sc[qual_cost > -6.1]
+sc = ax.scatter(X_sc_qual_kde[xvar], X_sc_qual_kde[yvar], c='white', edgecolors='black', s=10)
+
+Z = np.array(kde_scr)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', levels=lvl_kde)
+
+clabels = ax.clabel(cs, fontsize=clabel_size)
+ax.set_xlim([0.5, 2.0])
+ax.set_ylim([0.5, 2.3])
+
+
+ax.grid(visible=True)
+ax.set_title(r'MF-LRB: Constructability', fontsize=title_font)
+# ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+
+## mf-TFP: cost
+ax = fig.add_subplot(2, 2, 4)
+# plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
+
+
+all_upfront_costs  = calc_upfront_cost(
+    X_plot, config_dict=config_dict_moderate, steel_cost_dict=reg_dict)
+
+mf_upfront_cost = all_upfront_costs['total_mf']
+
+
+X_sc_qual = X_sc[np.logical_and.reduce((
+        X_sc.index.isin(X_sc_qual_cost.index), 
+        X_sc.index.isin(X_sc_qual_repl.index),
+        X_sc.index.isin(X_sc_qual_kde.index)))]
+sc = ax.scatter(X_sc_qual[xvar], X_sc_qual[yvar], c='white', edgecolors='black', s=10)
+
+qual_upfront_cost  = calc_upfront_cost(
+    X_sc_qual, config_dict=config_dict_moderate, steel_cost_dict=reg_dict)
+
+cheapest_idx = qual_upfront_cost['total_mf'].idxmin()
+
+# least upfront cost of the viable designs
+the_design = X_sc_qual.loc[cheapest_idx]
+
+ax.scatter(the_design[xvar], the_design[yvar], marker='x', c='red', s=100)
+
+Z = np.array(mf_upfront_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5)
+
+clabels = ax.clabel(cs, fontsize=clabel_size)
+ax.set_xlim([0.5, 2.0])
+ax.set_ylim([0.5, 2.3])
+
+
+ax.grid(visible=True)
+ax.set_title(r'MF-LRB: upfront cost', fontsize=title_font)
+# ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+fig.tight_layout()
+
+#%%
+# mf_lrb_inv_design, mf_lrb_inv_performance, mf_lrb_space = grid_search_inverse_design(
+#     20, 'mf_lrb', my_targets, config_dict_moderate, 
+#     impact_classification_mdls, cost_regression_mdls, 
+#     time_regression_mdls, repl_regression_mdls,
+#     cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
 # og_space = make_design_space(10)
 # dummy_design, dummy_performance, dummy_space = grid_search_inverse_design(
 #     10, 'mf_lrb', my_targets, config_dict, 
@@ -4480,7 +4681,7 @@ ax1.legend(custom_lines, ['IDA replacement probability', 'Moderate performance',
                           'Predicted replacement probability', r'Predicted $\mu+\sigma$'], 
            fontsize=subt_font-2, loc='center right')
 
-plt.savefig('./eng_struc_figures/inverse_repl_frag.pdf')
+# plt.savefig('./eng_struc_figures/inverse_repl_frag.pdf')
 
 #%% cost validation frag
 
