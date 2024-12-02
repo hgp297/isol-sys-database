@@ -853,6 +853,13 @@ class Database:
         # and import pelicun classes and methods
         from pelicun.assessment import Assessment
         from loss import Loss_Analysis
+        
+        from scipy.stats import ecdf, norm
+        
+        # make lambda function for generic lognormal distribution
+        import numpy as np
+        
+        lognorm_f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
 
         # get database
         # initialize, no printing outputs, offset fixed with current components
@@ -879,6 +886,11 @@ class Database:
         loss_cmp_group = []
         col_list = []
         irr_list = []
+        theta_cost_list = []
+        beta_cost_list = []
+        theta_time_list = []
+        beta_time_list = []
+        
         if collect_IDA:
             IDA_list = []
             
@@ -914,6 +926,17 @@ class Database:
              collapse_rate, irr_rate] = loss.estimate_damage(
                  custom_fragility_db=additional_frag_db, mode='generate',
                  cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
+                 
+            # import matplotlib.pyplot as plt
+            # fig = plt.figure(figsize=(7, 6))
+            # ax1=fig.add_subplot(1, 1, 1)
+            # ax1.plot([ecdf_values], [ecdf_prob], 
+            #           marker='x', markersize=5, color="red")
+            
+            # xx_pr = np.linspace(1e-4, 10*theta_init, 400)
+            # p = lognorm_f(xx_pr, theta_time, beta_time)
+
+            # ax1.plot(xx_pr, p)
             
             loss_summary = agg.describe([0.1, 0.5, 0.9])
             cost = loss_summary['repair_cost']['50%']
@@ -937,6 +960,36 @@ class Database:
             loss_cmp_group.append(loss_cmp)
             col_list.append(collapse_rate)
             irr_list.append(irr_rate)
+            
+            # collect distribution stats for time analysis
+            my_y_var = agg['repair_cost']
+            res = ecdf(my_y_var)
+            ecdf_prob = res.cdf.probabilities
+            ecdf_values = res.cdf.quantiles
+            theta_init = ecdf_values.mean()
+            try:
+                theta_cost, beta_cost = mle_fit_general(ecdf_values,ecdf_prob, 
+                                                        x_init=(theta_init, 1.0))
+            except:
+                 theta_cost = theta_init
+                 beta_cost = 0.1
+            
+            my_y_var = agg[('repair_time', 'parallel')]
+            res = ecdf(my_y_var)
+            ecdf_prob = res.cdf.probabilities
+            ecdf_values = res.cdf.quantiles
+            theta_init = ecdf_values.mean()
+            try:
+                theta_time, beta_time = mle_fit_general(ecdf_values,ecdf_prob, 
+                                                        x_init=(theta_init, 1.0))
+            except:
+                 theta_time = theta_init
+                 beta_time = 0.1
+            
+            theta_cost_list.append(theta_cost)
+            beta_cost_list.append(beta_cost)
+            theta_time_list.append(theta_time)
+            beta_time_list.append(beta_time)
             
             if collect_IDA:
                 IDA_list.append(run_data['ida_level'])
@@ -1693,3 +1746,45 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     
     ida_df = pd.concat([ida_df, ida_gms], axis=1)
     return(ida_df)
+
+#%% PBE lognormal fitting tools
+
+def nlls(params, log_x, no_a, no_c):
+    from scipy import stats
+    import numpy as np
+    sigma, beta = params
+    theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(log_x)
+    likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
+    log_likelihood = np.log(likelihood)
+    log_likelihood_sum = np.sum(log_likelihood)
+
+    return -log_likelihood_sum
+
+def mle_fit_general(x_values, probs, x_init=None):
+    from functools import partial
+    import numpy as np
+    from scipy.optimize import basinhopping
+    
+    # to use binomial function, turn the probability into samples of discrete binary cases
+    log_x = np.log(x_values)
+    number_of_analyses = 1000*np.ones(len(x_values))
+    number_of_occurrences = np.round(1000*probs)
+    
+    neg_log_likelihood_sum_partial = partial(
+        nlls, log_x=log_x, no_a=number_of_analyses, no_c=number_of_occurrences)
+    
+    if x_init is None:
+        x0 = (1, 1)
+    else:
+        x0 = x_init
+    
+    mean_estimate = x0[0]
+    bnds = ((0.2*mean_estimate, 10.0*mean_estimate), (0.2, 1.5))
+    # bnds = None
+    
+    # use basin hopping to avoid local minima
+    minimizer_kwargs={'bounds':bnds}
+    res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
+                       niter=100, seed=985)
+    
+    return res.x[0], res.x[1]
