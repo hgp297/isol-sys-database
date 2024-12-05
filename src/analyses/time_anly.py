@@ -732,3 +732,224 @@ repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
                         'mdl_repl_mf_lrb_o': mdl_repl_mf_lrb_o,
                         'mdl_repl_mf_tfp_i': mdl_repl_mf_tfp_i,
                         'mdl_repl_mf_tfp_o': mdl_repl_mf_tfp_o}
+
+
+#%% load scenario
+
+scn_meta = pd.read_csv('../../resource/hazard_curves/sa_1.csv', index_col=None, header=0)  
+
+#%% define earthquake hazard
+# reference: P-58 Implementation, Ch. 3.5
+
+import json
+import bisect
+from scipy.interpolate import interp2d
+with open('../../resource/hazard_curves/dwight_7th.json') as f:
+    site_hazard_curves = json.load(f)['response']
+
+np.seterr(divide='ignore')
+
+
+def get_hazard_bins(T, hazard_curves, sa_max=1.016):
+    T_list = [0.0, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0]
+    idx_between = bisect.bisect(T_list, T)
+    
+    # 0 is total
+    below_lambda = hazard_curves[idx_between-1]['data'][0]['yvalues']
+    below_sa = hazard_curves[idx_between-1]['metadata']['xvalues']
+    
+    above_lambda = hazard_curves[idx_between]['data'][0]['yvalues']
+    above_sa = hazard_curves[idx_between]['metadata']['xvalues']
+    
+    x2 = T_list[idx_between]
+    x1 = T_list[idx_between-1]
+    
+    # assume that both series have the same length
+    sa_T = [(g + h) / 2 for g, h in zip(below_sa, above_sa)]
+    lambda_T = [y1+(T-x1)*(y2-y1)/(x2-x1) for y1, y2 in zip(below_lambda, above_lambda)]
+    
+    # sa max is max sa_avg from the dataset
+    if T > 1.0:
+        sa_min = 0.05/T
+    else:
+        sa_min = 0.05
+        
+    # use 8 bins
+    sa_ends = np.linspace(sa_min, sa_max, 9)
+    sa_bins = (sa_ends[1:] + sa_ends[:-1]) / 2
+    
+    # interpolate in logspace
+    log_lambda = np.log(lambda_T)
+    log_lambda[log_lambda == -np.inf] = -100
+    lambda_bins = np.exp(np.interp(np.log(sa_bins), np.log(sa_T), log_lambda))
+    
+    # from here, methodology is to use sa_bins to scale ground motions and analyze
+    return(sa_bins, lambda_bins, sa_T, lambda_T)
+
+sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(4.9, site_hazard_curves)
+
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 22
+label_size = 20
+clabel_size = 20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(7,6))
+ax=fig.add_subplot(1, 1, 1)
+
+ax.loglog(sa_bins,lambda_bins, '-o')
+ax.loglog(sa_T,lambda_T, '-o')
+ax.grid()
+
+#%%
+def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
+    # no labels
+    ax_histx.tick_params(axis="x", labelbottom=False)
+    ax_histy.tick_params(axis="y", labelleft=False)
+
+    # the scatter plot:
+    cmap = plt.cm.Blues
+    ax.scatter(x, y, alpha=alpha, edgecolors='black', s=25, facecolors=c,
+               label=label)
+
+    # now determine nice limits by hand:
+    binwidth = 0.05
+    xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+    lim = (int(xymax/binwidth) + 1) * binwidth
+
+    bins = np.arange(-lim, lim + binwidth, binwidth)
+    
+    if y.name == 'zeta_e':
+        binwidth = 0.02
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_y = np.arange(-lim, lim + binwidth, binwidth)
+    elif y.name == 'RI':
+        binwidth = 0.15
+        xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+        lim = (int(xymax/binwidth) + 1) * binwidth
+        
+        bin_y = np.arange(-lim, lim + binwidth, binwidth)
+    else:
+        bin_y = bins
+    ax_histx.hist(x, bins=bins, alpha = 0.5, weights=np.ones(len(x)) / len(x),
+                  facecolor = c, edgecolor='navy', linewidth=0.5)
+    ax_histy.hist(y, bins=bin_y, orientation='horizontal', alpha = 0.5, weights=np.ones(len(x)) / len(x),
+                  facecolor = c, edgecolor='navy', linewidth=0.5)
+
+
+plt.close('all')
+fig = plt.figure(figsize=(13, 6), layout='constrained')
+
+# Add a gridspec with two rows and two columns and a ratio of 1 to 4 between
+# the size of the marginal axes and the main axes in both directions.
+# Also adjust the subplot parameters for a square plot.
+gs = fig.add_gridspec(2, 4,  width_ratios=(5, 1, 5, 1), height_ratios=(1, 5),
+                      left=0.1, right=0.9, bottom=0.1, top=0.9,
+                      wspace=0., hspace=0.)
+# # Create the Axes.
+# fig = plt.figure(figsize=(13, 10))
+# ax1=fig.add_subplot(2, 2, 1)
+ax = fig.add_subplot(gs[1, 0])
+ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df[cost_var], df_loss['cost_beta'], 'orange', 0.3, ax, ax_histx, ax_histy)
+ax.set_xlabel(r'Cost ratio', fontsize=axis_font)
+ax.set_ylabel(r'$\beta$', fontsize=axis_font)
+ax.set_xlim([0.0, 1.0])
+ax.set_ylim([0.1, 1.6])
+ax.grid()
+
+ax = fig.add_subplot(gs[1, 2])
+ax_histx = fig.add_subplot(gs[0, 2], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 3], sharey=ax)
+# Draw the scatter plot and marginals.
+scatter_hist(df[time_var], df_loss['time_l_beta'], 'orange', 0.3, ax, ax_histx, ax_histy)
+
+ax.set_xlabel(r'Time ratio', fontsize=axis_font)
+ax.set_ylabel(r'$\beta$', fontsize=axis_font)
+ax.set_xlim([0.0, 1.0])
+ax.set_ylim([0.1, 1.6])
+ax.grid()
+
+#%% analyze building response
+
+# here, we have to hack together a representation of the expected loss at different sa
+    
+def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs,
+                            cost_var='cmp_cost_ratio', time_var='cmp_time_ratio'):
+    T = row['T_m']
+    sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(T, site_hazard_curves)
+    
+    # how are each design variables affected by changing Sa
+    # only GR changes
+    GR_bins = row['gap_ratio']*row['sa_tm']/sa_bins
+    
+    # set of new design variables corresponding to the bins' hazards
+    X_bins = pd.DataFrame({'gap_ratio':GR_bins,
+                         'RI':np.repeat(row['RI'], len(GR_bins)),
+                         'T_ratio':np.repeat(row['T_ratio'], len(GR_bins)),
+                         'zeta_e':np.repeat(row['zeta_e'], len(GR_bins))
+                         })
+    
+    
+    ############################################################################
+    # approach 1
+    # use GP to find the 
+    ############################################################################
+    # pick the correct GP models
+    # get system name
+    system_name = row.system.lower().replace('-','_')
+    
+    # identify cost models
+    mdl_impact_name = 'mdl_impact_' + system_name
+    mdl_cost_hit_name = 'mdl_cost_' + system_name + '_i'
+    mdl_cost_miss_name = 'mdl_cost_' + system_name + '_o'
+    
+    mdl_impact = impact_clfs[mdl_impact_name]
+    mdl_cost_hit = cost_regs[mdl_cost_hit_name]
+    mdl_cost_miss = cost_regs[mdl_cost_miss_name]
+    
+    # identify time models
+    mdl_time_hit_name = 'mdl_time_' + system_name + '_i'
+    mdl_time_miss_name = 'mdl_time_' + system_name + '_o'
+    
+    mdl_time_hit = time_regs[mdl_time_hit_name]
+    mdl_time_miss = time_regs[mdl_time_miss_name]
+    
+    # for the set of "new" design variables, use GP to calculate loss ratio
+    # assumes GPC/GPR, predict the outcome for the design space
+    cost_ratio_bins = predict_DV(X_bins, 
+                                   mdl_impact.gpc, 
+                                   mdl_cost_hit.gpr, 
+                                   mdl_cost_miss.gpr, 
+                                   outcome=cost_var)
+    
+    time_ratio_bins = predict_DV(X_bins,
+                                mdl_impact.gpc,
+                                mdl_time_hit.gpr,
+                                mdl_time_miss.gpr,
+                                outcome=time_var)
+    
+    
+    # unnormalize loss ratio back to loss
+    cost_bins = cost_ratio_bins*row.total_cmp_cost
+    time_bins = time_ratio_bins*row.total_cmp_time
+    
+    # integrate to attain lifetime dollar, time
+    
+    
+    # renormalize
+    
+df.apply(lambda row: calculate_lifetime_loss(row, impact_clfs=impact_classification_mdls, 
+                                             cost_regs=cost_regression_mdls, 
+                                             time_regs=time_regression_mdls),
+                                 axis='columns', result_type='expand')
