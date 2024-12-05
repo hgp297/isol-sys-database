@@ -858,8 +858,9 @@ class Database:
         
         # make lambda function for generic lognormal distribution
         import numpy as np
-        
         lognorm_f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+        
+        # make lambda function for generic weibull distribution
 
         # get database
         # initialize, no printing outputs, offset fixed with current components
@@ -890,6 +891,9 @@ class Database:
         beta_cost_list = []
         theta_time_list = []
         beta_time_list = []
+        
+        cost_quantile_list = []
+        time_quantile_list = []    
         
         if collect_IDA:
             IDA_list = []
@@ -927,21 +931,18 @@ class Database:
                  custom_fragility_db=additional_frag_db, mode='generate',
                  cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
                  
-            # import matplotlib.pyplot as plt
-            # fig = plt.figure(figsize=(7, 6))
-            # ax1=fig.add_subplot(1, 1, 1)
-            # ax1.plot([ecdf_values], [ecdf_prob], 
-            #           marker='x', markersize=5, color="red")
             
-            # xx_pr = np.linspace(1e-4, 10*theta_init, 400)
-            # p = lognorm_f(xx_pr, theta_time, beta_time)
-
-            # ax1.plot(xx_pr, p)
             
             loss_summary = agg.describe([0.1, 0.5, 0.9])
             cost = loss_summary['repair_cost']['50%']
             time_l = loss_summary[('repair_time', 'parallel')]['50%']
             time_u = loss_summary[('repair_time', 'sequential')]['50%']
+            
+            q_array = np.arange(0.05, 1.0, 0.05)
+            loss_quantiles  = agg.quantile(q_array)
+            
+            cost_quantile_list.append(loss_quantiles['repair_cost'])
+            time_quantile_list.append(loss_quantiles['repair_time']['parallel'])
             
             print('Median repair cost: ', 
                   f'${cost:,.2f}')
@@ -991,6 +992,20 @@ class Database:
             theta_time_list.append(theta_time)
             beta_time_list.append(beta_time)
             
+            # import matplotlib.pyplot as plt
+            # plt.close('all')
+            # fig = plt.figure(figsize=(7, 6))
+            # ax1=fig.add_subplot(1, 1, 1)
+            # ax1.plot([ecdf_values], [ecdf_prob], 
+            #           marker='x', markersize=5, color="red")
+            
+            # xx_pr = np.linspace(1e-4, 10*theta_init, 400)
+            # p = lognorm_f(xx_pr, theta_time, beta_time)
+
+            # ax1.plot(xx_pr, p)
+            
+            breakpoint()
+            
             if collect_IDA:
                 IDA_list.append(run_data['ida_level'])
                  
@@ -1029,6 +1044,13 @@ class Database:
         loss_df_data['irreparable_freq'] = irr_list
         loss_df_data['replacement_freq'] = [x + y for x, y
                                             in zip(col_list, irr_list)]
+        
+        loss_df_data['cost_theta'] = theta_cost_list
+        loss_df_data['cost_beta'] = beta_cost_list
+        loss_df_data['time_l_theta'] = theta_time_list
+        loss_df_data['time_l_beta'] = beta_time_list
+        loss_df_data['cost_quantiles'] = cost_quantile_list
+        loss_df_data['time_l_quantiles'] = time_quantile_list
         
         if collect_IDA:
             loss_df_data['ida_level'] = IDA_list
@@ -1382,7 +1404,6 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
     
     
     # attempt to design all TFPs
-    # TODO: here
     if df_tfp.shape[0] > 0:
         t0 = time.time()
         all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP(row, mu_1=mu_1_force),
@@ -1448,7 +1469,6 @@ def design_bearing_util(raw_input, filter_designs=True, mu_1_force=None):
             lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
             
         # if failed (particularly for inverse design), reduce bearings
-        # TODO: implement or remove this
         if lrb_designs.shape[0] < 1:
             all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB(row, reduce_bearings=True),
                                             axis='columns', result_type='expand')
@@ -1759,6 +1779,9 @@ def nlls(params, log_x, no_a, no_c):
     log_likelihood_sum = np.sum(log_likelihood)
 
     return -log_likelihood_sum
+
+def nlls_weibull(params, x):
+    pass
 
 def mle_fit_general(x_values, probs, x_init=None):
     from functools import partial
