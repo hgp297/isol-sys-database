@@ -976,53 +976,15 @@ class Database:
             
             # collect distribution stats for time analysis (weibull)
             my_y_var = agg['repair_cost']
-            res = ecdf(my_y_var)
-            ecdf_prob = res.cdf.probabilities
-            ecdf_values = res.cdf.quantiles
-            
             try:
                 k_cost, lam_cost = mle_fit_weibull(my_y_var, 
                                                    x_init=(1.0, 1.0))
             except:
                 k_cost = 1.0
                 lam_cost = 1.0
-                
-            
-            # # plot quantiles only
-            
-            # import matplotlib.pyplot as plt
-            # plt.close('all')
-            # fig = plt.figure(figsize=(7, 6))
-            # ax1=fig.add_subplot(1, 1, 1)
-            # x = loss_quantiles['repair_cost']
-            # y = loss_quantiles.index
-            # ax1.plot([x], [y], 
-            #           marker='x', markersize=5, color="red")
-            
-            # xx_pr = np.linspace(1e-4, 10*theta_init, 400)
-            # p = weibull_f(xx_pr, k_cost, lam_cost)
-            # ax1.plot(xx_pr, p)   
-            
-            # # plot weibull fit
-            
-            # import matplotlib.pyplot as plt
-            # plt.close('all')
-            # fig = plt.figure(figsize=(7, 6))
-            # ax1=fig.add_subplot(1, 1, 1)
-            # ax1.plot([ecdf_values], [ecdf_prob], 
-            #           marker='x', markersize=5, color="red")
-            
-            # xx_pr = np.linspace(1e-4, 10*theta_init, 400)
-            # p = weibull_f(xx_pr, k_cost, lam_cost)
-
-            # ax1.plot(xx_pr, p)
             
             # collect distribution stats for time analysis (weibull)
             my_y_var = agg[('repair_time', 'parallel')]
-            res = ecdf(my_y_var)
-            ecdf_prob = res.cdf.probabilities
-            ecdf_values = res.cdf.quantiles
-            
             try:
                 k_time, lam_time = mle_fit_weibull(my_y_var, 
                                                    x_init=(1.0, 1.0))
@@ -1033,42 +995,26 @@ class Database:
             
             # collect distribution stats for time analysis (lognormal)
             my_y_var = agg['repair_cost']
-            res = ecdf(my_y_var)
-            ecdf_prob = res.cdf.probabilities
-            ecdf_values = res.cdf.quantiles
-            theta_init = ecdf_values.mean()
-            try:
-                theta_cost, beta_cost = mle_fit_general(ecdf_values,ecdf_prob, 
-                                                        x_init=(theta_init, 1.0))
-            except:
-                 theta_cost = theta_init
-                 beta_cost = 0.1
+            theta_cost = np.exp(np.log(my_y_var).mean())
+            beta_cost = np.log(my_y_var).var()
             
-            # # plot lognormal fit
+            # # old: relied on cdf fitting rather than true MLE
+            # res = ecdf(my_y_var)
+            # ecdf_prob = res.cdf.probabilities
+            # ecdf_values = res.cdf.quantiles
+            # theta_init = ecdf_values.mean()
             
-            # import matplotlib.pyplot as plt
-            # plt.close('all')
-            # fig = plt.figure(figsize=(7, 6))
-            # ax1=fig.add_subplot(1, 1, 1)
-            # ax1.plot([ecdf_values], [ecdf_prob], 
-            #           marker='x', markersize=5, color="red")
+            # try:
+            #     theta_cost, beta_cost = mle_fit_general(ecdf_values,ecdf_prob, 
+            #                                             x_init=(theta_init, 1.0))
+            # except:
+            #      theta_cost = theta_init
+            #      beta_cost = 0.1
             
-            # xx_pr = np.linspace(1e-4, 10*theta_init, 400)
-            # p = lognorm_f(xx_pr, theta_cost, beta_cost)
-
-            # ax1.plot(xx_pr, p)
             
             my_y_var = agg[('repair_time', 'parallel')]
-            res = ecdf(my_y_var)
-            ecdf_prob = res.cdf.probabilities
-            ecdf_values = res.cdf.quantiles
-            theta_init = ecdf_values.mean()
-            try:
-                theta_time, beta_time = mle_fit_general(ecdf_values,ecdf_prob, 
-                                                        x_init=(theta_init, 1.0))
-            except:
-                 theta_time = theta_init
-                 beta_time = 0.1
+            theta_time = np.exp(np.log(my_y_var).mean())
+            beta_time = np.log(my_y_var).var()
             
             theta_cost_list.append(theta_cost)
             beta_cost_list.append(beta_cost)
@@ -1079,6 +1025,27 @@ class Database:
             lam_cost_list.append(lam_cost)
             k_time_list.append(k_time)
             lam_time_list.append(lam_time)
+            
+            # # plot lognormal fits
+            
+            # import matplotlib.pyplot as plt
+            # plt.close('all')
+            # fig = plt.figure(figsize=(7, 6))
+            # ax1=fig.add_subplot(1, 1, 1)
+            # # ax1.plot([ecdf_values], [ecdf_prob], 
+            # #           marker='x', markersize=5, color="red")
+            # x = loss_quantiles['repair_cost']
+            # y = loss_quantiles.index
+            # ax1.plot([x], [y], 
+            #           marker='x', markersize=5, color="red")
+            # xx_pr = np.linspace(1e-4, 10*theta_init, 400)
+            # p = lognorm_f(xx_pr, theta_cost, beta_cost)
+            # ax1.plot(xx_pr, p, label='lognormal fit')
+            # p = lognorm_f(xx_pr, mle_theta, mle_beta)
+            # ax1.plot(xx_pr, p, label='lognormal mle')
+            # p = weibull_f(xx_pr, k_cost, lam_cost)
+            # ax1.plot(xx_pr, p, label='weibull fit')  
+            # ax1.legend()
             
             if collect_IDA:
                 IDA_list.append(run_data['ida_level'])
@@ -1852,35 +1819,13 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
 
 #%% PBE lognormal fitting tools
 
-# TODO: better lognormal fit
 # TODO: return goodness-of-fit score
 
-def nlls(params, log_x, no_a, no_c):
-    from scipy import stats
-    import numpy as np
-    sigma, beta = params
-    theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(log_x)
-    likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
-    log_likelihood = np.log(likelihood)
-    log_likelihood_sum = np.sum(log_likelihood)
-
-    return -log_likelihood_sum
-
+# we choose not to shift the distribution 
+# (which would imply that P(X < x) = 0 if x is less than loc)
+# if shifting, change x to x-loc and parameterize loc
 def nlls_weibull(params, x):
     import numpy as np
-    
-    # # k is shape (c = k/lam)
-    # # lam is scale
-    # # loc is shift X = x-loc
-    # k, lam, loc = params
-    # n = len(x)
-    # log_likelihood_sum = (
-    #     n*(np.log(k) - k*np.log(lam)) + (k - 1)*np.sum(np.log(x-loc)) 
-    #     -np.sum(((x-loc) / lam)**k ) 
-    #     )
-    
-    # k is shape (c = k/lam)
-    # lam is scale
     
     k, lam = params
     n = len(x)
@@ -1891,10 +1836,8 @@ def nlls_weibull(params, x):
     
     return -log_likelihood_sum
 
-# we choose not to shift the distribution (which would imply that P(X < x) = 0 if x is less than loc)
 def mle_fit_weibull(x_values, x_init=None):
     from functools import partial
-    import numpy as np
     from scipy.optimize import basinhopping
     
     neg_log_likelihood_sum_partial = partial(
@@ -1906,48 +1849,7 @@ def mle_fit_weibull(x_values, x_init=None):
     else:
         x0 = x_init
         
-    mean_estimate = x0[-1]
     bnds = ((0.01, 10.0), (1.0, 1e8))
-    # bnds = None
-    
-    # use basin hopping to avoid local minima
-    minimizer_kwargs={'bounds':bnds}
-    res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
-                       niter=100, seed=985)
-    
-    return res.x[0], res.x[1]
-        
-    # mean_estimate = x0[2]
-    # bnds = ((0.01, 10.0), (0.1, 1e4), (0.2*mean_estimate, 10.0*mean_estimate))
-    # # bnds = None
-    
-    # # use basin hopping to avoid local minima
-    # minimizer_kwargs={'bounds':bnds}
-    # res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
-    #                    niter=100, seed=985)
-    
-    # return res.x[0], res.x[1], res.x[2]
-
-def mle_fit_general(x_values, probs, x_init=None):
-    from functools import partial
-    import numpy as np
-    from scipy.optimize import basinhopping
-    
-    # to use binomial function, turn the probability into samples of discrete binary cases
-    log_x = np.log(x_values)
-    number_of_analyses = 1000*np.ones(len(x_values))
-    number_of_occurrences = np.round(1000*probs)
-    
-    neg_log_likelihood_sum_partial = partial(
-        nlls, log_x=log_x, no_a=number_of_analyses, no_c=number_of_occurrences)
-    
-    if x_init is None:
-        x0 = (1, 1)
-    else:
-        x0 = x_init
-    
-    mean_estimate = x0[0]
-    bnds = ((0.2*mean_estimate, 10.0*mean_estimate), (0.2, 1.5))
     # bnds = None
     
     # use basin hopping to avoid local minima

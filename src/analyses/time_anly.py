@@ -953,3 +953,15 @@ df.apply(lambda row: calculate_lifetime_loss(row, impact_clfs=impact_classificat
                                              cost_regs=cost_regression_mdls, 
                                              time_regs=time_regression_mdls),
                                  axis='columns', result_type='expand')
+
+#%% rebuild loss curves from distros
+
+from scipy.stats import ecdf, norm
+
+# make lambda function for generic lognormal distribution
+import numpy as np
+lognorm_f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+
+# make lambda function for generic weibull distribution
+from scipy.stats import weibull_min
+weibull_f = lambda x,k,lam: weibull_min(k, loc=0, scale=lam).cdf(x)
