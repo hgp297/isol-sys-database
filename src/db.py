@@ -1853,7 +1853,7 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     return(ida_df)
 
 #%% PBE fitting tools
-
+# TODO: solve directly for the MLE
 
 # weibull without shifting
 def nlls_weibull(params, x):
