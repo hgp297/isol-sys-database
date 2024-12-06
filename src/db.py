@@ -864,6 +864,9 @@ class Database:
         from scipy.stats import weibull_min
         weibull_f = lambda x,k,lam: weibull_min(k, loc=0, scale=lam).cdf(x)
         
+        weibull_trunc_f = lambda x,k,lam,loc: weibull_min(k, loc=loc, scale=lam).cdf(x)
+        
+        from scipy.stats import kstest
 
         # get database
         # initialize, no printing outputs, offset fixed with current components
@@ -974,29 +977,20 @@ class Database:
             col_list.append(collapse_rate)
             irr_list.append(irr_rate)
             
-            # collect distribution stats for time analysis (weibull)
+            # collect cost distribution stats for time analysis (weibull)
+            # TODO: decide or refine truncated weibull
             my_y_var = agg['repair_cost']
-            try:
-                k_cost, lam_cost = mle_fit_weibull(my_y_var, 
-                                                   x_init=(1.0, 1.0))
-            except:
-                k_cost = 1.0
-                lam_cost = 1.0
+            k_cost, lam_cost = mle_fit_weibull(my_y_var, 
+                                               x_init=(1.0, 1.0))
+            k_trunc_cost, lam_trunc_cost, loc_trunc_cost = mle_fit_weibull_trunc(my_y_var, 
+                                               x_init=(2.0, 2**0.5*my_y_var.std(), my_y_var.min()))
             
-            # collect distribution stats for time analysis (weibull)
+            # collect downtime distribution stats for time analysis (weibull)
             my_y_var = agg[('repair_time', 'parallel')]
-            try:
-                k_time, lam_time = mle_fit_weibull(my_y_var, 
-                                                   x_init=(1.0, 1.0))
-            except:
-                k_time = 1.0
-                lam_time = 1.0
-            
-            
-            # collect distribution stats for time analysis (lognormal)
-            my_y_var = agg['repair_cost']
-            theta_cost = np.exp(np.log(my_y_var).mean())
-            beta_cost = np.log(my_y_var).var()
+            k_time, lam_time = mle_fit_weibull(my_y_var, 
+                                               x_init=(1.0, 1.0))
+            k_trunc_time, lam_trunc_time, loc_trunc_time = mle_fit_weibull_trunc(my_y_var, 
+                                               x_init=(2.0, 2**0.5*my_y_var.std(), my_y_var.min()))
             
             # # old: relied on cdf fitting rather than true MLE
             # res = ecdf(my_y_var)
@@ -1011,11 +1005,47 @@ class Database:
             #      theta_cost = theta_init
             #      beta_cost = 0.1
             
+            # collect cost distribution stats for time analysis (lognormal)
+            my_y_var = agg['repair_cost']
+            theta_cost = np.exp(np.log(my_y_var).mean())
+            beta_cost = np.log(my_y_var).var()
             
+            # collect downtime distribution stats for time analysis (lognormal)
             my_y_var = agg[('repair_time', 'parallel')]
             theta_time = np.exp(np.log(my_y_var).mean())
             beta_time = np.log(my_y_var).var()
             
+            
+            # Set up Kolmogorov-Smirnov test
+            # TODO: improve fits, then collect ks test results
+            # null hypothesis: cost is distributed weibull
+            res = ecdf(agg['repair_cost'])
+            ecdf_values = res.cdf.quantiles
+            # if p < 0.05, the alternative is true (cost is not weibull)
+            ks_results_weibull_cost = kstest(
+                ecdf_values, 
+                weibull_min(k_cost, loc=0, scale=lam_cost).cdf)
+            
+            # null hypothesis: cost is distributed lognormal
+            ln_f = norm(np.log(theta_cost), beta_cost).cdf
+            # if p < 0.05, the alternative is true (cost is not lognormal)
+            ks_results_lognormal_cost = kstest(np.log(ecdf_values), ln_f)
+            
+            # null hypothesis: time is distributed weibull
+            res = ecdf(agg[('repair_time', 'parallel')])
+            ecdf_values = res.cdf.quantiles
+            # if p < 0.05, the alternative is true (time is not weibull)
+            ks_results_weibull_time = kstest(
+                ecdf_values, 
+                weibull_min(k_time, loc=0, scale=lam_time).cdf)
+            
+            # null hypothesis: time is distributed lognormal
+            ln_f = norm(np.log(theta_time), beta_time).cdf
+            # if p < 0.05, the alternative is true (time is not lognormal)
+            ks_results_lognormal_time = kstest(np.log(ecdf_values), ln_f)
+            
+            
+            # aggregate findings to list
             theta_cost_list.append(theta_cost)
             beta_cost_list.append(beta_cost)
             theta_time_list.append(theta_time)
@@ -1026,29 +1056,34 @@ class Database:
             k_time_list.append(k_time)
             lam_time_list.append(lam_time)
             
-            # # plot lognormal fits
+            # plot lognormal fits
             
-            # import matplotlib.pyplot as plt
-            # plt.close('all')
-            # fig = plt.figure(figsize=(7, 6))
-            # ax1=fig.add_subplot(1, 1, 1)
-            # # ax1.plot([ecdf_values], [ecdf_prob], 
-            # #           marker='x', markersize=5, color="red")
-            # x = loss_quantiles['repair_cost']
-            # y = loss_quantiles.index
+            import matplotlib.pyplot as plt
+            plt.close('all')
+            fig = plt.figure(figsize=(7, 6))
+            ax1=fig.add_subplot(1, 1, 1)
+            res = ecdf(agg['repair_cost'])
+            ecdf_prob = res.cdf.probabilities
+            ecdf_values = res.cdf.quantiles
+            ax1.plot([ecdf_values], [ecdf_prob], 
+                      marker='x', markersize=1, color="red")
+            x = loss_quantiles['repair_cost']
+            y = loss_quantiles.index
             # ax1.plot([x], [y], 
             #           marker='x', markersize=5, color="red")
-            # xx_pr = np.linspace(1e-4, 10*theta_init, 400)
-            # p = lognorm_f(xx_pr, theta_cost, beta_cost)
-            # ax1.plot(xx_pr, p, label='lognormal fit')
-            # p = lognorm_f(xx_pr, mle_theta, mle_beta)
-            # ax1.plot(xx_pr, p, label='lognormal mle')
-            # p = weibull_f(xx_pr, k_cost, lam_cost)
-            # ax1.plot(xx_pr, p, label='weibull fit')  
-            # ax1.legend()
+            xx_pr = np.linspace(1e-4, 10*x[0.50], 400)
+            p = lognorm_f(xx_pr, theta_cost, beta_cost)
+            ax1.plot(xx_pr, p, label='lognormal fit')
+            p = weibull_f(xx_pr, k_cost, lam_cost)
+            ax1.plot(xx_pr, p, label='weibull fit')  
+            p = weibull_trunc_f(xx_pr, k_trunc_cost, lam_trunc_cost, loc_trunc_cost)
+            ax1.plot(xx_pr, p, label='weibull truncated fit') 
+            ax1.legend()
             
             if collect_IDA:
                 IDA_list.append(run_data['ida_level'])
+                
+            breakpoint()
                  
         
         # concat list of df into one df
@@ -1817,13 +1852,10 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     ida_df = pd.concat([ida_df, ida_gms], axis=1)
     return(ida_df)
 
-#%% PBE lognormal fitting tools
+#%% PBE fitting tools
 
-# TODO: return goodness-of-fit score
 
-# we choose not to shift the distribution 
-# (which would imply that P(X < x) = 0 if x is less than loc)
-# if shifting, change x to x-loc and parameterize loc
+# weibull without shifting
 def nlls_weibull(params, x):
     import numpy as np
     
@@ -1849,12 +1881,49 @@ def mle_fit_weibull(x_values, x_init=None):
     else:
         x0 = x_init
         
-    bnds = ((0.01, 10.0), (1.0, 1e8))
+    bnds = ((0.01, 5.0), (1.0, 1e8))
     # bnds = None
     
     # use basin hopping to avoid local minima
     minimizer_kwargs={'bounds':bnds}
     res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
-                       niter=100, seed=985)
+                        niter=100, seed=985)
     
     return res.x[0], res.x[1]
+
+# weibull with shift
+# (which implies that P(X < x) = 0 if x is less than loc)
+def nlls_weibull_trunc(params, x):
+    import numpy as np
+    
+    k, lam, loc = params
+    n = len(x)
+    log_likelihood_sum = (
+        n*(np.log(k) - k*np.log(lam)) + (k - 1)*np.sum(np.log(x-loc)) 
+        -np.sum(((x-loc) / lam)**k ) 
+        )
+    
+    return -log_likelihood_sum
+
+def mle_fit_weibull_trunc(x_values, x_init=None):
+    from functools import partial
+    from scipy.optimize import basinhopping
+    
+    neg_log_likelihood_sum_partial = partial(
+        nlls_weibull_trunc, x=x_values)
+    
+    # k (shape), lam (scale), loc (shift)
+    if x_init is None:
+        x0 = (1., 1., 100000.)
+    else:
+        x0 = x_init
+        
+    bnds = ((0.01, 10.0), (1.0, 1e8), (0.2*x0[-1], 1.5*x0[-1]))
+    # bnds = None
+    
+    # use basin hopping to avoid local minima
+    minimizer_kwargs={'bounds':bnds}
+    res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
+                        niter=100, seed=985)
+    
+    return res.x[0], res.x[1], res.x[2]
