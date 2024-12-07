@@ -993,7 +993,8 @@ class Database:
             
             ######## cost distro stats ##################
             # collect cost distribution stats for time analysis (weibull)
-            my_y_var = agg['repair_cost']
+            # adding a dollar to make sure no divide by zero
+            my_y_var = agg['repair_cost']+1
             k_cost, lam_cost = mle_weibull(my_y_var)
             loc_trunc_cost = my_y_var.min()
             k_trunc_cost, lam_trunc_cost = mle_weibull(my_y_var - loc_trunc_cost)
@@ -1043,7 +1044,8 @@ class Database:
             
             ######## downtime distro stats ##################
             # collect downtime distribution stats for time analysis (weibull)
-            my_y_var = agg[('repair_time', 'parallel')]
+            # making sure one worker stays for 30 mins to ensure no divide by zero
+            my_y_var = agg[('repair_time', 'parallel')]+0.5
             k_time, lam_time = mle_weibull(my_y_var)
             loc_trunc_time = my_y_var.min()
             k_trunc_time, lam_trunc_time = mle_weibull(my_y_var - loc_trunc_time)
@@ -1134,7 +1136,6 @@ class Database:
             weibull_time_aic_list.append(AIC_weibull_time)
             weibull_trunc_time_aic_list.append(AIC_weibull_trunc_time)
             lognormal_time_aic_list.append(AIC_ln_time)
-            
             
             # plot lognormal fits
             
