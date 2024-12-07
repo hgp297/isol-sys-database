@@ -82,7 +82,7 @@ main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
 
 import pickle
 loss_path = '../data/loss/'
-with open(loss_path+'structural_db_complete_time_weibull.pickle', 'wb') as f:
+with open(loss_path+'structural_db_complete_distributions.pickle', 'wb') as f:
     pickle.dump(main_obj, f)
 
 #%% validate design
