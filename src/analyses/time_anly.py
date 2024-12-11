@@ -30,7 +30,7 @@ pd.options.mode.chained_assignment = None
 
 plt.close('all')
 
-main_obj = pd.read_pickle("../../data/loss/structural_db_time_anly.pickle")
+main_obj = pd.read_pickle("../../data/loss/structural_db_complete_distributions.pickle")
 old_obj = pd.read_pickle("../../data/loss/structural_db_complete_normloss.pickle")
 
 old_loss = old_obj.loss_data
@@ -415,6 +415,14 @@ def loss_percentages(df_main, df_loss, df_max):
     df_main['D_50%'].loc[mask] = df_max['D_50%'].loc[mask]
     df_main['E_50%'].loc[mask] = df_max['E_50%'].loc[mask]
     
+    copied_vars = ['cost_theta', 'cost_beta', 'time_l_theta', 'time_l_beta',
+                   'cost_lam', 'cost_k', 'time_l_k', 'time_l_lam',
+                   'cost_weibull_ks_pvalue', 'cost_lognormal_ks_pvalue',
+                   'time_l_weibull_ks_pvalue', 'time_l_lognormal_ks_pvalue',
+                   'cost_weibull_aic', 'cost_lognormal_aic',
+                   'time_l_weibull_aic', 'time_l_lognormal_aic']
+    
+    df_main[copied_vars] = df_loss[copied_vars]
     return(df_main)
     
 df = loss_percentages(df, df_loss, df_loss_max)
@@ -880,12 +888,187 @@ ax.set_xlim([0.0, 1.0])
 ax.set_ylim([0.1, 1.6])
 ax.grid()
 
-#%% analyze building response
 
-# here, we have to hack together a representation of the expected loss at different sa
+
+#%% rebuild loss curves from distros
+
+from scipy.stats import norm
+
+# make lambda function for generic lognormal distribution
+import numpy as np
+lognorm_f = lambda x,theta,beta: norm(np.log(theta), beta**0.5).cdf(np.log(x))
+
+# make lambda function for generic weibull distribution
+from scipy.stats import weibull_min
+weibull_f = lambda x,k,lam,loc: weibull_min(k, loc=loc, scale=lam).cdf(x)
+
+#%%  rebuilt curves
+
+def plot_loss(row):
+    # plot lognormal fits
     
-def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs,
+    import matplotlib.pyplot as plt
+    plt.close('all')
+    fig = plt.figure(figsize=(7, 6))
+    ax1=fig.add_subplot(1, 1, 1)
+    
+    # res = ecdf(row['repair_cost'])
+    ecdf_prob = row['cost_quantiles'].index
+    ecdf_values = row['cost_quantiles'].values
+    median_val = row['cost_50%']
+    ax1.plot([ecdf_values], [ecdf_prob], 
+              marker='x', markersize=5, color="red")
+    
+    xx_pr = np.linspace(1e-4, 10*median_val, 400)
+    p = lognorm_f(xx_pr, row['cost_theta'], row['cost_beta'])
+    ax1.plot(xx_pr, p, label='lognormal fit')
+    p = weibull_f(xx_pr, row['cost_k'], row['cost_lam'], 0)
+    ax1.plot(xx_pr, p, label='weibull fit')  
+    p = weibull_f(xx_pr, row['cost_k_trunc'], row['cost_lam_trunc'], row['cost_min'])
+    ax1.plot(xx_pr, p, label='weibull truncated fit') 
+    ax1.set_xlim([-median_val, 10*median_val])
+    ax1.legend()
+    
+    
+    fig = plt.figure(figsize=(7, 6))
+    ax1=fig.add_subplot(1, 1, 1)
+    # res = ecdf(row['repair_cost'])
+    ecdf_prob = row['time_l_quantiles'].index
+    ecdf_values = row['time_l_quantiles'].values
+    median_val = row['time_l_50%']
+    ax1.plot([ecdf_values], [ecdf_prob], 
+              marker='x', markersize=5, color="red")
+    
+    xx_pr = np.linspace(1e-4, 10*median_val, 400)
+    p = lognorm_f(xx_pr, row['time_l_theta'], row['time_l_beta'])
+    ax1.plot(xx_pr, p, label='lognormal fit')
+    p = weibull_f(xx_pr, row['time_l_k'], row['time_l_lam'], 0)
+    ax1.plot(xx_pr, p, label='weibull fit')  
+    p = weibull_f(xx_pr, row['time_l_k_trunc'], row['time_l_lam_trunc'], row['time_l_min'])
+    ax1.plot(xx_pr, p, label='weibull truncated fit') 
+    ax1.set_xlim([-median_val, 10*median_val])
+    ax1.legend()
+
+    return
+
+current_idx = 845
+current_row = df_loss.iloc[current_idx]
+plot_loss(current_row)
+
+#%% regression models: beta
+# goal: E[beta|theta]
+
+# remove outlier may help fit quality
+df_test = df_mf_lrb.copy()
+# df_test = df_cbf_tfp[np.abs(stats.zscore(df_cbf_tfp['time_l_beta'])) < 5].copy()
+
+
+
+### cost
+beta_covariates = [cost_var]
+mdl_beta_cost_mf_tfp = GP(df_mf_tfp)
+mdl_beta_cost_mf_tfp.set_covariates(beta_covariates)
+mdl_beta_cost_mf_tfp.set_outcome('cost_beta')
+mdl_beta_cost_mf_tfp.test_train_split(0.2)
+
+mdl_beta_cost_mf_lrb = GP(df_mf_lrb)
+beta_covariates = [cost_var]
+mdl_beta_cost_mf_lrb.set_covariates(beta_covariates)
+mdl_beta_cost_mf_lrb.set_outcome('cost_beta')
+mdl_beta_cost_mf_lrb.test_train_split(0.2)
+
+mdl_beta_cost_cbf_tfp = GP(df_cbf_tfp)
+mdl_beta_cost_cbf_tfp.set_covariates(beta_covariates)
+mdl_beta_cost_cbf_tfp.set_outcome('cost_beta')
+mdl_beta_cost_cbf_tfp.test_train_split(0.2)
+
+mdl_beta_cost_cbf_lrb = GP(df_cbf_lrb)
+mdl_beta_cost_cbf_lrb.set_covariates(beta_covariates)
+mdl_beta_cost_cbf_lrb.set_outcome('cost_beta')
+mdl_beta_cost_cbf_lrb.test_train_split(0.2)
+
+### time
+beta_covariates = [time_var]
+mdl_beta_time_mf_tfp = GP(df_mf_tfp)
+mdl_beta_time_mf_tfp.set_covariates(beta_covariates)
+mdl_beta_time_mf_tfp.set_outcome('time_l_beta')
+mdl_beta_time_mf_tfp.test_train_split(0.2)
+
+mdl_beta_time_mf_lrb = GP(df_mf_lrb)
+beta_covariates = [time_var]
+mdl_beta_time_mf_lrb.set_covariates(beta_covariates)
+mdl_beta_time_mf_lrb.set_outcome('time_l_beta')
+mdl_beta_time_mf_lrb.test_train_split(0.2)
+
+mdl_beta_time_cbf_tfp = GP(df_cbf_tfp)
+mdl_beta_time_cbf_tfp.set_covariates(beta_covariates)
+mdl_beta_time_cbf_tfp.set_outcome('time_l_beta')
+mdl_beta_time_cbf_tfp.test_train_split(0.2)
+
+mdl_beta_time_cbf_lrb = GP(df_cbf_lrb)
+mdl_beta_time_cbf_lrb.set_covariates(beta_covariates)
+mdl_beta_time_cbf_lrb.set_outcome('time_l_beta')
+mdl_beta_time_cbf_lrb.test_train_split(0.2)
+
+print('======= beta regression per system  ========')
+t0 = time.time()
+
+mdl_beta_cost_mf_tfp.fit_kernel_ridge(kernel_name='laplacian')
+mdl_beta_cost_mf_lrb.fit_kernel_ridge(kernel_name='laplacian')
+mdl_beta_cost_cbf_tfp.fit_kernel_ridge(kernel_name='laplacian')
+mdl_beta_cost_cbf_lrb.fit_kernel_ridge(kernel_name='laplacian')
+
+mdl_beta_time_mf_tfp.fit_kernel_ridge(kernel_name='laplacian')
+mdl_beta_time_mf_lrb.fit_kernel_ridge(kernel_name='laplacian')
+mdl_beta_time_cbf_tfp.fit_kernel_ridge(kernel_name='laplacian')
+mdl_beta_time_cbf_lrb.fit_kernel_ridge(kernel_name='laplacian')
+
+tp = time.time() - t0
+
+print("KR training for beta done for 8 models in %.3f s" % tp)
+
+beta_regression_mdls = {'mdl_beta_cost_mf_tfp': mdl_beta_cost_mf_tfp,
+                        'mdl_beta_cost_mf_lrb': mdl_beta_cost_mf_lrb,
+                        'mdl_beta_cost_cbf_tfp': mdl_beta_cost_cbf_tfp,
+                        'mdl_beta_cost_cbf_lrb': mdl_beta_cost_cbf_lrb,
+                        'mdl_beta_time_mf_tfp': mdl_beta_time_mf_tfp,
+                        'mdl_beta_time_mf_lrb': mdl_beta_time_mf_lrb,
+                        'mdl_beta_time_cbf_tfp': mdl_beta_time_cbf_tfp,
+                        'mdl_beta_time_cbf_lrb': mdl_beta_time_cbf_lrb}
+
+#%%
+# import matplotlib.pyplot as plt
+# plt.close('all')
+# fig = plt.figure(figsize=(7, 6))
+# ax1=fig.add_subplot(1, 1, 1)
+
+# ax1.plot([np.array(mdl_beta_cost_cbf_lrb.X_train).ravel()], [mdl_beta.y_train], 
+#           marker='x', markersize=5, color="red")
+
+# xx_pr = np.linspace(1e-4, 1.0, 400).reshape(-1,1)
+# yy_pr = mdl_beta_cost_cbf_lrb.kr.predict(xx_pr)
+# ax1.plot(xx_pr, yy_pr, label='kernel ridge - laplacian')
+
+# # yy_pr = mdl_beta_cost_cbf_lrb.o_ridge.predict(xx_pr)
+# # ax1.plot(xx_pr, yy_pr, label='ordinary ridge')
+
+# yy_pr = mdl_beta_cost_cbf_lrb.gpr.predict(xx_pr)
+# ax1.plot(xx_pr, yy_pr, label='gpr-rq')
+
+# ax1.set_title(r'CBF-LRB lognormal betas', fontsize=axis_font)
+# ax1.set_xlabel(r'$\theta$', fontsize=axis_font)
+# ax1.set_ylabel(r'$\beta$', fontsize=axis_font)
+# ax1.legend(fontsize=axis_font)
+
+
+#%% calculate lifetime loss, annualized
+
+
+
+def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
                             cost_var='cmp_cost_ratio', time_var='cmp_time_ratio'):
+    
+    # here, we have to hack together a representation of the expected loss at different sa
     T = row['T_m']
     sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(T, site_hazard_curves)
     
@@ -925,6 +1108,13 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs,
     mdl_time_hit = time_regs[mdl_time_hit_name]
     mdl_time_miss = time_regs[mdl_time_miss_name]
     
+    # identify beta models
+    mdl_cost_beta_name = 'mdl_beta_cost_' + system_name
+    mdl_time_beta_name = 'mdl_beta_time_' + system_name
+    
+    mdl_cost_beta = beta_regs[mdl_cost_beta_name]
+    mdl_time_beta = beta_regs[mdl_time_beta_name]
+    
     # for the set of "new" design variables, use GP to calculate loss ratio
     # assumes GPC/GPR, predict the outcome for the design space
     cost_ratio_bins = predict_DV(X_bins, 
@@ -939,29 +1129,91 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs,
                                 mdl_time_miss.gpr,
                                 outcome=time_var)
     
+    # predict dispersion given theta for each bin
+    cost_beta_bins = mdl_cost_beta.kr.predict(
+        np.array(cost_ratio_bins[cost_var+'_pred']).reshape(-1,1))
+    
+    time_beta_bins = mdl_time_beta.kr.predict(
+        np.array(time_ratio_bins[time_var+'_pred']).reshape(-1,1))
     
     # unnormalize loss ratio back to loss
-    cost_bins = cost_ratio_bins*row.total_cmp_cost
-    time_bins = time_ratio_bins*row.total_cmp_time
+    cost_bins = cost_ratio_bins.values*row.total_cmp_cost
+    time_bins = time_ratio_bins.values*row.total_cmp_time
+    
+    cost_bins[cost_bins < 0.0] = 1.0
+    time_bins[time_bins < 0.0] = 0.5
+    
+    # set any <0 cost to a dollar
+    # set any <0 time to 30 mins
+    
+    # make exceedance curve for each scenario
+    # use total replacement just to have a bigger number
+    cost_loss_values = np.linspace(1e-4, row['replacement_cost'], 1000)
+    time_loss_values = np.linspace(1e-4, row['replacement_time'], 1000)
+    
+    cost_scns = np.zeros([len(cost_loss_values), len(cost_bins)])
+    time_scns = np.zeros([len(time_loss_values), len(time_bins)])
+    
+    
+    for scn_idx in range(len(cost_bins)):
+        
+        cost_scns[:,scn_idx] = lognorm_f(cost_loss_values, cost_bins[scn_idx], cost_beta_bins[scn_idx])
+        time_scns[:,scn_idx] = lognorm_f(time_loss_values, time_bins[scn_idx], time_beta_bins[scn_idx])
+        
+    pr_exceedance_cost = 1 - cost_scns
+    pr_exceedance_time = 1 - time_scns
+    
+    cost_loss_rates = np.multiply(pr_exceedance_cost, lambda_bins)
+    time_loss_rates = np.multiply(pr_exceedance_time, lambda_bins)
+    
+    # import matplotlib.pyplot as plt
+    # plt.close('all')
+    # fig = plt.figure(figsize=(9, 6))
+    # ax1=fig.add_subplot(1, 1, 1)
+    
+    # for scn_idx in range(len(cost_bins)):
+    #     ax1.plot(cost_loss_values, cost_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    # ax1.legend()
+    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    
+    # ax1.set_xlim([0, row['replacement_cost']])
+    
+    # fig = plt.figure(figsize=(9, 6))
+    # ax1=fig.add_subplot(1, 1, 1)
+    
+    # for scn_idx in range(len(time_bins)):
+    #     ax1.plot(time_loss_values, time_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    # ax1.legend()
+    # ax1.set_xlabel(r'time (man-hour)', fontsize=axis_font)
+    # ax1.set_ylabel(r'$Pr[X \geq t]$', fontsize=axis_font)
+    
+    # ax1.set_xlim([0, row['replacement_time']])
+    
+    
+    # multiply scenarios' exceedance curve with corresponding return rate
+    # sum across all scenarios
+    agg_cost_exceedance_rate = pr_exceedance_cost @ lambda_bins
+    agg_time_exceedance_rate = pr_exceedance_time @ lambda_bins
     
     # integrate to attain lifetime dollar, time
-    
+    mean_cumulative_annual_cost = np.trapz(agg_cost_exceedance_rate, cost_loss_values)
+    mean_cumulative_annual_time = np.trapz(agg_time_exceedance_rate, time_loss_values)
     
     # renormalize
     
-df.apply(lambda row: calculate_lifetime_loss(row, impact_clfs=impact_classification_mdls, 
-                                             cost_regs=cost_regression_mdls, 
-                                             time_regs=time_regression_mdls),
-                                 axis='columns', result_type='expand')
+    return mean_cumulative_annual_cost, mean_cumulative_annual_time
+    
+#%% 
 
-#%% rebuild loss curves from distros
+t0 = time.time()
+df[['mean_cumulative_annual_cost', 
+    'mean_cumulative_annual_time']] = df.apply(
+        lambda row: calculate_lifetime_loss(row, impact_clfs=impact_classification_mdls, 
+                                            cost_regs=cost_regression_mdls, 
+                                            time_regs=time_regression_mdls,
+                                            beta_regs=beta_regression_mdls),
+        axis='columns', result_type='expand')
 
-from scipy.stats import ecdf, norm
-
-# make lambda function for generic lognormal distribution
-import numpy as np
-lognorm_f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
-
-# make lambda function for generic weibull distribution
-from scipy.stats import weibull_min
-weibull_f = lambda x,k,lam: weibull_min(k, loc=0, scale=lam).cdf(x)
+tp = time.time() - t0
+print("Calculated lifetime losses for 1000 points in  %.3f s" % tp)

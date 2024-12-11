@@ -506,13 +506,13 @@ class GP:
             ]
         
         kr_cv = GridSearchCV(kr_pipe, param_grid=parameters)
-        kr_cv.fit(self.X, self.y)
+        kr_cv.fit(self.X.values, self.y)
         
         # set pipeline to use CV params
         print("The best kernel ridge parameters are %s"
               % (kr_cv.best_params_))
         kr_pipe.set_params(**kr_cv.best_params_)
-        kr_pipe.fit(self.X, self.y)
+        kr_pipe.fit(self.X.values, self.y)
         
         self.kr = kr_pipe
     
