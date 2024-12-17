@@ -516,7 +516,36 @@ class GP:
         
         self.kr = kr_pipe
     
-    
+    def fit_poly(self, degree=3):
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+        from sklearn.linear_model import LinearRegression
+        
+        poly_pipe = Pipeline([
+            ('scaler', StandardScaler()),
+            ('poly', PolynomialFeatures(degree=degree)),
+            ('linear', LinearRegression())])
+        
+        '''
+        from scipy.stats import loguniform
+        from sklearn.model_selection import RandomizedSearchCV
+        param_distributions = {
+            "kr__alpha": loguniform(1e-3, 1e3),
+            "kr__gamma": loguniform(1e-5, 1e3),
+        }
+        kr_cv = RandomizedSearchCV(
+            kr_pipe,
+            param_distributions=param_distributions,
+            n_iter=500,
+            random_state=985,
+        )
+        kr_cv.fit(self.X, self.y)
+        '''
+        
+        poly_pipe.fit(self.X.values, self.y)
+        
+        self.poly = poly_pipe
+        
     # Train SVM regression
     def fit_svr(self):
         from sklearn.pipeline import Pipeline

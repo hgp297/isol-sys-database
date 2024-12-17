@@ -1,5 +1,5 @@
 ############################################################################
-#               Per-system inverse design
+#               Time analysis
 
 ############################################################################
 
@@ -808,11 +808,14 @@ mpl.rcParams['xtick.labelsize'] = label_size
 mpl.rcParams['ytick.labelsize'] = label_size 
 plt.close('all')
 
-fig = plt.figure(figsize=(7,6))
+fig = plt.figure(figsize=(8,7))
 ax=fig.add_subplot(1, 1, 1)
 
-ax.loglog(sa_bins,lambda_bins, '-o')
-ax.loglog(sa_T,lambda_T, '-o')
+ax.loglog(sa_bins,lambda_bins, '--^', label='Bins hazard')
+ax.loglog(sa_T,lambda_T, '-o', label='Site hazard')
+ax.legend(fontsize=axis_font)
+ax.set_xlabel(r'$Sa(T_M)$', fontsize=axis_font)
+ax.set_ylabel(r'$\lambda$', fontsize=axis_font)
 ax.grid()
 
 #%%
@@ -909,7 +912,7 @@ def plot_loss(row):
     
     import matplotlib.pyplot as plt
     plt.close('all')
-    fig = plt.figure(figsize=(7, 6))
+    fig = plt.figure(figsize=(8, 7))
     ax1=fig.add_subplot(1, 1, 1)
     
     # res = ecdf(row['repair_cost'])
@@ -927,10 +930,12 @@ def plot_loss(row):
     p = weibull_f(xx_pr, row['cost_k_trunc'], row['cost_lam_trunc'], row['cost_min'])
     ax1.plot(xx_pr, p, label='weibull truncated fit') 
     ax1.set_xlim([-median_val, 10*median_val])
-    ax1.legend()
+    ax1.set_ylabel('CDF(cost)', fontsize=axis_font)
+    ax1.set_xlabel('repair cost (USD)', fontsize=axis_font)
+    ax1.legend(fontsize=axis_font)
     
     
-    fig = plt.figure(figsize=(7, 6))
+    fig = plt.figure(figsize=(8, 7))
     ax1=fig.add_subplot(1, 1, 1)
     # res = ecdf(row['repair_cost'])
     ecdf_prob = row['time_l_quantiles'].index
@@ -947,14 +952,25 @@ def plot_loss(row):
     p = weibull_f(xx_pr, row['time_l_k_trunc'], row['time_l_lam_trunc'], row['time_l_min'])
     ax1.plot(xx_pr, p, label='weibull truncated fit') 
     ax1.set_xlim([-median_val, 10*median_val])
-    ax1.legend()
+    ax1.set_ylabel('CDF(time)', fontsize=axis_font)
+    ax1.set_xlabel('repair time (worker-day)', fontsize=axis_font)
+    ax1.legend(fontsize=axis_font)
 
     return
 
-current_idx = 845
+current_idx = 44
 current_row = df_loss.iloc[current_idx]
 plot_loss(current_row)
 
+#%%
+
+# df_test = df_loss[df_loss['replacement_freq'] != 1]
+
+df_test = df_loss[(df_loss['cost_lognormal_ks_pvalue'] < df_loss['cost_weibull_trunc_ks_pvalue']) &
+                  (df_loss['replacement_freq'] == 0)]
+
+# df_test = df_loss[(df_loss['cost_lognormal_aic'] > df_loss['cost_weibull_trunc_aic']) &
+#                   (df_loss['replacement_freq'] != 1)]
 #%% regression models: beta
 # goal: E[beta|theta]
 
@@ -1013,6 +1029,7 @@ mdl_beta_time_cbf_lrb.test_train_split(0.2)
 print('======= beta regression per system  ========')
 t0 = time.time()
 
+# note, fitting kernel ridge is just kernel regression here bc only one feature
 mdl_beta_cost_mf_tfp.fit_kernel_ridge(kernel_name='laplacian')
 mdl_beta_cost_mf_lrb.fit_kernel_ridge(kernel_name='laplacian')
 mdl_beta_cost_cbf_tfp.fit_kernel_ridge(kernel_name='laplacian')
@@ -1037,32 +1054,63 @@ beta_regression_mdls = {'mdl_beta_cost_mf_tfp': mdl_beta_cost_mf_tfp,
                         'mdl_beta_time_cbf_lrb': mdl_beta_time_cbf_lrb}
 
 #%%
-# import matplotlib.pyplot as plt
-# plt.close('all')
-# fig = plt.figure(figsize=(7, 6))
-# ax1=fig.add_subplot(1, 1, 1)
+mdl_beta_cost_cbf_lrb.fit_poly(degree=5)
 
-# ax1.plot([np.array(mdl_beta_cost_cbf_lrb.X_train).ravel()], [mdl_beta.y_train], 
-#           marker='x', markersize=5, color="red")
+#%%
 
-# xx_pr = np.linspace(1e-4, 1.0, 400).reshape(-1,1)
-# yy_pr = mdl_beta_cost_cbf_lrb.kr.predict(xx_pr)
-# ax1.plot(xx_pr, yy_pr, label='kernel ridge - laplacian')
+# low loss & extremely high loss = less dispersion
+# extremely low loss: variance high bc of scaling/relative
+# moderate loss: greater dispersion
+import matplotlib.pyplot as plt
+plt.close('all')
+fig = plt.figure(figsize=(8, 7))
+ax1=fig.add_subplot(1, 1, 1)
 
-# # yy_pr = mdl_beta_cost_cbf_lrb.o_ridge.predict(xx_pr)
-# # ax1.plot(xx_pr, yy_pr, label='ordinary ridge')
+ax1.plot([np.array(mdl_beta_cost_cbf_lrb.X_train).ravel()], [mdl_beta_cost_cbf_lrb.y_train], 
+          marker='x', markersize=5, color="red")
+
+nplot = 400
+xx_pr = np.linspace(1e-4, 1.0, nplot).reshape(-1,1)
+yy_pr = mdl_beta_cost_cbf_lrb.kr.predict(xx_pr)
+ax1.plot(xx_pr, yy_pr, label='kernel ridge - laplacian')
+
+# TODO: in truth, you should not use filter/smoothing, but rather achieve smoothing
+# through kernel hyperparameter bounds
+
+def smooth(y, box_pts):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    # cumsum = np.cumsum(np.insert(y, 0, 0)) 
+    # return (cumsum[box_pts:] - cumsum[:-box_pts]) / float(box_pts)
+    return y_smooth
+
+from scipy.signal import savgol_filter
+
+y_sg = savgol_filter(yy_pr.ravel(), int(.05*nplot), 2)
+ax1.plot(xx_pr, y_sg, color='black', label='smoothed with savgol')
+
+y_sm = smooth(yy_pr.ravel(), int(.05*nplot))
+ax1.plot(xx_pr, y_sm, color='green', label='moving average smooth')
+
+# yy_pr = mdl_beta_cost_cbf_lrb.o_ridge.predict(xx_pr)
+# ax1.plot(xx_pr, yy_pr, label='ordinary ridge')
 
 # yy_pr = mdl_beta_cost_cbf_lrb.gpr.predict(xx_pr)
 # ax1.plot(xx_pr, yy_pr, label='gpr-rq')
 
-# ax1.set_title(r'CBF-LRB lognormal betas', fontsize=axis_font)
-# ax1.set_xlabel(r'$\theta$', fontsize=axis_font)
-# ax1.set_ylabel(r'$\beta$', fontsize=axis_font)
-# ax1.legend(fontsize=axis_font)
+yy_pr = mdl_beta_cost_cbf_lrb.poly.predict(xx_pr)
+ax1.plot(xx_pr, yy_pr, label='3rd degree poly')
+ax1.set_ylim([-.1, 2])
+ax1.set_title(r'CBF-LRB lognormal betas', fontsize=axis_font)
+ax1.set_xlabel(r'$\theta$', fontsize=axis_font)
+ax1.set_ylabel(r'$\beta$', fontsize=axis_font)
+ax1.legend(fontsize=axis_font)
 
 
 #%% calculate lifetime loss, annualized
 
+
+from scipy.signal import savgol_filter
 
 
 def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
@@ -1070,7 +1118,11 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     
     # here, we have to hack together a representation of the expected loss at different sa
     T = row['T_m']
-    sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(T, site_hazard_curves)
+    
+    # use maximum as 1.5* mce level Sa(T_m)
+    mce_Sa_Tm = row['S_1']/row['T_m']
+    sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(T, site_hazard_curves,
+                                                           sa_max=1.5*mce_Sa_Tm)
     
     # how are each design variables affected by changing Sa
     # only GR changes
@@ -1130,18 +1182,34 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
                                 outcome=time_var)
     
     # predict dispersion given theta for each bin
-    cost_beta_bins = mdl_cost_beta.kr.predict(
-        np.array(cost_ratio_bins[cost_var+'_pred']).reshape(-1,1))
     
-    time_beta_bins = mdl_time_beta.kr.predict(
-        np.array(time_ratio_bins[time_var+'_pred']).reshape(-1,1))
+    # using true kr to find beta from theta
+    
+    # cost_beta_bins = mdl_cost_beta.kr.predict(
+    #     np.array(cost_ratio_bins[cost_var+'_pred']).reshape(-1,1))
+    
+    # time_beta_bins = mdl_time_beta.kr.predict(
+    #     np.array(time_ratio_bins[time_var+'_pred']).reshape(-1,1))
+    
+    # using kr + savgol filter smoothing to find beta from theta
+    nplot = 400
+    xx_pr = np.linspace(1e-4, 1.2, nplot).reshape(-1,1)
+    yy_pr = mdl_cost_beta.kr.predict(xx_pr)
+    y_sg = savgol_filter(yy_pr.ravel(), int(.05*nplot), 2)
+    cost_beta_bins = np.interp(cost_ratio_bins[cost_var+'_pred'].values, 
+                               xx_pr.ravel(), y_sg)
+    
+    yy_pr = mdl_time_beta.kr.predict(xx_pr)
+    y_sg = savgol_filter(yy_pr.ravel(), int(.05*nplot), 2)
+    time_beta_bins = np.interp(time_ratio_bins[time_var+'_pred'].values, 
+                               xx_pr.ravel(), y_sg)
     
     # unnormalize loss ratio back to loss
     cost_bins = cost_ratio_bins.values*row.total_cmp_cost
     time_bins = time_ratio_bins.values*row.total_cmp_time
     
     cost_bins[cost_bins < 0.0] = 1.0
-    time_bins[time_bins < 0.0] = 0.5
+    time_bins[time_bins < 0.0] = 0.04167
     
     # set any <0 cost to a dollar
     # set any <0 time to 30 mins
@@ -1166,9 +1234,35 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     cost_loss_rates = np.multiply(pr_exceedance_cost, lambda_bins)
     time_loss_rates = np.multiply(pr_exceedance_time, lambda_bins)
     
+    
+    # import matplotlib.pyplot as plt
+    # plt.close('all')
+    # fig = plt.figure(figsize=(8, 7))
+    # ax1=fig.add_subplot(1, 1, 1)
+    # ax1.plot(sa_bins, cost_bins.ravel(), '-o')
+    # ax1.set_xlabel(r'$Sa(T_M)$', fontsize=axis_font)
+    # ax1.set_ylabel(r'GP predicted median repair cost (\$)', fontsize=axis_font)
+    # ax1.grid()
+    # plt.show()
+    # ax1.set_xlim([0, row['replacement_cost']])
+    
     # import matplotlib.pyplot as plt
     # plt.close('all')
     # fig = plt.figure(figsize=(9, 6))
+    # ax1=fig.add_subplot(1, 1, 1)
+    
+    # for scn_idx in range(len(cost_bins)):
+    #     ax1.plot(cost_loss_values, pr_exceedance_cost[:,scn_idx], label='scn_'+str(scn_idx))
+    # ax1.legend()
+    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    # ax1.grid()
+    # ax1.set_xlim([0, row['replacement_cost']])
+    
+    
+    # import matplotlib.pyplot as plt
+    # plt.close('all')
+    # fig = plt.figure(figsize=(9, 7))
     # ax1=fig.add_subplot(1, 1, 1)
     
     # for scn_idx in range(len(cost_bins)):
@@ -1176,10 +1270,10 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     # ax1.legend()
     # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
     # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
-    
+    # ax1.grid()
     # ax1.set_xlim([0, row['replacement_cost']])
     
-    # fig = plt.figure(figsize=(9, 6))
+    # fig = plt.figure(figsize=(9, 7))
     # ax1=fig.add_subplot(1, 1, 1)
     
     # for scn_idx in range(len(time_bins)):
@@ -1187,7 +1281,7 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     # ax1.legend()
     # ax1.set_xlabel(r'time (man-hour)', fontsize=axis_font)
     # ax1.set_ylabel(r'$Pr[X \geq t]$', fontsize=axis_font)
-    
+    # ax1.grid()
     # ax1.set_xlim([0, row['replacement_time']])
     
     
@@ -1217,3 +1311,150 @@ df[['mean_cumulative_annual_cost',
 
 tp = time.time() - t0
 print("Calculated lifetime losses for 1000 points in  %.3f s" % tp)
+
+#%%
+df['annual_cost_ratio'] = df['mean_cumulative_annual_cost']/df['total_cmp_cost']*100
+df['annual_time_ratio'] = df['mean_cumulative_annual_time']/df['total_cmp_time']*100
+
+
+#%% re subsets
+
+df_tfp = df[df['isolator_system'] == 'TFP']
+df_lrb = df[df['isolator_system'] == 'LRB']
+
+df_cbf = df[df['superstructure_system'] == 'CBF'].reset_index()
+df_cbf['dummy_index'] = df_cbf['replacement_freq'] + df_cbf['index']*1e-9
+df_mf = df[df['superstructure_system'] == 'MF'].reset_index()
+df_mf['dummy_index'] = df_mf['replacement_freq'] + df_mf['index']*1e-9
+
+df_mf_o = df_mf[df_mf['impacted'] == 0]
+df_cbf_o = df_cbf[df_cbf['impacted'] == 0]
+
+df_mf_tfp = df_tfp[df_tfp['superstructure_system'] == 'MF']
+df_mf_lrb = df_lrb[df_lrb['superstructure_system'] == 'MF']
+
+df_cbf_tfp = df_tfp[df_tfp['superstructure_system'] == 'CBF']
+df_cbf_lrb = df_lrb[df_lrb['superstructure_system'] == 'CBF']
+
+
+df_mf_tfp_i = df_mf_tfp[df_mf_tfp['impacted'] == 1]
+df_mf_tfp_o = df_mf_tfp[df_mf_tfp['impacted'] == 0]
+df_mf_lrb_i = df_mf_lrb[df_mf_lrb['impacted'] == 1]
+df_mf_lrb_o = df_mf_lrb[df_mf_lrb['impacted'] == 0]
+
+df_cbf_tfp_i = df_cbf_tfp[df_cbf_tfp['impacted'] == 1]
+df_cbf_tfp_o = df_cbf_tfp[df_cbf_tfp['impacted'] == 0]
+df_cbf_lrb_i = df_cbf_lrb[df_cbf_lrb['impacted'] == 1]
+df_cbf_lrb_o = df_cbf_lrb[df_cbf_lrb['impacted'] == 0]
+#%%
+
+mdl_annual_cost = GP(df_cbf_lrb)
+mdl_annual_cost.set_covariates(covariate_list)
+mdl_annual_cost.set_outcome('annual_cost_ratio')
+mdl_annual_cost.test_train_split(0.2)
+
+mdl_annual_cost.fit_gpr(kernel_name='rq')
+
+#%% sample for CBF-LRB
+
+annual_cost_var = 'annual_cost_ratio'
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(16, 7))
+
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.0, fourth_var_set = 0.15)
+
+Z = mdl_annual_cost.gpr.predict(X_plot)
+
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[annual_cost_var], c=df_cbf_lrb[annual_cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+# ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Annual repair cost (\%)', fontsize=axis_font)
+ax.set_title('CBF-LRB: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
+
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
+
+Z = mdl_annual_cost.gpr.predict(X_plot)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_surf = np.array(Z).reshape(xx_pl.shape)
+
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                       linewidth=0, antialiased=False, alpha=0.6,
+                       vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
+ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[annual_cost_var], c=df_cbf_lrb[annual_cost_var],
+           edgecolors='k', alpha = 0.7, cmap='Blues')
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+# ax.set_zlim([-0.1, 1.1])
+
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Annual repair cost (\%)', fontsize=axis_font)
+ax.set_title('CBF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
+# plt.savefig('./dissertation_figures/cbf_lrb_conditioned.pdf')
+
+#%% 
+
+# TODO: use decision making on this
