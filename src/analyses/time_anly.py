@@ -1054,7 +1054,7 @@ beta_regression_mdls = {'mdl_beta_cost_mf_tfp': mdl_beta_cost_mf_tfp,
                         'mdl_beta_time_cbf_lrb': mdl_beta_time_cbf_lrb}
 
 #%%
-mdl_beta_cost_cbf_lrb.fit_poly(degree=5)
+mdl_beta_cost_cbf_tfp.fit_poly(degree=5)
 
 #%%
 
@@ -1066,12 +1066,12 @@ plt.close('all')
 fig = plt.figure(figsize=(8, 7))
 ax1=fig.add_subplot(1, 1, 1)
 
-ax1.plot([np.array(mdl_beta_cost_cbf_lrb.X_train).ravel()], [mdl_beta_cost_cbf_lrb.y_train], 
+ax1.plot([np.array(mdl_beta_cost_cbf_tfp.X_train).ravel()], [mdl_beta_cost_cbf_tfp.y_train], 
           marker='x', markersize=5, color="red")
 
 nplot = 400
 xx_pr = np.linspace(1e-4, 1.0, nplot).reshape(-1,1)
-yy_pr = mdl_beta_cost_cbf_lrb.kr.predict(xx_pr)
+yy_pr = mdl_beta_cost_cbf_tfp.kr.predict(xx_pr)
 ax1.plot(xx_pr, yy_pr, label='kernel ridge - laplacian')
 
 # TODO: in truth, you should not use filter/smoothing, but rather achieve smoothing
@@ -1092,16 +1092,16 @@ ax1.plot(xx_pr, y_sg, color='black', label='smoothed with savgol')
 y_sm = smooth(yy_pr.ravel(), int(.05*nplot))
 ax1.plot(xx_pr, y_sm, color='green', label='moving average smooth')
 
-# yy_pr = mdl_beta_cost_cbf_lrb.o_ridge.predict(xx_pr)
+# yy_pr = mdl_beta_cost_cbf_tfp.o_ridge.predict(xx_pr)
 # ax1.plot(xx_pr, yy_pr, label='ordinary ridge')
 
-# yy_pr = mdl_beta_cost_cbf_lrb.gpr.predict(xx_pr)
+# yy_pr = mdl_beta_cost_cbf_tfp.gpr.predict(xx_pr)
 # ax1.plot(xx_pr, yy_pr, label='gpr-rq')
 
-yy_pr = mdl_beta_cost_cbf_lrb.poly.predict(xx_pr)
-ax1.plot(xx_pr, yy_pr, label='3rd degree poly')
+yy_pr = mdl_beta_cost_cbf_tfp.poly.predict(xx_pr)
+ax1.plot(xx_pr, yy_pr, label='5th degree poly')
 ax1.set_ylim([-.1, 2])
-ax1.set_title(r'CBF-LRB lognormal betas', fontsize=axis_font)
+ax1.set_title(r'CBF-TFP lognormal betas', fontsize=axis_font)
 ax1.set_xlabel(r'$\theta$', fontsize=axis_font)
 ax1.set_ylabel(r'$\beta$', fontsize=axis_font)
 ax1.legend(fontsize=axis_font)
@@ -1181,6 +1181,7 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
                                 mdl_time_miss.gpr,
                                 outcome=time_var)
     
+    breakpoint()
     # predict dispersion given theta for each bin
     
     # using true kr to find beta from theta
@@ -1346,14 +1347,15 @@ df_cbf_tfp_i = df_cbf_tfp[df_cbf_tfp['impacted'] == 1]
 df_cbf_tfp_o = df_cbf_tfp[df_cbf_tfp['impacted'] == 0]
 df_cbf_lrb_i = df_cbf_lrb[df_cbf_lrb['impacted'] == 1]
 df_cbf_lrb_o = df_cbf_lrb[df_cbf_lrb['impacted'] == 0]
+
 #%%
 
-mdl_annual_cost = GP(df_cbf_lrb)
+mdl_annual_cost = GP(df_mf_lrb)
 mdl_annual_cost.set_covariates(covariate_list)
 mdl_annual_cost.set_outcome('annual_cost_ratio')
 mdl_annual_cost.test_train_split(0.2)
 
-mdl_annual_cost.fit_gpr(kernel_name='rq')
+mdl_annual_cost.fit_gpr(kernel_name='rbf_iso')
 
 #%% sample for CBF-LRB
 
@@ -1373,7 +1375,7 @@ xvar = 'gap_ratio'
 yvar = 'RI'
 
 res = 75
-X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+X_plot = make_2D_plotting_space(mdl_impact_mf_lrb.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 2.0, fourth_var_set = 0.15)
 
@@ -1396,7 +1398,7 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
-ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[annual_cost_var], c=df_cbf_lrb[annual_cost_var],
+ax.scatter(df_mf_lrb[xvar], df_mf_lrb[yvar], df_mf_lrb[annual_cost_var], c=df_mf_lrb[annual_cost_var],
            edgecolors='k', alpha = 0.7, cmap='Blues')
 
 xlim = ax.get_xlim()
@@ -1409,14 +1411,14 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 ax.set_xlabel('Gap ratio', fontsize=axis_font)
 ax.set_ylabel('$R_y$', fontsize=axis_font)
 ax.set_zlabel('Annual repair cost (\%)', fontsize=axis_font)
-ax.set_title('CBF-LRB: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+ax.set_title('MF-LRB: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
 
 #################################
 xvar = 'T_ratio'
 yvar = 'zeta_e'
 
 res = 75
-X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+X_plot = make_2D_plotting_space(mdl_impact_mf_lrb.X, res, x_var=xvar, y_var=yvar, 
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 1.0, fourth_var_set = 2.0)
 
@@ -1438,7 +1440,7 @@ ax.xaxis.pane.fill = False
 ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
-ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[annual_cost_var], c=df_cbf_lrb[annual_cost_var],
+ax.scatter(df_mf_lrb[xvar], df_mf_lrb[yvar], df_mf_lrb[annual_cost_var], c=df_mf_lrb[annual_cost_var],
            edgecolors='k', alpha = 0.7, cmap='Blues')
 
 xlim = ax.get_xlim()
@@ -1451,9 +1453,9 @@ cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
 ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
 ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 ax.set_zlabel('Annual repair cost (\%)', fontsize=axis_font)
-ax.set_title('CBF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+ax.set_title('MF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
-# plt.savefig('./dissertation_figures/cbf_lrb_conditioned.pdf')
+# plt.savefig('./dissertation_figures/mf_lrb_conditioned.pdf')
 
 #%% 
 

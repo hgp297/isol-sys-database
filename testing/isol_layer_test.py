@@ -483,7 +483,7 @@ ops.constraints("Plain")
 ops.analysis("Static")                      # create analysis object
 
 # TODO: here
-peaks = np.linspace(0.0, bldg.D_m*2, 7)
+peaks = np.linspace(0.0, bldg.D_m*2 - 8.0, 7)
 peaks = np.append(peaks, peaks[-1])
 steps = 500
 for i, pk in enumerate(peaks):
@@ -641,6 +641,7 @@ ops.wipe()
 import pandas as pd
 import matplotlib.pyplot as plt
 
+plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 20
@@ -681,10 +682,11 @@ u_bearing, fs_bearing = isolator.get_backbone(mode='building')
 
 fig = plt.figure(figsize=(9, 7))
 if bldg.isolator_system == 'LRB':
-    plt.plot(-isol_disp['column_0'], isol_shear, color='black', linewidth=1.5)
+    plt.plot(-isol_disp['column_0'], isol_shear/bldg.W, color='black', linewidth=1.5)
     # plt.plot(u_bearing, fs_bearing, linestyle='--')
     plt.xlabel('Displacement (in)', fontsize=axis_font)
-    plt.ylabel('Lateral force (kip)', fontsize=axis_font)
+    # plt.ylabel('Lateral force (kip)', fontsize=axis_font)
+    plt.ylabel('Normalized lateral force', fontsize=axis_font)
     plt.grid(True)
 else:
     plt.plot(-isol_disp['column_0'], isol_shear/isol_axial, color='black', linewidth=1.5)
@@ -707,7 +709,7 @@ hull = ConvexHull(loop)
 ################################ plot hysteresis ##############################
 import pandas as pd
 import matplotlib.pyplot as plt
-plt.close('all')
+# plt.close('all')
 isol_columns = ['time', 'x', 'z', 'rot']
 
 force_columns = ['time', 'iFx', 'iFy', 'iFz', 'iMx', 'iMy', 'iMz', 
