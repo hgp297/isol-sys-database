@@ -70,6 +70,43 @@ df_loss = main_obj.loss_data
 max_obj = pd.read_pickle("../../data/loss/structural_db_complete_max_loss.pickle")
 df_loss_max = max_obj.max_loss
 
+#%% readjust Tm of TFPs for W live
+
+# TODO: wip
+def wL_calc(num_stories, bldg_area):
+    
+    # in kip/ft^2
+    LL_avg = (num_stories*50.0/1000 + 20.0/1000)/(num_stories + 1)
+    W_L = LL_avg*bldg_area
+    return W_L
+
+def TFP_period_shift(W_D, W_L, bearing):
+    # shift assumes that the load case is 1.0D + 0.5L
+    if bearing == 'TFP':
+        return (W_D/(W_D+0.5*W_L))**0.5
+    else:
+        return 1.0
+
+df['W_L'] = df.apply(lambda x: wL_calc(x['num_stories'], x['bldg_area']), axis=1)
+df['Tshift_coef'] = df.apply(
+    lambda x: TFP_period_shift(x['W'], x['W_L'], x['isolator_system']), axis=1)
+
+df['T_M_adj'] = df['T_m'] * df['Tshift_coef']
+
+df['T_ratio'] = df['T_M_adj']/df['T_fb']
+
+from gms import get_ST
+
+
+df['sa_tm_adj'] = df.apply(
+    lambda x: get_ST(x, x['T_M_adj'],
+                     db_dir='../../resource/ground_motions/gm_db.csv',
+                     spec_dir='../../resource/ground_motions/gm_spectra.csv'), 
+    axis=1)
+
+df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
+    (g*(df['sa_tm_adj']/df['Bm'])*df['T_M_adj']**2)
+    
 #%% main predictor
 
 def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
@@ -934,21 +971,21 @@ plt.show()
 
 #%%
 
-import numpy as np
-import statsmodels.api as sm
-my_var = 'k2'
-var_array = df_tfp_test[my_var]
-var_array_2 = df_lrb_test[my_var]
-# plt.close('all')
-fig = plt.figure(figsize=(10,6))
-ax = fig.add_subplot(1, 2, 1)
-sm.qqplot(var_array, line='45', loc=np.mean(var_array), scale=np.std(var_array), ax=ax)
-ax.set_title('TFPs')
+# import numpy as np
+# import statsmodels.api as sm
+# my_var = 'k2'
+# var_array = df_tfp_test[my_var]
+# var_array_2 = df_lrb_test[my_var]
+# # plt.close('all')
+# fig = plt.figure(figsize=(10,6))
+# ax = fig.add_subplot(1, 2, 1)
+# sm.qqplot(var_array, line='45', loc=np.mean(var_array), scale=np.std(var_array), ax=ax)
+# ax.set_title('TFPs')
+# # plt.show()
+# ax = fig.add_subplot(1, 2, 2)
+# sm.qqplot(var_array_2, line='45', loc=np.mean(var_array), scale=np.std(var_array), ax=ax)
+# ax.set_title('LRBs')
 # plt.show()
-ax = fig.add_subplot(1, 2, 2)
-sm.qqplot(var_array_2, line='45', loc=np.mean(var_array), scale=np.std(var_array), ax=ax)
-ax.set_title('LRBs')
-plt.show()
 
 #%% engineering data
 
@@ -1815,14 +1852,14 @@ xvar = 'gap_ratio'
 yvar = 'T_ratio'
 
 res = 75
-X_plot = make_2D_plotting_space(df_cbf[covariate_list], res, x_var=xvar, y_var=yvar, 
+X_plot = make_2D_plotting_space(df_mf[covariate_list], res, x_var=xvar, y_var=yvar, 
                             all_vars=covariate_list,
                             third_var_set = 2.0, fourth_var_set = 0.15)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 # GPC impact prediction
-Z = mdl_impact_cbf_lrb.gpc.predict_proba(X_plot)[:,1]
+Z = mdl_impact_mf_lrb.gpc.predict_proba(X_plot)[:,1]
 
 
 x_pl = np.unique(xx)
@@ -1848,12 +1885,12 @@ cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.5, cmap='RdYlGn_r',
 clabels = plt.clabel(cs, fontsize=subt_font, colors='black')
 [txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
 
-ax.scatter(df_cbf_lrb_i[xvar][:plt_density],
-            df_cbf_lrb_i[yvar][:plt_density],
+ax.scatter(df_mf_lrb_i[xvar][:plt_density],
+            df_mf_lrb_i[yvar][:plt_density],
             s=80, c='red', marker='X', edgecolors='black', label='Impacted')
 
-ax.scatter(df_cbf_lrb_o[xvar][:plt_density],
-            df_cbf_lrb_o[yvar][:plt_density],
+ax.scatter(df_mf_lrb_o[xvar][:plt_density],
+            df_mf_lrb_o[yvar][:plt_density],
             s=50, c='green', edgecolors='black', label='No impact')
 # plt.legend(fontsize=axis_font)
 
@@ -1869,14 +1906,14 @@ xvar = 'gap_ratio'
 yvar = 'T_ratio'
 
 res = 75
-X_plot = make_2D_plotting_space(df_cbf[covariate_list], res, x_var=xvar, y_var=yvar, 
+X_plot = make_2D_plotting_space(df_mf[covariate_list], res, x_var=xvar, y_var=yvar, 
                             all_vars=covariate_list,
                             third_var_set = 2.0, fourth_var_set = 0.15)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
 # GPC impact prediction
-Z = mdl_impact_cbf_tfp.gpc.predict_proba(X_plot)[:,1]
+Z = mdl_impact_mf_tfp.gpc.predict_proba(X_plot)[:,1]
 
 
 x_pl = np.unique(xx)
@@ -1902,12 +1939,12 @@ cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.5, cmap='RdYlGn_r',
 clabels = plt.clabel(cs, fontsize=subt_font, colors='black')
 [txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
 
-ax.scatter(df_cbf_tfp_i[xvar][:plt_density],
-            df_cbf_tfp_i[yvar][:plt_density],
+ax.scatter(df_mf_tfp_i[xvar][:plt_density],
+            df_mf_tfp_i[yvar][:plt_density],
             s=80, c='red', marker='X', edgecolors='black', label='Impacted')
 
-ax.scatter(df_cbf_tfp_o[xvar][:plt_density],
-            df_cbf_tfp_o[yvar][:plt_density],
+ax.scatter(df_mf_tfp_o[xvar][:plt_density],
+            df_mf_tfp_o[yvar][:plt_density],
             s=50, c='green', edgecolors='black', label='No impact')
 # plt.legend(fontsize=axis_font)
 

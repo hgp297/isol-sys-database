@@ -80,6 +80,8 @@ def define_gravity_loads(config_df, D_load=None, L_load=None):
     # TODO: here, vertical load might be changed for isolation (Section 17.2.7)
     # particularly E_v and the NLTH case
     
+    # this reduction takes E_v from 0.2 S_ds = 0.456 to 0.12 S_ms = 0.410
+    
     P_case_1 = 1.4*P_D
     P_case_2 = 1.2*P_D + 1.6*P_L # includes both case 2 and 3
     # case 4 and 5 do not control (wind)
