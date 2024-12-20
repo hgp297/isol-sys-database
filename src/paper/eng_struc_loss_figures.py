@@ -3482,7 +3482,7 @@ label_size = 20
 clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 13))
 
@@ -4431,7 +4431,7 @@ title_font=24
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 from matplotlib.lines import Line2D
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(16, 13))
 
@@ -5222,7 +5222,7 @@ def plot_predictions(mean, var, y_middle, y_bar, color):
     ax.axvline(lower, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     ax.axvline(upper, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     
-plt.close('all')
+# plt.close('all')
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -6340,8 +6340,11 @@ mpl.rcParams['ytick.labelsize'] = label_size
 
 fig = plt.figure(figsize=(13, 9))
 
-theta_inv, beta_inv = mle_fit_general(
-    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.5))
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.5))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -6365,8 +6368,11 @@ res = ecdf(my_y_var)
 ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
-theta_inv, beta_inv = mle_fit_general(
-    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.25))
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.25))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -6390,8 +6396,11 @@ res = ecdf(my_y_var)
 ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
-theta_inv, beta_inv = mle_fit_general(
-    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -6415,8 +6424,11 @@ res = ecdf(my_y_var)
 ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
-theta_inv, beta_inv = mle_fit_general(
-    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -6455,8 +6467,11 @@ ecdf_values = res.cdf.quantiles
 
 fig = plt.figure(figsize=(16, 13))
 
-theta_inv, beta_inv = mle_fit_general(
-    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.5))
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.5))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -6481,8 +6496,11 @@ ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
 
-theta_inv, beta_inv = mle_fit_general(
-    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.5))
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.5))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -6507,8 +6525,11 @@ ecdf_prob = res.cdf.probabilities
 ecdf_values = res.cdf.quantiles
 
 
-theta_inv, beta_inv = mle_fit_general(
-    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
@@ -6541,8 +6562,11 @@ title_font=20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-theta_inv, beta_inv = mle_fit_general(
-    ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
 
 xx_pr = np.linspace(1e-4, 1.0, 400)
 p = f(xx_pr, theta_inv, beta_inv)
