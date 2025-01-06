@@ -1181,7 +1181,6 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
                                 mdl_time_miss.gpr,
                                 outcome=time_var)
     
-    breakpoint()
     # predict dispersion given theta for each bin
     
     # using true kr to find beta from theta
