@@ -794,7 +794,8 @@ def get_hazard_bins(T, hazard_curves, sa_max=1.016):
     # from here, methodology is to use sa_bins to scale ground motions and analyze
     return(sa_bins, lambda_bins, sa_T, lambda_T)
 
-sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(4.9, site_hazard_curves)
+sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(3.36, site_hazard_curves,
+                                                       sa_max=0.376)
 
 
 plt.rcParams["font.family"] = "serif"
@@ -811,8 +812,8 @@ plt.close('all')
 fig = plt.figure(figsize=(8,7))
 ax=fig.add_subplot(1, 1, 1)
 
-ax.loglog(sa_bins,lambda_bins, '--^', label='Bins hazard')
-ax.loglog(sa_T,lambda_T, '-o', label='Site hazard')
+ax.loglog(sa_bins,lambda_bins, '--^', label='Bins hazard', linewidth=2.0)
+ax.loglog(sa_T,lambda_T, '-o', label='Site hazard', linewidth=0.8)
 ax.legend(fontsize=axis_font)
 ax.set_xlabel(r'$Sa(T_M)$', fontsize=axis_font)
 ax.set_ylabel(r'$\lambda$', fontsize=axis_font)
@@ -1054,7 +1055,7 @@ beta_regression_mdls = {'mdl_beta_cost_mf_tfp': mdl_beta_cost_mf_tfp,
                         'mdl_beta_time_cbf_lrb': mdl_beta_time_cbf_lrb}
 
 #%%
-mdl_beta_cost_cbf_tfp.fit_poly(degree=5)
+mdl_beta_cost_cbf_lrb.fit_poly(degree=5)
 
 #%%
 
@@ -1066,12 +1067,12 @@ plt.close('all')
 fig = plt.figure(figsize=(8, 7))
 ax1=fig.add_subplot(1, 1, 1)
 
-ax1.plot([np.array(mdl_beta_cost_cbf_tfp.X_train).ravel()], [mdl_beta_cost_cbf_tfp.y_train], 
+ax1.plot([np.array(mdl_beta_cost_cbf_lrb.X_train).ravel()], [mdl_beta_cost_cbf_lrb.y_train], 
           marker='x', markersize=5, color="red")
 
 nplot = 400
 xx_pr = np.linspace(1e-4, 1.0, nplot).reshape(-1,1)
-yy_pr = mdl_beta_cost_cbf_tfp.kr.predict(xx_pr)
+yy_pr = mdl_beta_cost_cbf_lrb.kr.predict(xx_pr)
 ax1.plot(xx_pr, yy_pr, label='kernel ridge - laplacian')
 
 # TODO: in truth, you should not use filter/smoothing, but rather achieve smoothing
@@ -1092,16 +1093,16 @@ ax1.plot(xx_pr, y_sg, color='black', label='smoothed with savgol')
 y_sm = smooth(yy_pr.ravel(), int(.05*nplot))
 ax1.plot(xx_pr, y_sm, color='green', label='moving average smooth')
 
-# yy_pr = mdl_beta_cost_cbf_tfp.o_ridge.predict(xx_pr)
+# yy_pr = mdl_beta_cost_cbf_lrb.o_ridge.predict(xx_pr)
 # ax1.plot(xx_pr, yy_pr, label='ordinary ridge')
 
-# yy_pr = mdl_beta_cost_cbf_tfp.gpr.predict(xx_pr)
+# yy_pr = mdl_beta_cost_cbf_lrb.gpr.predict(xx_pr)
 # ax1.plot(xx_pr, yy_pr, label='gpr-rq')
 
-yy_pr = mdl_beta_cost_cbf_tfp.poly.predict(xx_pr)
+yy_pr = mdl_beta_cost_cbf_lrb.poly.predict(xx_pr)
 ax1.plot(xx_pr, yy_pr, label='5th degree poly')
 ax1.set_ylim([-.1, 2])
-ax1.set_title(r'CBF-TFP lognormal betas', fontsize=axis_font)
+ax1.set_title(r'CBF-LRB lognormal betas', fontsize=axis_font)
 ax1.set_xlabel(r'$\theta$', fontsize=axis_font)
 ax1.set_ylabel(r'$\beta$', fontsize=axis_font)
 ax1.legend(fontsize=axis_font)
@@ -1123,6 +1124,7 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     mce_Sa_Tm = row['S_1']/row['T_m']
     sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(T, site_hazard_curves,
                                                            sa_max=1.5*mce_Sa_Tm)
+    
     
     # how are each design variables affected by changing Sa
     # only GR changes
@@ -1196,13 +1198,19 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     xx_pr = np.linspace(1e-4, 1.2, nplot).reshape(-1,1)
     yy_pr = mdl_cost_beta.kr.predict(xx_pr)
     y_sg = savgol_filter(yy_pr.ravel(), int(.05*nplot), 2)
+    y_sm = smooth(yy_pr.ravel(), int(.05*nplot))
+    # cost_beta_bins = np.interp(cost_ratio_bins[cost_var+'_pred'].values, 
+    #                            xx_pr.ravel(), y_sg)
     cost_beta_bins = np.interp(cost_ratio_bins[cost_var+'_pred'].values, 
-                               xx_pr.ravel(), y_sg)
+                                xx_pr.ravel(), y_sm)
     
     yy_pr = mdl_time_beta.kr.predict(xx_pr)
     y_sg = savgol_filter(yy_pr.ravel(), int(.05*nplot), 2)
+    y_sm = smooth(yy_pr.ravel(), int(.05*nplot))
+    # time_beta_bins = np.interp(time_ratio_bins[time_var+'_pred'].values, 
+    #                            xx_pr.ravel(), y_sg)
     time_beta_bins = np.interp(time_ratio_bins[time_var+'_pred'].values, 
-                               xx_pr.ravel(), y_sg)
+                                xx_pr.ravel(), y_sm)
     
     # unnormalize loss ratio back to loss
     cost_bins = cost_ratio_bins.values*row.total_cmp_cost
@@ -1235,55 +1243,56 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     time_loss_rates = np.multiply(pr_exceedance_time, lambda_bins)
     
     
-    # import matplotlib.pyplot as plt
-    # plt.close('all')
-    # fig = plt.figure(figsize=(8, 7))
-    # ax1=fig.add_subplot(1, 1, 1)
-    # ax1.plot(sa_bins, cost_bins.ravel(), '-o')
-    # ax1.set_xlabel(r'$Sa(T_M)$', fontsize=axis_font)
-    # ax1.set_ylabel(r'GP predicted median repair cost (\$)', fontsize=axis_font)
-    # ax1.grid()
-    # plt.show()
+    import matplotlib.pyplot as plt
+    plt.close('all')
+    fig = plt.figure(figsize=(8, 7))
+    ax1=fig.add_subplot(1, 1, 1)
+    ax1.plot(sa_bins, cost_bins.ravel(), '-o')
+    ax1.set_xlabel(r'$Sa(T_M)$', fontsize=axis_font)
+    ax1.set_ylabel(r'GP predicted median repair cost (\$)', fontsize=axis_font)
+    ax1.grid()
+    plt.show()
     # ax1.set_xlim([0, row['replacement_cost']])
     
-    # import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
     # plt.close('all')
-    # fig = plt.figure(figsize=(9, 6))
-    # ax1=fig.add_subplot(1, 1, 1)
+    fig = plt.figure(figsize=(9, 6))
+    ax1=fig.add_subplot(1, 1, 1)
     
-    # for scn_idx in range(len(cost_bins)):
-    #     ax1.plot(cost_loss_values, pr_exceedance_cost[:,scn_idx], label='scn_'+str(scn_idx))
-    # ax1.legend()
-    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
-    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
-    # ax1.grid()
-    # ax1.set_xlim([0, row['replacement_cost']])
+    for scn_idx in range(len(cost_bins)):
+        ax1.plot(cost_loss_values, pr_exceedance_cost[:,scn_idx], label='scn_'+str(scn_idx))
+    ax1.legend()
+    ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    ax1.grid()
+    ax1.set_xlim([0, row['replacement_cost']])
     
     
-    # import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
     # plt.close('all')
-    # fig = plt.figure(figsize=(9, 7))
-    # ax1=fig.add_subplot(1, 1, 1)
+    fig = plt.figure(figsize=(9, 7))
+    ax1=fig.add_subplot(1, 1, 1)
     
-    # for scn_idx in range(len(cost_bins)):
-    #     ax1.plot(cost_loss_values, cost_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
-    # ax1.legend()
-    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
-    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
-    # ax1.grid()
-    # ax1.set_xlim([0, row['replacement_cost']])
+    for scn_idx in range(len(cost_bins)):
+        ax1.plot(cost_loss_values, cost_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    ax1.legend()
+    ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    ax1.grid()
+    ax1.set_xlim([0, row['replacement_cost']])
     
-    # fig = plt.figure(figsize=(9, 7))
-    # ax1=fig.add_subplot(1, 1, 1)
+    fig = plt.figure(figsize=(9, 7))
+    ax1=fig.add_subplot(1, 1, 1)
     
-    # for scn_idx in range(len(time_bins)):
-    #     ax1.plot(time_loss_values, time_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
-    # ax1.legend()
-    # ax1.set_xlabel(r'time (man-hour)', fontsize=axis_font)
-    # ax1.set_ylabel(r'$Pr[X \geq t]$', fontsize=axis_font)
-    # ax1.grid()
-    # ax1.set_xlim([0, row['replacement_time']])
+    for scn_idx in range(len(time_bins)):
+        ax1.plot(time_loss_values, time_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    ax1.legend()
+    ax1.set_xlabel(r'time (man-hour)', fontsize=axis_font)
+    ax1.set_ylabel(r'$Pr[X \geq t]$', fontsize=axis_font)
+    ax1.grid()
+    ax1.set_xlim([0, row['replacement_time']])
     
+    # breakpoint()
     
     # multiply scenarios' exceedance curve with corresponding return rate
     # sum across all scenarios
@@ -1297,6 +1306,16 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     # renormalize
     
     return mean_cumulative_annual_cost, mean_cumulative_annual_time
+
+#%% 
+
+row_no = 0
+row = df.iloc[row_no]
+mcac, mcat = calculate_lifetime_loss(row,
+                                     impact_clfs=impact_classification_mdls, 
+                                    cost_regs=cost_regression_mdls, 
+                                    time_regs=time_regression_mdls,
+                                    beta_regs=beta_regression_mdls)
     
 #%% 
 
@@ -1459,3 +1478,4 @@ fig.tight_layout()
 #%% 
 
 # TODO: use decision making on this
+# NPV, tail-favored metrics
