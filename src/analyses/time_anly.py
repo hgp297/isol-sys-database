@@ -1123,7 +1123,10 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     # use maximum as 1.5* mce level Sa(T_m)
     mce_Sa_Tm = row['S_1']/row['T_m']
     sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(T, site_hazard_curves,
-                                                           sa_max=1.5*mce_Sa_Tm)
+                                                            sa_max=1.5*mce_Sa_Tm)
+    
+    
+    # sa_bins, lambda_bins, sa_T, lambda_T = get_hazard_bins(T, site_hazard_curves)
     
     
     # how are each design variables affected by changing Sa
@@ -1227,6 +1230,10 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     cost_loss_values = np.linspace(1e-4, row['replacement_cost'], 1000)
     time_loss_values = np.linspace(1e-4, row['replacement_time'], 1000)
     
+    
+    # cost_loss_values = np.linspace(1e-4, row['total_cmp_cost'], 1000)
+    # time_loss_values = np.linspace(1e-4, row['total_cmp_time'], 1000)
+    
     cost_scns = np.zeros([len(cost_loss_values), len(cost_bins)])
     time_scns = np.zeros([len(time_loss_values), len(time_bins)])
     
@@ -1236,6 +1243,9 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
         cost_scns[:,scn_idx] = lognorm_f(cost_loss_values, cost_bins[scn_idx], cost_beta_bins[scn_idx])
         time_scns[:,scn_idx] = lognorm_f(time_loss_values, time_bins[scn_idx], time_beta_bins[scn_idx])
         
+    cost_scns[cost_loss_values > row['total_cmp_cost'], :] = 1.0
+    time_scns[time_loss_values > row['total_cmp_time'], :] = 1.0
+    
     pr_exceedance_cost = 1 - cost_scns
     pr_exceedance_time = 1 - time_scns
     
@@ -1292,7 +1302,7 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     ax1.grid()
     ax1.set_xlim([0, row['replacement_time']])
     
-    # breakpoint()
+    breakpoint()
     
     # multiply scenarios' exceedance curve with corresponding return rate
     # sum across all scenarios
@@ -1473,6 +1483,7 @@ ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
 ax.set_zlabel('Annual repair cost (\%)', fontsize=axis_font)
 ax.set_title('MF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
 fig.tight_layout()
+
 # plt.savefig('./dissertation_figures/mf_lrb_conditioned.pdf')
 
 #%% 

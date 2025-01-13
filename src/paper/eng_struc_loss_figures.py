@@ -74,39 +74,39 @@ df_loss_max = max_obj.max_loss
 
 #%% readjust Tm of TFPs for W live
 
-# def wL_calc(num_stories, bldg_area):
+def wL_calc(num_stories, bldg_area):
     
-#     # in kip/ft^2
-#     LL_avg = (num_stories*50.0/1000 + 20.0/1000)/(num_stories + 1)
-#     W_L = LL_avg*bldg_area
-#     return W_L
+    # in kip/ft^2
+    LL_avg = (num_stories*50.0/1000 + 20.0/1000)/(num_stories + 1)
+    W_L = LL_avg*bldg_area
+    return W_L
 
-# def TFP_period_shift(W_D, W_L, bearing):
-#     # shift assumes that the load case is 1.0D + 0.5L
-#     if bearing == 'TFP':
-#         return (W_D/(W_D+0.5*W_L))**0.5
-#     else:
-#         return 1.0
+def TFP_period_shift(W_D, W_L, bearing):
+    # shift assumes that the load case is 1.0D + 0.5L
+    if bearing == 'TFP':
+        return (W_D/(W_D+0.5*W_L))**0.5
+    else:
+        return 1.0
 
-# df['W_L'] = df.apply(lambda x: wL_calc(x['num_stories'], x['bldg_area']), axis=1)
-# df['Tshift_coef'] = df.apply(
-#     lambda x: TFP_period_shift(x['W'], x['W_L'], x['isolator_system']), axis=1)
+df['W_L'] = df.apply(lambda x: wL_calc(x['num_stories'], x['bldg_area']), axis=1)
+df['Tshift_coef'] = df.apply(
+    lambda x: TFP_period_shift(x['W'], x['W_L'], x['isolator_system']), axis=1)
 
-# df['T_M_adj'] = df['T_m'] * df['Tshift_coef']
+df['T_M_adj'] = df['T_m'] * df['Tshift_coef']
 
-# df['T_ratio'] = df['T_M_adj']/df['T_fb']
+df['T_ratio'] = df['T_M_adj']/df['T_fb']
 
-# from gms import get_ST
+from gms import get_ST
 
 
-# df['sa_tm_adj'] = df.apply(
-#     lambda x: get_ST(x, x['T_M_adj'],
-#                      db_dir='../../resource/ground_motions/gm_db.csv',
-#                      spec_dir='../../resource/ground_motions/gm_spectra.csv'), 
-#     axis=1)
+df['sa_tm_adj'] = df.apply(
+    lambda x: get_ST(x, x['T_M_adj'],
+                      db_dir='../../resource/ground_motions/gm_db.csv',
+                      spec_dir='../../resource/ground_motions/gm_spectra.csv'), 
+    axis=1)
 
-# df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
-#     (g*(df['sa_tm_adj']/df['Bm'])*df['T_M_adj']**2)
+df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
+    (g*(df['sa_tm_adj']/df['Bm'])*df['T_M_adj']**2)
     
 #%% main predictor
 
