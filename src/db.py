@@ -1851,7 +1851,7 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     
     from gms import scale_ground_motion
     
-    
+    # for TFPs, T_m is the "unadjusted" design period for effect of vertical live load
     work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
     work_df['moat_ampli'] = work_df['gap_ratio']
     

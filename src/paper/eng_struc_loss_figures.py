@@ -92,9 +92,9 @@ df['W_L'] = df.apply(lambda x: wL_calc(x['num_stories'], x['bldg_area']), axis=1
 df['Tshift_coef'] = df.apply(
     lambda x: TFP_period_shift(x['W'], x['W_L'], x['isolator_system']), axis=1)
 
-df['T_M_adj'] = df['T_m'] * df['Tshift_coef']
+df['T_M_adj'] = pd.to_numeric(df['T_m'] * df['Tshift_coef'])
 
-df['T_ratio'] = df['T_M_adj']/df['T_fb']
+df['T_ratio'] = pd.to_numeric(df['T_M_adj']/df['T_fb'])
 
 from gms import get_ST
 
@@ -105,8 +105,14 @@ df['sa_tm_adj'] = df.apply(
                       spec_dir='../../resource/ground_motions/gm_spectra.csv'), 
     axis=1)
 
-df['gap_ratio'] = (df['constructed_moat']*4*pi**2)/ \
-    (g*(df['sa_tm_adj']/df['Bm'])*df['T_M_adj']**2)
+df['GR_OG'] = pd.to_numeric((df['constructed_moat']*4*pi**2)/ \
+    (g*(df['sa_tm']/df['Bm'])*df['T_m']**2))
+    
+df['gap_ratio'] = pd.to_numeric((df['constructed_moat']*4*pi**2)/ \
+    (g*(df['sa_tm_adj']/df['Bm'])*df['T_M_adj']**2))
+    
+df['GR_shift_coef'] = pd.to_numeric(df['gap_ratio'])/pd.to_numeric(df['GR_OG'])
+df['GR-Ad_coef'] = pd.to_numeric(df['GR_OG'])/pd.to_numeric(df['moat_ampli'])
     
 #%% main predictor
 
@@ -3888,10 +3894,18 @@ my_design['isolator_system'] = 'TFP'
 my_design['k_ratio'] = 10
 
 mf_tfp_dict = my_design.to_dict()
+
+# for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
+# change T_m by x0.9
+# we hypothesize that in GR, all shift is captured in the T shift, while spectrum differences
+# cannot be captured regardless
+mf_tfp_dict['T_ratio'] = mf_tfp_dict['T_ratio']/0.9
+
 ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/',
                                  config_dict=config_dict_moderate)
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
+
 
 # with open('../inputs/mf_tfp_moderate.in', 'w') as file:
 #     file.write(json.dumps(mf_tfp_dict))
@@ -3908,6 +3922,12 @@ my_design['k_ratio'] = 7
 
 
 cbf_tfp_dict = my_design.to_dict()
+
+# for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
+# change T_m by x0.9
+# we hypothesize that in GR, all shift is captured in the T shift, while spectrum differences
+# cannot be captured regardless
+cbf_tfp_dict['T_ratio'] = cbf_tfp_dict['T_ratio']/0.9
     
 ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/',
                                  config_dict=config_dict_moderate)
@@ -3975,6 +3995,12 @@ my_design['k_ratio'] = 7
 
 mf_tfp_dict_strict = my_design.to_dict()
 
+# for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
+# change T_m by x0.9
+# we hypothesize that in GR, all shift is captured in the T shift, while spectrum differences
+# cannot be captured regardless
+mf_tfp_dict_strict['T_ratio'] = mf_tfp_dict_strict['T_ratio']/0.9
+
 ida_mf_tfp_df_strict = prepare_ida_util(mf_tfp_dict_strict, db_string='../../resource/',
                                  config_dict=config_dict_strict)
 
@@ -3994,6 +4020,12 @@ my_design['isolator_system'] = 'TFP'
 my_design['k_ratio'] = 7
 
 cbf_tfp_dict_strict = my_design.to_dict()
+
+# for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
+# change T_m by x0.9
+# we hypothesize that in GR, all shift is captured in the T shift, while spectrum differences
+# cannot be captured regardless
+cbf_tfp_dict_strict['T_ratio'] = cbf_tfp_dict_strict['T_ratio']/0.9
     
 ida_cbf_tfp_df_strict = prepare_ida_util(cbf_tfp_dict_strict, db_string='../../resource/',
                                  config_dict=config_dict_strict)
@@ -4050,6 +4082,7 @@ print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df_strict))
 # with open('../inputs/cbf_lrb_enhanced.cfg', 'w') as file:
 #     file.write(json.dumps(config_dict_strict))
 #     file.close()
+
 #%% generalized results of inverse design
 # TODO: validation
 
@@ -4177,15 +4210,6 @@ def process_results(run_case):
     
     return(ida_results_df, val_replacement, val_cost, 
            val_cost_ratio, val_downtime, val_downtime_ratio)
-    
-# (mf_tfp_val_results, mf_tfp_val_repl, mf_tfp_val_cost, mf_tfp_val_cost_ratio, 
-#  mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_constructable')
-# (mf_lrb_val_results, mf_lrb_val_repl, mf_lrb_val_cost, mf_lrb_val_cost_ratio, 
-#  mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_constructable')
-# (cbf_tfp_val_results, cbf_tfp_val_repl, cbf_tfp_val_cost, cbf_tfp_val_cost_ratio, 
-#  cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_constructable')
-# (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
-#  cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_constructable')
 
 (mf_tfp_val_results, mf_tfp_val_repl, mf_tfp_val_cost, mf_tfp_val_cost_ratio, 
  mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_moderate')
@@ -4196,16 +4220,6 @@ def process_results(run_case):
 (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
  cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_moderate')
 
-# NOTE: the _redux runs bypassed displacement vs d_bearing check for LRBs
-# (mf_tfp_strict_results, mf_tfp_strict_repl, mf_tfp_strict_cost, mf_tfp_strict_cost_ratio, 
-#  mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_strict')
-# (mf_lrb_strict_results, mf_lrb_strict_repl, mf_lrb_strict_cost, mf_lrb_strict_cost_ratio, 
-#  mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_strict_hs')
-# (cbf_tfp_strict_results, cbf_tfp_strict_repl, cbf_tfp_strict_cost, cbf_tfp_strict_cost_ratio, 
-#  cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_strict')
-# (cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
-#  cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict_hs')
-
 (mf_tfp_strict_results, mf_tfp_strict_repl, mf_tfp_strict_cost, mf_tfp_strict_cost_ratio, 
  mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_enhanced')
 (mf_lrb_strict_results, mf_lrb_strict_repl, mf_lrb_strict_cost, mf_lrb_strict_cost_ratio, 
@@ -4215,8 +4229,6 @@ def process_results(run_case):
 (cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
  cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_enhanced')
 
-# (mf_lrb_off_results, mf_lrb_off_repl, mf_lrb_off_cost, mf_lrb_off_cost_ratio, 
-#  mf_lrb_off_downtime, mf_lrb_off_downtime_ratio) = process_results('mf_lrb_strict_redux')
 #%% latex printing
 
 def print_latex_inverse_table(sys_name, design_dict, performance_dict):
@@ -4231,14 +4243,6 @@ def print_latex_inverse_table(sys_name, design_dict, performance_dict):
     GP_repl_risk = performance_dict['replacement_freq']
     upfront_cost = performance_dict['upfront_cost']
     
-    # print('Average median repair cost: ',
-    #       f'${val_cost[0]:,.2f}')
-    # print('Repair cost ratio: ', 
-    #       f'{val_cost_ratio[0]:,.3f}')
-    # print('Repair time ratio: ',
-    #       f'{val_downtime_ratio[0]:,.3f}')
-    # print('Estimated replacement frequency: ',
-    #       f'{val_replacement[0]:.2%}')
     
     latex_string = f"& {sys_name} & {GR:.2f} & {Ry:.2f} & {T_ratio:.2f} & {zeta:.2f} \
         & {GP_cost_ratio:.3f} & {GP_time_ratio:.3f} & {GP_repl_risk:.3f} &  \${upfront_cost/1e6:.2f} M \\\\"
@@ -6794,230 +6798,230 @@ fig.tight_layout()
 
 #%% system selector
 
-# TODO: system selection
+# # TODO: system selection
 
-# consider: replacement freq, num_stories, num_bays, repair cost
-covariate_list = ['cmp_cost_ratio', 'cmp_time_ratio', 'replacement_freq', 'steel_cost_per_sf']
-clf_struct = GP(df)
-clf_struct.set_covariates(covariate_list)
-clf_struct.set_outcome('superstructure_system', use_ravel=False)
-clf_struct.test_train_split(0.2)
-clf_struct.fit_ensemble()
-# clf_struct.fit_svc(neg_wt=False)
-clf_struct.fit_gpc(kernel_name='rbf_ard')
-# clf_struct.fit_kernel_logistic(kernel_name='rbf', neg_wt=False)
-# clf_struct.fit_dt()
+# # consider: replacement freq, num_stories, num_bays, repair cost
+# covariate_list = ['cmp_cost_ratio', 'cmp_time_ratio', 'replacement_freq', 'steel_cost_per_sf']
+# clf_struct = GP(df)
+# clf_struct.set_covariates(covariate_list)
+# clf_struct.set_outcome('superstructure_system', use_ravel=False)
+# clf_struct.test_train_split(0.2)
+# clf_struct.fit_ensemble()
+# # clf_struct.fit_svc(neg_wt=False)
+# clf_struct.fit_gpc(kernel_name='rbf_ard')
+# # clf_struct.fit_kernel_logistic(kernel_name='rbf', neg_wt=False)
+# # clf_struct.fit_dt()
 
-clf_isol = GP(df)
-clf_isol.set_covariates(covariate_list)
-clf_isol.set_outcome('isolator_system', use_ravel=False)
-clf_isol.test_train_split(0.2)
-clf_isol.fit_ensemble()
-# clf_isol.fit_svc(neg_wt=False)
-clf_isol.fit_gpc(kernel_name='rbf_ard')
-# clf_isol.fit_kernel_logistic(kernel_name='rbf', neg_wt=False)
+# clf_isol = GP(df)
+# clf_isol.set_covariates(covariate_list)
+# clf_isol.set_outcome('isolator_system', use_ravel=False)
+# clf_isol.test_train_split(0.2)
+# clf_isol.fit_ensemble()
+# # clf_isol.fit_svc(neg_wt=False)
+# clf_isol.fit_gpc(kernel_name='rbf_ard')
+# # clf_isol.fit_kernel_logistic(kernel_name='rbf', neg_wt=False)
 
 #%%
-# plt.close('all')
-#################################
-xvar = 'cmp_cost_ratio'
-yvar = 'replacement_freq'
+# # plt.close('all')
+# #################################
+# xvar = 'cmp_cost_ratio'
+# yvar = 'replacement_freq'
 
-res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
-                                all_vars=covariate_list,
-                                third_var_set = 0.1, fourth_var_set = 6.0)
-
-
-fig = plt.figure(figsize=(16, 7))
-
-color = plt.cm.Set1(np.linspace(0, 1, 10))
-
-ax=fig.add_subplot(1, 2, 1)
+# res = 75
+# X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+#                                 all_vars=covariate_list,
+#                                 third_var_set = 0.1, fourth_var_set = 6.0)
 
 
+# fig = plt.figure(figsize=(16, 7))
 
-xx = X_plot[xvar]
-yy = X_plot[yvar]
-Z = clf_struct.gpc.predict(X_plot)
+# color = plt.cm.Set1(np.linspace(0, 1, 10))
 
-lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
-x_pl = np.unique(xx)
-y_pl = np.unique(yy)
-
-Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-Z_classif = Z_numbered.reshape(xx_pl.shape)
-
-# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
-plt.imshow(
-        Z_classif,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.coolwarm_r,
-    )
-
-ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
-           edgecolors='k', alpha = 1.0, label='CBF')
-ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
-           edgecolors='k', alpha = 1.0, label='MF')
-plt.legend(fontsize=axis_font)
-
-ax.set_title(r'Superstructures', fontsize=title_font)
-ax.set_ylabel(r'Replacement probability', fontsize=axis_font)
-ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-
-#################################
-xvar = 'cmp_cost_ratio'
-yvar = 'replacement_freq'
-
-res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
-                                all_vars=covariate_list,
-                                third_var_set = 0.1, fourth_var_set = 6.0)
-
-
-color = plt.cm.Set1(np.linspace(0, 1, 10))
-
-ax=fig.add_subplot(1, 2, 2)
+# ax=fig.add_subplot(1, 2, 1)
 
 
 
-xx = X_plot[xvar]
-yy = X_plot[yvar]
-Z = clf_isol.gpc.predict(X_plot)
+# xx = X_plot[xvar]
+# yy = X_plot[yvar]
+# Z = clf_struct.gpc.predict(X_plot)
 
-lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
-x_pl = np.unique(xx)
-y_pl = np.unique(yy)
+# lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
+# x_pl = np.unique(xx)
+# y_pl = np.unique(yy)
 
-Z_numbered = clf_isol.gpc.predict_proba(X_plot)[:,1]
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-Z_classif = Z_numbered.reshape(xx_pl.shape)
+# Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# Z_classif = Z_numbered.reshape(xx_pl.shape)
 
-# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
-plt.imshow(
-        Z_classif,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.coolwarm_r,
-    )
+# # plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+# plt.imshow(
+#         Z_classif,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.coolwarm_r,
+#     )
 
-ax.scatter(df_lrb[xvar], df_lrb[yvar], color=color[0],
-           edgecolors='k', alpha = 1.0, label='LRB')
-ax.scatter(df_tfp[xvar], df_tfp[yvar], color=color[1],
-           edgecolors='k', alpha = 1.0, label='TFP')
-plt.legend(fontsize=axis_font)
+# ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
+#            edgecolors='k', alpha = 1.0, label='CBF')
+# ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
+#            edgecolors='k', alpha = 1.0, label='MF')
+# plt.legend(fontsize=axis_font)
 
-ax.set_title(r'Isolators', fontsize=title_font)
+# ax.set_title(r'Superstructures', fontsize=title_font)
 # ax.set_ylabel(r'Replacement probability', fontsize=axis_font)
-ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+# ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
 
-fig.tight_layout()
+# #################################
+# xvar = 'cmp_cost_ratio'
+# yvar = 'replacement_freq'
+
+# res = 75
+# X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+#                                 all_vars=covariate_list,
+#                                 third_var_set = 0.1, fourth_var_set = 6.0)
+
+
+# color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+# ax=fig.add_subplot(1, 2, 2)
+
+
+
+# xx = X_plot[xvar]
+# yy = X_plot[yvar]
+# Z = clf_isol.gpc.predict(X_plot)
+
+# lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
+# x_pl = np.unique(xx)
+# y_pl = np.unique(yy)
+
+# Z_numbered = clf_isol.gpc.predict_proba(X_plot)[:,1]
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# Z_classif = Z_numbered.reshape(xx_pl.shape)
+
+# # plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+# plt.imshow(
+#         Z_classif,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.coolwarm_r,
+#     )
+
+# ax.scatter(df_lrb[xvar], df_lrb[yvar], color=color[0],
+#            edgecolors='k', alpha = 1.0, label='LRB')
+# ax.scatter(df_tfp[xvar], df_tfp[yvar], color=color[1],
+#            edgecolors='k', alpha = 1.0, label='TFP')
+# plt.legend(fontsize=axis_font)
+
+# ax.set_title(r'Isolators', fontsize=title_font)
+# # ax.set_ylabel(r'Replacement probability', fontsize=axis_font)
+# ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+
+# fig.tight_layout()
 #%%
-#################################
-yvar = 'cmp_time_ratio'
-xvar = 'steel_cost_per_sf'
+# #################################
+# yvar = 'cmp_time_ratio'
+# xvar = 'steel_cost_per_sf'
 
-res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
-                                all_vars=covariate_list,
-                                third_var_set = 0.2, fourth_var_set = 0.05)
-
-
-fig = plt.figure(figsize=(16, 7))
-
-color = plt.cm.Set1(np.linspace(0, 1, 10))
-
-ax=fig.add_subplot(1, 2, 1)
+# res = 75
+# X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+#                                 all_vars=covariate_list,
+#                                 third_var_set = 0.2, fourth_var_set = 0.05)
 
 
+# fig = plt.figure(figsize=(16, 7))
 
-xx = X_plot[xvar]
-yy = X_plot[yvar]
-Z = clf_struct.gpc.predict(X_plot)
+# color = plt.cm.Set1(np.linspace(0, 1, 10))
 
-lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
-x_pl = np.unique(xx)
-y_pl = np.unique(yy)
-
-Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-Z_classif = Z_numbered.reshape(xx_pl.shape)
-
-# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
-plt.imshow(
-        Z_classif,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.coolwarm_r,
-    )
-
-ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
-           edgecolors='k', alpha = 1.0, label='CBF')
-ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
-           edgecolors='k', alpha = 1.0, label='MF')
-plt.legend(fontsize=axis_font)
-
-ax.set_title(r'Superstructures', fontsize=title_font)
-ax.set_xlabel(r'Steel cost per sf', fontsize=axis_font)
-ax.set_ylabel(r'Downtime ratio', fontsize=axis_font)
-
-#################################
-yvar = 'cmp_time_ratio'
-xvar = 'steel_cost_per_sf'
-
-res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
-                                all_vars=covariate_list,
-                                third_var_set = 0.2, fourth_var_set = 0.05)
-
-
-color = plt.cm.Set1(np.linspace(0, 1, 10))
-
-ax=fig.add_subplot(1, 2, 2)
+# ax=fig.add_subplot(1, 2, 1)
 
 
 
-xx = X_plot[xvar]
-yy = X_plot[yvar]
-Z = clf_isol.gpc.predict(X_plot)
+# xx = X_plot[xvar]
+# yy = X_plot[yvar]
+# Z = clf_struct.gpc.predict(X_plot)
 
-lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
-x_pl = np.unique(xx)
-y_pl = np.unique(yy)
+# lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
+# x_pl = np.unique(xx)
+# y_pl = np.unique(yy)
 
-Z_numbered = clf_isol.gpc.predict_proba(X_plot)[:,1]
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-Z_classif = Z_numbered.reshape(xx_pl.shape)
+# Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# Z_classif = Z_numbered.reshape(xx_pl.shape)
 
-# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
-plt.imshow(
-        Z_classif,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.coolwarm_r,
-    )
+# # plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+# plt.imshow(
+#         Z_classif,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.coolwarm_r,
+#     )
 
-ax.scatter(df_lrb[xvar], df_lrb[yvar], color=color[0],
-           edgecolors='k', alpha = 1.0, label='LRB')
-ax.scatter(df_tfp[xvar], df_tfp[yvar], color=color[1],
-           edgecolors='k', alpha = 1.0, label='TFP')
-plt.legend(fontsize=axis_font)
+# ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
+#            edgecolors='k', alpha = 1.0, label='CBF')
+# ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
+#            edgecolors='k', alpha = 1.0, label='MF')
+# plt.legend(fontsize=axis_font)
 
-ax.set_title(r'Isolators', fontsize=title_font)
-ax.set_xlabel(r'Steel cost per sf', fontsize=axis_font)
+# ax.set_title(r'Superstructures', fontsize=title_font)
+# ax.set_xlabel(r'Steel cost per sf', fontsize=axis_font)
 # ax.set_ylabel(r'Downtime ratio', fontsize=axis_font)
-fig.tight_layout()
+
+# #################################
+# yvar = 'cmp_time_ratio'
+# xvar = 'steel_cost_per_sf'
+
+# res = 75
+# X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+#                                 all_vars=covariate_list,
+#                                 third_var_set = 0.2, fourth_var_set = 0.05)
+
+
+# color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+# ax=fig.add_subplot(1, 2, 2)
+
+
+
+# xx = X_plot[xvar]
+# yy = X_plot[yvar]
+# Z = clf_isol.gpc.predict(X_plot)
+
+# lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
+# x_pl = np.unique(xx)
+# y_pl = np.unique(yy)
+
+# Z_numbered = clf_isol.gpc.predict_proba(X_plot)[:,1]
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# Z_classif = Z_numbered.reshape(xx_pl.shape)
+
+# # plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+# plt.imshow(
+#         Z_classif,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.coolwarm_r,
+#     )
+
+# ax.scatter(df_lrb[xvar], df_lrb[yvar], color=color[0],
+#            edgecolors='k', alpha = 1.0, label='LRB')
+# ax.scatter(df_tfp[xvar], df_tfp[yvar], color=color[1],
+#            edgecolors='k', alpha = 1.0, label='TFP')
+# plt.legend(fontsize=axis_font)
+
+# ax.set_title(r'Isolators', fontsize=title_font)
+# ax.set_xlabel(r'Steel cost per sf', fontsize=axis_font)
+# # ax.set_ylabel(r'Downtime ratio', fontsize=axis_font)
+# fig.tight_layout()
