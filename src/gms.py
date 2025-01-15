@@ -235,6 +235,7 @@ def get_ST(input_df, T_query,
 
     Sa_query_unscaled  = np.interp(T_query, gm_spectrum.Period, gm_spectrum.Sa)
     Sa_query = scale_factor*Sa_query_unscaled
+    
     return(Sa_query)
 
 def plot_spectrum(input_df,

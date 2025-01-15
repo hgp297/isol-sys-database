@@ -391,6 +391,7 @@ def loss_percentages(df_main, df_loss, df_max):
 
     df_main['replacement_cost'] = 600.0*(df_main['bldg_area'])
     df_main['total_cmp_cost'] = df_max['cost_50%']
+    df_main['total_cmp_cost_ub'] = df_max['cost_90%']
     df_main['cmp_replace_cost_ratio'] = df_main['total_cmp_cost']/df_main['replacement_cost']
     df_main['median_cost_ratio'] = df_loss['cost_50%']/df_main['replacement_cost']
     df_main['cmp_cost_ratio'] = df_loss['cost_50%']/df_main['total_cmp_cost']
@@ -398,6 +399,7 @@ def loss_percentages(df_main, df_loss, df_max):
     # but working in parallel (2x faster)
     df_main['replacement_time'] = df_main['bldg_area']/1000*365
     df_main['total_cmp_time'] = df_max['time_l_50%']
+    df_main['total_cmp_time_ub'] = df_max['time_l_90%']
     df_main['cmp_replace_time_ratio'] = df_main['total_cmp_time']/df_main['replacement_time']
     df_main['median_time_ratio'] = df_loss['time_l_50%']/df_main['replacement_time']
     df_main['cmp_time_ratio'] = df_loss['time_l_50%']/df_main['total_cmp_time']
@@ -1243,8 +1245,8 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
         cost_scns[:,scn_idx] = lognorm_f(cost_loss_values, cost_bins[scn_idx], cost_beta_bins[scn_idx])
         time_scns[:,scn_idx] = lognorm_f(time_loss_values, time_bins[scn_idx], time_beta_bins[scn_idx])
         
-    cost_scns[cost_loss_values > row['total_cmp_cost'], :] = 1.0
-    time_scns[time_loss_values > row['total_cmp_time'], :] = 1.0
+    cost_scns[cost_loss_values > row['total_cmp_cost_ub'], :] = 1.0
+    time_scns[time_loss_values > row['total_cmp_time_ub'], :] = 1.0
     
     pr_exceedance_cost = 1 - cost_scns
     pr_exceedance_time = 1 - time_scns
@@ -1253,56 +1255,56 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     time_loss_rates = np.multiply(pr_exceedance_time, lambda_bins)
     
     
-    import matplotlib.pyplot as plt
-    plt.close('all')
-    fig = plt.figure(figsize=(8, 7))
-    ax1=fig.add_subplot(1, 1, 1)
-    ax1.plot(sa_bins, cost_bins.ravel(), '-o')
-    ax1.set_xlabel(r'$Sa(T_M)$', fontsize=axis_font)
-    ax1.set_ylabel(r'GP predicted median repair cost (\$)', fontsize=axis_font)
-    ax1.grid()
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # plt.close('all')
+    # fig = plt.figure(figsize=(8, 7))
+    # ax1=fig.add_subplot(1, 1, 1)
+    # ax1.plot(sa_bins, cost_bins.ravel(), '-o')
+    # ax1.set_xlabel(r'$Sa(T_M)$', fontsize=axis_font)
+    # ax1.set_ylabel(r'GP predicted median repair cost (\$)', fontsize=axis_font)
+    # ax1.grid()
+    # plt.show()
+    # # ax1.set_xlim([0, row['replacement_cost']])
+    
+    # import matplotlib.pyplot as plt
+    # # plt.close('all')
+    # fig = plt.figure(figsize=(9, 6))
+    # ax1=fig.add_subplot(1, 1, 1)
+    
+    # for scn_idx in range(len(cost_bins)):
+    #     ax1.plot(cost_loss_values, pr_exceedance_cost[:,scn_idx], label='scn_'+str(scn_idx))
+    # ax1.legend()
+    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    # ax1.grid()
     # ax1.set_xlim([0, row['replacement_cost']])
     
-    import matplotlib.pyplot as plt
-    # plt.close('all')
-    fig = plt.figure(figsize=(9, 6))
-    ax1=fig.add_subplot(1, 1, 1)
     
-    for scn_idx in range(len(cost_bins)):
-        ax1.plot(cost_loss_values, pr_exceedance_cost[:,scn_idx], label='scn_'+str(scn_idx))
-    ax1.legend()
-    ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
-    ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
-    ax1.grid()
-    ax1.set_xlim([0, row['replacement_cost']])
+    # import matplotlib.pyplot as plt
+    # # plt.close('all')
+    # fig = plt.figure(figsize=(9, 7))
+    # ax1=fig.add_subplot(1, 1, 1)
     
+    # for scn_idx in range(len(cost_bins)):
+    #     ax1.plot(cost_loss_values, cost_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    # ax1.legend()
+    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    # ax1.grid()
+    # ax1.set_xlim([0, row['replacement_cost']])
     
-    import matplotlib.pyplot as plt
-    # plt.close('all')
-    fig = plt.figure(figsize=(9, 7))
-    ax1=fig.add_subplot(1, 1, 1)
+    # fig = plt.figure(figsize=(9, 7))
+    # ax1=fig.add_subplot(1, 1, 1)
     
-    for scn_idx in range(len(cost_bins)):
-        ax1.plot(cost_loss_values, cost_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
-    ax1.legend()
-    ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
-    ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
-    ax1.grid()
-    ax1.set_xlim([0, row['replacement_cost']])
+    # for scn_idx in range(len(time_bins)):
+    #     ax1.plot(time_loss_values, time_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    # ax1.legend()
+    # ax1.set_xlabel(r'time (man-hour)', fontsize=axis_font)
+    # ax1.set_ylabel(r'$Pr[X \geq t]$', fontsize=axis_font)
+    # ax1.grid()
+    # ax1.set_xlim([0, row['replacement_time']])
     
-    fig = plt.figure(figsize=(9, 7))
-    ax1=fig.add_subplot(1, 1, 1)
-    
-    for scn_idx in range(len(time_bins)):
-        ax1.plot(time_loss_values, time_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
-    ax1.legend()
-    ax1.set_xlabel(r'time (man-hour)', fontsize=axis_font)
-    ax1.set_ylabel(r'$Pr[X \geq t]$', fontsize=axis_font)
-    ax1.grid()
-    ax1.set_xlim([0, row['replacement_time']])
-    
-    breakpoint()
+    # breakpoint()
     
     # multiply scenarios' exceedance curve with corresponding return rate
     # sum across all scenarios
@@ -1488,5 +1490,6 @@ fig.tight_layout()
 
 #%% 
 
+# NVP(x) and whether or not to upgrade
 # TODO: use decision making on this
 # NPV, tail-favored metrics

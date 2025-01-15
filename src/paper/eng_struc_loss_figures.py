@@ -3897,9 +3897,10 @@ mf_tfp_dict = my_design.to_dict()
 
 # for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
 # change T_m by x0.9
-# we hypothesize that in GR, all shift is captured in the T shift, while spectrum differences
-# cannot be captured regardless
+# since in the design script, GR is applied on the unadjusted T, we'll need to adjust
+# the specified GR by x0.9
 mf_tfp_dict['T_ratio'] = mf_tfp_dict['T_ratio']/0.9
+mf_tfp_dict['gap_ratio'] = mf_tfp_dict['gap_ratio']*0.9
 
 ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/',
                                  config_dict=config_dict_moderate)
@@ -3907,13 +3908,13 @@ ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/',
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
 
-# with open('../inputs/mf_tfp_moderate.in', 'w') as file:
-#     file.write(json.dumps(mf_tfp_dict))
-#     file.close()
+with open('../inputs/mf_tfp_moderate.in', 'w') as file:
+    file.write(json.dumps(mf_tfp_dict))
+    file.close()
     
-# with open('../inputs/mf_tfp_moderate.cfg', 'w') as file:
-#     file.write(json.dumps(config_dict_moderate))
-#     file.close()
+with open('../inputs/mf_tfp_moderate.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_moderate))
+    file.close()
 
 my_design = cbf_tfp_inv_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -3925,22 +3926,23 @@ cbf_tfp_dict = my_design.to_dict()
 
 # for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
 # change T_m by x0.9
-# we hypothesize that in GR, all shift is captured in the T shift, while spectrum differences
-# cannot be captured regardless
+# since in the design script, GR is applied on the unadjusted T, we'll need to adjust
+# the specified GR by x0.9
 cbf_tfp_dict['T_ratio'] = cbf_tfp_dict['T_ratio']/0.9
+cbf_tfp_dict['gap_ratio'] = cbf_tfp_dict['gap_ratio']*0.9
     
 ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/',
                                  config_dict=config_dict_moderate)
 
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
-# with open('../inputs/cbf_tfp_moderate.in', 'w') as file:
-#     file.write(json.dumps(cbf_tfp_dict))
-#     file.close()
+with open('../inputs/cbf_tfp_moderate.in', 'w') as file:
+    file.write(json.dumps(cbf_tfp_dict))
+    file.close()
     
-# with open('../inputs/cbf_tfp_moderate.cfg', 'w') as file:
-#     file.write(json.dumps(config_dict_moderate))
-#     file.close()
+with open('../inputs/cbf_tfp_moderate.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_moderate))
+    file.close()
 
 
 my_design = mf_lrb_inv_design.copy()
@@ -3997,22 +3999,23 @@ mf_tfp_dict_strict = my_design.to_dict()
 
 # for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
 # change T_m by x0.9
-# we hypothesize that in GR, all shift is captured in the T shift, while spectrum differences
-# cannot be captured regardless
+# since in the design script, GR is applied on the unadjusted T, we'll need to adjust
+# the specified GR by x0.9
 mf_tfp_dict_strict['T_ratio'] = mf_tfp_dict_strict['T_ratio']/0.9
+mf_tfp_dict_strict['gap_ratio'] = mf_tfp_dict_strict['gap_ratio']*0.9
 
 ida_mf_tfp_df_strict = prepare_ida_util(mf_tfp_dict_strict, db_string='../../resource/',
                                  config_dict=config_dict_strict)
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df_strict))
 
-# with open('../inputs/mf_tfp_enhanced.in', 'w') as file:
-#     file.write(json.dumps(mf_tfp_dict_strict))
-#     file.close()
+with open('../inputs/mf_tfp_enhanced.in', 'w') as file:
+    file.write(json.dumps(mf_tfp_dict_strict))
+    file.close()
     
-# with open('../inputs/mf_tfp_enhanced.cfg', 'w') as file:
-#     file.write(json.dumps(config_dict_strict))
-#     file.close()
+with open('../inputs/mf_tfp_enhanced.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_strict))
+    file.close()
 
 my_design = cbf_tfp_strict_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -4023,22 +4026,23 @@ cbf_tfp_dict_strict = my_design.to_dict()
 
 # for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
 # change T_m by x0.9
-# we hypothesize that in GR, all shift is captured in the T shift, while spectrum differences
-# cannot be captured regardless
+# since in the design script, GR is applied on the unadjusted T, we'll need to adjust
+# the specified GR by x0.9
 cbf_tfp_dict_strict['T_ratio'] = cbf_tfp_dict_strict['T_ratio']/0.9
+cbf_tfp_dict_strict['gap_ratio'] = cbf_tfp_dict_strict['gap_ratio']*0.9
     
 ida_cbf_tfp_df_strict = prepare_ida_util(cbf_tfp_dict_strict, db_string='../../resource/',
                                  config_dict=config_dict_strict)
 
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df_strict))
 
-# with open('../inputs/cbf_tfp_enhanced.in', 'w') as file:
-#     file.write(json.dumps(cbf_tfp_dict_strict))
-#     file.close()
+with open('../inputs/cbf_tfp_enhanced.in', 'w') as file:
+    file.write(json.dumps(cbf_tfp_dict_strict))
+    file.close()
 
-# with open('../inputs/cbf_tfp_enhanced.cfg', 'w') as file:
-#     file.write(json.dumps(config_dict_strict))
-#     file.close()
+with open('../inputs/cbf_tfp_enhanced.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_strict))
+    file.close()
 
 
 my_design = mf_lrb_strict_design.copy()
@@ -4120,6 +4124,8 @@ def process_results(run_case):
     gap_ratios = np.zeros((3,))
     T_ratios = np.zeros((3,))
     
+    GR_adjs = np.zeros((3,))
+    
     
     # collect variable: currently working with means of medians
     cost_var_ida = 'cost_50%'
@@ -4146,9 +4152,20 @@ def process_results(run_case):
         BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
         Bm = np.interp(val_ida['zeta_e'], zetaRef, BmRef)
         
+        T_shifted = np.mean(val_ida['T_m']*0.9)
+        sa_tm_adj = val_ida.apply(
+            lambda x: get_ST(x, T_shifted,
+                              db_dir='../../resource/ground_motions/gm_db.csv',
+                              spec_dir='../../resource/ground_motions/gm_spectra.csv'), 
+            axis=1)
+        
         gap_ratios_all = (val_ida['constructed_moat']*4*pi**2)/ \
             (g*(val_ida['sa_tm']/Bm)*val_ida['T_m']**2)
         gap_ratios[i] = gap_ratios_all.mean()
+        
+        GR_adj = (val_ida['constructed_moat']*4*pi**2)/ \
+            (g*(sa_tm_adj/Bm)*T_shifted**2)
+        GR_adjs[i] = GR_adj.mean()
             
         T_ratios[i] = val_ida['T_m'].mean() / val_ida['T_fb'].mean()
     
@@ -4191,8 +4208,8 @@ def process_results(run_case):
         & {val_downtime_ratio[0]:.3f} & {val_downtime_ratio[1]:.3f} & {val_downtime_ratio[2]:.3f} \
             & {val_replacement[0]:.3f} & {val_replacement[1]:.3f} & {val_replacement[2]:.3f} \\\\"
     
-    
     print(latex_string)  
+    
     # n_workers = (ida_results_df['bldg_area']/1000).mean()
 
     # print('Cost total:', ida_results_df['total_cmp_cost'].mean()/1e6)
@@ -6715,7 +6732,7 @@ df_stack = pd.DataFrame({'MF-TFP':mf_tfp_components, 'MF-LRB':mf_lrb_components,
                         'CBF-TFP':cbf_tfp_components, 'CBF-LRB':cbf_lrb_components}).T
 
 
-# plt.close('all')
+plt.close('all')
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"

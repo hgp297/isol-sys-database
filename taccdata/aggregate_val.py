@@ -58,7 +58,7 @@ def agg_data(run_case):
 
 agg_data('mf_tfp_moderate')
 agg_data('cbf_tfp_moderate')
-agg_data('mf_lrb_moderate')
+# agg_data('mf_lrb_moderate')
 agg_data('mf_tfp_enhanced')
 agg_data('cbf_tfp_enhanced')
-agg_data('mf_lrb_enhanced')
+# agg_data('mf_lrb_enhanced')
