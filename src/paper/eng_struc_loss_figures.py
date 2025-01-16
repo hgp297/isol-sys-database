@@ -3908,13 +3908,13 @@ ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/',
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
 
-with open('../inputs/mf_tfp_moderate.in', 'w') as file:
-    file.write(json.dumps(mf_tfp_dict))
-    file.close()
+# with open('../inputs/mf_tfp_moderate.in', 'w') as file:
+#     file.write(json.dumps(mf_tfp_dict))
+#     file.close()
     
-with open('../inputs/mf_tfp_moderate.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_moderate))
-    file.close()
+# with open('../inputs/mf_tfp_moderate.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_moderate))
+#     file.close()
 
 my_design = cbf_tfp_inv_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -3936,13 +3936,13 @@ ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/',
 
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
-with open('../inputs/cbf_tfp_moderate.in', 'w') as file:
-    file.write(json.dumps(cbf_tfp_dict))
-    file.close()
+# with open('../inputs/cbf_tfp_moderate.in', 'w') as file:
+#     file.write(json.dumps(cbf_tfp_dict))
+#     file.close()
     
-with open('../inputs/cbf_tfp_moderate.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_moderate))
-    file.close()
+# with open('../inputs/cbf_tfp_moderate.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_moderate))
+#     file.close()
 
 
 my_design = mf_lrb_inv_design.copy()
@@ -4009,13 +4009,13 @@ ida_mf_tfp_df_strict = prepare_ida_util(mf_tfp_dict_strict, db_string='../../res
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df_strict))
 
-with open('../inputs/mf_tfp_enhanced.in', 'w') as file:
-    file.write(json.dumps(mf_tfp_dict_strict))
-    file.close()
+# with open('../inputs/mf_tfp_enhanced.in', 'w') as file:
+#     file.write(json.dumps(mf_tfp_dict_strict))
+#     file.close()
     
-with open('../inputs/mf_tfp_enhanced.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_strict))
-    file.close()
+# with open('../inputs/mf_tfp_enhanced.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_strict))
+#     file.close()
 
 my_design = cbf_tfp_strict_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -4036,13 +4036,13 @@ ida_cbf_tfp_df_strict = prepare_ida_util(cbf_tfp_dict_strict, db_string='../../r
 
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df_strict))
 
-with open('../inputs/cbf_tfp_enhanced.in', 'w') as file:
-    file.write(json.dumps(cbf_tfp_dict_strict))
-    file.close()
+# with open('../inputs/cbf_tfp_enhanced.in', 'w') as file:
+#     file.write(json.dumps(cbf_tfp_dict_strict))
+#     file.close()
 
-with open('../inputs/cbf_tfp_enhanced.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_strict))
-    file.close()
+# with open('../inputs/cbf_tfp_enhanced.cfg', 'w') as file:
+#     file.write(json.dumps(config_dict_strict))
+#     file.close()
 
 
 my_design = mf_lrb_strict_design.copy()
@@ -4126,6 +4126,7 @@ def process_results(run_case):
     
     GR_adjs = np.zeros((3,))
     
+    isolator_system = run_case.split('_')[1]
     
     # collect variable: currently working with means of medians
     cost_var_ida = 'cost_50%'
@@ -4152,7 +4153,11 @@ def process_results(run_case):
         BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
         Bm = np.interp(val_ida['zeta_e'], zetaRef, BmRef)
         
-        T_shifted = np.mean(val_ida['T_m']*0.9)
+        if isolator_system == 'tfp':
+            T_shifted = np.mean(val_ida['T_m']*0.9)
+        else:
+            T_shifted = np.mean(val_ida['T_m'])
+            
         sa_tm_adj = val_ida.apply(
             lambda x: get_ST(x, T_shifted,
                               db_dir='../../resource/ground_motions/gm_db.csv',
@@ -4167,9 +4172,14 @@ def process_results(run_case):
             (g*(sa_tm_adj/Bm)*T_shifted**2)
         GR_adjs[i] = GR_adj.mean()
             
-        T_ratios[i] = val_ida['T_m'].mean() / val_ida['T_fb'].mean()
+        T_ratio_adj = T_shifted / val_ida['T_fbe'].mean()
         
-    
+        T_ratios[i] = T_shifted / val_ida['T_fb'].mean()
+        
+    # print(T_shifted)
+    # print(GR_adjs)
+    # print(T_ratio_adj)
+    # print(T_ratios)
     
     
     design_list = []
@@ -4210,6 +4220,7 @@ def process_results(run_case):
             & {val_replacement[0]:.3f} & {val_replacement[1]:.3f} & {val_replacement[2]:.3f} \\\\"
     
     print(latex_string)  
+    
     
     # n_workers = (ida_results_df['bldg_area']/1000).mean()
 
@@ -4544,7 +4555,7 @@ ax1.text(1.1, mf_tfp_repl_risk-0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
-ax1.set_title('MF-TFP', fontsize=title_font)
+ax1.set_title('a) MF-TFP', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
     ax1.plot([lvl], [mf_tfp_strict_repl[i]], 
               marker='x', markersize=15, color=strict_color_2)
@@ -4603,7 +4614,7 @@ ax1.text(1.1, mf_lrb_repl_risk+0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
-ax1.set_title('MF-LRB', fontsize=title_font)
+ax1.set_title('b) MF-LRB', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
     ax1.plot([lvl], [mf_lrb_strict_repl[i]], 
               marker='x', markersize=15, color=strict_color_2)
@@ -4660,7 +4671,7 @@ ax1.text(1.1, cbf_tfp_repl_risk+0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
-ax1.set_title('CBF-TFP', fontsize=title_font)
+ax1.set_title('c) CBF-TFP', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
     ax1.plot([lvl], [cbf_tfp_strict_repl[i]], 
               marker='x', markersize=15, color=strict_color_2)
@@ -4717,7 +4728,7 @@ ax1.text(1.1, MCE_level+0.01, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
-ax1.set_title('CBF-LRB', fontsize=title_font)
+ax1.set_title('d) CBF-LRB', fontsize=title_font)
 for i, lvl in enumerate(ida_levels):
     ax1.plot([lvl], [cbf_lrb_strict_repl[i]], 
               marker='x', markersize=15, color=strict_color_2)
@@ -6733,7 +6744,7 @@ df_stack = pd.DataFrame({'MF-TFP':mf_tfp_components, 'MF-LRB':mf_lrb_components,
                         'CBF-TFP':cbf_tfp_components, 'CBF-LRB':cbf_lrb_components}).T
 
 
-plt.close('all')
+# plt.close('all')
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"

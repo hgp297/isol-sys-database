@@ -1423,7 +1423,6 @@ df_cbf_lrb_o = df_cbf_lrb[df_cbf_lrb['impacted'] == 0]
 
 #%% GP models for MCACs (done without impact classif)
 
-# TODO: train MCAC predictors
 
 mdl_mcac_cbf_lrb = GP(df_cbf_lrb)
 mdl_mcac_cbf_lrb.set_covariates(covariate_list)
