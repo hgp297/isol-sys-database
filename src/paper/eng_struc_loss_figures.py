@@ -4168,6 +4168,7 @@ def process_results(run_case):
         GR_adjs[i] = GR_adj.mean()
             
         T_ratios[i] = val_ida['T_m'].mean() / val_ida['T_fb'].mean()
+        
     
     
     
