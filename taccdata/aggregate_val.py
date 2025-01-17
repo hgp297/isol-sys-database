@@ -56,9 +56,10 @@ def agg_data(run_case):
         pickle.dump(dummy_obj, f)
         
 
-agg_data('mf_tfp_moderate')
-agg_data('cbf_tfp_moderate')
-# agg_data('mf_lrb_moderate')
-agg_data('mf_tfp_enhanced')
-agg_data('cbf_tfp_enhanced')
+agg_data('mf_tfp_moderate_hi_constr')
+agg_data('cbf_tfp_moderate_hi_constr')
+agg_data('mf_lrb_moderate_hi_constr')
+agg_data('cbf_lrb_moderate_hi_constr')
+# agg_data('mf_tfp_enhanced')
+# agg_data('cbf_tfp_enhanced')
 # agg_data('mf_lrb_enhanced')

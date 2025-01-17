@@ -1842,12 +1842,28 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     
     # upgrade is worth it if NPV of avoided consequence > upgrade cost over baseline
     NPV = avoided_consequence*((1 - 1/(1 + i_rate)**t_yrs) / i_rate)
-    upgrade_decision = (NPV - upgrade_cost) > 0
+    upgrade_value = NPV - upgrade_cost
+    upgrade_decision = upgrade_value > 0
+    # upgrade_decision = np.repeat(True, X_design.shape[0])
     X_worth = X_design[upgrade_decision]
     worth_costs = upfront_costs['total_'+structural_system][upgrade_decision]
     
-    cheapest_idx = worth_costs.idxmin()
-    inv_upfront_cost = worth_costs.min()
+    # import matplotlib.pyplot as plt
+    # plt.close('all')
+    # fig = plt.figure(figsize=(8, 7))
+    # ax1=fig.add_subplot(1, 1, 1)
+    # ax1.plot(sa_bins, cost_bins.ravel(), '-o')
+    # ax1.set_xlabel(r'$Sa(T_M)$', fontsize=axis_font)
+    # ax1.set_ylabel(r'GP predicted median repair cost (\$)', fontsize=axis_font)
+    # ax1.grid()
+    # plt.show()
+    # # ax1.set_xlim([0, row['replacement_cost']])
+    
+    cheapest_idx = upgrade_value.idxmax()
+    inv_upfront_cost = worth_costs[upgrade_value.idxmax()]
+    
+    # cheapest_idx = worth_costs.idxmin()
+    # inv_upfront_cost = worth_costs.min()
     
     # least upfront cost of the viable designs
     inv_design = X_worth.loc[cheapest_idx]
@@ -1896,6 +1912,51 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
           f'${inv_NPV:,.2f}')
     
     return(inv_design, inv_performance, X_worth)
+
+### test
+ns = 4
+hs = 13.
+nb = 6
+Lb = 30.
+
+similar_mfs = df_mf[(df_mf['num_stories'] == ns) & (df_mf['num_bays'] == nb)]
+similar_mf_cost = similar_mfs['total_cmp_cost'].median()
+similar_mf_time = similar_mfs['total_cmp_time'].median()
+
+similar_cbfs = df_cbf[(df_cbf['num_stories'] == ns) & (df_cbf['num_bays'] == nb)]
+similar_cbf_cost = similar_cbfs['total_cmp_cost'].median()
+similar_cbf_time = similar_cbfs['total_cmp_time'].median()
+
+config_dict_moderate = {
+    'num_stories': ns,
+    'h_story': hs,
+    'num_bays': nb,
+    'num_frames': 2,
+    'S_s': 2.2815,
+    'L_bay': Lb,
+    'S_1': 1.017,
+    'h_bldg': hs*ns,
+    'L_bldg': Lb*nb,
+    'comparable_cost_mf': similar_mf_cost,
+    'comparable_cost_cbf': similar_cbf_cost,
+    'comparable_time_mf': similar_mf_time,
+    'comparable_time_cbf': similar_cbf_time,
+    'interest_rate': 0.07,
+    'timeframe': 40.0
+    }
+
+mcac_var = 'annual_cost_ratio'
+mcat_var = 'annual_time_ratio'
+my_targets = {
+    mcac_var: 0.001,
+    mcat_var: 0.001,
+    'constructability': -6.0}
+
+
+mf_tfp_inv_design, mf_tfp_inv_performance, mf_tfp_space = grid_search_inverse_design(
+    20, 'mf_tfp', my_targets, config_dict_moderate, 
+    impact_classification_mdls, mcac_regression_mdls, 
+    mcat_regression_mdls)
 
 #%% inverse design filters
 ### regular
@@ -1957,6 +2018,233 @@ cbf_lrb_inv_design, cbf_lrb_inv_performance, cbf_lrb_space = grid_search_inverse
     20, 'cbf_lrb', my_targets, config_dict_moderate, 
     impact_classification_mdls, mcac_regression_mdls, 
     mcat_regression_mdls)
+
+#%%
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+plt.close('all')
+fig = plt.figure(figsize=(9, 7))
+
+ax=fig.add_subplot(1, 1, 1, projection='3d')
+sc = ax.scatter(mf_lrb_space['gap_ratio'], mf_lrb_space['RI'], mf_lrb_space['T_ratio'],
+                alpha = 1, cmap=plt.cm.Spectral_r)
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+# ax.set_xlim([0.3, 2.0])
+ax.set_zlabel(r'$T_M / T_{fb}$', fontsize=axis_font)
+ax.set_title(r'$\zeta_M$ not shown', fontsize=title_font)
+
+#%%
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+title_font=22
+axis_font = 22
+subt_font = 20
+label_size = 20
+clabel_size = 16
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+fig = plt.figure(figsize=(16, 13))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'T_ratio'
+
+# lvls = np.array([0.2])
+lvls = np.arange(0.00, .002, 0.0002)
+
+X_baseline =  pd.DataFrame(np.array([[1.0, 2.0, 2.6, 0.2]]),
+                           columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
+baseline_cost = calc_upfront_cost(
+    X_baseline, config_dict=config_dict_moderate, steel_cost_dict=reg_dict)
+
+mcac_baseline = mcac_regression_mdls['mdl_mcac_mf_lrb'].gpr.predict(X_baseline)[0]
+mcat_baseline = mcat_regression_mdls['mdl_mcat_mf_lrb'].gpr.predict(X_baseline)[0]
+
+
+####### MFs
+res = 100
+X_plot = make_2D_plotting_space(df_mf[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 2.0, fourth_var_set = 0.23)
+
+X_sc = make_2D_plotting_space(df_mf[covariate_list], 20, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 2.0, fourth_var_set = 0.23)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+## mf-TFP: cost
+ax = fig.add_subplot(2, 2, 1)
+# plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
+
+grid_cost =  mcac_regression_mdls['mdl_mcac_mf_lrb'].gpr.predict(X_plot)
+qual_cost = mcac_regression_mdls['mdl_mcac_mf_lrb'].gpr.predict(X_sc)
+
+X_sc_qual_cost = X_sc[qual_cost < 0.001]
+sc = ax.scatter(X_sc_qual_cost[xvar], X_sc_qual_cost[yvar], c='white', edgecolors='black', s=10)
+
+Z = np.array(grid_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5, levels=lvls)
+
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# ax.set_xlim([0.5, 2.0])
+# ax.set_ylim([0.5, 2.3])
+
+
+ax.grid(visible=True)
+ax.set_title(r'MF-LRB: annual repair cost ratio', fontsize=title_font)
+# ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+
+## mf-TFP: time
+ax = fig.add_subplot(2, 2, 2)
+# plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
+
+grid_time =  mcat_regression_mdls['mdl_mcat_mf_lrb'].gpr.predict(X_plot)
+qual_time = mcat_regression_mdls['mdl_mcat_mf_lrb'].gpr.predict(X_sc)
+
+X_sc_qual_time = X_sc[qual_time < 0.001]
+sc = ax.scatter(X_sc_qual_time[xvar], X_sc_qual_time[yvar], c='white', edgecolors='black', s=10)
+
+Z = np.array(grid_time)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5, levels=lvls)
+
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# ax.set_xlim([0.5, 2.0])
+# ax.set_ylim([0.5, 2.3])
+
+
+ax.grid(visible=True)
+ax.set_title(r'MF-LRB: annual repair time ratio', fontsize=title_font)
+# ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+
+## mf-TFP: cost
+ax = fig.add_subplot(2, 2, 3)
+# plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
+
+
+all_upfront_costs  = calc_upfront_cost(
+    X_plot, config_dict=config_dict_moderate, steel_cost_dict=reg_dict)
+
+mf_upfront_cost = all_upfront_costs['total_mf']
+
+
+X_sc_qual = X_sc[np.logical_and.reduce((
+        X_sc.index.isin(X_sc_qual_cost.index), 
+        X_sc.index.isin(X_sc_qual_time.index)))]
+
+sc = ax.scatter(X_sc_qual[xvar], X_sc_qual[yvar], c='white', edgecolors='black', s=10)
+
+qual_upfront_cost  = calc_upfront_cost(
+    X_sc_qual, config_dict=config_dict_moderate, steel_cost_dict=reg_dict)
+
+cheapest_idx = qual_upfront_cost['total_mf'].idxmin()
+
+# least upfront cost of the viable designs
+the_design = X_sc_qual.loc[cheapest_idx]
+
+ax.scatter(the_design[xvar], the_design[yvar], marker='x', c='red', s=100)
+
+Z = np.array(mf_upfront_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues', vmin=-0.5)
+
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# ax.set_xlim([0.5, 2.0])
+# ax.set_ylim([0.5, 2.3])
+
+
+ax.grid(visible=True)
+ax.set_title(r'MF-LRB: upfront cost', fontsize=title_font)
+# ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+
+
+
+##### NPV
+
+upgrade_cost = (mf_upfront_cost- 
+                baseline_cost['total_mf'].item())
+
+avoided_cost = (mcac_baseline - grid_cost)*config_dict_moderate['comparable_cost_mf']
+avoided_time = (mcat_baseline - grid_time)*config_dict_moderate['comparable_time_mf']
+
+# profit loss and repair cost per worker-hour
+# assume 40% of replacement cost is labor, $680/worker-day for SF Bay Area
+profit_loss_per_worker_day = 680.0
+avoided_time_cost = avoided_time * profit_loss_per_worker_day
+avoided_consequence = avoided_cost + avoided_time_cost
+
+i_rate = config_dict_moderate['interest_rate']
+t_yrs = config_dict_moderate['timeframe']
+
+# upgrade is worth it if NPV of avoided consequence > upgrade cost over baseline
+NPV = avoided_consequence*((1 - 1/(1 + i_rate)**t_yrs) / i_rate)
+upgrade_decision = (NPV - upgrade_cost) > 0
+
+ax = fig.add_subplot(2, 2, 4)
+# plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
+
+# grid_time =  mcat_regression_mdls['mdl_mcat_mf_lrb'].gpr.predict(X_plot)
+# qual_time = mcat_regression_mdls['mdl_mcat_mf_lrb'].gpr.predict(X_sc)
+
+# X_sc_qual_time = X_sc[qual_time < 0.001]
+# sc = ax.scatter(X_sc_qual_time[xvar], X_sc_qual_time[yvar], c='white', edgecolors='black', s=10)
+
+Z = np.array(NPV - upgrade_cost)
+Z_cont = Z.reshape(xx_pl.shape)
+
+cs = ax.contour(xx_pl, yy_pl, Z_cont, linewidths=2.0, cmap='Blues')
+
+# ax.imshow(
+#         Z_cont,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.coolwarm_r,
+    # )
+
+clabels = ax.clabel(cs, fontsize=clabel_size)
+# ax.set_xlim([0.5, 2.0])
+# ax.set_ylim([0.5, 2.3])
+
+
+ax.grid(visible=True)
+ax.set_title(r'MF-LRB: NPV', fontsize=title_font)
+# ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+# ax.set_ylabel(r'$R_y$', fontsize=axis_font)
+
+fig.tight_layout()
+
 
 #%% 
 

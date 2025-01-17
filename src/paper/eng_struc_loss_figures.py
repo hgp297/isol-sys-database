@@ -112,8 +112,8 @@ df['gap_ratio'] = pd.to_numeric((df['constructed_moat']*4*pi**2)/ \
     (g*(df['sa_tm_adj']/df['Bm'])*df['T_M_adj']**2))
     
 df['GR_shift_coef'] = pd.to_numeric(df['gap_ratio'])/pd.to_numeric(df['GR_OG'])
-df['GR-Ad_coef'] = pd.to_numeric(df['GR_OG'])/pd.to_numeric(df['moat_ampli'])
-    
+# df['GR-Ad_coef'] = pd.to_numeric(df['GR_OG'])/pd.to_numeric(df['moat_ampli'])
+df['sa_tm_shift'] = pd.to_numeric(df['sa_tm_adj']/df['sa_tm'])
 #%% main predictor
 
 def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
@@ -1439,7 +1439,7 @@ plt.plot(x_1d, y_pred, color=mf_tfp_color, linewidth=3)
 ax.set_xlabel("$GR$", fontsize=axis_font)
 
 ax.set_ylabel('Repair cost ratio', fontsize=axis_font)
-ax.legend(fontsize=axis_font)
+ax.legend(fontsize=axis_font, loc='upper right')
 ax.set_ylim([-0.02, 0.3])
 ax.grid()
 
@@ -3360,7 +3360,6 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     
     # then recreate a finer design space within constructable range
     X_space = make_design_space(res, bound_dict=bounds)
-    
     t0 = time.time()
     
     # assumes GPC/GPR, predict the outcome for the design space
@@ -3490,6 +3489,147 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     
     return(inv_design, inv_performance, X_design)
 
+#%% optimizer instead of grid search test
+
+'''
+def loss_fcn(x, system_name, targets_dict, config_dict,
+             impact_clfs, cost_regs, time_regs, repl_regs,
+             cost_var='cmp_cost_ratio', time_var='cmp_time_ratio'):
+    
+    X_trial = pd.DataFrame([x], columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
+    # identify cost models
+    mdl_impact_name = 'mdl_impact_' + system_name
+    mdl_cost_hit_name = 'mdl_cost_' + system_name + '_i'
+    mdl_cost_miss_name = 'mdl_cost_' + system_name + '_o'
+    
+    mdl_impact = impact_clfs[mdl_impact_name]
+    mdl_cost_hit = cost_regs[mdl_cost_hit_name]
+    mdl_cost_miss = cost_regs[mdl_cost_miss_name]
+    
+    # identify time models
+    mdl_time_hit_name = 'mdl_time_' + system_name + '_i'
+    mdl_time_miss_name = 'mdl_time_' + system_name + '_o'
+    
+    mdl_impact = impact_clfs[mdl_impact_name]
+    mdl_time_hit = time_regs[mdl_time_hit_name]
+    mdl_time_miss = time_regs[mdl_time_miss_name]
+    
+    # identify replacement models
+    mdl_repl_hit_name = 'mdl_repl_' + system_name + '_i'
+    mdl_repl_miss_name = 'mdl_repl_' + system_name + '_o'
+    
+    mdl_impact = impact_clfs[mdl_impact_name]
+    mdl_repl_hit = repl_regs[mdl_repl_hit_name]
+    mdl_repl_miss = repl_regs[mdl_repl_miss_name]
+    
+    cost_trial = predict_DV(X_trial, 
+                                   mdl_impact.gpc, 
+                                   mdl_cost_hit.gpr, 
+                                   mdl_cost_miss.gpr, 
+                                   outcome=cost_var)
+    
+    time_trial = predict_DV(X_trial,
+                                mdl_impact.gpc,
+                                mdl_time_hit.gpr,
+                                mdl_time_miss.gpr,
+                                outcome=time_var)
+
+    repl_trial = predict_DV(X_trial,
+                            mdl_impact.gpc,
+                            mdl_repl_hit.gpr,
+                            mdl_repl_miss.gpr,
+                            outcome='replacement_freq')
+    
+    constr_trial = mdl_impact.kde.score_samples(X_trial)
+    
+    if cost_trial[cost_var+'_pred'][0] > targets_dict[cost_var]:
+        cost_loss = 1e9
+    else:
+        cost_loss = 0
+    
+    if time_trial[time_var+'_pred'][0] > targets_dict[time_var]:
+        time_loss = 1e9
+    else:
+        time_loss = 0
+    
+    if repl_trial[repl_var+'_pred'][0] > targets_dict[repl_var]:
+        repl_loss = 1e9
+    else:
+        repl_loss = 0
+        
+    if constr_trial[0] < targets_dict['constructability']:
+        constr_loss = 1e9
+    else:
+        constr_loss = 0
+    
+    # select best viable design
+    structural_system = system_name.split('_')[0]
+    
+    if structural_system.upper() == 'MF':
+        upfront_costs = calc_upfront_cost(
+            X_trial, config_dict=config_dict, steel_cost_dict=reg_dict)
+    else:
+        upfront_costs = calc_upfront_cost(
+            X_trial, config_dict=config_dict, steel_cost_dict=reg_dict,
+            land_cost_per_sqft=1978/(3.28**2))
+        
+    upfront_loss = upfront_costs['total_'+structural_system]
+    
+    return(cost_loss + time_loss + repl_loss + + constr_loss + upfront_loss)
+    
+
+x1_bounds = (0.6, 2.0)
+x2_bounds = (0.5, 2.25)
+x3_bounds = (2.0, 10.0)
+x4_bounds = (0.1, 0.25)
+
+
+### regular
+ns = 4
+hs = 13.
+nb = 6
+Lb = 30.
+
+config_dict_moderate = {
+    'num_stories': ns,
+    'h_story': hs,
+    'num_bays': nb,
+    'num_frames': 2,
+    'S_s': 2.2815,
+    'L_bay': Lb,
+    'S_1': 1.017,
+    'h_bldg': hs*ns,
+    'L_bldg': Lb*nb
+    }
+
+
+my_targets = {
+    cost_var: 0.2,
+    time_var: 0.2,
+    'replacement_freq': 0.1,
+    'constructability': -6.0}
+
+# loss_fcn(a, 'mf_tfp', my_targets, config_dict_moderate, 
+#          impact_classification_mdls, cost_regression_mdls, 
+#          time_regression_mdls, repl_regression_mdls,
+#          cost_var='cmp_cost_ratio', time_var='cmp_time_ratio')
+
+my_bounds = (x1_bounds, x2_bounds, x3_bounds, x4_bounds)
+x0 = np.array([1.0, 2.0, 5.5, 0.2])
+from scipy.optimize import minimize
+
+from scipy.optimize import basinhopping
+minimizer_kwargs={'args':('cbf_lrb', my_targets, config_dict_moderate, 
+                          impact_classification_mdls, cost_regression_mdls, 
+                          time_regression_mdls, repl_regression_mdls, 
+                          'cmp_cost_ratio', 'cmp_time_ratio'),'bounds':my_bounds}
+res = basinhopping(loss_fcn, x0, minimizer_kwargs=minimizer_kwargs)
+
+# res = minimize(loss_fcn, x0, args=('cbf_lrb', my_targets, config_dict_moderate, 
+#                                       impact_classification_mdls, cost_regression_mdls, 
+#                                       time_regression_mdls, repl_regression_mdls, 'cmp_cost_ratio', 'cmp_time_ratio'),
+#                       bounds=my_bounds, method='L-BFGS-B')
+'''
 #%% dummy design space
 
 ### regular
@@ -3560,15 +3700,15 @@ ax = fig.add_subplot(2, 2, 1)
 # plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
 
 grid_cost = predict_DV(X_plot,
-                       mdl_impact_mf_lrb.gpc,
-                       mdl_cost_mf_lrb_i.gpr,
-                       mdl_cost_mf_lrb_o.gpr,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_cost_mf_tfp_i.gpr,
+                       mdl_cost_mf_tfp_o.gpr,
                        outcome=cost_var)
 
 qual_cost = predict_DV(X_sc,
-                       mdl_impact_mf_lrb.gpc,
-                       mdl_cost_mf_lrb_i.gpr,
-                       mdl_cost_mf_lrb_o.gpr,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_cost_mf_tfp_i.gpr,
+                       mdl_cost_mf_tfp_o.gpr,
                        outcome=cost_var)
 X_sc_qual_cost = X_sc[qual_cost[cost_var+'_pred'] < 0.2]
 sc = ax.scatter(X_sc_qual_cost[xvar], X_sc_qual_cost[yvar], c='white', edgecolors='black', s=10)
@@ -3584,7 +3724,7 @@ ax.set_ylim([0.5, 2.3])
 
 
 ax.grid(visible=True)
-ax.set_title(r'MF-LRB: repair cost', fontsize=title_font)
+ax.set_title(r'MF-TFP: repair cost', fontsize=title_font)
 # ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
@@ -3594,16 +3734,16 @@ ax = fig.add_subplot(2, 2, 2)
 # plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
 
 grid_cost = predict_DV(X_plot,
-                       mdl_impact_mf_lrb.gpc,
-                       mdl_repl_mf_lrb_i.gpr,
-                       mdl_repl_mf_lrb_o.gpr,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_repl_mf_tfp_i.gpr,
+                       mdl_repl_mf_tfp_o.gpr,
                        outcome=repl_var)
 
 
 qual_cost = predict_DV(X_sc,
-                       mdl_impact_mf_lrb.gpc,
-                       mdl_repl_mf_lrb_i.gpr,
-                       mdl_repl_mf_lrb_o.gpr,
+                       mdl_impact_mf_tfp.gpc,
+                       mdl_repl_mf_tfp_i.gpr,
+                       mdl_repl_mf_tfp_o.gpr,
                        outcome=repl_var)
 X_sc_qual_repl = X_sc[qual_cost[repl_var+'_pred'] < 0.1]
 sc = ax.scatter(X_sc_qual_repl[xvar], X_sc_qual_repl[yvar], c='white', edgecolors='black', s=10)
@@ -3620,7 +3760,7 @@ ax.set_ylim([0.5, 2.3])
 
 
 ax.grid(visible=True)
-ax.set_title(r'MF-LRB: Replacement', fontsize=title_font)
+ax.set_title(r'MF-TFP: Replacement', fontsize=title_font)
 # ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
 # ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
@@ -3630,9 +3770,9 @@ ax.set_title(r'MF-LRB: Replacement', fontsize=title_font)
 ax = fig.add_subplot(2, 2, 3)
 # plt.setp(ax, xticks=np.arange(2.0, 11.0, step=1.0))
 lvl_kde = np.arange(-9, -2, 1)
-kde_scr = mdl_impact_mf_lrb.kde.score_samples(X_plot)
+kde_scr = mdl_impact_mf_tfp.kde.score_samples(X_plot)
 
-qual_cost = mdl_impact_mf_lrb.kde.score_samples(X_sc)
+qual_cost = mdl_impact_mf_tfp.kde.score_samples(X_sc)
 X_sc_qual_kde = X_sc[qual_cost > -6.1]
 sc = ax.scatter(X_sc_qual_kde[xvar], X_sc_qual_kde[yvar], c='white', edgecolors='black', s=10)
 
@@ -3647,7 +3787,7 @@ ax.set_ylim([0.5, 2.3])
 
 
 ax.grid(visible=True)
-ax.set_title(r'MF-LRB: Constructability', fontsize=title_font)
+ax.set_title(r'MF-TFP: Constructability', fontsize=title_font)
 # ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 ax.set_ylabel(r'$R_y$', fontsize=axis_font)
@@ -3691,7 +3831,7 @@ ax.set_ylim([0.5, 2.3])
 
 
 ax.grid(visible=True)
-ax.set_title(r'MF-LRB: upfront cost', fontsize=title_font)
+ax.set_title(r'MF-TFP: upfront cost', fontsize=title_font)
 # ax.set_title(r'$T_M/T_{fb}= 3.0$ , $\zeta_M = 0.20$', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 # ax.set_ylabel(r'$R_y$', fontsize=axis_font)
@@ -3801,6 +3941,8 @@ config_dict_moderate = {
     'L_bldg': Lb*nb
     }
 
+
+# for hi_constr, switch constructability to -5.0
 my_targets = {
     cost_var: 0.2,
     time_var: 0.2,
@@ -6338,8 +6480,6 @@ ax.set_xlabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 # ax.set_ylim([0.5, 2.25])
 
 ax.grid(visible=True)
-ax.set_xlabel(r'$GR$', fontsize=axis_font)
-ax.set_ylabel(r'$R_y$', fontsize=axis_font)
 
 fig.tight_layout()
 #%%
