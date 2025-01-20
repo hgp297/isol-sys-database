@@ -201,8 +201,8 @@ if bldg.isolator_system == 'TFP':
     h1      = 1*inch                # half-height of sliders
     h2      = 4*inch
     
-    L1      = R1
-    L2      = R2
+    L1      = R1 
+    L2      = R2 
 
     # uLim    = 2*d1 + 2*d2 + L1*d2/L2 - L1*d2/L2
     

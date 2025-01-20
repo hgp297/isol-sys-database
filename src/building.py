@@ -897,7 +897,7 @@ class Building:
             K_bulk = 290.0*ksi
             G_r = 0.060*ksi
             D_inner = self.d_lead
-            D_outer = self.d_bearing
+            D_outer = self.d_bearing - 1.0
             t_shim = 0.13*inch
             t_rubber_whole = self.t_r
             n_layers = int(self.n_layers)
@@ -2275,11 +2275,10 @@ class Building:
             # LRB modeling
             # dimensions. Material parameters should not be edited without 
             # modifying design script
-            # TODO: check if D_outer should be -1.0...
             K_bulk = 290.0*ksi
             G_r = 0.060*ksi
             D_inner = self.d_lead
-            D_outer = self.d_bearing
+            D_outer = self.d_bearing - 1.0
             t_shim = 0.13*inch
             t_rubber_whole = self.t_r
             n_layers = int(self.n_layers)
