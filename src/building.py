@@ -2599,11 +2599,21 @@ class Building:
         truss_elems = self.elem_tags['truss']
         lc_elems = self.elem_tags['leaning'] + self.elem_tags['lc_spring']
         diaph_elems = self.elem_tags['diaphragm']
-        non_damped_elems = (wall_elems + isol_elems + truss_elems + 
-                            lc_elems + diaph_elems)
         
+        if self.superstructure_system == 'CBF':
+            spring_elems = (self.node_tags['brace_beam_spring'] +
+                            self.node_tags['brace_top_spring'] +
+                            self.node_tags['brace_bottom_spring'])
+        else:
+            spring_elems = self.node_tags['spring']
+            
+        
+        non_damped_elems = (wall_elems + isol_elems + truss_elems + 
+                            lc_elems + diaph_elems + spring_elems)
         damped_elems = [elem for elem in all_elems 
                         if elem not in non_damped_elems]
+        
+        
         
         # stiffness proportional
         if method == 'SP':
