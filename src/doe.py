@@ -394,6 +394,16 @@ class GP:
     
         gp_pipe.fit(self.X, self.y)
         
+        # import warnings
+        # warnings.filterwarnings("error")
+        # from sklearn.exceptions import ConvergenceWarning
+        # try:
+        #     gp_pipe.fit(self.X, self.y)
+        # except ConvergenceWarning:
+        #     breakpoint()
+        #     print('Poor fit warning.')
+        # warnings.resetwarnings()
+        
         self.gpr = gp_pipe
         
     # Train GP regression

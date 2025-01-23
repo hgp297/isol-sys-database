@@ -1863,7 +1863,6 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                                    (all_tfps['R_2'] <= 190.0) &
                                    (all_tfps['zeta_loop'] <= 0.27)]
         
-        
         # retry if design didn't work
         if tfp_designs.shape[0] == 0:
             all_tfps, lrb_designs = design_bearing_util(

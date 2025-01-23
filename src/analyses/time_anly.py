@@ -1470,15 +1470,15 @@ print('======= MCAC/MCAT regression per system ========')
 import time
 t0 = time.time()
 
-mdl_mcac_cbf_lrb.fit_gpr(kernel_name='rbf_iso')
-mdl_mcac_cbf_tfp.fit_gpr(kernel_name='rbf_iso')
-mdl_mcac_mf_lrb.fit_gpr(kernel_name='rbf_iso')
-mdl_mcac_mf_tfp.fit_gpr(kernel_name='rbf_iso')
+mdl_mcac_cbf_lrb.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-13, 1e2))
+mdl_mcac_cbf_tfp.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-13, 1e2))
+mdl_mcac_mf_lrb.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-13, 1e2))
+mdl_mcac_mf_tfp.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-13, 1e2))
 
-mdl_mcat_cbf_lrb.fit_gpr(kernel_name='rbf_iso')
-mdl_mcat_cbf_tfp.fit_gpr(kernel_name='rbf_iso')
-mdl_mcat_mf_lrb.fit_gpr(kernel_name='rbf_iso')
-mdl_mcat_mf_tfp.fit_gpr(kernel_name='rbf_iso')
+mdl_mcat_cbf_lrb.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-13, 1e2))
+mdl_mcat_cbf_tfp.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-13, 1e2))
+mdl_mcat_mf_lrb.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-13, 1e2))
+mdl_mcat_mf_tfp.fit_gpr(kernel_name='rbf_iso', noise_bound=(1e-13, 1e2))
 
 tp = time.time() - t0
 
@@ -1496,104 +1496,104 @@ mcat_regression_mdls = {'mdl_mcat_cbf_lrb': mdl_mcat_cbf_lrb,
 
 #%% sample for CBF-LRB
 
-# annual_cost_var = 'annual_cost_ratio'
+annual_cost_var = 'annual_cost_ratio'
+mdl_mcat = mcat_regression_mdls['mdl_mcat_cbf_lrb']
 
-# plt.rcParams["font.family"] = "serif"
-# plt.rcParams["mathtext.fontset"] = "dejavuserif"
-# axis_font = 18
-# subt_font = 18
-# label_size = 12
-# mpl.rcParams['xtick.labelsize'] = label_size 
-# mpl.rcParams['ytick.labelsize'] = label_size 
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 12
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
 
-# fig = plt.figure(figsize=(16, 7))
+fig = plt.figure(figsize=(16, 7))
 
-# xvar = 'gap_ratio'
-# yvar = 'RI'
+xvar = 'gap_ratio'
+yvar = 'RI'
 
-# res = 75
-# X_plot = make_2D_plotting_space(mdl_impact_mf_lrb.X, res, x_var=xvar, y_var=yvar, 
-#                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-#                             third_var_set = 2.0, fourth_var_set = 0.15)
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 5.0, fourth_var_set = 0.15)
 
-# Z = mdl_annual_cost.gpr.predict(X_plot)
+Z = mdl_mcat.gpr.predict(X_plot)
 
 
-# xx = X_plot[xvar]
-# yy = X_plot[yvar]
-# x_pl = np.unique(xx)
-# y_pl = np.unique(yy)
-# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
-# Z_surf = np.array(Z).reshape(xx_pl.shape)
+Z_surf = np.array(Z).reshape(xx_pl.shape)
 
-# ax=fig.add_subplot(1, 2, 1, projection='3d')
-# surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
-#                        linewidth=0, antialiased=False, alpha=0.6,
-#                        vmin=-0.1)
-# ax.xaxis.pane.fill = False
-# ax.yaxis.pane.fill = False
-# ax.zaxis.pane.fill = False
+ax=fig.add_subplot(1, 2, 1, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                        linewidth=0, antialiased=False, alpha=0.6,
+                        vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
 
-# ax.scatter(df_mf_lrb[xvar], df_mf_lrb[yvar], df_mf_lrb[annual_cost_var], c=df_mf_lrb[annual_cost_var],
-#            edgecolors='k', alpha = 0.7, cmap='Blues')
+ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[annual_cost_var], c=df_cbf_lrb[annual_cost_var],
+            edgecolors='k', alpha = 0.7, cmap='Blues')
 
-# xlim = ax.get_xlim()
-# ylim = ax.get_ylim()
-# zlim = ax.get_zlim()
-# cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
-# cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
-# # ax.set_zlim([-0.1, 1.1])
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+# ax.set_zlim([-0.1, 1.1])
 
-# ax.set_xlabel('Gap ratio', fontsize=axis_font)
-# ax.set_ylabel('$R_y$', fontsize=axis_font)
-# ax.set_zlabel('Annual repair cost (\%)', fontsize=axis_font)
-# ax.set_title('MF-LRB: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
+ax.set_xlabel('Gap ratio', fontsize=axis_font)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('Annual repair cost (\%)', fontsize=axis_font)
+ax.set_title('CBF-LRB: $T_M/T_{fb} = 3.0$, $\zeta_M = 0.15$', fontsize=subt_font)
 
-# #################################
-# xvar = 'T_ratio'
-# yvar = 'zeta_e'
+#################################
+xvar = 'T_ratio'
+yvar = 'zeta_e'
 
-# res = 75
-# X_plot = make_2D_plotting_space(mdl_impact_mf_lrb.X, res, x_var=xvar, y_var=yvar, 
-#                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
-#                             third_var_set = 1.0, fourth_var_set = 2.0)
+res = 75
+X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 1.0, fourth_var_set = 2.0)
 
-# Z = mdl_annual_cost.gpr.predict(X_plot)
+Z = mdl_mcat.gpr.predict(X_plot)
 
-# xx = X_plot[xvar]
-# yy = X_plot[yvar]
-# x_pl = np.unique(xx)
-# y_pl = np.unique(yy)
-# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 
-# Z_surf = np.array(Z).reshape(xx_pl.shape)
+Z_surf = np.array(Z).reshape(xx_pl.shape)
 
-# ax=fig.add_subplot(1, 2, 2, projection='3d')
-# surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
-#                        linewidth=0, antialiased=False, alpha=0.6,
-#                        vmin=-0.1)
-# ax.xaxis.pane.fill = False
-# ax.yaxis.pane.fill = False
-# ax.zaxis.pane.fill = False
+ax=fig.add_subplot(1, 2, 2, projection='3d')
+surf = ax.plot_surface(xx_pl, yy_pl, Z_surf, cmap='Blues',
+                        linewidth=0, antialiased=False, alpha=0.6,
+                        vmin=-0.1)
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
 
-# ax.scatter(df_mf_lrb[xvar], df_mf_lrb[yvar], df_mf_lrb[annual_cost_var], c=df_mf_lrb[annual_cost_var],
-#            edgecolors='k', alpha = 0.7, cmap='Blues')
+ax.scatter(df_cbf_lrb[xvar], df_cbf_lrb[yvar], df_cbf_lrb[annual_cost_var], c=df_cbf_lrb[annual_cost_var],
+            edgecolors='k', alpha = 0.7, cmap='Blues')
 
-# xlim = ax.get_xlim()
-# ylim = ax.get_ylim()
-# zlim = ax.get_zlim()
-# cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
-# cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
-# # ax.set_zlim([-0.1, 1.1])
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+zlim = ax.get_zlim()
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='x', offset=xlim[0], cmap='Blues_r')
+cset = ax.contour(xx_pl, yy_pl, Z_surf, zdir='y', offset=ylim[1], cmap='Blues')
+# ax.set_zlim([-0.1, 1.1])
 
-# ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
-# ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
-# ax.set_zlabel('Annual repair cost (\%)', fontsize=axis_font)
-# ax.set_title('MF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
-# fig.tight_layout()
+ax.set_xlabel('$T_M/ T_{fb}$', fontsize=axis_font)
+ax.set_ylabel('$\zeta_M$', fontsize=axis_font)
+ax.set_zlabel('Annual repair cost (\%)', fontsize=axis_font)
+ax.set_title('CBF-LRB: $GR = 1.0$, $R_y = 2.0$', fontsize=subt_font)
+fig.tight_layout()
 
-# # plt.savefig('./dissertation_figures/mf_lrb_conditioned.pdf')
 
 
 #%% Calculate upfront cost of data
@@ -1724,7 +1724,24 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     
     # isolator_system = system_name.split('_')[1]
     # system_X = impact_clfs['mdl_impact_'+system_name].X
-    X_space = make_design_space(res)
+    structural_system = system_name.split('_')[0]
+    
+    if structural_system == 'mf':
+        bound_dict = {
+            'gap_ratio': (0.6, 2.0),
+            'RI': (0.5, 2.25),
+            'T_ratio': (2.0, 5.8),
+            'zeta_e': (0.1, 0.25),
+            'k_ratio': (5.0, 12.0)}
+    else:
+       bound_dict = {
+           'gap_ratio': (0.6, 2.0),
+           'RI': (0.5, 2.25),
+           'T_ratio': (2.0, 11.0),
+           'zeta_e': (0.1, 0.25),
+           'k_ratio': (5.0, 12.0)} 
+    
+    X_space = make_design_space(res, bound_dict=bound_dict)
     
     # identify impact models (which has constructable kde)
     mdl_impact_name = 'mdl_impact_' + system_name
@@ -1793,13 +1810,14 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     space_ok_mcac = space_mcac[X_space.index.isin(X_design.index)]
     space_ok_mcat = space_mcat[X_space.index.isin(X_design.index)]
 
+
     if X_design.shape[0] < 1:
         print('No suitable design found for system', system_name)
         return None, None, None
     
     # NPV analysis
     # compare cost of designs against baseline of that system
-    structural_system = system_name.split('_')[0]
+    
     
     if structural_system.upper() == 'MF':
         X_baseline =  pd.DataFrame(np.array([[1.0, 2.0, 2.6, 0.2]]),
@@ -1831,10 +1849,23 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     avoided_cost = (mcac_baseline - space_ok_mcac)*config_dict['comparable_cost_'+structural_system]
     avoided_time = (mcat_baseline - space_ok_mcat)*config_dict['comparable_time_'+structural_system]
     
-    # profit loss and repair cost per worker-hour
+    # profit loss and repair cost per worker-day
     # assume 40% of replacement cost is labor, $680/worker-day for SF Bay Area
-    profit_loss_per_worker_day = 680.0
-    avoided_time_cost = avoided_time * profit_loss_per_worker_day
+    bldg_area = (config_dict['num_bays']*config_dict['L_bay'])**2 * (config_dict['num_stories'] + 1)
+
+    # assume $600/sf replacement
+    n_worker_series = bldg_area/1000
+    n_worker_parallel = n_worker_series/2
+    
+    # labor rate per worker-day
+    avoided_worker_cost = 680.0*avoided_time
+    
+    # lost profits
+    # worker-day (/workers) (*$ per day)
+    # based on $25/sq-ft/yr of business rent in Oakland for 3 story
+    avoided_business_cost = avoided_time/n_worker_parallel*4440*1.35 * config_dict['num_stories']/3
+    
+    avoided_time_cost = avoided_worker_cost + avoided_business_cost
     avoided_consequence = avoided_cost + avoided_time_cost
     
     i_rate = config_dict['interest_rate']
@@ -1859,6 +1890,7 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     # plt.show()
     # # ax1.set_xlim([0, row['replacement_cost']])
     
+    
     cheapest_idx = upgrade_value.idxmax()
     inv_upfront_cost = worth_costs[upgrade_value.idxmax()]
     
@@ -1872,7 +1904,8 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     inv_upgrade_cost = upgrade_cost[cheapest_idx]
     inv_avoided_cost = (mcac_baseline - inv_mcac)*config_dict['comparable_cost_'+structural_system]
     inv_avoided_time = (mcat_baseline - inv_mcat)*config_dict['comparable_time_'+structural_system]
-    inv_avoided_consequence = inv_avoided_cost + inv_avoided_time * profit_loss_per_worker_day
+    inv_avoided_consequence = inv_avoided_cost + inv_avoided_time * (
+        680 + 4440*1.35/n_worker_parallel * config_dict['num_stories']/3)
     inv_NPV = inv_avoided_consequence*((1 - 1/(1 + i_rate)**t_yrs) / i_rate)
     
     inv_performance = {
@@ -1919,6 +1952,10 @@ hs = 13.
 nb = 6
 Lb = 30.
 
+example_bldg_area = (nb*Lb)**2 * (ns + 1)
+workers_parallel = example_bldg_area/1000/2
+
+
 similar_mfs = df_mf[(df_mf['num_stories'] == ns) & (df_mf['num_bays'] == nb)]
 similar_mf_cost = similar_mfs['total_cmp_cost'].median()
 similar_mf_time = similar_mfs['total_cmp_time'].median()
@@ -1927,7 +1964,15 @@ similar_cbfs = df_cbf[(df_cbf['num_stories'] == ns) & (df_cbf['num_bays'] == nb)
 similar_cbf_cost = similar_cbfs['total_cmp_cost'].median()
 similar_cbf_time = similar_cbfs['total_cmp_time'].median()
 
-config_dict_moderate = {
+
+annual_cost_target_mf = 50e3/similar_mf_cost
+annual_cost_target_cbf = 50e3/similar_cbf_cost
+
+# 5 days target annually, with only 10% of the workers
+annual_dt_target_mf = 3*0.1*workers_parallel/similar_mf_time
+annual_dt_target_cbf = 3*0.1*workers_parallel/similar_cbf_time
+
+config_dict_test = {
     'num_stories': ns,
     'h_story': hs,
     'num_bays': nb,
@@ -1948,13 +1993,12 @@ config_dict_moderate = {
 mcac_var = 'annual_cost_ratio'
 mcat_var = 'annual_time_ratio'
 my_targets = {
-    mcac_var: 0.001,
-    mcat_var: 0.001,
+    mcac_var: annual_cost_target_mf,
+    mcat_var: annual_dt_target_mf,
     'constructability': -6.0}
 
-
-mf_tfp_inv_design, mf_tfp_inv_performance, mf_tfp_space = grid_search_inverse_design(
-    20, 'mf_tfp', my_targets, config_dict_moderate, 
+test_inv_design, test_inv_performance, test_space = grid_search_inverse_design(
+    20, 'mf_tfp', my_targets, config_dict_test, 
     impact_classification_mdls, mcac_regression_mdls, 
     mcat_regression_mdls)
 
@@ -1973,7 +2017,7 @@ similar_cbfs = df_cbf[(df_cbf['num_stories'] == ns) & (df_cbf['num_bays'] == nb)
 similar_cbf_cost = similar_cbfs['total_cmp_cost'].median()
 similar_cbf_time = similar_cbfs['total_cmp_time'].median()
 
-config_dict_moderate = {
+config_dict_annual = {
     'num_stories': ns,
     'h_story': hs,
     'num_bays': nb,
@@ -1993,31 +2037,143 @@ config_dict_moderate = {
 
 mcac_var = 'annual_cost_ratio'
 mcat_var = 'annual_time_ratio'
-my_targets = {
-    mcac_var: 0.001,
-    mcat_var: 0.001,
+
+mf_targets= {
+    mcac_var: annual_cost_target_mf,
+    mcat_var: annual_dt_target_mf,
+    'constructability': -5.0}
+
+cbf_targets= {
+    mcac_var: annual_cost_target_cbf,
+    mcat_var: annual_dt_target_cbf,
     'constructability': -6.0}
 
 
 mf_tfp_inv_design, mf_tfp_inv_performance, mf_tfp_space = grid_search_inverse_design(
-    20, 'mf_tfp', my_targets, config_dict_moderate, 
+    20, 'mf_tfp', mf_targets, config_dict_annual, 
     impact_classification_mdls, mcac_regression_mdls, 
     mcat_regression_mdls)
 
 mf_lrb_inv_design, mf_lrb_inv_performance, mf_lrb_space = grid_search_inverse_design(
-    20, 'mf_lrb', my_targets, config_dict_moderate, 
+    20, 'mf_lrb', mf_targets, config_dict_annual, 
     impact_classification_mdls, mcac_regression_mdls, 
     mcat_regression_mdls)
 
 cbf_tfp_inv_design, cbf_tfp_inv_performance, cbf_tfp_space = grid_search_inverse_design(
-    20, 'cbf_tfp', my_targets, config_dict_moderate, 
+    20, 'cbf_tfp', cbf_targets, config_dict_annual, 
     impact_classification_mdls, mcac_regression_mdls, 
     mcat_regression_mdls)
 
 cbf_lrb_inv_design, cbf_lrb_inv_performance, cbf_lrb_space = grid_search_inverse_design(
-    20, 'cbf_lrb', my_targets, config_dict_moderate, 
+    20, 'cbf_lrb', cbf_targets, config_dict_annual, 
     impact_classification_mdls, mcac_regression_mdls, 
     mcat_regression_mdls)
+
+#%% design the systems
+
+
+from db import prepare_ida_util
+import json
+### regular
+
+print ('======== designing structures ==========')
+my_design = mf_tfp_inv_design.copy()
+my_design['superstructure_system'] = 'MF'
+my_design['isolator_system'] = 'TFP'
+my_design['k_ratio'] = 12
+
+mf_tfp_dict = my_design.to_dict()
+
+# for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
+# change T_m by x0.9
+# since in the design script, GR is applied on the unadjusted T, we'll need to adjust
+# the specified GR by x0.9
+mf_tfp_dict['T_ratio'] = mf_tfp_dict['T_ratio']/0.9
+mf_tfp_dict['gap_ratio'] = mf_tfp_dict['gap_ratio']*0.9
+
+ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/',
+                                 config_dict=config_dict_annual)
+
+print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
+
+
+with open('../inputs/mf_tfp_annual.in', 'w') as file:
+    file.write(json.dumps(mf_tfp_dict))
+    file.close()
+    
+with open('../inputs/mf_tfp_annual.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_annual))
+    file.close()
+
+my_design = cbf_tfp_inv_design.copy()
+my_design['superstructure_system'] = 'CBF'
+my_design['isolator_system'] = 'TFP'
+my_design['k_ratio'] = 7
+
+
+cbf_tfp_dict = my_design.to_dict()
+
+# for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
+# change T_m by x0.9
+# since in the design script, GR is applied on the unadjusted T, we'll need to adjust
+# the specified GR by x0.9
+cbf_tfp_dict['T_ratio'] = cbf_tfp_dict['T_ratio']/0.9
+cbf_tfp_dict['gap_ratio'] = cbf_tfp_dict['gap_ratio']*0.9
+    
+ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/',
+                                 config_dict=config_dict_annual)
+
+print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
+
+with open('../inputs/cbf_tfp_annual.in', 'w') as file:
+    file.write(json.dumps(cbf_tfp_dict))
+    file.close()
+    
+with open('../inputs/cbf_tfp_annual.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_annual))
+    file.close()
+
+
+my_design = mf_lrb_inv_design.copy()
+my_design['superstructure_system'] = 'MF'
+my_design['isolator_system'] = 'LRB'
+my_design['k_ratio'] = 10
+
+mf_lrb_dict = my_design.to_dict()
+
+ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/',
+                                 config_dict=config_dict_annual)
+
+print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
+
+with open('../inputs/mf_lrb_annual.in', 'w') as file:
+    file.write(json.dumps(mf_lrb_dict))
+    file.close()
+    
+with open('../inputs/mf_lrb_annual.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_annual))
+    file.close()
+
+
+my_design = cbf_lrb_inv_design.copy()
+my_design['superstructure_system'] = 'CBF'
+my_design['isolator_system'] = 'LRB'
+my_design['k_ratio'] = 10
+
+cbf_lrb_dict = my_design.to_dict()
+
+ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/',
+                                 config_dict=config_dict_annual)
+
+with open('../inputs/cbf_lrb_annual.in', 'w') as file:
+    file.write(json.dumps(cbf_lrb_dict))
+    file.close()
+    
+with open('../inputs/cbf_lrb_annual.cfg', 'w') as file:
+    file.write(json.dumps(config_dict_annual))
+    file.close()
+    
+print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
 
 #%%
 
@@ -2066,7 +2222,7 @@ lvls = np.arange(0.00, .002, 0.0002)
 X_baseline =  pd.DataFrame(np.array([[1.0, 2.0, 2.6, 0.2]]),
                            columns=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'])
 baseline_cost = calc_upfront_cost(
-    X_baseline, config_dict=config_dict_moderate, steel_cost_dict=reg_dict)
+    X_baseline, config_dict=config_dict_annual, steel_cost_dict=reg_dict)
 
 mcac_baseline = mcac_regression_mdls['mdl_mcac_mf_lrb'].gpr.predict(X_baseline)[0]
 mcat_baseline = mcat_regression_mdls['mdl_mcat_mf_lrb'].gpr.predict(X_baseline)[0]
@@ -2148,7 +2304,7 @@ ax = fig.add_subplot(2, 2, 3)
 
 
 all_upfront_costs  = calc_upfront_cost(
-    X_plot, config_dict=config_dict_moderate, steel_cost_dict=reg_dict)
+    X_plot, config_dict=config_dict_annual, steel_cost_dict=reg_dict)
 
 mf_upfront_cost = all_upfront_costs['total_mf']
 
@@ -2160,7 +2316,7 @@ X_sc_qual = X_sc[np.logical_and.reduce((
 sc = ax.scatter(X_sc_qual[xvar], X_sc_qual[yvar], c='white', edgecolors='black', s=10)
 
 qual_upfront_cost  = calc_upfront_cost(
-    X_sc_qual, config_dict=config_dict_moderate, steel_cost_dict=reg_dict)
+    X_sc_qual, config_dict=config_dict_annual, steel_cost_dict=reg_dict)
 
 cheapest_idx = qual_upfront_cost['total_mf'].idxmin()
 
@@ -2192,8 +2348,8 @@ ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 upgrade_cost = (mf_upfront_cost- 
                 baseline_cost['total_mf'].item())
 
-avoided_cost = (mcac_baseline - grid_cost)*config_dict_moderate['comparable_cost_mf']
-avoided_time = (mcat_baseline - grid_time)*config_dict_moderate['comparable_time_mf']
+avoided_cost = (mcac_baseline - grid_cost)*config_dict_annual['comparable_cost_mf']
+avoided_time = (mcat_baseline - grid_time)*config_dict_annual['comparable_time_mf']
 
 # profit loss and repair cost per worker-hour
 # assume 40% of replacement cost is labor, $680/worker-day for SF Bay Area
@@ -2201,8 +2357,8 @@ profit_loss_per_worker_day = 680.0
 avoided_time_cost = avoided_time * profit_loss_per_worker_day
 avoided_consequence = avoided_cost + avoided_time_cost
 
-i_rate = config_dict_moderate['interest_rate']
-t_yrs = config_dict_moderate['timeframe']
+i_rate = config_dict_annual['interest_rate']
+t_yrs = config_dict_annual['timeframe']
 
 # upgrade is worth it if NPV of avoided consequence > upgrade cost over baseline
 NPV = avoided_consequence*((1 - 1/(1 + i_rate)**t_yrs) / i_rate)
@@ -2249,5 +2405,7 @@ fig.tight_layout()
 #%% 
 
 # tail-favored metrics
+
+# TODO: report as ROI
 
 # TODO: should we validate at a non-MCE earthquake?
