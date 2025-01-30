@@ -17,7 +17,7 @@ def agg_data(run_case):
     dummy_obj = Database(10)
     
     # how many row used?
-    row_num = 200
+    row_num = 400
     
     for i in range(row_num):
         # try to run 200 rows, stop whenever we stop finding rows
@@ -56,10 +56,10 @@ def agg_data(run_case):
         pickle.dump(dummy_obj, f)
         
 
-agg_data('mf_tfp_moderate_hi_constr')
-agg_data('cbf_tfp_moderate_hi_constr')
-agg_data('mf_lrb_moderate_hi_constr')
-agg_data('cbf_lrb_moderate_hi_constr')
+# agg_data('mf_tfp_annual')
+# agg_data('cbf_tfp_annual')
+# agg_data('mf_lrb_annual')
+agg_data('cbf_lrb_annual')
 # agg_data('mf_tfp_enhanced')
 # agg_data('cbf_tfp_enhanced')
 # agg_data('mf_lrb_enhanced')

@@ -1014,7 +1014,7 @@ reg_dict = {
 config_dict = {
     'num_stories': 4,
     'h_story': 13.0,
-    'num_bays': 4,
+    'num_bays': 6,
     'num_frames': 2,
     'S_s': 2.2815,
     'L_bay': 30.0,
@@ -1221,22 +1221,22 @@ def process_results(run_case):
            val_cost_ratio, val_downtime, val_downtime_ratio)
     
 (mf_tfp_val_results, mf_tfp_val_repl, mf_tfp_val_cost, mf_tfp_val_cost_ratio, 
- mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_constructable')
+ mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_moderate')
 (mf_lrb_val_results, mf_lrb_val_repl, mf_lrb_val_cost, mf_lrb_val_cost_ratio, 
- mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_constructable')
+ mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_moderate')
 (cbf_tfp_val_results, cbf_tfp_val_repl, cbf_tfp_val_cost, cbf_tfp_val_cost_ratio, 
- cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_constructable')
+ cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_moderate')
 (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
- cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_constructable')
+ cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_moderate')
 
 (mf_tfp_strict_results, mf_tfp_strict_repl, mf_tfp_strict_cost, mf_tfp_strict_cost_ratio, 
- mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_strict')
+ mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_enhanced')
 (mf_lrb_strict_results, mf_lrb_strict_repl, mf_lrb_strict_cost, mf_lrb_strict_cost_ratio, 
- mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_strict')
+ mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_enhanced')
 (cbf_tfp_strict_results, cbf_tfp_strict_repl, cbf_tfp_strict_cost, cbf_tfp_strict_cost_ratio, 
- cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_strict')
+ cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_enhanced')
 (cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
- cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict')
+ cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_enhanced')
 
 #%% debrief predictions: try to get predictions of actual ran building
 # two values differ
@@ -1410,7 +1410,7 @@ ax1.axhline(mf_tfp_repl_risk, linestyle='-.', color=mf_tfp_color)
 #           fontsize=subt_font, color=mf_tfp_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=mf_tfp_color)
-ax1.text(0.6, MCE_level+.125, f'{MCE_level:,.4f}',
+ax1.text(0.6, MCE_level+.08, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=mf_tfp_color, bbox=dict(facecolor='white', edgecolor=mf_tfp_color))
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
@@ -1438,7 +1438,7 @@ ax1.axhline(mf_lrb_repl_risk, linestyle='-.', color=mf_lrb_color)
 #           fontsize=subt_font, color=mf_lrb_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=mf_lrb_color)
-ax1.text(0.6, MCE_level+0.06, f'{MCE_level:,.4f}',
+ax1.text(0.6, MCE_level+0.0, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=mf_lrb_color, bbox=dict(facecolor='white', edgecolor=mf_lrb_color))
 
 
@@ -1465,7 +1465,7 @@ ax1.axhline(cbf_tfp_repl_risk, linestyle='-.', color=cbf_tfp_color)
 #           fontsize=subt_font, color=cbf_tfp_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=cbf_tfp_color)
-ax1.text(0.6, MCE_level-0.0, f'{MCE_level:,.4f}',
+ax1.text(0.6, MCE_level+0.045, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=cbf_tfp_color, bbox=dict(facecolor='white', edgecolor=cbf_tfp_color))
 
 
@@ -1489,7 +1489,7 @@ ax1.axhline(cbf_lrb_repl_risk, linestyle='-.', color=cbf_lrb_color)
 #           fontsize=subt_font, color=cbf_lrb_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=cbf_lrb_color)
-ax1.text(0.6, MCE_level-0.05, f'{MCE_level:,.4f}',
+ax1.text(0.6, MCE_level-0.005, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=cbf_lrb_color, bbox=dict(facecolor='white', edgecolor=cbf_lrb_color))
 
 
@@ -1525,7 +1525,7 @@ custom_lines = [Line2D([-1], [-1], color=mf_tfp_color),
 ax1.legend(custom_lines, ['MF-TFP', 'MF-LRB', 'CBF-TFP', 'CBF-LRB'], 
             fontsize=subt_font)
 
-# plt.savefig('./poster_figure/inverse_repl_frag.svg')
+plt.savefig('./poster_figure/inverse_repl_frag.svg')
 
 #%% cost validation distr
 
@@ -1542,7 +1542,7 @@ def plot_predictions(mean, var, y_middle, y_bar, color):
     ax.axvline(lower, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     ax.axvline(upper, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     
-plt.close('all')
+# plt.close('all')
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 20
@@ -1697,7 +1697,7 @@ label_size = 20
 clabel_size = 20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
-# plt.close('all')
+plt.close('all')
 
 from matplotlib.lines import Line2D
 fig = plt.figure(figsize=(7,6))
@@ -1809,8 +1809,10 @@ ax.axvline(1.0, linewidth=1.0, linestyle='--', color='red')
 ax.axhline(2.0, linewidth=1.0, linestyle='--', color='red')
 ax.text(0.55, 1.7, 'Stronger\n than code',
           fontsize=axis_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+ax.arrow(0.45, 2.0, 0.0, -0.15, width=0.02, facecolor='red', edgecolor='black')
 ax.text(1.3, 1.1, 'More capacity \n than code',
           fontsize=axis_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+ax.arrow(1.0, 1.15, 0.15, 0.0, width=0.02, facecolor='red', edgecolor='black')
 ax.set_xlim([0.35, 2.0])
 ax.set_ylim([0.5, 2.25])
 
@@ -1834,6 +1836,6 @@ ax.legend(custom_lines, ['Repair cost ratio', 'Repair time ratio', 'Replacement 
 
 
 fig.tight_layout()
-# plt.savefig('./poster_figure/filter_design.svg')
+plt.savefig('./poster_figure/filter_design.svg')
 # ax.text(1.2, 1.00, 'OK space',
 #           fontsize=axis_font, color='green')

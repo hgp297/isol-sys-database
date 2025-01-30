@@ -1916,6 +1916,8 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
         'avoided_cost': inv_avoided_cost,
         'avoided_time': inv_avoided_time,
         'NPV': inv_NPV}
+    
+    # TODO: if NPV is unifying loss function, use optimizer
 
     # read out predictions
     print('==================================')
@@ -2070,7 +2072,7 @@ cbf_lrb_inv_design, cbf_lrb_inv_performance, cbf_lrb_space = grid_search_inverse
     mcat_regression_mdls)
 
 #%% design the systems
-
+from loads import estimate_period
 
 from db import prepare_ida_util
 import json
@@ -2084,6 +2086,20 @@ my_design['k_ratio'] = 12
 
 mf_tfp_dict = my_design.to_dict()
 
+# estimate period to find bins
+test_dict = dict(mf_tfp_dict)
+test_dict.update(config_dict_annual)
+tf_est = estimate_period(test_dict)
+tm_est = test_dict['T_ratio']/0.9*tf_est
+sa_collapse_est = 1.5*test_dict['S_1']/tm_est
+sa_mce_est = test_dict['S_1']/tm_est
+sa_mf_tfp_bins, lambda_mf_tfp_bins, sa_T, lambda_T = get_hazard_bins(
+    tm_est, site_hazard_curves, sa_max=sa_collapse_est)
+levels_mf_tfp = sa_mf_tfp_bins/sa_mce_est
+
+config_mf_tfp = dict(config_dict_annual)
+config_mf_tfp['ida_levels'] = list(levels_mf_tfp)
+
 # for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
 # change T_m by x0.9
 # since in the design script, GR is applied on the unadjusted T, we'll need to adjust
@@ -2091,18 +2107,19 @@ mf_tfp_dict = my_design.to_dict()
 mf_tfp_dict['T_ratio'] = mf_tfp_dict['T_ratio']/0.9
 mf_tfp_dict['gap_ratio'] = mf_tfp_dict['gap_ratio']*0.9
 
-ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, db_string='../../resource/',
+ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, levels=levels_mf_tfp,
+                                 db_string='../../resource/',
                                  config_dict=config_dict_annual)
 
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
 
-with open('../inputs/mf_tfp_annual.in', 'w') as file:
+with open('../inputs/mf_tfp_annual_func_hazard.in', 'w') as file:
     file.write(json.dumps(mf_tfp_dict))
     file.close()
     
-with open('../inputs/mf_tfp_annual.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_annual))
+with open('../inputs/mf_tfp_annual_func_hazard.cfg', 'w') as file:
+    file.write(json.dumps(config_mf_tfp))
     file.close()
 
 my_design = cbf_tfp_inv_design.copy()
@@ -2113,6 +2130,20 @@ my_design['k_ratio'] = 7
 
 cbf_tfp_dict = my_design.to_dict()
 
+# estimate period to find bins
+test_dict = dict(cbf_tfp_dict)
+test_dict.update(config_dict_annual)
+tf_est = estimate_period(test_dict)
+tm_est = test_dict['T_ratio']/0.9*tf_est
+sa_collapse_est = 1.5*test_dict['S_1']/tm_est
+sa_mce_est = test_dict['S_1']/tm_est
+sa_cbf_tfp_bins, lambda_cbf_tfp_bins, sa_T, lambda_T = get_hazard_bins(
+    tm_est, site_hazard_curves, sa_max=sa_collapse_est)
+levels_cbf_tfp = sa_cbf_tfp_bins/sa_mce_est
+
+config_cbf_tfp = dict(config_dict_annual)
+config_cbf_tfp['ida_levels'] = list(levels_cbf_tfp)
+
 # for TFPs, we'll readjust T_ratio by x1/0.9, since the design -> analysis process will
 # change T_m by x0.9
 # since in the design script, GR is applied on the unadjusted T, we'll need to adjust
@@ -2120,17 +2151,18 @@ cbf_tfp_dict = my_design.to_dict()
 cbf_tfp_dict['T_ratio'] = cbf_tfp_dict['T_ratio']/0.9
 cbf_tfp_dict['gap_ratio'] = cbf_tfp_dict['gap_ratio']*0.9
     
-ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, db_string='../../resource/',
+ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, levels=levels_cbf_tfp,
+                                  db_string='../../resource/',
                                  config_dict=config_dict_annual)
 
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
-with open('../inputs/cbf_tfp_annual.in', 'w') as file:
+with open('../inputs/cbf_tfp_annual_func_hazard.in', 'w') as file:
     file.write(json.dumps(cbf_tfp_dict))
     file.close()
     
-with open('../inputs/cbf_tfp_annual.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_annual))
+with open('../inputs/cbf_tfp_annual_func_hazard.cfg', 'w') as file:
+    file.write(json.dumps(config_cbf_tfp))
     file.close()
 
 
@@ -2141,17 +2173,32 @@ my_design['k_ratio'] = 10
 
 mf_lrb_dict = my_design.to_dict()
 
-ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, db_string='../../resource/',
+# estimate period to find bins
+test_dict = dict(mf_lrb_dict)
+test_dict.update(config_dict_annual)
+tf_est = estimate_period(test_dict)
+tm_est = test_dict['T_ratio']*tf_est
+sa_collapse_est = 1.5*test_dict['S_1']/tm_est
+sa_mce_est = test_dict['S_1']/tm_est
+sa_mf_lrb_bins, lambda_mf_lrb_bins, sa_T, lambda_T = get_hazard_bins(
+    tm_est, site_hazard_curves, sa_max=sa_collapse_est)
+levels_mf_lrb = sa_mf_lrb_bins/sa_mce_est
+
+config_mf_lrb = dict(config_dict_annual)
+config_mf_lrb['ida_levels'] = list(levels_mf_lrb)
+
+ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, levels=levels_mf_lrb,
+                                 db_string='../../resource/',
                                  config_dict=config_dict_annual)
 
 print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
 
-with open('../inputs/mf_lrb_annual.in', 'w') as file:
+with open('../inputs/mf_lrb_annual_func_hazard.in', 'w') as file:
     file.write(json.dumps(mf_lrb_dict))
     file.close()
     
-with open('../inputs/mf_lrb_annual.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_annual))
+with open('../inputs/mf_lrb_annual_func_hazard.cfg', 'w') as file:
+    file.write(json.dumps(config_mf_lrb))
     file.close()
 
 
@@ -2162,18 +2209,95 @@ my_design['k_ratio'] = 10
 
 cbf_lrb_dict = my_design.to_dict()
 
-ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, db_string='../../resource/',
+# estimate period to find bins
+test_dict = dict(cbf_lrb_dict)
+test_dict.update(config_dict_annual)
+tf_est = estimate_period(test_dict)
+tm_est = test_dict['T_ratio']*tf_est
+sa_collapse_est = 1.5*test_dict['S_1']/tm_est
+sa_mce_est = test_dict['S_1']/tm_est
+sa_cbf_lrb_bins, lambda_cbf_lrb_bins, sa_T, lambda_T = get_hazard_bins(
+    tm_est, site_hazard_curves, sa_max=sa_collapse_est)
+levels_cbf_lrb = sa_cbf_lrb_bins/sa_mce_est
+
+config_cbf_lrb = dict(config_dict_annual)
+config_cbf_lrb['ida_levels'] = list(levels_cbf_lrb)
+
+ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, levels=levels_cbf_lrb,
+                                  db_string='../../resource/',
                                  config_dict=config_dict_annual)
 
-with open('../inputs/cbf_lrb_annual.in', 'w') as file:
+
+
+with open('../inputs/cbf_lrb_annual_func_hazard.in', 'w') as file:
     file.write(json.dumps(cbf_lrb_dict))
     file.close()
     
-with open('../inputs/cbf_lrb_annual.cfg', 'w') as file:
-    file.write(json.dumps(config_dict_annual))
+with open('../inputs/cbf_lrb_annual_func_hazard.cfg', 'w') as file:
+    file.write(json.dumps(config_cbf_lrb))
     file.close()
     
 print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
+
+#%%
+
+def print_latex_design_table(sys_name, val_results):
+
+    typ_design = val_results.iloc[0]
+    
+    
+    # moat in cm
+    moat = typ_design['D_m']*typ_design['moat_ampli']*2.54
+    largest_beam = typ_design['beam'][0]
+    largest_column = typ_design['column'][0]
+    try:
+        largest_brace = typ_design['brace'][0]
+    except:
+        largest_brace = 'n/a'
+    
+    # d bearings in cm, R curvature in mm
+    try:
+        bearing_param_1 = typ_design['mu_1']
+    except:
+        bearing_param_1 = typ_design['d_lead']*2.54
+        
+    try:
+        bearing_param_2 = typ_design['mu_2']
+    except:
+        bearing_param_2 = typ_design['d_bearing'] *2.54
+        
+    try:
+        bearing_param_3 = typ_design['R_1']*25.4
+    except:
+        bearing_param_3 = typ_design['t_r']* 2.54
+        
+    # print as either TFP or LRB
+    try:
+        bearing_param_4 = typ_design['R_2']*25.4
+        latex_string = f"& {sys_name} & {moat:.1f} cm & {largest_beam} & {largest_column} & {largest_brace} \
+            & {bearing_param_1:.3f} & {bearing_param_2:.3f} & {bearing_param_3:.0f} mm &  {bearing_param_4:.0f} mm \\\\"
+    except:
+        bearing_param_4 = typ_design['n_layers'] 
+        latex_string = f"& {sys_name} & {moat:.1f} cm & {largest_beam} & {largest_column} & {largest_brace} \
+            & {bearing_param_1:.1f} cm & {bearing_param_2:.1f} cm & {bearing_param_3:.1f} cm &  {bearing_param_4:.0f}  \\\\"
+    
+    # print('Average median repair cost: ',
+    #       f'${val_cost[0]:,.2f}')
+    # print('Repair cost ratio: ', 
+    #       f'{val_cost_ratio[0]:,.3f}')
+    # print('Repair time ratio: ',
+    #       f'{val_downtime_ratio[0]:,.3f}')
+    # print('Estimated replacement frequency: ',
+    #       f'{val_replacement[0]:.2%}')
+    
+    
+    print(latex_string)
+    return
+
+print_latex_design_table('MF-TFP', ida_mf_tfp_df)
+print_latex_design_table('CBF-TFP', ida_cbf_tfp_df)
+print_latex_design_table('MF-LRB', ida_mf_lrb_df)
+print_latex_design_table('CBF-LRB', ida_cbf_lrb_df)
 
 #%%
 
@@ -2409,3 +2533,603 @@ fig.tight_layout()
 # TODO: report as ROI
 
 # TODO: should we validate at a non-MCE earthquake?
+
+
+#%% generalized results of inverse design
+# TODO: validation
+
+def process_results(run_case):
+    
+    import numpy as np
+    # load in validation and max run
+    val_dir = '../../data/validation/'+run_case+'/'
+    
+    loss_file = run_case+'_loss.pickle'
+    max_loss_file = run_case+'_max_loss.pickle'
+    
+    val_obj = pd.read_pickle(val_dir+loss_file)
+    ida_results_df = val_obj.ida_results.reset_index(drop=True)
+    loss_results_df = val_obj.loss_data.reset_index(drop=True)
+    
+    val_max_obj = pd.read_pickle(val_dir+max_loss_file)
+    max_loss_results_df = val_max_obj.max_loss.reset_index(drop=True)
+    
+    # calculate loss ratios
+    ida_results_df = loss_percentages(
+        ida_results_df, loss_results_df, max_loss_results_df)
+    
+    # print out the results
+    ida_levels = [1.0, 1.5, 2.0]
+
+    val_cost  = np.zeros((3,))
+    val_replacement = np.zeros((3,))
+    val_cost_ratio = np.zeros((3,))
+    val_downtime_ratio = np.zeros((3,))
+    val_downtime = np.zeros((3,))
+    impact_freq = np.zeros((3,))
+    struct_cost = np.zeros((3,))
+    nsc_cost = np.zeros((3,))
+    gap_ratios = np.zeros((3,))
+    T_ratios = np.zeros((3,))
+    
+    GR_adjs = np.zeros((3,))
+    
+    isolator_system = run_case.split('_')[1]
+    
+    # collect variable: currently working with means of medians
+    cost_var_ida = 'cost_50%'
+    time_var_ida = 'time_l_50%'
+    
+    cost_var = 'cmp_cost_ratio'
+    time_var = 'cmp_time_ratio'
+    
+    for i, lvl in enumerate(ida_levels):
+        val_ida = ida_results_df[ida_results_df['ida_level']==lvl]
+        loss_ida = loss_results_df[ida_results_df['ida_level']==lvl]
+        
+        val_replacement[i] = val_ida['replacement_freq'].mean()
+        val_cost[i] = loss_ida[cost_var_ida].mean()
+        val_cost_ratio[i] = val_ida[cost_var].mean()
+        val_downtime[i] = loss_ida[time_var_ida].mean()
+        val_downtime_ratio[i] = val_ida[time_var].mean()
+        impact_freq[i] = val_ida['impacted'].mean()
+        struct_cost[i] = val_ida['B_50%'].mean()
+        nsc_cost[i] = val_ida['C_50%'].mean() + val_ida['D_50%'].mean() + val_ida['E_50%'].mean() 
+            
+        
+        zetaRef = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+        BmRef   = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+        Bm = np.interp(val_ida['zeta_e'], zetaRef, BmRef)
+        
+        if isolator_system == 'tfp':
+            T_shifted = np.mean(val_ida['T_m']*0.9)
+        else:
+            T_shifted = np.mean(val_ida['T_m'])
+            
+        sa_tm_adj = val_ida.apply(
+            lambda x: get_ST(x, T_shifted,
+                              db_dir='../../resource/ground_motions/gm_db.csv',
+                              spec_dir='../../resource/ground_motions/gm_spectra.csv'), 
+            axis=1)
+        
+        gap_ratios_all = (val_ida['constructed_moat']*4*pi**2)/ \
+            (g*(val_ida['sa_tm']/Bm)*val_ida['T_m']**2)
+        gap_ratios[i] = gap_ratios_all.mean()
+        
+        GR_adj = (val_ida['constructed_moat']*4*pi**2)/ \
+            (g*(sa_tm_adj/Bm)*T_shifted**2)
+        GR_adjs[i] = GR_adj.mean()
+            
+        T_ratio_adj = T_shifted / val_ida['T_fbe'].mean()
+        
+        T_ratios[i] = T_shifted / val_ida['T_fb'].mean()
+        
+    # print(T_shifted)
+    # print(GR_adjs)
+    # print(T_ratio_adj)
+    # print(T_ratios)
+    
+    
+    design_list = []
+    ss_sys = ida_results_df['superstructure_system'].iloc[0]
+    iso_sys = ida_results_df['isolator_system'].iloc[0]
+    if ss_sys == 'CBF':
+        design_list.extend(['beam', 'column', 'brace'])
+    else:
+        design_list.extend(['beam', 'column'])
+    if iso_sys == 'LRB':
+        design_list.extend(['d_bearing', 'd_lead', 't_r', 'n_layers'])
+    else:
+        design_list.extend(['mu_1', 'mu_2', 'R_1', 'R_2'])
+        
+    
+    sys_name = ss_sys+'-'+iso_sys
+    
+    # design_tested = ida_results_df[['moat_ampli', 'RI', 'T_ratio' , 'zeta_e']].iloc[0]
+    # design_specifics = ida_results_df[design_list].iloc[0]
+    # print('==================================')
+    # print('   Validation results  (1.0 MCE)  ')
+    # print('==================================')
+    
+    # print('System:', ss_sys+'-'+iso_sys)
+    # print('Average median repair cost: ',
+    #       f'${val_cost[0]:,.2f}')
+    # print('Repair cost ratio: ', 
+    #       f'{val_cost_ratio[0]:,.3f}')
+    # print('Repair time ratio: ',
+    #       f'{val_downtime_ratio[0]:,.3f}')
+    # print('Estimated replacement frequency: ',
+    #       f'{val_replacement[0]:.2%}')
+    # print(design_tested)
+    # print(design_specifics)
+    
+    latex_string = f"& {sys_name} & {val_cost_ratio[0]:.3f} & {val_cost_ratio[1]:.3f} & {val_cost_ratio[2]:.3f} \
+        & {val_downtime_ratio[0]:.3f} & {val_downtime_ratio[1]:.3f} & {val_downtime_ratio[2]:.3f} \
+            & {val_replacement[0]:.3f} & {val_replacement[1]:.3f} & {val_replacement[2]:.3f} \\\\"
+    
+    print(latex_string)  
+    
+    
+    # n_workers = (ida_results_df['bldg_area']/1000).mean()
+
+    # print('Cost total:', ida_results_df['total_cmp_cost'].mean()/1e6)
+    # print('Time total:', ida_results_df['total_cmp_time'].mean()/n_workers)
+    
+    # print('GR:', gap_ratios)
+    # print('TR:', T_ratios)
+    # print('Impact:', impact_freq)
+    # print('Structural cost:', struct_cost/1e6)
+    # print('Non-structural cost:', nsc_cost/1e6)
+    
+    
+    # latex_string = f"& {sys_name} & {mce_cost_ratio:.3f} & {mce_time_ratio:.3f} & {mce_repl_ratio:.3f} \
+    #     & {val_cost_ratio[0]:.2f} & {GP_time_ratio:.2f} & {GP_repl_risk:.2f} &  \${upfront_cost/1e6:.2f} M \\\\"
+    
+    return(ida_results_df, val_replacement, val_cost, 
+           val_cost_ratio, val_downtime, val_downtime_ratio)
+
+(mf_tfp_val_results, mf_tfp_val_repl, mf_tfp_val_cost, mf_tfp_val_cost_ratio, 
+ mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_annual')
+(mf_lrb_val_results, mf_lrb_val_repl, mf_lrb_val_cost, mf_lrb_val_cost_ratio, 
+ mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_annual')
+(cbf_tfp_val_results, cbf_tfp_val_repl, cbf_tfp_val_cost, cbf_tfp_val_cost_ratio, 
+ cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_annual')
+(cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
+ cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_annual')
+
+#%%
+def print_latex_inverse_table(sys_name, design_dict, performance_dict):
+
+    
+    GR = design_dict['gap_ratio']
+    Ry = design_dict['RI']
+    T_ratio = design_dict['T_ratio'] # this is the "designed" value
+    zeta = design_dict['zeta_e']
+    GP_cost_ratio = performance_dict['mcac']
+    GP_time_ratio = performance_dict['mcat']
+    GP_repl_risk = performance_dict['replacement_freq']
+    upfront_cost = performance_dict['upfront_cost']
+    
+    
+    latex_string = f"& {sys_name} & {GR:.2f} & {Ry:.2f} & {T_ratio:.2f} & {zeta:.2f} \
+        & {GP_cost_ratio:.3f} & {GP_time_ratio:.3f} & {GP_repl_risk:.3f} &  \${upfront_cost/1e6:.2f} M \\\\"
+    print(latex_string)
+    return
+
+# print_latex_inverse_table('MF-TFP', mf_tfp_inv_design, mf_tfp_inv_performance)   
+# print_latex_inverse_table('MF-LRB', mf_lrb_inv_design, mf_lrb_inv_performance)   
+# print_latex_inverse_table('CBF-TFP', cbf_tfp_inv_design, cbf_tfp_inv_performance)   
+# print_latex_inverse_table('CBF-LRB', cbf_lrb_inv_design, cbf_lrb_inv_performance)   
+
+print()
+
+def print_latex_design_table(sys_name, val_results):
+
+    typ_design = val_results.iloc[0]
+    
+    # moat in cm
+    moat = typ_design['constructed_moat']*2.54
+    largest_beam = typ_design['beam'][0]
+    largest_column = typ_design['column'][0]
+    try:
+        largest_brace = typ_design['brace'][0]
+    except:
+        largest_brace = 'n/a'
+    
+    # d bearings in cm, R curvature in mm
+    try:
+        bearing_param_1 = typ_design['mu_1']
+    except:
+        bearing_param_1 = typ_design['d_lead']*2.54
+        
+    try:
+        bearing_param_2 = typ_design['mu_2']
+    except:
+        bearing_param_2 = typ_design['d_bearing'] *2.54
+        
+    try:
+        bearing_param_3 = typ_design['R_1']*25.4
+    except:
+        bearing_param_3 = typ_design['t_r']* 2.54
+        
+    # print as either TFP or LRB
+    try:
+        bearing_param_4 = typ_design['R_2']*25.4
+        latex_string = f"& {sys_name} & {moat:.1f} cm & {largest_beam} & {largest_column} & {largest_brace} \
+            & {bearing_param_1:.3f} & {bearing_param_2:.3f} & {bearing_param_3:.0f} mm &  {bearing_param_4:.0f} mm \\\\"
+    except:
+        bearing_param_4 = typ_design['n_layers'] 
+        latex_string = f"& {sys_name} & {moat:.1f} cm & {largest_beam} & {largest_column} & {largest_brace} \
+            & {bearing_param_1:.1f} cm & {bearing_param_2:.1f} cm & {bearing_param_3:.1f} cm &  {bearing_param_4:.0f}  \\\\"
+    
+    # print('Average median repair cost: ',
+    #       f'${val_cost[0]:,.2f}')
+    # print('Repair cost ratio: ', 
+    #       f'{val_cost_ratio[0]:,.3f}')
+    # print('Repair time ratio: ',
+    #       f'{val_downtime_ratio[0]:,.3f}')
+    # print('Estimated replacement frequency: ',
+    #       f'{val_replacement[0]:.2%}')
+    
+    
+    print(latex_string)
+    return
+
+print_latex_design_table('MF-TFP', mf_tfp_val_results)
+print_latex_design_table('CBF-TFP', cbf_tfp_val_results)
+print_latex_design_table('MF-TFP', mf_lrb_val_results)
+print_latex_design_table('CBF-TFP', cbf_lrb_val_results)
+
+#%% generalized curve fitting for cost and time
+
+# TODO: should this be real values ($)
+
+def nlls(params, log_x, no_a, no_c):
+    from scipy import stats
+    import numpy as np
+    sigma, beta = params
+    theoretical_fragility_function = stats.norm(np.log(sigma), beta).cdf(log_x)
+    likelihood = stats.binom.pmf(no_c, no_a, theoretical_fragility_function)
+    log_likelihood = np.log(likelihood)
+    log_likelihood_sum = np.sum(log_likelihood)
+
+    return -log_likelihood_sum
+
+def mle_fit_general(x_values, probs, x_init=None):
+    from functools import partial
+    import numpy as np
+    from scipy.optimize import basinhopping
+    
+    log_x = np.log(x_values)
+    number_of_analyses = 1000*np.ones(len(x_values))
+    number_of_collapses = np.round(1000*probs)
+    
+    neg_log_likelihood_sum_partial = partial(
+        nlls, log_x=log_x, no_a=number_of_analyses, no_c=number_of_collapses)
+    
+    if x_init is None:
+        x0 = (1, 1)
+    else:
+        x0 = x_init
+    
+    bnds = ((1e-6, 0.2), (0.5, 1.5))
+    
+    # use basin hopping to avoid local minima
+    minimizer_kwargs={'bounds':bnds}
+    res = basinhopping(neg_log_likelihood_sum_partial, x0, minimizer_kwargs=minimizer_kwargs,
+                       niter=10, seed=985)
+    
+    return res.x[0], res.x[1]
+
+from scipy.stats import ecdf
+f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+# plt.close('all')
+
+# moderate designs
+cbf_tfp_ida = cbf_tfp_val_results[cbf_tfp_val_results['ida_level']==1.0]
+mf_tfp_ida = mf_tfp_val_results[mf_tfp_val_results['ida_level']==1.0]
+cbf_lrb_ida = cbf_lrb_val_results[cbf_lrb_val_results['ida_level']==1.0]
+mf_lrb_ida = mf_lrb_val_results[mf_lrb_val_results['ida_level']==1.0]
+
+my_y_var = mf_tfp_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 18
+subt_font = 18
+label_size = 16
+title_font=20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+fig = plt.figure(figsize=(13, 9))
+
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.5))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 1)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('MF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = mf_lrb_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),0.25))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 2)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+# ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('MF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_tfp_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 3)
+ax1.plot(xx_pr, p)
+
+ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('CBF-TFP', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+####
+
+my_y_var = cbf_lrb_ida[cost_var]
+res = ecdf(my_y_var)
+ecdf_prob = res.cdf.probabilities
+ecdf_values = res.cdf.quantiles
+
+# theta_inv, beta_inv = mle_fit_general(
+#     ecdf_values,ecdf_prob, x_init=(np.median(ecdf_values),1))
+
+theta_inv = np.exp(np.log(my_y_var).mean())
+beta_inv = np.log(my_y_var).var()
+
+xx_pr = np.linspace(1e-4, 1.0, 400)
+p = f(xx_pr, theta_inv, beta_inv)
+
+ax1=fig.add_subplot(2, 2, 4)
+ax1.plot(xx_pr, p)
+
+# ax1.set_ylabel(r'$P(X \leq x)$', fontsize=axis_font)
+ax1.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
+ax1.set_title('CBF-LRB', fontsize=title_font)
+ax1.plot([ecdf_values], [ecdf_prob], 
+          marker='x', markersize=5, color="red")
+ax1.grid(True)
+# ax1.set_xlim([0, 1.0])
+# ax1.set_ylim([0, 1.0])
+
+fig.tight_layout()
+plt.show()
+
+#%%
+# make lambda function for generic lognormal distribution
+import numpy as np
+lognorm_f = lambda x,theta,beta: norm(np.log(theta), beta**0.5).cdf(np.log(x))
+
+def validate_lifetime_loss(val_results, hazard_curves,
+                           cost_var='cmp_cost_ratio', time_var='cmp_time_ratio'):
+    
+    
+    # get return rate of the three Sa_avg of the IDA
+    T_m = val_results['T_m'].unique().item()
+    T_list = [0.0, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0]
+    idx_between = bisect.bisect(T_list, T_m)
+    
+    # 0 is total
+    below_lambda = hazard_curves[idx_between-1]['data'][0]['yvalues']
+    below_sa = hazard_curves[idx_between-1]['metadata']['xvalues']
+    
+    above_lambda = hazard_curves[idx_between]['data'][0]['yvalues']
+    above_sa = hazard_curves[idx_between]['metadata']['xvalues']
+    
+    x2 = T_list[idx_between]
+    x1 = T_list[idx_between-1]
+    # assume that both series have the same length
+    sa_T = [(g + h) / 2 for g, h in zip(below_sa, above_sa)]
+    lambda_T = [y1+(T_m-x1)*(y2-y1)/(x2-x1) for y1, y2 in zip(below_lambda, above_lambda)]
+    
+    # # grab Sa_avg of IDA
+    # sa_bins = np.array([float(sa) for sa in val_results['sa_avg'].unique()])
+    
+    # grab Sa_Tm average of IDA level
+    ida_levels = np.array([float(lvl) for lvl in val_results['ida_level'].unique()])
+    sa_bins = np.zeros(len(ida_levels))
+    for scn_idx, ida_lvl in enumerate(ida_levels):
+        ida_df = val_results[val_results['ida_level']==ida_lvl]
+        sa_bins[scn_idx] = ida_df['sa_tm'].mean()
+    
+    # breakpoint()
+    # interpolate in logspace
+    log_lambda = np.log(lambda_T)
+    log_lambda[log_lambda == -np.inf] = -100
+    lambda_bins = np.exp(np.interp(np.log(sa_bins), np.log(sa_T), log_lambda))
+    
+    # lambda_bins = np.array([1e-2, 2e-3, 2e-4])
+    
+    
+    # get the loss "curve" at the three IDA levels
+    from scipy.stats import ecdf
+    
+    # two choice: fit lognormal OR use ECDF
+    f = lambda x,theta,beta: norm(np.log(theta), beta).cdf(np.log(x))
+    # plt.close('all')
+    
+    # value to renormalize ratio into consequences
+    total_cmp_cost = val_results['total_cmp_cost'].median()
+    total_cmp_time = val_results['total_cmp_time'].median()
+    
+    # value to set max of linspace array of consequences of exceedance curve
+    repl_cost_max = val_results['replacement_cost'].median()
+    repl_time_max = val_results['replacement_time'].median()
+    cost_loss_values = np.linspace(1e-4, repl_cost_max, 1000)
+    time_loss_values = np.linspace(1e-4, repl_time_max, 1000)
+    
+    
+    
+    cost_scns = np.zeros([len(cost_loss_values), len(sa_bins)])
+    time_scns = np.zeros([len(time_loss_values), len(sa_bins)])
+    
+    for scn_idx, ida_lvl in enumerate(ida_levels):
+        ida_df = val_results[val_results['ida_level']==ida_lvl]
+
+        # from individual IDA result, calculate distribution
+        cost_ratio_ida = ida_df[cost_var]
+        res = ecdf(my_y_var)
+        ecdf_prob_cost_ratio = res.cdf.probabilities
+        ecdf_values_cost_ratio = res.cdf.quantiles
+        theta_cost = np.exp(np.log(cost_ratio_ida).mean())
+        beta_cost = np.log(cost_ratio_ida).var()
+        
+        
+        time_ratio_ida = ida_df[time_var]
+        res = ecdf(my_y_var)
+        ecdf_prob_time_ratio = res.cdf.probabilities
+        ecdf_values_time_ratio = res.cdf.quantiles
+        theta_time = np.exp(np.log(time_ratio_ida).mean())
+        beta_time = np.log(time_ratio_ida).var()
+        
+        # unnormalize loss ratio back to loss
+        cost_bins = cost_ratio_ida*total_cmp_cost
+        time_bins = time_ratio_ida*total_cmp_time
+        
+        # make exceedance curve for each scenario
+        # use total replacement just to have a bigger number
+        cost_scns[:,scn_idx] = lognorm_f(cost_loss_values, theta_cost*total_cmp_cost, beta_cost)
+        time_scns[:,scn_idx] = lognorm_f(time_loss_values, theta_time*total_cmp_time, beta_time)
+        
+        
+    # upper bound of considered replacement
+    total_cmp_cost_ub = val_results['total_cmp_cost_ub'].median()
+    total_cmp_time_ub = val_results['total_cmp_time_ub'].median()
+    cost_scns[cost_loss_values > total_cmp_cost_ub, :] = 1.0
+    time_scns[time_loss_values > total_cmp_time_ub, :] = 1.0
+    
+    
+    pr_exceedance_cost = 1 - cost_scns
+    pr_exceedance_time = 1 - time_scns
+    
+    cost_loss_rates = np.multiply(pr_exceedance_cost, lambda_bins)
+    time_loss_rates = np.multiply(pr_exceedance_time, lambda_bins)
+    
+    
+    
+    # import matplotlib.pyplot as plt
+    # plt.close('all')
+    # fig = plt.figure(figsize=(9, 6))
+    # ax1=fig.add_subplot(1, 1, 1)
+    
+    # for scn_idx in range(len(sa_bins)):
+    #     ax1.plot(cost_loss_values, pr_exceedance_cost[:,scn_idx], label='scn_'+str(scn_idx))
+    # ax1.legend()
+    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    # ax1.grid()
+    # ax1.set_xlim([0, repl_cost_max])
+    
+    
+    # import matplotlib.pyplot as plt
+    # # plt.close('all')
+    # fig = plt.figure(figsize=(9, 7))
+    # ax1=fig.add_subplot(1, 1, 1)
+    
+    # for scn_idx in range(len(sa_bins)):
+    #     ax1.plot(cost_loss_values, cost_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    # ax1.legend()
+    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    # ax1.grid()
+    # ax1.set_xlim([0, repl_cost_max])
+    
+    # fig = plt.figure(figsize=(9, 7))
+    # ax1=fig.add_subplot(1, 1, 1)
+    
+    # for scn_idx in range(len(sa_bins)):
+    #     ax1.plot(time_loss_values, time_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    # ax1.legend()
+    # ax1.set_xlabel(r'time (worker-day)', fontsize=axis_font)
+    # ax1.set_ylabel(r'$Pr[X \geq t]$', fontsize=axis_font)
+    # ax1.grid()
+    # ax1.set_xlim([0, repl_time_max])
+    
+    # breakpoint()
+    
+    # multiply scenarios' exceedance curve with corresponding return rate
+    # sum across all scenarios
+    agg_cost_exceedance_rate = pr_exceedance_cost @ lambda_bins
+    agg_time_exceedance_rate = pr_exceedance_time @ lambda_bins
+    
+    # integrate to attain lifetime dollar, time
+    mean_cumulative_annual_cost = np.trapz(agg_cost_exceedance_rate, cost_loss_values)
+    mean_cumulative_annual_time = np.trapz(agg_time_exceedance_rate, time_loss_values)
+    
+    # renormalize
+    mcac_ratio = mean_cumulative_annual_cost/total_cmp_cost
+    mcat_ratio = mean_cumulative_annual_time/total_cmp_time
+    
+    return mean_cumulative_annual_cost, mean_cumulative_annual_time, mcac_ratio, mcat_ratio
+
+mcac_mf_tfp, mcat_mf_tfp, mcac_ratio_mf_tfp, mcat_ratio_mf_tfp = validate_lifetime_loss(
+    mf_tfp_val_results, site_hazard_curves)
+
+mcac_mf_lrb, mcat_mf_lrb, mcac_ratio_mf_lrb, mcat_ratio_mf_lrb = validate_lifetime_loss(
+    mf_lrb_val_results, site_hazard_curves)
+
+mcac_cbf_tfp, mcat_cbf_tfp, mcac_ratio_cbf_tfp, mcat_ratio_cbf_tfp = validate_lifetime_loss(
+    cbf_tfp_val_results, site_hazard_curves)
+
+mcac_cbf_lrb, mcat_cbf_lrb, mcac_ratio_cbf_lrb, mcat_ratio_cbf_lrb = validate_lifetime_loss(
+    cbf_lrb_val_results, site_hazard_curves)
