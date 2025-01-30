@@ -29,8 +29,12 @@ def ida_run_row(row_num, run_case_str):
         with open(input_path+run_case_str+'.cfg') as f: 
             data = f.read() 
         run_config = json.loads(data)
+        
+        # handle custom IDA levels
         if 'ida_levels' in run_config:
             ida_levels = run_config['ida_levels']
+            # remove ida levels from config dict because indexed df can't handle lists
+            run_config.pop('ida_levels')
             ida_df = prepare_ida_util(design_dict, levels=ida_levels,
                                       config_dict=run_config)
         else:

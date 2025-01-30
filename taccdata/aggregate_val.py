@@ -56,10 +56,10 @@ def agg_data(run_case):
         pickle.dump(dummy_obj, f)
         
 
-# agg_data('mf_tfp_annual')
-# agg_data('cbf_tfp_annual')
-# agg_data('mf_lrb_annual')
-agg_data('cbf_lrb_annual')
+agg_data('mf_tfp_annual_func_hazard')
+agg_data('cbf_tfp_annual_func_hazard')
+agg_data('mf_lrb_annual_func_hazard')
+agg_data('cbf_lrb_annual_func_hazard')
 # agg_data('mf_tfp_enhanced')
 # agg_data('cbf_tfp_enhanced')
 # agg_data('mf_lrb_enhanced')
