@@ -2114,13 +2114,13 @@ ida_mf_tfp_df = prepare_ida_util(mf_tfp_dict, levels=levels_mf_tfp,
 print('Length of MF-TFP IDA:', len(ida_mf_tfp_df))
 
 
-with open('../inputs/mf_tfp_annual_func_hazard.in', 'w') as file:
-    file.write(json.dumps(mf_tfp_dict))
-    file.close()
+# with open('../inputs/mf_tfp_annual_func_hazard.in', 'w') as file:
+#     file.write(json.dumps(mf_tfp_dict))
+#     file.close()
     
-with open('../inputs/mf_tfp_annual_func_hazard.cfg', 'w') as file:
-    file.write(json.dumps(config_mf_tfp))
-    file.close()
+# with open('../inputs/mf_tfp_annual_func_hazard.cfg', 'w') as file:
+#     file.write(json.dumps(config_mf_tfp))
+#     file.close()
 
 my_design = cbf_tfp_inv_design.copy()
 my_design['superstructure_system'] = 'CBF'
@@ -2157,13 +2157,13 @@ ida_cbf_tfp_df = prepare_ida_util(cbf_tfp_dict, levels=levels_cbf_tfp,
 
 print('Length of CBF-TFP IDA:', len(ida_cbf_tfp_df))
 
-with open('../inputs/cbf_tfp_annual_func_hazard.in', 'w') as file:
-    file.write(json.dumps(cbf_tfp_dict))
-    file.close()
+# with open('../inputs/cbf_tfp_annual_func_hazard.in', 'w') as file:
+#     file.write(json.dumps(cbf_tfp_dict))
+#     file.close()
     
-with open('../inputs/cbf_tfp_annual_func_hazard.cfg', 'w') as file:
-    file.write(json.dumps(config_cbf_tfp))
-    file.close()
+# with open('../inputs/cbf_tfp_annual_func_hazard.cfg', 'w') as file:
+#     file.write(json.dumps(config_cbf_tfp))
+#     file.close()
 
 
 my_design = mf_lrb_inv_design.copy()
@@ -2193,13 +2193,13 @@ ida_mf_lrb_df = prepare_ida_util(mf_lrb_dict, levels=levels_mf_lrb,
 
 print('Length of MF-LRB IDA:', len(ida_mf_lrb_df))
 
-with open('../inputs/mf_lrb_annual_func_hazard.in', 'w') as file:
-    file.write(json.dumps(mf_lrb_dict))
-    file.close()
+# with open('../inputs/mf_lrb_annual_func_hazard.in', 'w') as file:
+#     file.write(json.dumps(mf_lrb_dict))
+#     file.close()
     
-with open('../inputs/mf_lrb_annual_func_hazard.cfg', 'w') as file:
-    file.write(json.dumps(config_mf_lrb))
-    file.close()
+# with open('../inputs/mf_lrb_annual_func_hazard.cfg', 'w') as file:
+#     file.write(json.dumps(config_mf_lrb))
+#     file.close()
 
 
 my_design = cbf_lrb_inv_design.copy()
@@ -2229,13 +2229,13 @@ ida_cbf_lrb_df = prepare_ida_util(cbf_lrb_dict, levels=levels_cbf_lrb,
 
 
 
-with open('../inputs/cbf_lrb_annual_func_hazard.in', 'w') as file:
-    file.write(json.dumps(cbf_lrb_dict))
-    file.close()
+# with open('../inputs/cbf_lrb_annual_func_hazard.in', 'w') as file:
+#     file.write(json.dumps(cbf_lrb_dict))
+#     file.close()
     
-with open('../inputs/cbf_lrb_annual_func_hazard.cfg', 'w') as file:
-    file.write(json.dumps(config_cbf_lrb))
-    file.close()
+# with open('../inputs/cbf_lrb_annual_func_hazard.cfg', 'w') as file:
+#     file.write(json.dumps(config_cbf_lrb))
+#     file.close()
     
 print('Length of CBF-LRB IDA:', len(ida_cbf_lrb_df))
 

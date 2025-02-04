@@ -1081,8 +1081,6 @@ class Loss_Analysis:
         )
         
         # add the data about replacement cost and time
-
-        # TODO: find replacement cost estimate
         # use PACT
         # assume $250/sf
         # assume 40% of replacement cost is labor, $680/worker-day for SF Bay Area
