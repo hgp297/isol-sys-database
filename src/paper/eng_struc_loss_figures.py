@@ -3,6 +3,11 @@
 
 ############################################################################
 
+import os
+file_path = "C:/Users/hgp/Documents/bezerkeley/research/isol-sys-database/src/paper/"
+dir_path = os.path.dirname(file_path)
+os.chdir(dir_path)
+
 import sys
 # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(1, '../')
@@ -114,6 +119,7 @@ df['gap_ratio'] = pd.to_numeric((df['constructed_moat']*4*pi**2)/ \
 df['GR_shift_coef'] = pd.to_numeric(df['gap_ratio'])/pd.to_numeric(df['GR_OG'])
 # df['GR-Ad_coef'] = pd.to_numeric(df['GR_OG'])/pd.to_numeric(df['moat_ampli'])
 df['sa_tm_shift'] = pd.to_numeric(df['sa_tm_adj']/df['sa_tm'])
+
 #%% main predictor
 
 def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
@@ -816,7 +822,7 @@ xleft = 0.15
 ax.set_ylim([0,1])
 ax.set_xlim([0, xleft])
 ax.set_ylabel('Limit state probability', fontsize=axis_font)
-# ax.set_xlabel('Drift ratio', fontsize=axis_font)
+ax.set_xlabel('Drift ratio', fontsize=axis_font)
 
 ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='blue', linestyle=":")
 ax.hlines(y=0.5, xmin=exp(mu), xmax=0.15, color='blue', linestyle=":")
@@ -885,7 +891,7 @@ subt_font = 18
 xleft = 0.08
 ax.set_ylim([0,1])
 ax.set_xlim([0, xleft])
-ax.set_ylabel('Limit state probability', fontsize=axis_font)
+# ax.set_ylabel('Limit state probability', fontsize=axis_font)
 ax.set_xlabel('Drift ratio', fontsize=axis_font)
 
 ax.vlines(x=exp(mu), ymin=0, ymax=0.5, color='blue', linestyle=":")
@@ -953,7 +959,7 @@ df_lrb_test = df_test[df_test['isolator_system'] == 'LRB']
 # plt.close('all')
 fig = plt.figure(figsize=(8,6))
 import seaborn as sns
-my_var = 'gap_ratio'
+my_var = 'k2'
 meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
                       markerfacecolor='white', zorder=20)
 ax = fig.add_subplot(1, 1, 1)
@@ -963,13 +969,13 @@ bx = sns.boxplot(y=my_var, x= "isolator_system", data=df_test,  showfliers=False
 sp = sns.stripplot(x='isolator_system', y=my_var, data=df_test, ax=ax, jitter=True,
               alpha=0.3, s=5, color='blue')
 
-val = df_tfp_test[my_var].median()
-ax.text(1, val*1.2, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+val = df_tfp_test[my_var].mean()
+ax.text(1, val*1.2, f'Mean: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
 # ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
 
-val = df_lrb_test[my_var].median()
-ax.text(0, val*1.2, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
+val = df_lrb_test[my_var].mean()
+ax.text(0, val*1.2, f'Mean: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
 # ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
 # ax.set_zlim([-0.05, 0.2])
@@ -1503,7 +1509,7 @@ fig.tight_layout()
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 22
-subt_font = 22
+subt_font = 20
 label_size = 20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
@@ -1515,7 +1521,7 @@ import seaborn as sns
 
 fig = plt.figure(figsize=(13, 9))
 
-cats = ['No', 'Yes']
+cats = ['No impact', 'Impacted']
 
 ### cost
 ax = fig.add_subplot(3, 4, 1)
@@ -1529,12 +1535,12 @@ sp = sns.stripplot(x='impacted', y=cost_var, data=df_mf_tfp, ax=ax, jitter=True,
 val = df_mf_tfp_o[cost_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_mf_tfp_i[cost_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.45))
 
 
 bx.set(xlabel=None)
@@ -1555,12 +1561,12 @@ sns.stripplot(x='impacted', y=cost_var, data=df_mf_lrb, ax=ax, jitter=True,
 val = df_mf_lrb_o[cost_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_mf_lrb_i[cost_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.45))
 
 bx.set(xlabel=None)
 bx.set(ylabel=None)
@@ -1580,12 +1586,12 @@ sns.stripplot(x='impacted', y=cost_var, data=df_cbf_tfp, ax=ax, jitter=True,
 val = df_cbf_tfp_o[cost_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_cbf_tfp_i[cost_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.8))
 
 
 bx.set(xlabel=None)
@@ -1606,12 +1612,12 @@ sns.stripplot(x='impacted', y=cost_var, data=df_cbf_lrb, ax=ax, jitter=True,
 val = df_cbf_lrb_o[cost_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_cbf_lrb_i[cost_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.8))
 
 
 
@@ -1634,12 +1640,12 @@ sp = sns.stripplot(x='impacted', y=time_var, data=df_mf_tfp, ax=ax, jitter=True,
 val = df_mf_tfp_o[time_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_mf_tfp_i[time_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.45))
 
 
 bx.set(xlabel=None)
@@ -1660,12 +1666,12 @@ sns.stripplot(x='impacted', y=time_var, data=df_mf_lrb, ax=ax, jitter=True,
 val = df_mf_lrb_o[time_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_mf_lrb_i[time_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.45))
 
 
 bx.set(xlabel=None)
@@ -1686,12 +1692,12 @@ sns.stripplot(x='impacted', y=time_var, data=df_cbf_tfp, ax=ax, jitter=True,
 val = df_cbf_tfp_o[time_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_cbf_tfp_i[time_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.8))
 
 bx.set(xlabel=None)
 bx.set(ylabel=None)
@@ -1711,12 +1717,12 @@ sns.stripplot(x='impacted', y=time_var, data=df_cbf_lrb, ax=ax, jitter=True,
 val = df_cbf_lrb_o[time_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_cbf_lrb_i[time_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.8))
 
 bx.set(xlabel=None)
 bx.set(ylabel=None)
@@ -1738,12 +1744,12 @@ sp = sns.stripplot(x='impacted', y=repl_var, data=df_mf_tfp, ax=ax, jitter=True,
 val = df_mf_tfp_o[repl_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_mf_tfp_i[repl_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.45))
 
 bx.set(xlabel=None)
 bx.set(ylabel=None)
@@ -1763,12 +1769,12 @@ sns.stripplot(x='impacted', y=repl_var, data=df_mf_lrb, ax=ax, jitter=True,
 val = df_mf_lrb_o[repl_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_mf_lrb_i[repl_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.45))
 
 
 bx.set(xlabel=None)
@@ -1789,12 +1795,12 @@ sns.stripplot(x='impacted', y=repl_var, data=df_cbf_tfp, ax=ax, jitter=True,
 val = df_cbf_tfp_o[repl_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_cbf_tfp_i[repl_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.8))
 
 bx.set(xlabel=None)
 bx.set(ylabel=None)
@@ -1814,12 +1820,12 @@ sns.stripplot(x='impacted', y=repl_var, data=df_cbf_lrb, ax=ax, jitter=True,
 val = df_cbf_lrb_o[repl_var].median()
 ax.text(0, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (0, val),(0.25, 0.45),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (0, val),(0.25, 0.45))
 
 val = df_cbf_lrb_i[repl_var].median()
 ax.text(1, 0.5, f'Mdn: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
-ax.annotate("", (1, val),(0.85, 0.8),  arrowprops={'arrowstyle':'->'})
+ax.annotate("", (1, val),(0.85, 0.8))
 
 bx.set(xlabel=None)
 bx.set(ylabel=None)
@@ -7194,3 +7200,5 @@ fig.tight_layout()
 # ax.set_xlabel(r'Steel cost per sf', fontsize=axis_font)
 # # ax.set_ylabel(r'Downtime ratio', fontsize=axis_font)
 # fig.tight_layout()
+
+plt.close('all')

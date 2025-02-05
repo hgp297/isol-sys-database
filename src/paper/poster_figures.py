@@ -1014,7 +1014,7 @@ reg_dict = {
 config_dict = {
     'num_stories': 4,
     'h_story': 13.0,
-    'num_bays': 4,
+    'num_bays': 6,
     'num_frames': 2,
     'S_s': 2.2815,
     'L_bay': 30.0,
@@ -1221,22 +1221,22 @@ def process_results(run_case):
            val_cost_ratio, val_downtime, val_downtime_ratio)
     
 (mf_tfp_val_results, mf_tfp_val_repl, mf_tfp_val_cost, mf_tfp_val_cost_ratio, 
- mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_constructable')
+ mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_moderate')
 (mf_lrb_val_results, mf_lrb_val_repl, mf_lrb_val_cost, mf_lrb_val_cost_ratio, 
- mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_constructable')
+ mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_moderate')
 (cbf_tfp_val_results, cbf_tfp_val_repl, cbf_tfp_val_cost, cbf_tfp_val_cost_ratio, 
- cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_constructable')
+ cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_moderate')
 (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
- cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_constructable')
+ cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_moderate')
 
 (mf_tfp_strict_results, mf_tfp_strict_repl, mf_tfp_strict_cost, mf_tfp_strict_cost_ratio, 
- mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_strict')
+ mf_tfp_strict_downtime, mf_tfp_strict_downtime_ratio) = process_results('mf_tfp_enhanced')
 (mf_lrb_strict_results, mf_lrb_strict_repl, mf_lrb_strict_cost, mf_lrb_strict_cost_ratio, 
- mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_strict')
+ mf_lrb_strict_downtime, mf_lrb_strict_downtime_ratio) = process_results('mf_lrb_enhanced')
 (cbf_tfp_strict_results, cbf_tfp_strict_repl, cbf_tfp_strict_cost, cbf_tfp_strict_cost_ratio, 
- cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_strict')
+ cbf_tfp_strict_downtime, cbf_tfp_strict_downtime_ratio) = process_results('cbf_tfp_enhanced')
 (cbf_lrb_strict_results, cbf_lrb_strict_repl, cbf_lrb_strict_cost, cbf_lrb_strict_cost_ratio, 
- cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_strict')
+ cbf_lrb_strict_downtime, cbf_lrb_strict_downtime_ratio) = process_results('cbf_lrb_enhanced')
 
 #%% debrief predictions: try to get predictions of actual ran building
 # two values differ
@@ -1387,7 +1387,7 @@ title_font=20
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 from matplotlib.lines import Line2D
-plt.close('all')
+# plt.close('all')
 
 fig = plt.figure(figsize=(7,6))
 ax1=fig.add_subplot(1, 1, 1)
@@ -1410,7 +1410,7 @@ ax1.axhline(mf_tfp_repl_risk, linestyle='-.', color=mf_tfp_color)
 #           fontsize=subt_font, color=mf_tfp_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=mf_tfp_color)
-ax1.text(0.6, MCE_level+.125, f'{MCE_level:,.4f}',
+ax1.text(0.6, MCE_level+.08, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=mf_tfp_color, bbox=dict(facecolor='white', edgecolor=mf_tfp_color))
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
@@ -1438,7 +1438,7 @@ ax1.axhline(mf_lrb_repl_risk, linestyle='-.', color=mf_lrb_color)
 #           fontsize=subt_font, color=mf_lrb_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=mf_lrb_color)
-ax1.text(0.6, MCE_level+0.06, f'{MCE_level:,.4f}',
+ax1.text(0.6, MCE_level+0.0, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=mf_lrb_color, bbox=dict(facecolor='white', edgecolor=mf_lrb_color))
 
 
@@ -1465,7 +1465,7 @@ ax1.axhline(cbf_tfp_repl_risk, linestyle='-.', color=cbf_tfp_color)
 #           fontsize=subt_font, color=cbf_tfp_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=cbf_tfp_color)
-ax1.text(0.6, MCE_level-0.0, f'{MCE_level:,.4f}',
+ax1.text(0.6, MCE_level+0.045, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=cbf_tfp_color, bbox=dict(facecolor='white', edgecolor=cbf_tfp_color))
 
 
@@ -1489,7 +1489,7 @@ ax1.axhline(cbf_lrb_repl_risk, linestyle='-.', color=cbf_lrb_color)
 #           fontsize=subt_font, color=cbf_lrb_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=cbf_lrb_color)
-ax1.text(0.6, MCE_level-0.05, f'{MCE_level:,.4f}',
+ax1.text(0.6, MCE_level-0.005, f'{MCE_level:,.4f}',
           fontsize=subt_font, color=cbf_lrb_color, bbox=dict(facecolor='white', edgecolor=cbf_lrb_color))
 
 
@@ -1663,6 +1663,8 @@ plot_predictions(cbf_lrb_repair_time, cbf_lrb_repair_time_var, 0.125, 3, cbf_lrb
 ax.text(0.3, 2.75, 'Targeted performance',
           fontsize=axis_font+4, color='black', bbox=dict(facecolor='white', edgecolor='black'))
 
+ax.arrow(0.3, 2.75, -0.1, -0.0, width=0.03, head_width=0.1, head_length=0.02, 
+         length_includes_head=True, facecolor='white', edgecolor='black')
 ax.grid(visible=True)
 
 
@@ -1682,7 +1684,7 @@ ax.legend(custom_lines, ['IDA boxplot', 'IDA run median consequence', 'Mean of I
 
 fig.tight_layout()
 plt.show()
-plt.savefig('./poster_figure/time_distro.svg')
+# plt.savefig('./poster_figure/time_distro.svg')
 
 #%% filter design graphic
 
@@ -1809,8 +1811,10 @@ ax.axvline(1.0, linewidth=1.0, linestyle='--', color='red')
 ax.axhline(2.0, linewidth=1.0, linestyle='--', color='red')
 ax.text(0.55, 1.7, 'Stronger\n than code',
           fontsize=axis_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+ax.arrow(0.45, 2.0, 0.0, -0.15, width=0.02, facecolor='red', edgecolor='black')
 ax.text(1.3, 1.1, 'More capacity \n than code',
           fontsize=axis_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+ax.arrow(1.0, 1.15, 0.15, 0.0, width=0.02, facecolor='red', edgecolor='black')
 ax.set_xlim([0.35, 2.0])
 ax.set_ylim([0.5, 2.25])
 
@@ -1837,3 +1841,313 @@ fig.tight_layout()
 # plt.savefig('./poster_figure/filter_design.svg')
 # ax.text(1.2, 1.00, 'OK space',
 #           fontsize=axis_font, color='green')
+
+#%% simplified cost validation distr
+
+def plot_predictions(mean, var, y_middle, y_bar, color):
+    middle = mean
+    upper = mean + var**0.5
+    lower = mean - var**0.5
+    
+    ax.plot(middle, y_bar, 'v', ms=10, markeredgecolor='black', markerfacecolor=color, zorder=5)
+    ax.plot([lower, upper], 
+            [y_bar,y_bar], color=color)
+    
+    ax.axvline(middle, ymin=y_middle-0.075, ymax=y_middle+0.075, linestyle='--', color=color)
+    ax.axvline(lower, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
+    ax.axvline(upper, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
+    
+plt.close('all')
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 28
+subt_font = 24
+label_size = 22
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+
+
+# fig, axes = plt.subplots(1, 1, 
+#                          figsize=(10, 6))
+
+fig = plt.figure(figsize=(8,6))
+
+mf_tfp_color = 'royalblue'
+mf_lrb_color = 'cornflowerblue'
+cbf_tfp_color = 'lightsalmon'
+cbf_lrb_color = 'darksalmon'
+
+### regular
+cbf_tfp_ida = cbf_tfp_val_results[cbf_tfp_val_results['ida_level']==1.0]
+mf_tfp_ida = mf_tfp_val_results[mf_tfp_val_results['ida_level']==1.0]
+cbf_lrb_ida = cbf_lrb_val_results[cbf_lrb_val_results['ida_level']==1.0]
+mf_lrb_ida = mf_lrb_val_results[mf_lrb_val_results['ida_level']==1.0]
+
+mf_tfp_repl_cases = mf_tfp_ida[mf_tfp_ida['replacement_freq'] >= 0.99].shape[0]
+cbf_tfp_repl_cases = cbf_tfp_ida[cbf_tfp_ida['replacement_freq'] >= 0.99].shape[0]
+mf_lrb_repl_cases = mf_lrb_ida[mf_lrb_ida['replacement_freq'] >= 0.99].shape[0]
+cbf_lrb_repl_cases = cbf_lrb_ida[cbf_lrb_ida['replacement_freq'] >= 0.99].shape[0]
+
+print('MF-TFP runs requiring replacement:', mf_tfp_repl_cases)
+print('MF-LRB runs requiring replacement:', mf_lrb_repl_cases)
+print('CBF-TFP runs requiring replacement:', cbf_tfp_repl_cases)
+print('CBF-LRB runs requiring replacement:', cbf_lrb_repl_cases)
+
+
+df_dt = pd.DataFrame.from_dict(
+    data=dict([('MF-TFP', mf_tfp_ida[cost_var]),
+               ('MF-LRB', mf_lrb_ida[cost_var]),
+               ('CBF-TFP', cbf_tfp_ida[cost_var]),
+               ('CBF-LRB', cbf_lrb_ida[cost_var]),]),
+    orient='index',
+).T
+
+import seaborn as sns
+
+cbf_tfp_repair_cost = cbf_tfp_inv_pred['cost']
+mf_tfp_repair_cost = mf_tfp_inv_pred['cost']
+cbf_lrb_repair_cost = cbf_lrb_inv_pred['cost']
+mf_lrb_repair_cost = mf_lrb_inv_pred['cost']
+
+cbf_tfp_repair_cost_var = cbf_tfp_inv_pred['cost_var']
+mf_tfp_repair_cost_var = mf_tfp_inv_pred['cost_var']
+cbf_lrb_repair_cost_var = cbf_lrb_inv_pred['cost_var']
+mf_lrb_repair_cost_var = mf_lrb_inv_pred['cost_var']
+
+
+
+###### time
+
+### regular
+cbf_tfp_ida = cbf_tfp_val_results[cbf_tfp_val_results['ida_level']==1.0]
+mf_tfp_ida = mf_tfp_val_results[mf_tfp_val_results['ida_level']==1.0]
+cbf_lrb_ida = cbf_lrb_val_results[cbf_lrb_val_results['ida_level']==1.0]
+mf_lrb_ida = mf_lrb_val_results[mf_lrb_val_results['ida_level']==1.0]
+
+mf_tfp_repl_cases = mf_tfp_ida[mf_tfp_ida['replacement_freq'] >= 0.99].shape[0]
+cbf_tfp_repl_cases = cbf_tfp_ida[cbf_tfp_ida['replacement_freq'] >= 0.99].shape[0]
+mf_lrb_repl_cases = mf_lrb_ida[mf_lrb_ida['replacement_freq'] >= 0.99].shape[0]
+cbf_lrb_repl_cases = cbf_lrb_ida[cbf_lrb_ida['replacement_freq'] >= 0.99].shape[0]
+
+print('MF-TFP runs requiring replacement:', mf_tfp_repl_cases)
+print('MF-LRB runs requiring replacement:', mf_lrb_repl_cases)
+print('CBF-TFP runs requiring replacement:', cbf_tfp_repl_cases)
+print('CBF-LRB runs requiring replacement:', cbf_lrb_repl_cases)
+
+
+df_dt = pd.DataFrame.from_dict(
+    data=dict([('MF-TFP', mf_tfp_ida[time_var]),
+               ('MF-LRB', mf_lrb_ida[time_var]),
+               ('CBF-TFP', cbf_tfp_ida[time_var]),
+               ('CBF-LRB', cbf_lrb_ida[time_var]),]),
+    orient='index',
+).T
+
+import seaborn as sns
+
+cbf_tfp_repair_time = cbf_tfp_inv_pred['time']
+mf_tfp_repair_time = mf_tfp_inv_pred['time']
+cbf_lrb_repair_time = cbf_lrb_inv_pred['time']
+mf_lrb_repair_time = mf_lrb_inv_pred['time']
+
+cbf_tfp_repair_time_var = cbf_tfp_inv_pred['time_var']
+mf_tfp_repair_time_var = mf_tfp_inv_pred['time_var']
+cbf_lrb_repair_time_var = cbf_lrb_inv_pred['time_var']
+mf_lrb_repair_time_var = mf_lrb_inv_pred['time_var']
+
+
+ax=fig.add_subplot(1, 1, 1)
+plt.setp(ax, xticks=np.arange(0.0, 1.1, step=0.1))
+ax = sns.stripplot(data=df_dt, orient='h', palette='coolwarm', alpha=0.8, size=6,
+                   linewidth=1.0)
+meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
+                      markerfacecolor='gray')
+
+sns.boxplot(data=df_dt, saturation=0.5, ax=ax, orient='h', palette='coolwarm',
+            width=0.4, showmeans=True, meanprops=meanpointprops, meanline=False, showfliers=False)
+ax.set_xlabel(r'Downtime percentage', fontsize=axis_font)
+ax.axvline(0.2, color='black', linestyle=':', linewidth=2.0)
+
+plot_predictions(mf_tfp_repair_time, mf_tfp_repair_time_var, 0.875, 0, mf_tfp_color)
+plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1, mf_lrb_color)
+plot_predictions(cbf_tfp_repair_time, cbf_tfp_repair_time_var, 0.375, 2, cbf_tfp_color)
+plot_predictions(cbf_lrb_repair_time, cbf_lrb_repair_time_var, 0.125, 3, cbf_lrb_color)
+
+
+ax.text(0.3, 2.75, 'Targeted performance',
+          fontsize=axis_font+4, color='black', bbox=dict(facecolor='white', edgecolor='black'))
+
+ax.arrow(0.3, 2.75, -0.1, -0.0, width=0.03, head_width=0.1, head_length=0.02, 
+         length_includes_head=True, facecolor='white', edgecolor='black')
+ax.grid(visible=True)
+
+
+import matplotlib.patches as mpatches
+custom_lines = [
+                Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
+                       , markerfacecolor='gray', markersize=10),
+                Line2D([-1], [-1], color='lightgray', marker='v', markeredgecolor='black',
+                       linestyle='--' , markerfacecolor='lightgray', markersize=10)
+                ]
+
+ax.legend(custom_lines, ['Mean of IDA loss', 
+                         'Predicted consequence'], 
+           fontsize=subt_font, loc='upper right')
+
+fig.tight_layout()
+plt.show()
+
+#%% simplified filter design graphic
+
+# TODO: filter
+
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+axis_font = 28
+subt_font = 24
+label_size = 22
+clabel_size = 20
+mpl.rcParams['xtick.labelsize'] = label_size 
+mpl.rcParams['ytick.labelsize'] = label_size 
+plt.close('all')
+
+from matplotlib.lines import Line2D
+fig = plt.figure(figsize=(7,6))
+
+#################################
+xvar = 'gap_ratio'
+yvar = 'RI'
+
+lvls_cost = np.array([0.2])
+lvls_time = np.array([0.2])
+lvls_repl = np.array([0.1])
+
+lvls_cost_enhanced = np.array([0.1])
+lvls_time_enhanced = np.array([0.1])
+lvls_repl_enhanced = np.array([0.05])
+
+res = 100
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 3.2, fourth_var_set = 0.24)
+
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+
+
+#### MF-LRB
+X_plot = make_2D_plotting_space(df[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                            third_var_set = 2.35, fourth_var_set = 0.20)
+
+ax = fig.add_subplot(1, 1, 1)
+# plt.setp(ax, xticks=np.arange(0.5, 5.0, step=0.5))
+
+# cs = ax1.contour(xx, yy, Z, linewidths=1.1, cmap='Blues', vmin=-1,
+#                  levels=lvls)
+
+grid_cost = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_cost_mf_lrb_i.gpr,
+                       mdl_cost_mf_lrb_o.gpr,
+                       outcome=cost_var)
+
+Z = np.array(grid_cost)
+Z_cost = Z.reshape(xx_pl.shape)
+
+# clabels = ax.clabel(cs, fontsize=clabel_size)
+
+grid_time = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_time_mf_lrb_i.gpr,
+                       mdl_time_mf_lrb_o.gpr,
+                       outcome=time_var)
+
+Z = np.array(grid_time)
+Z_time = Z.reshape(xx_pl.shape)
+
+lvls = np.array([0.1])
+grid_repl = predict_DV(X_plot,
+                       mdl_impact_mf_lrb.gpc,
+                       mdl_repl_mf_lrb_i.gpr,
+                       mdl_repl_mf_lrb_o.gpr,
+                       outcome=repl_var)
+
+Z = np.array(grid_repl)
+Z_repl = Z.reshape(xx_pl.shape)
+
+
+
+
+
+cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+                colors='black', linestyles='dotted', levels=lvls_repl)
+# ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+                colors='black', linestyles='dashed', levels=lvls_time)
+# ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+
+cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
+# ax.clabel(cs, fontsize=clabel_size)
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+
+# cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
+#                 colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='lightcyan', alpha=0.2, levels=[lvls_repl_enhanced, 1.0])
+
+# cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
+#                 colors='black', linestyles='dashed', levels=lvls_time_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='powderblue', alpha=0.2, levels=[lvls_time_enhanced, 1.0])
+
+# cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost_enhanced)
+# ax.clabel(cs, fontsize=clabel_size)
+# cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
+
+ax.grid(visible=True)
+
+
+
+ax.axvline(1.0, linewidth=1.0, linestyle='--', color='red')
+ax.axhline(2.0, linewidth=1.0, linestyle='--', color='red')
+ax.text(0.55, 1.7, 'Stronger\n than code',
+          fontsize=axis_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+ax.arrow(0.45, 2.0, 0.0, -0.15, width=0.02, facecolor='red', edgecolor='black')
+
+ax.text(1.3, 1.3, 'More capacity \n than code',
+          fontsize=axis_font, color='red', bbox=dict(facecolor='white', edgecolor='red'))
+ax.arrow(1.0, 1.35, 0.15, 0.0, width=0.02, facecolor='red', edgecolor='black')
+
+ax.set_xlim([0.35, 2.0])
+ax.set_ylim([0.5, 2.25])
+
+ax.grid(visible=True)
+ax.set_xlabel(r'Displacement capacity', fontsize=axis_font)
+ax.set_ylabel(r'Strength reduction', fontsize=axis_font)
+
+
+
+custom_lines = [Line2D([-1], [-1], color='black', 
+                        linestyle='-' ),
+                Line2D([-1], [-1], color='black', 
+                                        linestyle='--' ),
+                Line2D([-1], [-1], color='black', 
+                                        linestyle=':' ),
+                ]
+
+ax.legend(custom_lines, ['20\% repair cost', '20\% downtime', '10\% collapse'], 
+            fontsize=subt_font, loc='lower right')
+
+
+
+fig.tight_layout()

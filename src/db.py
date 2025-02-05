@@ -930,11 +930,22 @@ class Database:
         # if max loss df is provided, we now use the median loss of the total 
         # damage scenario as the replacement consequences
         if max_loss_df is not None:
+            
+            '''
+            # if the max_loss_df is only one row, replicate it (for validation run)
+            if max_loss_df.shape[0] < 2:
+                len_df = df.shape[0]
+                col_names = max_loss_df.columns
+                max_loss_df = pd.DataFrame(np.repeat(max_loss_df.values, len_df, axis=0))
+                max_loss_df.columns = col_names
+            '''
+                
             max_costs = max_loss_df['cost_50%']
             max_time = max_loss_df['time_l_50%']
         else:
             max_costs = None*df.shape[0]
             max_time = None*df.shape[0]
+            
             
         for run_idx in df.index:
             print('========================================')
@@ -1451,7 +1462,8 @@ class Database:
         self.loss_data = pd.concat([loss_df_data, group_df_data], axis=1)
         
     def calc_cmp_max(self, df,
-                    cmp_dir='../resource/loss/'):
+                    cmp_dir='../resource/loss/',
+                    validation_run=False):
         # run info
         import pandas as pd
 
@@ -1484,6 +1496,10 @@ class Database:
         loss_cmp_group = []
         col_list = []
         irr_list = []
+        
+        # if validation mode, only need to run one building
+        if validation_run:
+            df = df.head(1)
         
         for run_idx in df.index:
             print('========================================')
@@ -1591,8 +1607,16 @@ class Database:
                 
         group_df_data = pd.concat(all_rows, axis=1).T
         group_df_data.columns = group_header
+        if validation_run:
+            df_temp = pd.concat([loss_df_data, group_df_data], axis=1)
+            len_to_rep = self.ida_results.shape[0]
+            col_names = df_temp.columns
+            max_loss_df = pd.DataFrame(np.repeat(df_temp.values, len_to_rep, axis=0))
+            max_loss_df.columns = col_names
+            self.max_loss = max_loss_df
+        else:
+            self.max_loss = pd.concat([loss_df_data, group_df_data], axis=1)
         
-        self.max_loss = pd.concat([loss_df_data, group_df_data], axis=1)
     
 #%% design tools
 
@@ -1862,7 +1886,6 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                                    (all_tfps['R_1'] <= 50.0) &
                                    (all_tfps['R_2'] <= 190.0) &
                                    (all_tfps['zeta_loop'] <= 0.27)]
-        
         
         # retry if design didn't work
         if tfp_designs.shape[0] == 0:
