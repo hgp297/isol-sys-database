@@ -34,11 +34,11 @@ all_designs = main_obj.retained_designs
 # cbf tfp
 # run = main_obj.retained_designs.loc[527]
 
-# # mf lrb
-# run = main_obj.retained_designs.loc[324]
+# mf lrb
+run = main_obj.retained_designs.loc[48]
 
-# # mf tfp
-run = main_obj.retained_designs.loc[100]
+# # # mf tfp
+# run = main_obj.retained_designs.loc[100]
 
 from building import Building
 
@@ -284,8 +284,8 @@ else:
     tc = 1.0
 
     tag_1 = 0 # cavitation
-    tag_2 = 0 # buckling load variation
-    tag_3 = 0 # horiz stiffness variation
+    tag_2 = 1 # buckling load variation
+    tag_3 = 1 # horiz stiffness variation
     tag_4 = 0 # vertical stiffness variation
     tag_5 = 0 # heat
 

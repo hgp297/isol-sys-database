@@ -2559,20 +2559,22 @@ def process_results(run_case):
         ida_results_df, loss_results_df, max_loss_results_df)
     
     # print out the results
-    ida_levels = [1.0, 1.5, 2.0]
+    ida_levels = np.array(ida_results_df['ida_level'].unique())
+    # ida_levels = [1.0, 1.5, 2.0]
+    n = len(ida_levels)
 
-    val_cost  = np.zeros((3,))
-    val_replacement = np.zeros((3,))
-    val_cost_ratio = np.zeros((3,))
-    val_downtime_ratio = np.zeros((3,))
-    val_downtime = np.zeros((3,))
-    impact_freq = np.zeros((3,))
-    struct_cost = np.zeros((3,))
-    nsc_cost = np.zeros((3,))
-    gap_ratios = np.zeros((3,))
-    T_ratios = np.zeros((3,))
+    val_cost  = np.zeros((n,))
+    val_replacement = np.zeros((n,))
+    val_cost_ratio = np.zeros((n,))
+    val_downtime_ratio = np.zeros((n,))
+    val_downtime = np.zeros((n,))
+    impact_freq = np.zeros((n,))
+    struct_cost = np.zeros((n,))
+    nsc_cost = np.zeros((n,))
+    gap_ratios = np.zeros((n,))
+    T_ratios = np.zeros((n,))
     
-    GR_adjs = np.zeros((3,))
+    GR_adjs = np.zeros((n,))
     
     isolator_system = run_case.split('_')[1]
     
@@ -2616,6 +2618,7 @@ def process_results(run_case):
             (g*(val_ida['sa_tm']/Bm)*val_ida['T_m']**2)
         gap_ratios[i] = gap_ratios_all.mean()
         
+        # breakpoint()
         GR_adj = (val_ida['constructed_moat']*4*pi**2)/ \
             (g*(sa_tm_adj/Bm)*T_shifted**2)
         GR_adjs[i] = GR_adj.mean()
@@ -2689,13 +2692,13 @@ def process_results(run_case):
            val_cost_ratio, val_downtime, val_downtime_ratio)
 
 (mf_tfp_val_results, mf_tfp_val_repl, mf_tfp_val_cost, mf_tfp_val_cost_ratio, 
- mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_annual')
+ mf_tfp_val_downtime, mf_tfp_val_downtime_ratio) = process_results('mf_tfp_annual_func_hazard')
 (mf_lrb_val_results, mf_lrb_val_repl, mf_lrb_val_cost, mf_lrb_val_cost_ratio, 
- mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_annual')
+ mf_lrb_val_downtime, mf_lrb_val_downtime_ratio) = process_results('mf_lrb_annual_func_hazard')
 (cbf_tfp_val_results, cbf_tfp_val_repl, cbf_tfp_val_cost, cbf_tfp_val_cost_ratio, 
- cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_annual')
+ cbf_tfp_val_downtime, cbf_tfp_val_downtime_ratio) = process_results('cbf_tfp_annual_func_hazard')
 (cbf_lrb_val_results, cbf_lrb_val_repl, cbf_lrb_val_cost, cbf_lrb_val_cost_ratio, 
- cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_annual')
+ cbf_lrb_val_downtime, cbf_lrb_val_downtime_ratio) = process_results('cbf_lrb_annual_func_hazard')
 
 #%%
 def print_latex_inverse_table(sys_name, design_dict, performance_dict):
@@ -2777,8 +2780,8 @@ def print_latex_design_table(sys_name, val_results):
 
 print_latex_design_table('MF-TFP', mf_tfp_val_results)
 print_latex_design_table('CBF-TFP', cbf_tfp_val_results)
-print_latex_design_table('MF-TFP', mf_lrb_val_results)
-print_latex_design_table('CBF-TFP', cbf_lrb_val_results)
+print_latex_design_table('MF-LRB', mf_lrb_val_results)
+print_latex_design_table('CBF-LRB', cbf_lrb_val_results)
 
 #%% generalized curve fitting for cost and time
 

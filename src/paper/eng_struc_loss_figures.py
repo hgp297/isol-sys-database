@@ -49,6 +49,7 @@ df = df_raw[np.abs(stats.zscore(df_raw['collapse_prob'])) < 5].copy()
 # df = df.drop(columns=['index'])
 # df = df_whole.head(100).copy()
 
+df['max_isol_disp'] = pd.to_numeric(df['max_isol_disp'])
 df['max_drift'] = df.PID.apply(max)
 df['log_drift'] = np.log(df['max_drift'])
 
@@ -950,16 +951,16 @@ plt.show()
 # plt.show()
 
 from scipy import stats
-# df_test = df[np.abs(stats.zscore(df['max_accel'])) < 2].copy()
-# df_test = df[df['gap_ratio'] > 1.0]
+# df_test = df[np.abs(stats.zscore(df['max_isol_disp'])) < 1.].copy()
+# df_test = df[df['impacted'] == 0]
 df_test = df.copy()
 df_tfp_test = df_test[df_test['isolator_system'] == 'TFP']
 df_lrb_test = df_test[df_test['isolator_system'] == 'LRB']
 # df_test = df.copy()
-# plt.close('all')
+plt.close('all')
 fig = plt.figure(figsize=(8,6))
 import seaborn as sns
-my_var = 'k2'
+my_var = 'gap_ratio'
 meanpointprops = dict(marker='D', markeredgecolor='black', markersize=10,
                       markerfacecolor='white', zorder=20)
 ax = fig.add_subplot(1, 1, 1)
@@ -979,7 +980,10 @@ ax.text(0, val*1.2, f'Mean: \n{val:,.3f}', horizontalalignment='center',
           fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
 # ax.annotate("", (1, val),(0.85, 0.45),  arrowprops={'arrowstyle':'->'})
 # ax.set_zlim([-0.05, 0.2])
+# ax.set_ylim([0, 40.])
 ax.grid('True', zorder=0)
+plt.xlabel('Isolation system', fontsize=axis_font)
+# plt.ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
 plt.show()
 
 #%%
@@ -1846,20 +1850,20 @@ plt.show()
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-axis_font = 32
-title_font = 22
-subt_font = 32
+axis_font = 24
+title_font = 24
+subt_font = 24
 import matplotlib as mpl
-label_size = 18
+label_size = 24
 clabel_size = 16
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
-# plt.close('all')
+plt.close('all')
 # make grid and plot classification predictions
 
-fig = plt.figure(figsize=(13,7))
-ax = fig.add_subplot(1, 2, 1)
+fig = plt.figure(figsize=(16, 13))
+ax = fig.add_subplot(2, 2, 1)
 
 xvar = 'gap_ratio'
 yvar = 'T_ratio'
@@ -1867,7 +1871,7 @@ yvar = 'T_ratio'
 res = 75
 X_plot = make_2D_plotting_space(df_mf[covariate_list], res, x_var=xvar, y_var=yvar, 
                             all_vars=covariate_list,
-                            third_var_set = 2.0, fourth_var_set = 0.15)
+                            third_var_set = 2.0, fourth_var_set = 0.18)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
@@ -1905,23 +1909,21 @@ ax.scatter(df_mf_lrb_i[xvar][:plt_density],
 ax.scatter(df_mf_lrb_o[xvar][:plt_density],
             df_mf_lrb_o[yvar][:plt_density],
             s=50, c='green', edgecolors='black', label='No impact')
-# plt.legend(fontsize=axis_font)
+ax.legend(fontsize=axis_font)
 
 # ax.set_xlim(0.3, 2.0)
-ax.set_title(r'LRB impact', fontsize=title_font)
-ax.set_xlabel(r'$GR$', fontsize=axis_font)
-ax.set_ylabel(r'$T_M/T_{fb}$', fontsize=axis_font)
+ax.set_title(r'Isolator: LRB', fontsize=title_font)
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel('Superstructure: MF \n $T_M/T_{fb}$', fontsize=axis_font, multialignment='center')
 ax.grid('on', zorder=0)
 ####
 
-ax = fig.add_subplot(1, 2, 2)
-xvar = 'gap_ratio'
-yvar = 'T_ratio'
+ax = fig.add_subplot(2, 2, 2)
 
 res = 75
 X_plot = make_2D_plotting_space(df_mf[covariate_list], res, x_var=xvar, y_var=yvar, 
                             all_vars=covariate_list,
-                            third_var_set = 2.0, fourth_var_set = 0.15)
+                            third_var_set = 2.0, fourth_var_set = 0.18)
 xx = X_plot[xvar]
 yy = X_plot[yvar]
 
@@ -1962,7 +1964,116 @@ ax.scatter(df_mf_tfp_o[xvar][:plt_density],
 # plt.legend(fontsize=axis_font)
 
 # ax.set_xlim(0.3, 2.0)
-ax.set_title(r'TFP impact', fontsize=title_font)
+ax.set_title(r'Isolator: TFP', fontsize=title_font)
+# ax.set_xlabel(r'$GR$', fontsize=axis_font)
+
+ax.grid('on', zorder=0)
+# plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False) #remove ticks
+
+plt.show()
+
+
+
+ax = fig.add_subplot(2, 2, 3)
+
+
+res = 75
+X_plot = make_2D_plotting_space(df_cbf[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 2.0, fourth_var_set = 0.18)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+# GPC impact prediction
+Z = mdl_impact_cbf_lrb.gpc.predict_proba(X_plot)[:,1]
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_classif = Z.reshape(xx_pl.shape)
+
+# plt.imshow(
+#         Z_classif,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.RdYlGn_r,
+#     )
+plt_density = 200
+cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.5, cmap='RdYlGn_r',
+                  levels=np.linspace(0.1,1.0,num=10))
+clabels = plt.clabel(cs, fontsize=subt_font, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+
+ax.scatter(df_cbf_lrb_i[xvar][:plt_density],
+            df_cbf_lrb_i[yvar][:plt_density],
+            s=80, c='red', marker='X', edgecolors='black', label='Impacted')
+
+ax.scatter(df_cbf_lrb_o[xvar][:plt_density],
+            df_cbf_lrb_o[yvar][:plt_density],
+            s=50, c='green', edgecolors='black', label='No impact')
+# plt.legend(fontsize=axis_font)
+
+# ax.set_xlim(0.3, 2.0)
+# ax.set_title(r'LRB impact', fontsize=title_font)
+ax.set_xlabel(r'$GR$', fontsize=axis_font)
+ax.set_ylabel('Superstructure: CBF \n $T_M/T_{fb}$', fontsize=axis_font, multialignment='center')
+ax.grid('on', zorder=0)
+####
+
+ax = fig.add_subplot(2, 2, 4)
+
+res = 75
+X_plot = make_2D_plotting_space(df_cbf[covariate_list], res, x_var=xvar, y_var=yvar, 
+                            all_vars=covariate_list,
+                            third_var_set = 2.0, fourth_var_set = 0.18)
+xx = X_plot[xvar]
+yy = X_plot[yvar]
+
+# GPC impact prediction
+Z = mdl_impact_cbf_tfp.gpc.predict_proba(X_plot)[:,1]
+
+
+x_pl = np.unique(xx)
+y_pl = np.unique(yy)
+
+# collapse predictions
+xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+
+Z_classif = Z.reshape(xx_pl.shape)
+
+# plt.imshow(
+#         Z_classif,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.RdYlGn_r,
+#     )
+plt_density = 200
+cs = plt.contour(xx_pl, yy_pl, Z_classif, linewidths=1.5, cmap='RdYlGn_r',
+                  levels=np.linspace(0.1,1.0,num=10))
+clabels = plt.clabel(cs, fontsize=subt_font, colors='black')
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+
+ax.scatter(df_cbf_tfp_i[xvar][:plt_density],
+            df_cbf_tfp_i[yvar][:plt_density],
+            s=80, c='red', marker='X', edgecolors='black', label='Impacted')
+
+ax.scatter(df_cbf_tfp_o[xvar][:plt_density],
+            df_cbf_tfp_o[yvar][:plt_density],
+            s=50, c='green', edgecolors='black', label='No impact')
+# plt.legend(fontsize=axis_font)
+
+# ax.set_xlim(0.3, 2.0)
+# ax.set_title(r'TFP impact', fontsize=title_font)
 ax.set_xlabel(r'$GR$', fontsize=axis_font)
 
 ax.grid('on', zorder=0)
@@ -1970,7 +2081,7 @@ ax.grid('on', zorder=0)
 fig.tight_layout()
 plt.show()
 
-
+# plt.savefig('./eng_struc_figures/impact_classif.pdf')
 #%% nonimpact prediction
 
 '''
@@ -4671,12 +4782,19 @@ ax1.plot(xx_pr, p, color=inverse_color)
 ax1.axhline(mf_tfp_repl_risk, linestyle='-.', color=inverse_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=inverse_color, linewidth=1.5)
 ax1.axvline(1.0, linestyle=':', color='black')
+
 # ax1.text(1.5,mf_tfp_repl_risk+0.02, r'Predicted replacement risk',
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, mf_tfp_repl_risk+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, mf_tfp_repl_risk+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, mf_tfp_repl_risk+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -4699,8 +4817,13 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(mf_tfp_repl_risk, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, mf_tfp_repl_risk-0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, mf_tfp_repl_risk+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, mf_tfp_repl_risk+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
 ax1.set_title('a) MF-TFP', fontsize=title_font)
@@ -4734,8 +4857,15 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, mf_lrb_repl_risk+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, mf_tfp_repl_risk+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, mf_lrb_repl_risk+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -4758,8 +4888,14 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(mf_lrb_repl_risk, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, mf_lrb_repl_risk+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, mf_lrb_repl_risk+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, mf_lrb_repl_risk+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
+
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
 ax1.set_title('b) MF-LRB', fontsize=title_font)
@@ -4791,8 +4927,14 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, cbf_tfp_repl_risk+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, cbf_tfp_repl_risk+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, cbf_tfp_repl_risk+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -4815,8 +4957,15 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(cbf_tfp_repl_risk, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, cbf_tfp_repl_risk+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, cbf_tfp_repl_risk+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, cbf_tfp_repl_risk+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
+
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
 ax1.set_title('c) CBF-TFP', fontsize=title_font)
@@ -4848,8 +4997,15 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, MCE_level-0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, cbf_lrb_repl_risk+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, cbf_lrb_repl_risk+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -4872,8 +5028,15 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(cbf_lrb_repl_risk, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, MCE_level+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, cbf_lrb_repl_risk+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, cbf_lrb_repl_risk+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
+
 
 ax1.set_ylabel('Replacement probability', fontsize=axis_font)
 ax1.set_title('d) CBF-LRB', fontsize=title_font)
@@ -4888,15 +5051,14 @@ fig.tight_layout()
 plt.show()
 
     
-custom_lines = [Line2D([-1], [-1], color='white', marker='x', markeredgecolor='black'
-                       , markerfacecolor='black', markersize=10),
-                Line2D([-1], [-1], color=inverse_color, linestyle='-'),
-                Line2D([-1], [-1], color=strict_color, linestyle='--'),
+custom_lines = [
+                Line2D([-1], [-1], color=inverse_color, linestyle='-', marker='x', markersize=10),
+                Line2D([-1], [-1], color=strict_color, linestyle='--', marker='x', markersize=10),
                 Line2D([-1], [-1], color='black', linestyle='-.'),
                 Line2D([-1], [-1], color='black', linestyle=':'),
                 ]
 
-ax1.legend(custom_lines, ['IDA replacement probability', 'Moderate performance', 'Enhanced performance', 
+ax1.legend(custom_lines, ['Moderate performance', 'Enhanced performance', 
                           'Predicted replacement probability', r'Predicted $\mu+\sigma$'], 
            fontsize=subt_font-2, loc='center right')
 
@@ -4945,8 +5107,14 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, mf_tfp_cost_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, mf_tfp_cost_ratio+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, mf_tfp_cost_ratio+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -4966,8 +5134,14 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(mf_tfp_cost_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, mf_tfp_cost_ratio-0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, mf_tfp_cost_ratio+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, mf_tfp_cost_ratio+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
+
 
 ax1.set_ylabel('Repair cost ratio', fontsize=axis_font)
 ax1.set_title('a) MF-TFP', fontsize=title_font)
@@ -5001,8 +5175,14 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, mf_lrb_cost_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, mf_lrb_cost_ratio+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, mf_lrb_cost_ratio+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -5023,8 +5203,14 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(mf_lrb_cost_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, mf_lrb_cost_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, mf_lrb_cost_ratio+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, mf_lrb_cost_ratio+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
+
 
 # ax1.set_ylabel('Repair cost ratio', fontsize=axis_font)
 ax1.set_title('b) MF-LRB', fontsize=title_font)
@@ -5056,8 +5242,15 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, cbf_tfp_cost_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, cbf_tfp_cost_ratio+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, cbf_tfp_cost_ratio+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -5078,8 +5271,14 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(cbf_tfp_cost_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, cbf_tfp_cost_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, cbf_tfp_cost_ratio+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, cbf_tfp_cost_ratio+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
+
 
 ax1.set_xlabel('IDA level', fontsize=axis_font)
 ax1.set_ylabel('Repair cost ratio', fontsize=axis_font)
@@ -5112,8 +5311,15 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, MCE_level-0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, cbf_lrb_cost_ratio+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, cbf_lrb_cost_ratio+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -5134,8 +5340,13 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(cbf_lrb_cost_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, MCE_level+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, cbf_lrb_cost_ratio+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, cbf_lrb_cost_ratio+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
 
 ax1.set_xlabel('IDA level', fontsize=axis_font)
 ax1.set_title('d) CBF-LRB', fontsize=title_font)
@@ -5150,16 +5361,15 @@ fig.tight_layout()
 plt.show()
 
     
-custom_lines = [Line2D([-1], [-1], color='white', marker='x', markeredgecolor='black'
-                       , markerfacecolor='black', markersize=10),
-                Line2D([-1], [-1], color=inverse_color, linestyle='-'),
-                Line2D([-1], [-1], color=strict_color, linestyle='--'),
+custom_lines = [
+                Line2D([-1], [-1], color=inverse_color, linestyle='-', marker='x', markersize=10),
+                Line2D([-1], [-1], color=strict_color, linestyle='--', marker='x', markersize=10),
                 Line2D([-1], [-1], color='black', linestyle='-.'),
                 Line2D([-1], [-1], color='black', linestyle=':'),
                 ]
 
-ax1.legend(custom_lines, ['IDA repair cost ratio', 'Moderate performance', 'Enhanced performance', 
-                          'Predicted repair cost ratio', r'Predicted $\mu+\sigma$'], 
+ax1.legend(custom_lines, ['Moderate performance', 'Enhanced performance', 
+                          'Predicted replacement probability', r'Predicted $\mu+\sigma$'], 
            fontsize=subt_font-2, loc='center right')
 
 # plt.savefig('./eng_struc_figures/inverse_cost_frag.pdf')
@@ -5207,8 +5417,14 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, mf_tfp_downtime_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, mf_tfp_downtime_ratio+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, mf_tfp_downtime_ratio+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -5228,8 +5444,13 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(mf_tfp_downtime_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, mf_tfp_downtime_ratio-0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, mf_tfp_downtime_ratio+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, mf_tfp_downtime_ratio+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
 
 ax1.set_ylabel('Downtime ratio', fontsize=axis_font)
 ax1.set_title('a) MF-TFP', fontsize=title_font)
@@ -5263,8 +5484,14 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, mf_lrb_downtime_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, mf_lrb_downtime_ratio+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, mf_lrb_downtime_ratio+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -5285,8 +5512,13 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(mf_lrb_downtime_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, mf_lrb_downtime_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, mf_lrb_downtime_ratio+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, mf_lrb_downtime_ratio+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
 
 # ax1.set_ylabel('Repair time ratio', fontsize=axis_font)
 ax1.set_title('b) MF-LRB', fontsize=title_font)
@@ -5318,8 +5550,14 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, cbf_tfp_downtime_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, cbf_tfp_downtime_ratio+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, cbf_tfp_downtime_ratio+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -5340,8 +5578,13 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(cbf_tfp_downtime_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, cbf_tfp_downtime_ratio+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, cbf_tfp_downtime_ratio+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, cbf_tfp_downtime_ratio+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
 
 ax1.set_xlabel('IDA level', fontsize=axis_font)
 ax1.set_ylabel('Downtime ratio', fontsize=axis_font)
@@ -5374,8 +5617,14 @@ ax1.axvline(1.0, linestyle=':', color='black')
 #           fontsize=subt_font, color=inverse_color)
 # ax1.text(1.5,upper+0.02, r'$+1\sigma$',
 #           fontsize=subt_font, color=inverse_color)
-ax1.text(0.55, MCE_level-0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=inverse_color_2, bbox=dict(facecolor='white', edgecolor=inverse_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color_2)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(0.75, cbf_lrb_downtime_ratio+0.15), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color_2),
+             bbox=bbox_props)
+ax1.text(0.55, cbf_lrb_downtime_ratio+0.15, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=inverse_color_2, bbox=bbox_props, zorder=5)
+
 ax1.text(0.85, 0.55, r'$MCE_R$ level', rotation=90,
           fontsize=subt_font, color='black')
 
@@ -5396,8 +5645,13 @@ MCE_level = float(p[xx_pr==1.0])
 ax1.plot(xx_pr, p, color=strict_color, linestyle='--')
 ax1.axhline(cbf_lrb_downtime_ratio, linestyle='-.', color=strict_color, linewidth=1.5)
 ax1.axhline(upper, linestyle=':', color=strict_color, linewidth=1.5)
-ax1.text(1.1, MCE_level+0.01, f'{MCE_level:,.4f}',
-          fontsize=subt_font, color=strict_color_2, bbox=dict(facecolor='white', edgecolor=strict_color_2))
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color_2)
+ax1.text(1.3, cbf_lrb_downtime_ratio+0.01, f'MLE fit: \n {MCE_level:,.4f}',
+          fontsize=subt_font, color=strict_color_2, bbox=bbox_props, zorder=5)
+ax1.annotate(text='', xy=(1.0,MCE_level), xytext=(1.4, cbf_lrb_downtime_ratio+0.03), 
+             arrowprops=dict(arrowstyle='->', color=strict_color_2),
+             bbox=bbox_props)
 
 ax1.set_xlabel('IDA level', fontsize=axis_font)
 ax1.set_title('d) CBF-LRB', fontsize=title_font)
@@ -5412,16 +5666,15 @@ fig.tight_layout()
 plt.show()
 
     
-custom_lines = [Line2D([-1], [-1], color='white', marker='x', markeredgecolor='black'
-                       , markerfacecolor='black', markersize=10),
-                Line2D([-1], [-1], color=inverse_color, linestyle='-'),
-                Line2D([-1], [-1], color=strict_color, linestyle='--'),
+custom_lines = [
+                Line2D([-1], [-1], color=inverse_color, linestyle='-', marker='x', markersize=10),
+                Line2D([-1], [-1], color=strict_color, linestyle='--', marker='x', markersize=10),
                 Line2D([-1], [-1], color='black', linestyle='-.'),
                 Line2D([-1], [-1], color='black', linestyle=':'),
                 ]
 
-ax1.legend(custom_lines, ['IDA downtime ratio', 'Moderate performance', 'Enhanced performance', 
-                          'Predicted downtime ratio', r'Predicted $\mu+\sigma$'], 
+ax1.legend(custom_lines, ['Moderate performance', 'Enhanced performance', 
+                          'Predicted replacement probability', r'Predicted $\mu+\sigma$'], 
            fontsize=subt_font-2, loc='center right')
 
 # plt.savefig('./eng_struc_figures/inverse_time_frag.pdf')
@@ -5441,7 +5694,7 @@ def plot_predictions(mean, var, y_middle, y_bar, color):
     ax.axvline(lower, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     ax.axvline(upper, ymin=y_middle-0.025, ymax=y_middle+0.025, color=color)
     
-# plt.close('all')
+plt.close('all')
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
 axis_font = 18
@@ -5519,11 +5772,21 @@ sns.boxplot(data=df_dt, saturation=0.0, ax=ax, orient='h',
 ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
 
 
+
+
 plot_predictions(mf_tfp_repair_cost, mf_tfp_repair_cost_var, 0.875, 0, 'gray')
 plot_predictions(mf_lrb_repair_cost, mf_lrb_repair_cost_var, 0.625, 1, 'gray')
 plot_predictions(cbf_tfp_repair_cost, cbf_tfp_repair_cost_var, 0.375, 2, 'gray')
 plot_predictions(cbf_lrb_repair_cost, cbf_lrb_repair_cost_var, 0.125, 3, 'gray')
 ax.set_xlim([-0.05, 1.05])
+
+bbox_props = dict(facecolor='white', edgecolor=inverse_color)
+ax.text(0.4, 1, r'20\% repair cost target',
+          fontsize=subt_font, color=inverse_color, bbox=bbox_props, zorder=5)
+ax.annotate(text='', xy=(0.2, 1), xytext=(0.4, 1), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color),
+             bbox=bbox_props)
+
 ax.grid(visible=True)
 ax.set_title('a) Moderate performance, cost', fontsize=title_font)
 ### strict
@@ -5575,6 +5838,13 @@ sns.boxplot(data=df_dt, saturation=0.0, ax=ax, orient='h',
             **PROPS)
 ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
 ax.axvline(0.1, color=strict_color, linestyle=':')
+
+bbox_props = dict(facecolor='white', edgecolor=strict_color)
+ax.text(0.3, 1.5, r'10\% repair cost target',
+          fontsize=subt_font, color=strict_color, bbox=bbox_props, zorder=5)
+ax.annotate(text='', xy=(0.1, 1.5), xytext=(0.3, 1.5), 
+             arrowprops=dict(arrowstyle='->', color=strict_color),
+             bbox=bbox_props)
 
 plot_predictions(mf_tfp_repair_cost, mf_tfp_repair_cost_var, 0.875, 0, 'gray')
 plot_predictions(mf_lrb_repair_cost, mf_lrb_repair_cost_var, 0.625, 1, 'gray')
@@ -5642,6 +5912,13 @@ plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1, 'gray')
 plot_predictions(cbf_tfp_repair_time, cbf_tfp_repair_time_var, 0.375, 2, 'gray')
 plot_predictions(cbf_lrb_repair_time, cbf_lrb_repair_time_var, 0.125, 3, 'gray')
 
+bbox_props = dict(facecolor='white', edgecolor=inverse_color)
+ax.text(0.4, 1, r'20\% downtime target',
+          fontsize=subt_font, color=inverse_color, bbox=bbox_props, zorder=5)
+ax.annotate(text='', xy=(0.2, 1), xytext=(0.4, 1), 
+             arrowprops=dict(arrowstyle='->', color=inverse_color),
+             bbox=bbox_props)
+
 ax.grid(visible=True)
 ax.axes.yaxis.set_ticklabels([])
 ax.set_xlim([-0.05, 1.05])
@@ -5696,6 +5973,13 @@ sns.boxplot(data=df_dt, saturation=0.0, ax=ax, orient='h',
 ax.set_xlabel(r'Repair time ratio', fontsize=axis_font)
 ax.axvline(0.1, color=strict_color, linestyle=':')
 
+bbox_props = dict(facecolor='white', edgecolor=strict_color)
+ax.text(0.3, 2.0, r'10\% downtime target',
+          fontsize=subt_font, color=strict_color, bbox=bbox_props, zorder=5)
+ax.annotate(text='', xy=(0.1, 1.5), xytext=(0.3, 2.0), 
+             arrowprops=dict(arrowstyle='->', color=strict_color),
+             bbox=bbox_props)
+
 plot_predictions(mf_tfp_repair_time, mf_tfp_repair_time_var, 0.875, 0, 'gray')
 plot_predictions(mf_lrb_repair_time, mf_lrb_repair_time_var, 0.625, 1, 'gray')
 plot_predictions(cbf_tfp_repair_time, cbf_tfp_repair_time_var, 0.375, 2, 'gray')
@@ -5707,15 +5991,15 @@ ax.set_title('d) Enhanced performance, downtime', fontsize=title_font)
 
 import matplotlib.patches as mpatches
 custom_lines = [
-                Line2D([-1], [-1], color='white', marker='o', markeredgecolor='black',
-                       alpha=0.3, markerfacecolor='lightgray', markersize=3),
+                Line2D([-1], [-1], color='white', marker='o', markeredgecolor=strict_color,
+                       alpha=0.4, markerfacecolor=strict_color, markersize=5),
                 Line2D([-1], [-1], color='white', marker='D', markeredgecolor='black'
-                       , markerfacecolor='gray', markersize=10),
-                Line2D([-1], [-1], color='lightgray', marker='v', markeredgecolor='black',
+                       , markerfacecolor=strict_color_2, markersize=10),
+                Line2D([0, 0], [-1, 1], color='gray', marker='v', markeredgecolor='black',
                        markerfacecolor='gray', markersize=10)
                 ]
 
-ax.legend(custom_lines, ['IDA run median consequence', 'Mean of IDA runs', 
+ax.legend(custom_lines, ['IDA run consequence', 'Actual mean of IDA runs', 
                          'Predicted consequence'], 
            fontsize=subt_font)
 
@@ -5723,7 +6007,7 @@ ax.set_xlim([-0.05, 1.05])
 fig.tight_layout()
 plt.show()
 
-# plt.savefig('./eng_struc_figures/inverse_dv_distro.pdf')
+plt.savefig('./eng_struc_figures/inverse_dv_distro.pdf')
 
 #%% filter design graphic
 
@@ -5813,21 +6097,22 @@ Z_repl = Z.reshape(xx_pl.shape)
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
 clabels = ax.clabel(cs, fontsize=clabel_size)
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='dimgray', alpha=0.5, levels=[-1.0, lvls_repl])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
 clabels = ax.clabel(cs, fontsize=clabel_size)
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='darkgray', alpha=0.5, levels=[-1.0, lvls_time])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
-clabels = ax.clabel(cs, fontsize=clabel_size, manual=[(.7, 1.7)])
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+clabels = ax.clabel(cs, fontsize=clabel_size, manual=[(.6, 1.5)])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='gainsboro', alpha=0.5, levels=[-1.0, lvls_cost])
 
-
+ax.text(1.6, 1.5, 'Acceptable \n design space', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
 
 # cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
 #                 colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
@@ -5867,7 +6152,7 @@ custom_lines = [Line2D([-1], [-1], color='black',
                                        linestyle=':' ),
                 ]
 
-ax.legend(custom_lines, ['Repair cost ratio', 'Repair time ratio', 'Replacement probability'], 
+ax.legend(custom_lines, ['20\% repair cost ratio', '20\% repair time ratio', '10\% replacement probability'], 
            fontsize=subt_font, loc='lower right')
 
 #### MF-LRB
@@ -5918,19 +6203,22 @@ Z_repl = Z.reshape(xx_pl.shape)
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
 clabels = ax.clabel(cs, fontsize=clabel_size)
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='dimgray', alpha=0.5, levels=[-1.0, lvls_repl])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
 clabels = ax.clabel(cs, fontsize=clabel_size, manual=[(0.9, 1.5)])
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='darkgray', alpha=0.5, levels=[-1.0, lvls_time])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
 clabels = ax.clabel(cs, fontsize=clabel_size)
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='gainsboro', alpha=0.5, levels=[-1.0, lvls_cost])
+
+ax.text(1.5, 1.0, 'Acceptable \n design space', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
 
 # cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
 #                 colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
@@ -6007,19 +6295,22 @@ Z_repl = Z.reshape(xx_pl.shape)
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
 clabels = ax.clabel(cs, fontsize=clabel_size)
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='dimgray', alpha=0.5, levels=[-1.0, lvls_repl])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
 clabels = ax.clabel(cs, fontsize=clabel_size, manual=[(1.0, 1.25)])
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='darkgray', alpha=0.5, levels=[-1.0, lvls_time])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
 clabels = ax.clabel(cs, fontsize=clabel_size)
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='gainsboro', alpha=0.5, levels=[-1.0, lvls_cost])
+
+ax.text(1.5, 1.0, 'Acceptable \n design space', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
 
 # cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
 #                 colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
@@ -6036,7 +6327,6 @@ cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lv
 # cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='lightskyblue', alpha=0.2, levels=[lvls_cost_enhanced, 1.0])
 
 ax.grid(visible=True)
-
 
 ax.set_title('c) CBF-TFP', fontsize=title_font)
 # ax.set_xlabel(r'Gap ratio (GR)', fontsize=axis_font)
@@ -6099,19 +6389,22 @@ Z_repl = Z.reshape(xx_pl.shape)
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
 clabels = ax.clabel(cs, fontsize=clabel_size)
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='dimgray', alpha=0.5, levels=[-1.0, lvls_repl])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
 clabels = ax.clabel(cs, fontsize=clabel_size)
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='darkgray', alpha=0.5, levels=[-1.0, lvls_time])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
 clabels = ax.clabel(cs, fontsize=clabel_size)
-[txt.set_bbox(dict(facecolor='white', edgecolor='none', pad=0)) for txt in clabels]
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+[txt.set_bbox(dict(facecolor='white', edgecolor='black', pad=0)) for txt in clabels]
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='gainsboro', alpha=0.5, levels=[-1.0, lvls_cost])
+
+ax.text(1.65, 0.8, 'Acceptable \n design space', horizontalalignment='center',
+          fontsize=subt_font, color='black', bbox=dict(facecolor='white', edgecolor='black'))
 
 # cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
 #                 colors='black', linestyles='dotted', levels=lvls_repl_enhanced)
@@ -6230,16 +6523,16 @@ Z_repl = Z.reshape(xx_pl.shape)
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='dimgray', alpha=0.5, levels=[lvls_repl, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='darkgray', alpha=0.5, levels=[lvls_time, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='gainsboro', alpha=0.5, levels=[lvls_cost, 1.0])
 
 ax.grid(visible=True)
 
@@ -6314,16 +6607,16 @@ Z_repl = Z.reshape(xx_pl.shape)
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='dimgray', alpha=0.5, levels=[lvls_repl, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='darkgray', alpha=0.5, levels=[lvls_time, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='gainsboro', alpha=0.5, levels=[lvls_cost, 1.0])
 
 ax.grid(visible=True)
 
@@ -6387,16 +6680,16 @@ Z_repl = Z.reshape(xx_pl.shape)
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='dimgray', alpha=0.5, levels=[lvls_repl, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='darkgray', alpha=0.5, levels=[lvls_time, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='gainsboro', alpha=0.5, levels=[lvls_cost, 1.0])
 
 ax.grid(visible=True)
 
@@ -6463,16 +6756,16 @@ Z_repl = Z.reshape(xx_pl.shape)
 cs = ax.contour(xx_pl, yy_pl, Z_repl, linewidths=2.0, 
                 colors='black', linestyles='dotted', levels=lvls_repl)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='mistyrose', alpha=0.5, levels=[lvls_repl, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_repl, colors='dimgray', alpha=0.5, levels=[lvls_repl, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_time, linewidths=2.0, 
                 colors='black', linestyles='dashed', levels=lvls_time)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='lightpink', alpha=0.5, levels=[lvls_time, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_time, colors='darkgray', alpha=0.5, levels=[lvls_time, 1.0])
 
 cs = ax.contour(xx_pl, yy_pl, Z_cost, linewidths=2.0, colors='black', levels=lvls_cost)
 ax.clabel(cs, fontsize=clabel_size)
-cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='orangered', alpha=0.5, levels=[lvls_cost, 1.0])
+cs = ax.contourf(xx_pl, yy_pl, Z_cost, colors='gainsboro', alpha=0.5, levels=[lvls_cost, 1.0])
 
 ax.grid(visible=True)
 
