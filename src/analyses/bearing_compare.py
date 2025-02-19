@@ -1005,8 +1005,8 @@ def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
                   facecolor = c, edgecolor='black', linewidth=0.5)
   
     
-xvar = 'k_e'
-yvar = 'zeta_e'
+xvar = 'k2'
+yvar = 'gap_ratio'
 
 
 # TODO: simpler scatter
@@ -1044,7 +1044,7 @@ scatter_hist(df_lrb_i[xvar], df_lrb_i[yvar], 'darkred', 0.4, ax, ax_histx, ax_hi
              label='LRB')
 # ax.legend(fontsize=axis_font)
 
-ax.set_title(r'Impacted systems', fontsize=title_font)
+ax.set_title(r'Impact', fontsize=title_font)
 
 ax.set_xlabel(xvar, fontsize=axis_font)
 ax.set_ylabel(yvar, fontsize=axis_font)
@@ -1094,8 +1094,8 @@ def scatter_hist(x, y, c, alpha, ax, ax_histx, ax_histy, label=None):
                   facecolor = c, edgecolor='black', linewidth=0.5)
   
     
-xvar = 'gap_ratio'
-yvar = 'T_ratio'
+xvar = 'k2'
+yvar = 'gap_ratio'
 
 
 # TODO: simpler scatter

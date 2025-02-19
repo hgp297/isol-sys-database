@@ -1005,7 +1005,7 @@ def plot_loss(row):
 
     return
 
-current_idx = 44
+current_idx = 299
 current_row = df_loss.iloc[current_idx]
 plot_loss(current_row)
 
@@ -3070,43 +3070,43 @@ def validate_lifetime_loss(val_results, hazard_curves,
     
     
     
-    # import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
     # plt.close('all')
-    # fig = plt.figure(figsize=(9, 6))
-    # ax1=fig.add_subplot(1, 1, 1)
+    fig = plt.figure(figsize=(9, 6))
+    ax1=fig.add_subplot(1, 1, 1)
     
-    # for scn_idx in range(len(sa_bins)):
-    #     ax1.plot(cost_loss_values, pr_exceedance_cost[:,scn_idx], label='scn_'+str(scn_idx))
-    # ax1.legend()
-    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
-    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
-    # ax1.grid()
-    # ax1.set_xlim([0, repl_cost_max])
+    for scn_idx in range(len(sa_bins)):
+        ax1.plot(cost_loss_values, pr_exceedance_cost[:,scn_idx], label='scn_'+str(scn_idx))
+    ax1.legend()
+    ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    ax1.grid()
+    ax1.set_xlim([0, repl_cost_max])
     
     
-    # import matplotlib.pyplot as plt
-    # # plt.close('all')
-    # fig = plt.figure(figsize=(9, 7))
-    # ax1=fig.add_subplot(1, 1, 1)
+    import matplotlib.pyplot as plt
+    # plt.close('all')
+    fig = plt.figure(figsize=(9, 7))
+    ax1=fig.add_subplot(1, 1, 1)
     
-    # for scn_idx in range(len(sa_bins)):
-    #     ax1.plot(cost_loss_values, cost_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
-    # ax1.legend()
-    # ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
-    # ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
-    # ax1.grid()
-    # ax1.set_xlim([0, repl_cost_max])
+    for scn_idx in range(len(sa_bins)):
+        ax1.plot(cost_loss_values, cost_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    ax1.legend()
+    ax1.set_xlabel(r'Cost (\$)', fontsize=axis_font)
+    ax1.set_ylabel(r'$Pr[X \geq \$]$', fontsize=axis_font)
+    ax1.grid()
+    ax1.set_xlim([0, 0.1*repl_cost_max])
     
-    # fig = plt.figure(figsize=(9, 7))
-    # ax1=fig.add_subplot(1, 1, 1)
+    fig = plt.figure(figsize=(9, 7))
+    ax1=fig.add_subplot(1, 1, 1)
     
-    # for scn_idx in range(len(sa_bins)):
-    #     ax1.plot(time_loss_values, time_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
-    # ax1.legend()
-    # ax1.set_xlabel(r'time (worker-day)', fontsize=axis_font)
-    # ax1.set_ylabel(r'$Pr[X \geq t]$', fontsize=axis_font)
-    # ax1.grid()
-    # ax1.set_xlim([0, repl_time_max])
+    for scn_idx in range(len(sa_bins)):
+        ax1.plot(time_loss_values, time_loss_rates[:,:scn_idx+1].sum(axis=1), label='scn_'+str(scn_idx))
+    ax1.legend()
+    ax1.set_xlabel(r'time (worker-day)', fontsize=axis_font)
+    ax1.set_ylabel(r'$Pr[X \geq t]$', fontsize=axis_font)
+    ax1.grid()
+    ax1.set_xlim([0, 0.1*repl_time_max])
     
     # breakpoint()
     
@@ -3125,6 +3125,7 @@ def validate_lifetime_loss(val_results, hazard_curves,
     
     return mean_cumulative_annual_cost, mean_cumulative_annual_time, mcac_ratio, mcat_ratio
 
+plt.close('all')
 mcac_mf_tfp, mcat_mf_tfp, mcac_ratio_mf_tfp, mcat_ratio_mf_tfp = validate_lifetime_loss(
     mf_tfp_val_results, site_hazard_curves)
 
