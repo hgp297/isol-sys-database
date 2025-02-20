@@ -264,8 +264,8 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
     third_var = rem_vars[0]
     fourth_var = rem_vars[-1]
        
-    xx = xx
-    yy = yy
+    # xx = xx
+    # yy = yy
     
     if third_var_set is None:
         third_var_val= X[third_var].median()
@@ -7269,7 +7269,7 @@ fig.tight_layout()
 
 
 # consider: replacement freq, num_stories, num_bays, repair cost
-covariate_list_sys = ['cmp_cost_ratio', 'cmp_time_ratio', 'replacement_freq', 'steel_cost_per_sf']
+covariate_list_sys = ['cmp_cost_ratio', 'steel_cost_per_sf']
 clf_struct = GP(df)
 clf_struct.set_covariates(covariate_list_sys)
 clf_struct.set_outcome('superstructure_system', use_ravel=False)
@@ -7280,13 +7280,13 @@ clf_struct.fit_gpc(kernel_name='rbf_iso')
 # clf_struct.fit_kernel_logistic(kernel_name='rbf', neg_wt=False)
 # clf_struct.fit_dt()
 
-clf_isol = GP(df)
-clf_isol.set_covariates(covariate_list_sys)
-clf_isol.set_outcome('isolator_system', use_ravel=False)
-clf_isol.test_train_split(0.2)
-clf_isol.fit_ensemble()
+# clf_isol = GP(df)
+# clf_isol.set_covariates(covariate_list_sys)
+# clf_isol.set_outcome('isolator_system', use_ravel=False)
+# clf_isol.test_train_split(0.2)
+# clf_isol.fit_ensemble()
 # clf_isol.fit_svc(neg_wt=False)
-clf_isol.fit_gpc(kernel_name='rbf_iso')
+# clf_isol.fit_gpc(kernel_name='rbf_iso')
 # clf_isol.fit_kernel_logistic(kernel_name='rbf', neg_wt=False)
 
 #%%
@@ -7301,131 +7301,136 @@ mpl.rcParams['xtick.labelsize'] = label_size
 mpl.rcParams['ytick.labelsize'] = label_size 
 
 
+kernel_name = 'rbf_ard'
+
+fig = plt.figure(figsize=(13, 7))
+
+color = plt.cm.Set1(np.linspace(0, 1, 10))
+
+
+
 #################################
-# xvar = 'cmp_cost_ratio'
+# # xvar = 'cmp_cost_ratio'
+# # yvar = 'replacement_freq'
+
 # yvar = 'replacement_freq'
+# xvar = 'steel_cost_per_sf'
+
+# # fit
+# covariate_list_sys = [yvar, xvar]
+# clf_struct = GP(df)
+# clf_struct.set_covariates(covariate_list_sys)
+# clf_struct.set_outcome('superstructure_system', use_ravel=False)
+# clf_struct.test_train_split(0.2)
+# clf_struct.fit_gpc(kernel_name=kernel_name)
+
 
 # res = 75
-# X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
-#                                 all_vars=covariate_list_sys,
-#                                 third_var_set = 0.1, fourth_var_set = 6.0)
 
-yvar = 'replacement_freq'
-xvar = 'steel_cost_per_sf'
+# x_min = min(clf_struct.X[xvar])
+# x_max = max(clf_struct.X[xvar])
 
-res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
-                                all_vars=covariate_list_sys,
-                                third_var_set = 0.2, fourth_var_set = 0.2)
+# y_min = min(clf_struct.X[yvar])
+# y_max = max(clf_struct.X[yvar])
 
 
-fig = plt.figure(figsize=(19, 7))
+# xx, yy = np.meshgrid(np.linspace(x_min,
+#                                  x_max,
+#                                  res),
+#                      np.linspace(y_min,
+#                                  y_max,
+#                                  res))
 
-color = plt.cm.Set1(np.linspace(0, 1, 10))
+# X_pl = pd.DataFrame({xvar:xx.ravel(),
+#                      yvar:yy.ravel()})
+# X_plot = X_pl[covariate_list_sys]
 
-ax=fig.add_subplot(1, 3, 1)
+# # X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+# #                                 all_vars=covariate_list_sys,
+# #                                 third_var_set = 0.2, fourth_var_set = 0.2)
 
 
 
-xx = X_plot[xvar]
-yy = X_plot[yvar]
-Z = clf_struct.gpc.predict(X_plot)
 
-lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
-x_pl = np.unique(xx)
-y_pl = np.unique(yy)
 
-Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-Z_classif = Z_numbered.reshape(xx_pl.shape)
 
-# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
-plt.imshow(
-        Z_classif,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.coolwarm_r,
-    )
+# xx = X_plot[xvar]
+# yy = X_plot[yvar]
+# Z = clf_struct.gpc.predict(X_plot)
 
-ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
-            edgecolors='k', alpha = 0.6, label='CBF', marker='^')
-ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
-            edgecolors='k', alpha = 0.6, label='MF', marker='^')
-plt.legend(fontsize=axis_font)
+# lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
+# x_pl = np.unique(xx)
+# y_pl = np.unique(yy)
 
-ax.set_title(r'a) Replacement (DV ratios = 0.2)', fontsize=title_font)
-ax.set_ylabel(r'Replacement probability', fontsize=axis_font)
-ax.set_xlabel(r'Steel cost per ft$^2$', fontsize=axis_font)
+# Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
+# xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
+# Z_classif = Z_numbered.reshape(xx_pl.shape)
+
+# plt.contour(xx_pl, yy_pl, Z_classif, levels=[0.5], linestyles='dashed',
+#             colors='black', linewidths=1.5)
+
+# plt.imshow(
+#         Z_classif,
+#         interpolation="nearest",
+#         extent=(xx.min(), xx.max(),
+#                 yy.min(), yy.max()),
+#         aspect="auto",
+#         origin="lower",
+#         cmap=plt.cm.coolwarm_r,
+#     )
+
+# ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
+#             edgecolors='k', alpha = 0.6, label='CBF', marker='^')
+# ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
+#             edgecolors='k', alpha = 0.6, label='MF', marker='^')
+# plt.legend(fontsize=axis_font)
+
+# ax.set_title(r'a) Replacement', fontsize=title_font)
+# ax.set_ylabel(r'Replacement probability', fontsize=axis_font)
+# ax.set_xlabel(r'Steel cost per ft$^2$', fontsize=axis_font)
 
 #################################
-
-'''
-xvar = 'cmp_cost_ratio'
-yvar = 'replacement_freq'
-
-res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
-                                all_vars=covariate_list_sys,
-                                third_var_set = 0.1, fourth_var_set = 6.0)
-
-
-color = plt.cm.Set1(np.linspace(0, 1, 10))
-
-ax=fig.add_subplot(2, 2, 2)
-
-
-
-xx = X_plot[xvar]
-yy = X_plot[yvar]
-Z = clf_isol.gpc.predict(X_plot)
-
-lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
-x_pl = np.unique(xx)
-y_pl = np.unique(yy)
-
-Z_numbered = clf_isol.gpc.predict_proba(X_plot)[:,1]
-xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
-Z_classif = Z_numbered.reshape(xx_pl.shape)
-
-# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
-plt.imshow(
-        Z_classif,
-        interpolation="nearest",
-        extent=(xx.min(), xx.max(),
-                yy.min(), yy.max()),
-        aspect="auto",
-        origin="lower",
-        cmap=plt.cm.coolwarm_r,
-    )
-
-ax.scatter(df_lrb[xvar], df_lrb[yvar], color=color[0],
-            edgecolors='k', alpha = 0.6, label='LRB')
-ax.scatter(df_tfp[xvar], df_tfp[yvar], color=color[1],
-            edgecolors='k', alpha = 0.6, label='TFP')
-plt.legend(fontsize=axis_font)
-
-ax.set_title(r'b) Isolators: repair cost-replacement', fontsize=title_font)
-# ax.set_ylabel(r'Replacement probability', fontsize=axis_font)
-ax.set_xlabel(r'Repair cost ratio', fontsize=axis_font)
-'''
 
 
 yvar = 'cmp_time_ratio'
 xvar = 'steel_cost_per_sf'
 
+# fit
+covariate_list_sys = [yvar, xvar]
+clf_struct = GP(df)
+clf_struct.set_covariates(covariate_list_sys)
+clf_struct.set_outcome('superstructure_system', use_ravel=False)
+clf_struct.test_train_split(0.2)
+clf_struct.fit_gpc(kernel_name=kernel_name)
+
+
 res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
-                                all_vars=covariate_list_sys,
-                                third_var_set = 0.2, fourth_var_set = 0.1)
+
+x_min = min(clf_struct.X[xvar])
+x_max = max(clf_struct.X[xvar])
+
+y_min = min(clf_struct.X[yvar])
+y_max = max(clf_struct.X[yvar])
+
+
+xx, yy = np.meshgrid(np.linspace(x_min,
+                                 x_max,
+                                 res),
+                     np.linspace(y_min,
+                                 y_max,
+                                 res))
+
+X_pl = pd.DataFrame({xvar:xx.ravel(),
+                     yvar:yy.ravel()})
+X_plot = X_pl[covariate_list_sys]
+
+# X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+#                                 all_vars=covariate_list_sys,
+#                                 third_var_set = 0.2, fourth_var_set = 0.2)
 
 
 
-color = plt.cm.Set1(np.linspace(0, 1, 10))
-
-ax=fig.add_subplot(1, 3, 2)
+ax=fig.add_subplot(1, 2, 1)
 
 
 
@@ -7441,7 +7446,9 @@ Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 Z_classif = Z_numbered.reshape(xx_pl.shape)
 
-# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+plt.contour(xx_pl, yy_pl, Z_classif, levels=[0.5], linestyles='dashed',
+            colors='black', linewidths=1.5)
+
 plt.imshow(
         Z_classif,
         interpolation="nearest",
@@ -7456,9 +7463,9 @@ ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
             edgecolors='k', alpha = 0.6, label='CBF', marker='^')
 ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
             edgecolors='k', alpha = 0.6, label='MF', marker='^')
-plt.legend(fontsize=axis_font)
+# plt.legend(fontsize=axis_font)
 
-ax.set_title(r'b) Downtime (replacement = 0.1)', fontsize=title_font)
+ax.set_title(r'a) Downtime', fontsize=title_font)
 ax.set_xlabel(r'Steel cost per ft$^2$ (USD)', fontsize=axis_font)
 ax.set_ylabel(r'Downtime ratio', fontsize=axis_font)
 
@@ -7467,15 +7474,43 @@ ax.set_ylabel(r'Downtime ratio', fontsize=axis_font)
 yvar = 'cmp_cost_ratio'
 xvar = 'steel_cost_per_sf'
 
+
+# fit
+covariate_list_sys = [yvar, xvar]
+clf_struct = GP(df)
+clf_struct.set_covariates(covariate_list_sys)
+clf_struct.set_outcome('superstructure_system', use_ravel=False)
+clf_struct.test_train_split(0.2)
+clf_struct.fit_gpc(kernel_name=kernel_name)
+
+
 res = 75
-X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
-                                all_vars=covariate_list_sys,
-                                third_var_set = 0.2, fourth_var_set = 0.1)
+
+x_min = min(clf_struct.X[xvar])
+x_max = max(clf_struct.X[xvar])
+
+y_min = min(clf_struct.X[yvar])
+y_max = max(clf_struct.X[yvar])
 
 
-color = plt.cm.Set1(np.linspace(0, 1, 10))
+xx, yy = np.meshgrid(np.linspace(x_min,
+                                 x_max,
+                                 res),
+                     np.linspace(y_min,
+                                 y_max,
+                                 res))
 
-ax=fig.add_subplot(1, 3, 3)
+X_pl = pd.DataFrame({xvar:xx.ravel(),
+                     yvar:yy.ravel()})
+X_plot = X_pl[covariate_list_sys]
+
+# X_plot = make_2D_plotting_space(clf_struct.X, res, x_var=xvar, y_var=yvar,
+#                                 all_vars=covariate_list_sys,
+#                                 third_var_set = 0.2, fourth_var_set = 0.2)
+
+
+
+ax=fig.add_subplot(1, 2, 2)
 
 
 
@@ -7487,11 +7522,13 @@ lookup_table, Z_numbered = np.unique(Z, return_inverse=True)
 x_pl = np.unique(xx)
 y_pl = np.unique(yy)
 
-Z_numbered = clf_isol.gpc.predict_proba(X_plot)[:,1]
+Z_numbered = clf_struct.gpc.predict_proba(X_plot)[:,1]
 xx_pl, yy_pl = np.meshgrid(x_pl, y_pl)
 Z_classif = Z_numbered.reshape(xx_pl.shape)
 
-# plt.contourf(xx_pl, yy_pl, Z_classif, cmap=plt.cm.coolwarm_r)
+plt.contour(xx_pl, yy_pl, Z_classif, levels=[0.5], linestyles='dashed',
+            colors='black', linewidths=1.5)
+
 plt.imshow(
         Z_classif,
         interpolation="nearest",
@@ -7508,13 +7545,13 @@ ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
             edgecolors='k', alpha = 0.6, label='MF', marker='^')
 plt.legend(fontsize=axis_font)
 
-ax.set_title(r'c) Repair cost (replacement = 0.1)', fontsize=title_font)
+ax.set_title(r'b) Repair cost', fontsize=title_font)
 ax.set_xlabel(r'Steel cost per ft$^2$ (USD)', fontsize=axis_font)
 ax.set_ylabel(r'Repair cost ratio', fontsize=axis_font)
 
 fig.tight_layout()
 
-plt.savefig('./eng_struc_figures/system_selection.pdf')
+# plt.savefig('./eng_struc_figures/system_selection.pdf')
 
 # plt.close('all')
 
