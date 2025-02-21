@@ -60,7 +60,8 @@ class Database:
             'RI' : [0.5, 2.25],
             'L_bldg': [75.0, 250.0],
             'h_bldg': [30.0, 100.0],
-            'zeta_e': [0.1, 0.25]
+            'zeta_e': [0.1, 0.25],
+            'delta_a': [0.005, 0.02]
         }
 
         # create array of limits, then run LHS

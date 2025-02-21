@@ -3,7 +3,7 @@ import sys
 # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(1, '../src/')
 
-pickle_path = './data/initial/fuller/'
+pickle_path = './data/initial/slider_height/'
 
 from db import Database
 
@@ -25,7 +25,10 @@ seed_num = 100
 
 for i in range(seed_num):
     file_str = 'structural_db_seed_'+ str(i+1) +'.pickle'
-    cur_obj = pd.read_pickle(pickle_path+file_str)
+    try:
+        cur_obj = pd.read_pickle(pickle_path+file_str)
+    except:
+        continue    
     
     # concatenate the 
     if ops_analysis is None:
@@ -62,5 +65,5 @@ dummy_obj.n_generated = generated_designs.shape[0]
 
 import pickle
 final_path = '../data/'
-with open(final_path+'structural_db_complete.pickle', 'wb') as f:
+with open(final_path+'structural_db_slider_height.pickle', 'wb') as f:
     pickle.dump(dummy_obj, f)
