@@ -491,6 +491,10 @@ df['steel_cost_per_sf'] = df['steel_cost'] / df['bldg_area']
 
 df['system'] = df['superstructure_system'] +'-' + df['isolator_system']
 
+
+df['theta_ratio_cost'] = df['cost_theta']/df['total_cmp_cost']
+df['theta_ratio_time'] = df['time_l_theta']/df['total_cmp_time']
+
 #%% subsets
 
 df_tfp = df[df['isolator_system'] == 'TFP']
@@ -1025,8 +1029,6 @@ df_test = df_loss[(df_loss['cost_lognormal_ks_pvalue'] < df_loss['cost_weibull_t
 df_test = df_mf_lrb.copy()
 # df_test = df_cbf_tfp[np.abs(stats.zscore(df_cbf_tfp['time_l_beta'])) < 5].copy()
 
-
-
 ### cost
 beta_covariates = [cost_var]
 mdl_beta_cost_mf_tfp = GP(df_mf_tfp)
@@ -1035,7 +1037,6 @@ mdl_beta_cost_mf_tfp.set_outcome('cost_beta')
 mdl_beta_cost_mf_tfp.test_train_split(0.2)
 
 mdl_beta_cost_mf_lrb = GP(df_mf_lrb)
-beta_covariates = [cost_var]
 mdl_beta_cost_mf_lrb.set_covariates(beta_covariates)
 mdl_beta_cost_mf_lrb.set_outcome('cost_beta')
 mdl_beta_cost_mf_lrb.test_train_split(0.2)
@@ -1058,7 +1059,6 @@ mdl_beta_time_mf_tfp.set_outcome('time_l_beta')
 mdl_beta_time_mf_tfp.test_train_split(0.2)
 
 mdl_beta_time_mf_lrb = GP(df_mf_lrb)
-beta_covariates = [time_var]
 mdl_beta_time_mf_lrb.set_covariates(beta_covariates)
 mdl_beta_time_mf_lrb.set_outcome('time_l_beta')
 mdl_beta_time_mf_lrb.test_train_split(0.2)
