@@ -475,6 +475,11 @@ covariate_list = ['gap_ratio', 'RI', 'T_ratio', 'zeta_e']
 db_string = '../../resource/'
 brace_db = pd.read_csv(db_string+'braceShapes.csv', index_col=None, header=0)  
 
+land_cost_per_sf = 2837/(3.28**2)
+
+df['land_area'] = (df['L_bldg']*12 + df['constructed_moat'])**2
+df['land_cost'] = land_cost_per_sf/144.0 * df['land_area']
+
 df['steel_cost'] = df.apply(
        lambda row: calc_steel_cost(
            row, brace_db=brace_db,
@@ -482,6 +487,8 @@ df['steel_cost'] = df.apply(
        axis='columns', result_type='expand')
 
 df['steel_cost_per_sf'] = df['steel_cost'] / df['bldg_area']
+
+df['upfront_cost_per_sf'] = (df['steel_cost'] + df['land_cost'])/df['bldg_area']
 
 df['system'] = df['superstructure_system'] +'-' + df['isolator_system']
 
@@ -1505,7 +1512,7 @@ ax.legend(fontsize=axis_font, loc='upper right')
 
 fig.tight_layout()
 
-plt.savefig('./eng_struc_figures/nonimpact_dvs.pdf')
+# plt.savefig('./eng_struc_figures/nonimpact_dvs.pdf')
 
 #%% breakdown of outcomes by systems
 
@@ -6008,7 +6015,7 @@ ax.set_xlim([-0.05, 1.05])
 fig.tight_layout()
 plt.show()
 
-plt.savefig('./eng_struc_figures/inverse_dv_distro.pdf')
+# plt.savefig('./eng_struc_figures/inverse_dv_distro.pdf')
 
 #%% filter design graphic
 
@@ -7393,7 +7400,7 @@ color = plt.cm.Set1(np.linspace(0, 1, 10))
 
 
 yvar = 'cmp_time_ratio'
-xvar = 'steel_cost_per_sf'
+xvar = 'upfront_cost_per_sf'
 
 # fit
 covariate_list_sys = [yvar, xvar]
@@ -7466,13 +7473,13 @@ ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
 # plt.legend(fontsize=axis_font)
 
 ax.set_title(r'a) Downtime', fontsize=title_font)
-ax.set_xlabel(r'Steel cost per ft$^2$ (USD)', fontsize=axis_font)
+ax.set_xlabel(r'Upfront cost per ft$^2$ (USD)', fontsize=axis_font)
 ax.set_ylabel(r'Downtime ratio', fontsize=axis_font)
 
 
 #################################
 yvar = 'cmp_cost_ratio'
-xvar = 'steel_cost_per_sf'
+xvar = 'upfront_cost_per_sf'
 
 
 # fit
@@ -7546,7 +7553,7 @@ ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
 plt.legend(fontsize=axis_font)
 
 ax.set_title(r'b) Repair cost', fontsize=title_font)
-ax.set_xlabel(r'Steel cost per ft$^2$ (USD)', fontsize=axis_font)
+ax.set_xlabel(r'Upfront cost per ft$^2$ (USD)', fontsize=axis_font)
 ax.set_ylabel(r'Repair cost ratio', fontsize=axis_font)
 
 fig.tight_layout()

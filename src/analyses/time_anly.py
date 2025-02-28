@@ -1891,17 +1891,17 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     # # ax1.set_xlim([0, row['replacement_cost']])
     
     
-    cheapest_idx = upgrade_value.idxmax()
+    design_idx = upgrade_value.idxmax()
     inv_upfront_cost = worth_costs[upgrade_value.idxmax()]
     
     # cheapest_idx = worth_costs.idxmin()
     # inv_upfront_cost = worth_costs.min()
     
     # least upfront cost of the viable designs
-    inv_design = X_worth.loc[cheapest_idx]
-    inv_mcat = space_mcat[cheapest_idx]
-    inv_mcac = space_mcac[cheapest_idx]
-    inv_upgrade_cost = upgrade_cost[cheapest_idx]
+    inv_design = X_worth.loc[design_idx]
+    inv_mcat = space_mcat[design_idx]
+    inv_mcac = space_mcac[design_idx]
+    inv_upgrade_cost = upgrade_cost[design_idx]
     inv_avoided_cost = (mcac_baseline - inv_mcac)*config_dict['comparable_cost_'+structural_system]
     inv_avoided_time = (mcat_baseline - inv_mcat)*config_dict['comparable_time_'+structural_system]
     inv_avoided_consequence = inv_avoided_cost + inv_avoided_time * (
