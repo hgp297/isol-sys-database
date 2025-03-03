@@ -488,7 +488,8 @@ df['steel_cost'] = df.apply(
 
 df['steel_cost_per_sf'] = df['steel_cost'] / df['bldg_area']
 
-df['upfront_cost_per_sf'] = (df['steel_cost'] + df['land_cost'])/df['bldg_area']
+# df['upfront_cost_per_sf'] = (df['steel_cost'] + df['land_cost'])/df['bldg_area']
+df['upfront_cost_per_sf'] = df['steel_cost']/df['bldg_area'] + df['land_cost']/df['land_area']
 
 df['system'] = df['superstructure_system'] +'-' + df['isolator_system']
 
@@ -7550,15 +7551,26 @@ ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
             edgecolors='k', alpha = 0.6, label='CBF', marker='^')
 ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
             edgecolors='k', alpha = 0.6, label='MF', marker='^')
-plt.legend(fontsize=axis_font)
+# plt.legend(fontsize=axis_font)
 
 ax.set_title(r'b) Repair cost', fontsize=title_font)
 ax.set_xlabel(r'Upfront cost per ft$^2$ (USD)', fontsize=axis_font)
 ax.set_ylabel(r'Repair cost ratio', fontsize=axis_font)
 
+from matplotlib.lines import Line2D
+custom_lines = [Line2D([-1], [-1], color='white', marker='^', markeredgecolor='k',
+                       alpha=0.6, markerfacecolor=color[0], markersize=10),
+                Line2D([-1], [-1], color='white', marker='^', markeredgecolor='k',
+                                       alpha=0.6, markerfacecolor=color[1], markersize=10),
+                Line2D([-1], [-1], color='black', linestyle='--' ),
+                ]
+
+ax.legend(custom_lines, ['CBF','MF','Decision boundary\n (50\% probability)'], 
+           fontsize=subt_font)
+
 fig.tight_layout()
 
-# plt.savefig('./eng_struc_figures/system_selection.pdf')
+# plt.savefig('./eng_struc_figures/system_selection_upfront.pdf')
 
 # plt.close('all')
 
