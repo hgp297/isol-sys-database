@@ -488,8 +488,9 @@ df['steel_cost'] = df.apply(
 
 df['steel_cost_per_sf'] = df['steel_cost'] / df['bldg_area']
 
-# df['upfront_cost_per_sf'] = (df['steel_cost'] + df['land_cost'])/df['bldg_area']
-df['upfront_cost_per_sf'] = df['steel_cost']/df['bldg_area'] + df['land_cost']/df['land_area']
+df['upfront_cost_per_sf'] = (df['steel_cost'] + df['land_cost'])/df['bldg_area']
+df['upfront_cost_per_sm'] = df['upfront_cost_per_sf'] * 3.28**2
+# df['upfront_cost_per_sf'] = df['steel_cost']/df['bldg_area'] + df['land_cost']/df['land_area']
 
 df['system'] = df['superstructure_system'] +'-' + df['isolator_system']
 
@@ -505,6 +506,8 @@ df_mf['dummy_index'] = df_mf['replacement_freq'] + df_mf['index']*1e-9
 
 df_mf_o = df_mf[df_mf['impacted'] == 0]
 df_cbf_o = df_cbf[df_cbf['impacted'] == 0]
+df_mf_i = df_mf[df_mf['impacted'] == 1]
+df_cbf_i = df_cbf[df_cbf['impacted'] == 1]
 
 df_tfp_o = df_tfp[df_tfp['impacted'] == 0]
 df_lrb_o = df_lrb[df_lrb['impacted'] == 0]
@@ -3092,8 +3095,9 @@ plt.show()
 
 # TODO: KDE
 
-fig = plt.figure(figsize=(13,10))
+fig = plt.figure(figsize=(13,9))
 
+title_font = 20
 ax=fig.add_subplot(2, 2, 1)
 
 xvar = 'gap_ratio'
@@ -3313,7 +3317,7 @@ ax.grid()
 fig.tight_layout()
 plt.show()
 
-# plt.savefig('./eng_struc_figures/kde_constructability.eps')
+# plt.savefig('./eng_struc_figures/fig_12_kde_constructability.eps')
 
 #%% Calculate upfront cost of data
 # calc cost of new point
@@ -7311,7 +7315,7 @@ mpl.rcParams['ytick.labelsize'] = label_size
 
 kernel_name = 'rbf_ard'
 
-fig = plt.figure(figsize=(13, 7))
+fig = plt.figure(figsize=(13, 6))
 
 color = plt.cm.Set1(np.linspace(0, 1, 10))
 
@@ -7401,7 +7405,7 @@ color = plt.cm.Set1(np.linspace(0, 1, 10))
 
 
 yvar = 'cmp_time_ratio'
-xvar = 'upfront_cost_per_sf'
+xvar = 'upfront_cost_per_sm'
 
 # fit
 covariate_list_sys = [yvar, xvar]
@@ -7471,16 +7475,26 @@ ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
             edgecolors='k', alpha = 0.6, label='CBF', marker='^')
 ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
             edgecolors='k', alpha = 0.6, label='MF', marker='^')
+
+# ax.scatter(df_cbf_i[xvar], df_cbf_i[yvar], color=color[0],
+#             edgecolors='k', alpha = 0.6, label='CBF', marker='^')
+# ax.scatter(df_mf_i[xvar], df_mf_i[yvar], color=color[1],
+#             edgecolors='k', alpha = 0.6, label='MF', marker='^')
+
+# ax.scatter(df_cbf_o[xvar], df_cbf_o[yvar], color=color[0],
+#             edgecolors='k', alpha = 0.6, label='CBF', marker='o')
+# ax.scatter(df_mf_o[xvar], df_mf_o[yvar], color=color[1],
+#             edgecolors='k', alpha = 0.6, label='MF', marker='o')
 # plt.legend(fontsize=axis_font)
 
 ax.set_title(r'a) Downtime', fontsize=title_font)
-ax.set_xlabel(r'Upfront cost per ft$^2$ (USD)', fontsize=axis_font)
+ax.set_xlabel(r'Upfront cost per m$^2$ (USD)', fontsize=axis_font)
 ax.set_ylabel(r'Downtime ratio', fontsize=axis_font)
 
 
 #################################
 yvar = 'cmp_cost_ratio'
-xvar = 'upfront_cost_per_sf'
+xvar = 'upfront_cost_per_sm'
 
 
 # fit
@@ -7547,14 +7561,26 @@ plt.imshow(
         cmap=plt.cm.coolwarm_r,
     )
 
+
 ax.scatter(df_cbf[xvar], df_cbf[yvar], color=color[0],
             edgecolors='k', alpha = 0.6, label='CBF', marker='^')
 ax.scatter(df_mf[xvar], df_mf[yvar], color=color[1],
             edgecolors='k', alpha = 0.6, label='MF', marker='^')
+
+# ax.scatter(df_cbf_i[xvar], df_cbf_i[yvar], color=color[0],
+#             edgecolors='k', alpha = 0.6, label='CBF', marker='^')
+# ax.scatter(df_mf_i[xvar], df_mf_i[yvar], color=color[1],
+#             edgecolors='k', alpha = 0.6, label='MF', marker='^')
+
+# ax.scatter(df_cbf_o[xvar], df_cbf_o[yvar], color=color[0],
+#             edgecolors='k', alpha = 0.6, label='CBF', marker='o')
+# ax.scatter(df_mf_o[xvar], df_mf_o[yvar], color=color[1],
+#             edgecolors='k', alpha = 0.6, label='MF', marker='o')
+
 # plt.legend(fontsize=axis_font)
 
 ax.set_title(r'b) Repair cost', fontsize=title_font)
-ax.set_xlabel(r'Upfront cost per ft$^2$ (USD)', fontsize=axis_font)
+ax.set_xlabel(r'Upfront cost per m$^2$ (USD)', fontsize=axis_font)
 ax.set_ylabel(r'Repair cost ratio', fontsize=axis_font)
 
 from matplotlib.lines import Line2D
@@ -7570,7 +7596,7 @@ ax.legend(custom_lines, ['CBF','MF','Decision boundary\n (50\% probability)'],
 
 fig.tight_layout()
 
-# plt.savefig('./eng_struc_figures/system_selection_upfront.pdf')
+plt.savefig('./eng_struc_figures/fig_17_system_selection_upfront.pdf')
 
 # plt.close('all')
 
