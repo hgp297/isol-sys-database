@@ -13,7 +13,7 @@
 import pandas as pd
 import numpy as np
 
-def preprocess_data(main_obj, max_obj):
+def preprocess_data(main_obj, max_obj, db_string='../../resource/'):
     
         
     main_obj.calculate_collapse()
@@ -76,8 +76,6 @@ def preprocess_data(main_obj, max_obj):
     df['sa_tm_shift'] = pd.to_numeric(df['sa_tm_adj']/df['sa_tm'])
     
     df = loss_percentages(df, df_loss, df_loss_max)
-
-    db_string = '../../resource/'
     brace_db = pd.read_csv(db_string+'braceShapes.csv', index_col=None, header=0)  
 
     df['steel_cost'] = df.apply(
@@ -214,6 +212,7 @@ def loss_percentages(df_main, df_loss, df_max):
 
     df_main['replacement_cost'] = 600.0*(df_main['bldg_area'])
     df_main['total_cmp_cost'] = df_max['cost_50%']
+    df_main['total_cmp_cost_ub'] = df_max['cost_90%']
     df_main['cmp_replace_cost_ratio'] = df_main['total_cmp_cost']/df_main['replacement_cost']
     df_main['median_cost_ratio'] = df_loss['cost_50%']/df_main['replacement_cost']
     df_main['cmp_cost_ratio'] = df_loss['cost_50%']/df_main['total_cmp_cost']
@@ -221,6 +220,7 @@ def loss_percentages(df_main, df_loss, df_max):
     # but working in parallel (2x faster)
     df_main['replacement_time'] = df_main['bldg_area']/1000*365
     df_main['total_cmp_time'] = df_max['time_l_50%']
+    df_main['total_cmp_time_ub'] = df_max['time_l_90%']
     df_main['cmp_replace_time_ratio'] = df_main['total_cmp_time']/df_main['replacement_time']
     df_main['median_time_ratio'] = df_loss['time_l_50%']/df_main['replacement_time']
     df_main['cmp_time_ratio'] = df_loss['time_l_50%']/df_main['total_cmp_time']
@@ -237,6 +237,15 @@ def loss_percentages(df_main, df_loss, df_max):
     df_main['C_50%'].loc[mask] = df_max['C_50%'].loc[mask]
     df_main['D_50%'].loc[mask] = df_max['D_50%'].loc[mask]
     df_main['E_50%'].loc[mask] = df_max['E_50%'].loc[mask]
+    
+    copied_vars = ['cost_theta', 'cost_beta', 'time_l_theta', 'time_l_beta',
+                   'cost_lam', 'cost_k', 'time_l_k', 'time_l_lam',
+                   'cost_weibull_ks_pvalue', 'cost_lognormal_ks_pvalue',
+                   'time_l_weibull_ks_pvalue', 'time_l_lognormal_ks_pvalue',
+                   'cost_weibull_aic', 'cost_lognormal_aic',
+                   'time_l_weibull_aic', 'time_l_lognormal_aic']
+    
+    df_main[copied_vars] = df_loss[copied_vars]
     
     return(df_main)
 
@@ -680,3 +689,54 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict, reg_
           f'{inv_repl_risk:.2%}')
     
     return(inv_design, inv_performance, X_design)
+
+def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI', 
+                           all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                           third_var_set = None, fourth_var_set = None,
+                           x_bounds=None, y_bounds=None):
+    
+    if x_bounds == None:
+        x_min = min(X[x_var])
+        x_max = max(X[x_var])
+    else:
+        x_min = x_bounds[0]
+        x_max = x_bounds[1]
+    if y_bounds == None:
+        y_min = min(X[y_var])
+        y_max = max(X[y_var])
+    else:
+        y_min = y_bounds[0]
+        y_max = y_bounds[1]
+    xx, yy = np.meshgrid(np.linspace(x_min,
+                                     x_max,
+                                     res),
+                         np.linspace(y_min,
+                                     y_max,
+                                     res))
+
+    rem_vars = [i for i in all_vars if i not in [x_var, y_var]]
+    third_var = rem_vars[0]
+    fourth_var = rem_vars[-1]
+       
+    xx = xx
+    yy = yy
+    
+    if third_var_set is None:
+        third_var_val= X[third_var].median()
+    else:
+        third_var_val = third_var_set
+    if fourth_var_set is None:
+        fourth_var_val = X[fourth_var].median()
+    else:
+        fourth_var_val = fourth_var_set
+    
+    
+    X_pl = pd.DataFrame({x_var:xx.ravel(),
+                         y_var:yy.ravel(),
+                         third_var:np.repeat(third_var_val,
+                                             res*res),
+                         fourth_var:np.repeat(fourth_var_val, 
+                                              res*res)})
+    X_plot = X_pl[all_vars]
+                         
+    return(X_plot)

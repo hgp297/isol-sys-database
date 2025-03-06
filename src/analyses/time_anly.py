@@ -1219,6 +1219,7 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     
     # for the set of "new" design variables, use GP to calculate loss ratio
     # assumes GPC/GPR, predict the outcome for the design space
+    # TODO: change this to simple GP?
     cost_ratio_bins = predict_DV(X_bins, 
                                    mdl_impact.gpc, 
                                    mdl_cost_hit.gpr, 
