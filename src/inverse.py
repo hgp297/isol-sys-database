@@ -740,3 +740,69 @@ def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI',
     X_plot = X_pl[all_vars]
                          
     return(X_plot)
+
+# Pareto front code
+def simple_cull_df(input_df, dominates, *args):
+    pareto_df = pd.DataFrame(columns=input_df.columns)
+    candidateRowNr = 0
+    dominated_df = pd.DataFrame(columns=input_df.columns)
+    while True:
+        candidateRow = input_df.iloc[[candidateRowNr]]
+        input_df = input_df.drop(index=candidateRow.index)
+        rowNr = 0
+        nonDominated = True
+        while input_df.shape[0] != 0 and rowNr < input_df.shape[0]:
+            row = input_df.iloc[[rowNr]]
+            if dominates(candidateRow, row, *args):
+                # If it is worse on all features remove the row from the array
+                input_df = input_df.drop(index=row.index)
+                dominated_df = dominated_df.append(row)
+            elif dominates(row, candidateRow, *args):
+                nonDominated = False
+                dominated_df = dominated_df.append(candidateRow)
+                rowNr += 1
+            else:
+                rowNr += 1
+
+        if nonDominated:
+            # add the non-dominated point to the Pareto frontier
+            pareto_df = pareto_df.append(candidateRow)
+
+        if input_df.shape[0] == 0:
+            break
+    return pareto_df, dominated_df
+
+def dominates_pd(row, candidate_row, mdl, cost, coefs):
+    row_pr = mdl.predict(row).item()
+    cand_pr = mdl.predict(candidate_row).item()
+    
+    row_cost = cost(row, coefs).item()
+    cand_cost = cost(candidate_row, coefs).item()
+    
+    return ((row_pr < cand_pr) and (row_cost < cand_cost))
+
+# Faster than is_pareto_efficient_simple, but less readable.
+def is_pareto_efficient(costs, return_mask = True):
+    """
+    Find the pareto-efficient points
+    :param costs: An (n_points, n_costs) array
+    :param return_mask: True to return a mask
+    :return: An array of indices of pareto-efficient points.
+        If return_mask is True, this will be an (n_points, ) boolean array
+        Otherwise it will be a (n_efficient_points, ) integer array of indices.
+    """
+    is_efficient = np.arange(costs.shape[0])
+    n_points = costs.shape[0]
+    next_point_index = 0  # Next index in the is_efficient array to search for
+    while next_point_index<len(costs):
+        nondominated_point_mask = np.any(costs<costs[next_point_index], axis=1)
+        nondominated_point_mask[next_point_index] = True
+        is_efficient = is_efficient[nondominated_point_mask]  # Remove dominated points
+        costs = costs[nondominated_point_mask]
+        next_point_index = np.sum(nondominated_point_mask[:next_point_index])+1
+    if return_mask:
+        is_efficient_mask = np.zeros(n_points, dtype = bool)
+        is_efficient_mask[is_efficient] = True
+        return is_efficient_mask
+    else:
+        return is_efficient
