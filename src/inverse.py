@@ -238,14 +238,18 @@ def loss_percentages(df_main, df_loss, df_max):
     df_main['D_50%'].loc[mask] = df_max['D_50%'].loc[mask]
     df_main['E_50%'].loc[mask] = df_max['E_50%'].loc[mask]
     
-    copied_vars = ['cost_theta', 'cost_beta', 'time_l_theta', 'time_l_beta',
-                   'cost_lam', 'cost_k', 'time_l_k', 'time_l_lam',
-                   'cost_weibull_ks_pvalue', 'cost_lognormal_ks_pvalue',
-                   'time_l_weibull_ks_pvalue', 'time_l_lognormal_ks_pvalue',
-                   'cost_weibull_aic', 'cost_lognormal_aic',
-                   'time_l_weibull_aic', 'time_l_lognormal_aic']
-    
-    df_main[copied_vars] = df_loss[copied_vars]
+    # old data doesn't have distribution
+    try:
+        copied_vars = ['cost_theta', 'cost_beta', 'time_l_theta', 'time_l_beta',
+                    'cost_lam', 'cost_k', 'time_l_k', 'time_l_lam',
+                    'cost_weibull_ks_pvalue', 'cost_lognormal_ks_pvalue',
+                    'time_l_weibull_ks_pvalue', 'time_l_lognormal_ks_pvalue',
+                    'cost_weibull_aic', 'cost_lognormal_aic',
+                    'time_l_weibull_aic', 'time_l_lognormal_aic']
+        
+        df_main[copied_vars] = df_loss[copied_vars]
+    except:
+        pass
     
     return(df_main)
 
