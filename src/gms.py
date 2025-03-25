@@ -18,7 +18,8 @@
 
 def scale_ground_motion(input_df, return_list=False,
                         db_dir='../resource/ground_motions/gm_db.csv',
-                        spec_dir='../resource/ground_motions/gm_spectra.csv'):
+                        spec_dir='../resource/ground_motions/gm_spectra.csv',
+                        plot_me=False):
     
     import pandas as pd
     import numpy as np
@@ -142,6 +143,10 @@ def scale_ground_motion(input_df, return_list=False,
     # filter excessively scaled GMs
     final_GM = final_GM[final_GM['sf_average_spectral'] < 20.0]
     final_GM = final_GM[final_GM['scaled_peak_Sa'] < 3*S_s]
+    if plot_me:
+        show_selection(final_GM, target_spectrum, H1s, 
+                       t_lower, t_upper, T_m, target_average, S_1)
+        
     if return_list:
         gm_name = final_GM.apply(lambda sheet: sheet.filename.replace('.AT2', ''), axis=1)
         sf = final_GM['sf_average_spectral']
@@ -154,8 +159,11 @@ def scale_ground_motion(input_df, return_list=False,
         gm_name = filename.replace('.AT2', '') # remove extension from file name
         sf = float(final_GM['sf_average_spectral'].iloc[ind])  # scale factor used
         return(gm_name, sf, target_average)
+    
+    
 
-def show_selection(final_GM, target_spectrum, H1s):
+def show_selection(final_GM, target_spectrum, H1s,
+                   t_lower, t_upper, T_m, target_average, S_1):
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -164,16 +172,16 @@ def show_selection(final_GM, target_spectrum, H1s):
     plt.rcParams["font.family"] = "serif"
     plt.rcParams["mathtext.fontset"] = "dejavuserif"
     title_font=20
-    axis_font = 18
-    subt_font = 18
-    label_size = 16
+    axis_font = 24
+    subt_font = 20
+    label_size = 24
     mpl.rcParams['xtick.labelsize'] = label_size 
     mpl.rcParams['ytick.labelsize'] = label_size 
     
     plt.close('all')
     fig= plt.figure(figsize=(7,6))
     ax1=fig.add_subplot(1, 1, 1)
-    plt.plot(target_spectrum['Period (sec)'], target_spectrum['Target pSa (g)'], color='red',
+    plt.plot(target_spectrum['Period (sec)'], target_spectrum['Target pSa (g)'], color='blue',
              label='Target design spectrum')
     running_sum = np.zeros(target_spectrum.shape[0])
     for idx, row in final_GM.iterrows():
@@ -186,25 +194,34 @@ def show_selection(final_GM, target_spectrum, H1s):
     running_average = running_sum / final_GM.shape[0]
     plt.plot(target_spectrum['Period (sec)'], running_average, linestyle='--', color='black',
              label='Average of GM spectra')
-    # plt.axvline(t_lower, linestyle=':', color='red')
-    # plt.axvline(t_upper, linestyle=':', color='red')
-    # plt.axvline(T_m, linestyle='--', color='red')
-    # plt.axhline(target_average, linestyle=':', color='black')    
-    # ax1.text(T_m-0.3, 4.1, r'$T_M$', rotation=90,
-    #           fontsize=subt_font, color='red')
-    # ax1.text(t_lower-0.3, 4.1, r'$0.2T_M$', rotation=90,
-    #           fontsize=subt_font, color='red')
-    # ax1.text(t_upper-0.3, 4.1, r'$1.5T_M$', rotation=90,
-    #           fontsize=subt_font, color='red')
-    # ax1.text(2.7, target_average+0.05, r'Spectral average over range',
-    #           fontsize=subt_font, color='black')
+    plt.axvline(t_lower, linestyle=':', color='blue')
+    plt.axvline(t_upper, linestyle=':', color='blue')
+    plt.axvline(T_m, linestyle='--', color='blue')
+    plt.vlines(x=1.0, ymin=0, ymax=S_1, color='red')
+    plt.hlines(y=S_1, xmin=0.0, xmax=1.0, color='red')
+    plt.axhline(target_average, linestyle=':', color='black')    
+    ax1.text(T_m-0.3, 4.1, r'$T_M$', rotation=90,
+              fontsize=subt_font, color='blue')
+    ax1.text(t_lower-0.3, 4.1, r'$0.2T_M$', rotation=90,
+              fontsize=subt_font, color='blue')
+    ax1.text(t_upper-0.3, 4.1, r'$1.5T_M$', rotation=90,
+              fontsize=subt_font, color='blue')
+    ax1.text(2.7, target_average+0.05, r'Spectral average over range',
+              fontsize=subt_font, color='black')
+    
+    ax1.text(1.5, 1.5, r'$S_1$',
+          fontsize=axis_font, color='red', zorder=5)
+    ax1.annotate(text='', xy=(1.5, 1.5), xytext=(1.0, S_1), 
+                    arrowprops=dict(arrowstyle='<-', color='red'))
     plt.xlabel(r'$T_n$ (s)', fontsize = axis_font)
     plt.ylabel(r'$Sa$ (g)', fontsize = axis_font)
     plt.xlim([0, 5])
     plt.ylim([0, 2*2.5])
     plt.grid(True)
+    plt.title(r'MCE level', fontsize=axis_font)
     plt.legend(fontsize=subt_font, loc='center right')
     fig.tight_layout()
+    plt.show()
 
 # this creates a damped spectrum based on real zeta e value and extracts value
 def get_gm_ST(input_df, T_query):
@@ -239,12 +256,12 @@ def get_ST(input_df, T_query,
     return(Sa_query)
 
 def plot_spectrum(input_df,
-                  spec_dir='../resource/ground_motions/gm_spectra.csv'):
+                  spec_dir='../resource/ground_motions/'):
     
     import pandas as pd
 
     # load in sections of the sheet
-    unscaled_spectra = pd.read_csv(spec_dir)
+    unscaled_spectra = pd.read_csv(spec_dir+'gm_spectra.csv')
     
     GM_name = input_df['gm_selected']
 
@@ -283,7 +300,9 @@ def plot_spectrum(input_df,
     # scale factor applied internally, spectrum for damping of zeta_e
     import time
     t0 = time.time()
-    Tn, gm_A, gm_D, uddg = generate_spectrum(input_df)
+    Tn, gm_A, gm_D, uddg = generate_spectrum(input_df,
+                                             gm_path=spec_dir+'PEERNGARecords_Unscaled/',
+                                             spec_dir=spec_dir)
     tp = time.time() - t0
     print("Created spectrum in %.2f s" % tp)
     

@@ -583,10 +583,10 @@ plt.close('all')
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
-title_font=20
-axis_font = 18
-subt_font = 18
-label_size = 16
+title_font=24
+axis_font = 24
+subt_font = 20
+label_size = 24
 mpl.rcParams['xtick.labelsize'] = label_size 
 mpl.rcParams['ytick.labelsize'] = label_size 
 
@@ -596,7 +596,7 @@ inv_norm = norm.ppf(0.84)
 beta_drift = 0.25
 mean_log_drift = exp(log(np.array(theta_mu_stds)) - beta_drift*inv_norm)
 
-fig = plt.figure(figsize=(9,8))
+fig = plt.figure(figsize=(9,4))
 ax=fig.add_subplot(1, 1, 1)
 
 color = plt.cm.Set2(np.linspace(0, 1, 10))
@@ -611,9 +611,13 @@ ax.set_ylabel(r'Predicted collapse risk', fontsize=axis_font)
 ax.set_title('Baseline collapse sensitivity', fontsize=title_font)
 # ax.set_ylim([25, 225])
 # ax.legend(fontsize=label_size)
+ax.set_ylim([0, 0.5])
+ax.set_yticks(np.arange(0.0, 0.5, 0.1))
+
 ax.grid()
 fig.tight_layout()
-plt.savefig('./figures/baseline_sensitivity.pdf')
+plt.show()
+# plt.savefig('./figures/baseline_sensitivity.pdf')
 #%%
 '''
 plt.rcParams["text.usetex"] = True
@@ -803,7 +807,7 @@ for plt_idx in range(3):
 ax.set_title('2.5\% collapse', fontsize=title_font)
 ax.set_ylim([25, 225])
 ax.grid()
-
+plt.show()
 
 
 ##
@@ -887,9 +891,11 @@ ax.set_title(
     'd) Baseline collapse sensitivity: $GR=1.0$, $R_y=2.0$, $T_M/T_{fb}=3.0$, $\zeta_M=0.15$', 
     fontsize=axis_font)
 ax.set_ylim([0, 0.5])
+ax.set_yticks(np.arange(0.0, 0.5, 0.1))
 # ax.legend(fontsize=label_size)
 ax.grid()
 plt.setp(ax, yticks=np.arange(0.05, 0.5, step=0.1))
 
 fig.tight_layout()
-plt.savefig('./figures/sensitivity_tall.pdf')
+plt.show()
+# plt.savefig('./figures/sensitivity_tall.pdf')
