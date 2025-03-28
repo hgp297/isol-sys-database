@@ -468,6 +468,59 @@ def calc_upfront_cost(X, config_dict, steel_cost_dict,
            'land_cbf': land_cost_cbf,
            'Vs_cbf': Vs_cbf,
            'Vs_mf': Vs_mf})
+    
+    
+    
+def calc_upfront_cost_legacy(X_test, steel_coefs,
+                      land_cost_per_sqft=2837/(3.28**2),
+                      W=3037.5, Ws=2227.5):
+    
+    from scipy.interpolate import interp1d
+    zeta_ref = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    Bm_ref = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    interp_f = interp1d(zeta_ref, Bm_ref)
+    Bm = interp_f(X_test['zeta_e'])
+    
+    # estimate Tm
+    
+    from loads import estimate_period
+    
+    # current dummy structure: 4 bays, 4 stories
+    # 13 ft stories, 30 ft bays
+    X_query = X_test.copy()
+    X_query['superstructure_system'] = 'MF'
+    X_query['h_bldg'] = 4*13.0
+    X_query['T_fbe'] = X_query.apply(lambda row: estimate_period(row),
+                                                     axis='columns', result_type='expand')
+    
+    X_query['T_m'] = X_query['T_fbe'] * X_query['T_ratio']
+    
+    # calculate moat gap
+    pi = 3.14159
+    g = 386.4
+    S1 = 1.017
+    SaTm = S1/X_query['T_m']
+    moat_gap = X_query['gap_ratio'] * (g*(SaTm/Bm)*X_query['T_m']**2)/(4*pi**2)
+    
+    # calculate design base shear
+    kM = (1/g)*(2*pi/X_query['T_m'])**2
+    Dm = g*S1*X_query['T_m']/(4*pi**2*Bm)
+    Vb = Dm * kM * Ws / 2
+    Vst = Vb*(Ws/W)**(1 - 2.5*X_query['zeta_e'])
+    Vs = Vst/X_query['RI']
+    
+    # steel coefs now represent cost/sf as a function of Vs
+    steel_cost_per_sf = steel_coefs['intercept'] + steel_coefs['coef']*Vs
+    # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
+    
+    bldg_area = 4 * (30*4)**2
+    steel_cost = steel_cost_per_sf * bldg_area
+    land_area = (4*30*12.0 + moat_gap)**2
+    land_cost = land_cost_per_sqft/144.0 * land_area
+    
+    return({'total': steel_cost + land_cost,
+            'steel': steel_cost,
+            'land': land_cost})
 
 #%% Testing the design space
 def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
@@ -484,7 +537,7 @@ def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
     fixed_val = {
         'gap_ratio': 1.0,
         'RI': 2.0,
-        'T_ratio': 4.0,
+        'T_ratio': 2.6,
         'zeta_e': 0.15,
         'k_ratio': 10.0
         }
@@ -501,6 +554,7 @@ def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                              var_list[3]:vv.ravel()})
     else:
         fixed_val_single = fixed_val[fixed_var]
+        
         excluded_idx = var_list.index(fixed_var)
         my_args = tuple(np.linspace(*bound_dict[var_list[i]], res) 
                                     for i in range(len(var_list)) 
@@ -510,11 +564,15 @@ def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                                      fixed_val_single)
         
         var_list.pop(excluded_idx)
+        var_list.append(fixed_var)
+        X_space = pd.DataFrame([xx.ravel(), 
+                                yy.ravel(), 
+                                uu.ravel(), 
+                                vv.ravel()]).T
         
-        X_space = pd.DataFrame({var_list[0]:xx.ravel(),
-                             var_list[1]:yy.ravel(),
-                             var_list[2]:uu.ravel(),
-                             fixed_var:vv.ravel()})
+        X_space.columns = var_list
+        print(X_space.head())
+        X_space = X_space[['gap_ratio', 'RI', 'T_ratio', 'zeta_e']]
     return(X_space)
 
 def grid_search_inverse_design(res, system_name, targets_dict, config_dict, reg_dict,
