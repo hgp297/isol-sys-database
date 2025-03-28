@@ -2003,7 +2003,7 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
 
 
 def prepare_ida_legacy_util(design_dict, levels=[1.0, 1.5, 2.0], 
-                            config_dict=None, db_string='../resources/'):
+                            config_dict=None, db_string='../resource/'):
     
     if config_dict is None:    
         config_dict = {
