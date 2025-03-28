@@ -108,7 +108,7 @@ parser.add_argument('idx', metavar='i', type=int, nargs='?',
                     help='Index of the IDA df to be ran')
 parser.add_argument('run_case', metavar='s', type=str, nargs='?',
                     help='String of run case to help organize output file')
-parser.add_argument('-l', '--legacy', type=bool, help='Check if legacy mode for MF-TFP is on.')
+parser.add_argument('-l', '--legacy', action='store_true', help='Check if legacy mode for MF-TFP is on.')
 
 args = parser.parse_args()
 if args.legacy:
