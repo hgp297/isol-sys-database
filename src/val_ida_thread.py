@@ -13,7 +13,7 @@
 
 ############################################################################
 
-def ida_run_row(row_num, run_case_str):
+def ida_run_row(row_num, run_case_str, legacy_mode=False):
 
     import json
     input_path = './inputs/'
@@ -22,25 +22,47 @@ def ida_run_row(row_num, run_case_str):
     design_dict = json.loads(data)
     
     # use db to prepare all IDA runs, then grab the assigned row
-    from db import prepare_ida_util
-    import pandas as pd
-    
-    try:
-        with open(input_path+run_case_str+'.cfg') as f: 
-            data = f.read() 
-        run_config = json.loads(data)
+    if legacy_mode:
+        from db import prepare_ida_legacy_util
+        import pandas as pd
         
-        # handle custom IDA levels
-        if 'ida_levels' in run_config:
-            ida_levels = run_config['ida_levels']
-            # remove ida levels from config dict because indexed df can't handle lists
-            run_config.pop('ida_levels')
-            ida_df = prepare_ida_util(design_dict, levels=ida_levels,
-                                      config_dict=run_config)
-        else:
-            ida_df = prepare_ida_util(design_dict, config_dict=run_config)
-    except:
-        ida_df = prepare_ida_util(design_dict)
+        try:
+            with open(input_path+run_case_str+'.cfg') as f: 
+                data = f.read() 
+            run_config = json.loads(data)
+            
+            # handle custom IDA levels
+            if 'ida_levels' in run_config:
+                ida_levels = run_config['ida_levels']
+                # remove ida levels from config dict because indexed df can't handle lists
+                run_config.pop('ida_levels')
+                ida_df = prepare_ida_legacy_util(design_dict, levels=ida_levels,
+                                          config_dict=run_config)
+            else:
+                ida_df = prepare_ida_legacy_util(design_dict, config_dict=run_config)
+        except:
+            ida_df = prepare_ida_legacy_util(design_dict)
+            
+    else:
+        from db import prepare_ida_util
+        import pandas as pd
+        
+        try:
+            with open(input_path+run_case_str+'.cfg') as f: 
+                data = f.read() 
+            run_config = json.loads(data)
+            
+            # handle custom IDA levels
+            if 'ida_levels' in run_config:
+                ida_levels = run_config['ida_levels']
+                # remove ida levels from config dict because indexed df can't handle lists
+                run_config.pop('ida_levels')
+                ida_df = prepare_ida_util(design_dict, levels=ida_levels,
+                                          config_dict=run_config)
+            else:
+                ida_df = prepare_ida_util(design_dict, config_dict=run_config)
+        except:
+            ida_df = prepare_ida_util(design_dict)
     
     
     
@@ -86,6 +108,10 @@ parser.add_argument('idx', metavar='i', type=int, nargs='?',
                     help='Index of the IDA df to be ran')
 parser.add_argument('run_case', metavar='s', type=str, nargs='?',
                     help='String of run case to help organize output file')
+parser.add_argument('-l', '--legacy', type=bool, help='Check if legacy mode for MF-TFP is on.')
 
 args = parser.parse_args()
-ida_run_row(args.idx, args.run_case)
+if args.legacy:
+    ida_run_row(args.idx, args.run_case, legacy_mode=True)
+else:
+    ida_run_row(args.idx, args.run_case)
