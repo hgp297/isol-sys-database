@@ -56,7 +56,7 @@ class GP:
         
         self.lin_reg = lin_pipe
         
-    def fit_kde(self):
+    def fit_kde(self, bandwidth_range=None):
         import numpy as np
         from sklearn.model_selection import GridSearchCV
         from sklearn.preprocessing import StandardScaler
@@ -67,9 +67,14 @@ class GP:
                                  ('kde', KernelDensity())])
         
         # cross-validate several parameters
-        parameters = [
-            {'kde__bandwidth':np.logspace(-1, 1, 20)}
-            ]
+        if bandwidth_range is None:
+            parameters = [
+                {'kde__bandwidth':np.logspace(-1, 1, 20)}
+                ]
+        else:
+            parameters = [
+                {'kde__bandwidth':bandwidth_range}
+                ]
         
         kde_cv = GridSearchCV(kde_pipe, param_grid=parameters)
         kde_cv.fit(self.X_train)
