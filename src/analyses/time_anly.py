@@ -791,6 +791,22 @@ repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
                         'mdl_repl_mf_tfp_i': mdl_repl_mf_tfp_i,
                         'mdl_repl_mf_tfp_o': mdl_repl_mf_tfp_o}
 
+#%% plots for troubleshooting
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(1, 1, 1, projection='3d')
+# df_plot = df_doe[df_doe['impacted'] == 1]
+df_plot = df.copy()
+ax.scatter(df_plot['h_bldg']**0.8, df_plot['RI'], df_plot['T_fb'], c=df_plot['T_m'], alpha=0.4, edgecolors='black', s=15)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('$T_{fb}$', fontsize=axis_font)
+ax.set_xlabel('Building height', fontsize=axis_font)
+# ax.set_xlim([0, 0.1])
+# ax.set_ylim([0, 0.2])
+plt.show()
 
 #%% load scenario
 
@@ -1498,7 +1514,7 @@ mcat_regression_mdls = {'mdl_mcat_cbf_lrb': mdl_mcat_cbf_lrb,
 #%% sample for CBF-LRB
 
 annual_cost_var = 'annual_cost_ratio'
-mdl_mcat = mcat_regression_mdls['mdl_mcat_cbf_lrb']
+mdl_mcac = mcac_regression_mdls['mdl_mcac_cbf_lrb']
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -1518,7 +1534,7 @@ X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yva
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 5.0, fourth_var_set = 0.15)
 
-Z = mdl_mcat.gpr.predict(X_plot)
+Z = mdl_mcac.gpr.predict(X_plot)
 
 
 xx = X_plot[xvar]
@@ -1561,7 +1577,7 @@ X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yva
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 1.0, fourth_var_set = 2.0)
 
-Z = mdl_mcat.gpr.predict(X_plot)
+Z = mdl_mcac.gpr.predict(X_plot)
 
 xx = X_plot[xvar]
 yy = X_plot[yvar]
