@@ -807,6 +807,62 @@ ax.set_xlabel('Building height', fontsize=axis_font)
 # ax.set_xlim([0, 0.1])
 # ax.set_ylim([0, 0.2])
 plt.show()
+#%%
+
+# linear regress cost as f(base shear)
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    df_mf[['h_bldg', 'RI']], df_mf[['T_fb']], test_size=0.2, random_state=985)
+reg_mf_Tfbe = LinearRegression(fit_intercept=False)
+reg_mf_Tfbe.fit(X=X_train, y=y_train)
+y_pred = reg_mf_Tfbe.predict(X_test)
+print(f"Mean squared error: {mean_squared_error(y_test, y_pred):.2f}")
+print(f"Coefficient of determination: {r2_score(y_test, y_pred):.2f}")
+
+X_train, X_test, y_train, y_test = train_test_split(
+    df_cbf[['h_bldg', 'RI']], df_cbf[['T_fb']], test_size=0.2, random_state=985)
+reg_cbf_Tfbe = LinearRegression(fit_intercept=False)
+reg_cbf_Tfbe.fit(X=X_train, y=y_train)
+y_pred = reg_cbf_Tfbe.predict(X_test)
+print(f"Mean squared error: {mean_squared_error(y_test, y_pred):.2f}")
+print(f"Coefficient of determination: {r2_score(y_test, y_pred):.2f}")
+
+reg_dict_Tfbe = {
+    'mf':reg_mf_Tfbe,
+    'cbf':reg_cbf_Tfbe
+    }
+
+#%%
+
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(1, 1, 1, projection='3d')
+# df_plot = df_doe[df_doe['impacted'] == 1]
+df_plot = df_mf.copy()
+
+x_min, x_max = 30.0, 100.0
+y_min, y_max = 0.5, 2.25
+xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
+
+# 4. Predict the class for each grid point
+Z = reg_mf_Tfbe.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+
+ax.scatter(df_plot['h_bldg'], df_plot['RI'], df_plot['T_fb'], c=df_plot['T_m'], alpha=0.4, edgecolors='black', s=15)
+ax.plot_surface(xx, yy, Z, alpha=0.5)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('$T_{fb}$', fontsize=axis_font)
+ax.set_xlabel('Building height', fontsize=axis_font)
+# ax.set_xlim([0, 0.1])
+# ax.set_ylim([0, 0.2])
+plt.show()
 
 #%% load scenario
 

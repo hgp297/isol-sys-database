@@ -1859,6 +1859,7 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                                  'L_bay': 30.0,
                                  'h_story': 13.0,
                                  'S_s' : 2.2815},
+                     Tfbe_reg_dict=None,
                      db_string='../resource/'):
     
     work_df = pd.DataFrame(config_dict, index=[0])
@@ -1867,14 +1868,23 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                         axis=1)
     
     # ad-hoc adjust Tfbe here? Cu = 1.8?
-    from loads import estimate_period
-    if work_df['superstructure_system'].item() == 'MF':
-        work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
+    # if no regression dictionary is seen, use the old method
+    if Tfbe_reg_dict is None:
+        from loads import estimate_period
+        if work_df['superstructure_system'].item() == 'MF':
+            work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
+        else:
+            work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+        
+        
+    # if regression dictionary exists, use it for Tfbe prediction
     else:
-        work_df['T_fbe'] = estimate_period(work_df.iloc[0])
-    
-    from gms import scale_ground_motion
-    
+        if work_df['superstructure_system'].item() == 'MF':
+            Tfbe_reg = Tfbe_reg_dict['mf']
+        else:
+            Tfbe_reg = Tfbe_reg_dict['cbf']
+        work_df['T_fbe'] = Tfbe_reg.predict(np.c_[config_dict['h_bldg'], design_dict['RI']]).item()
+        
     # for TFPs, T_m is the "unadjusted" design period for effect of vertical live load
     work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
     work_df['moat_ampli'] = work_df['gap_ratio']
@@ -1966,11 +1976,27 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         return
     
     # recalculate Tfbe
-    if work_df['superstructure_system'].item() == 'MF':
-        work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
-    else:
-        work_df['T_fbe'] = estimate_period(work_df.iloc[0])
     
+    # if work_df['superstructure_system'].item() == 'MF':
+    #     work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
+    # else:
+    #     work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+        
+    # if no regression dictionary is seen, use the old method
+    if Tfbe_reg_dict is None:
+        if work_df['superstructure_system'].item() == 'MF':
+            work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
+        else:
+            work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+    # if regression dictionary exists, use it for Tfbe prediction
+    else:
+        if work_df['superstructure_system'].item() == 'MF':
+            Tfbe_reg = Tfbe_reg_dict['mf']
+        else:
+            Tfbe_reg = Tfbe_reg_dict['cbf']
+        work_df['T_fbe'] = Tfbe_reg.predict(np.c_[config_dict['h_bldg'], design_dict['RI']]).item()
+    
+    from gms import scale_ground_motion
     gm_dir = db_string+'/ground_motions/gm_db.csv'
     spec_dir = db_string+'/ground_motions/gm_spectra.csv'
     gm_series, sf_series, sa_avg = scale_ground_motion(work_df.iloc[0], return_list=True,
