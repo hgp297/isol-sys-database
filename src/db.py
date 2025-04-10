@@ -1859,34 +1859,31 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                                  'L_bay': 30.0,
                                  'h_story': 13.0,
                                  'S_s' : 2.2815},
-                     Tfbe_reg_dict=None,
                      db_string='../resource/'):
     
+    
+        
     work_df = pd.DataFrame(config_dict, index=[0])
     design_df = pd.DataFrame(design_dict, index=[0])
     work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
                         axis=1)
+
     
-    # ad-hoc adjust Tfbe here? Cu = 1.8?
-    # if no regression dictionary is seen, use the old method
-    if Tfbe_reg_dict is None:
+    # for TFPs, T_m is the "unadjusted" design period for effect of vertical live load
+    # if pre-calculated Tfbe passed, use it (from regression)
+    try:
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+     # if no pre-calculated Tfbe is seen, use the Cu Ta method
+    except:
         from loads import estimate_period
+        # ad-hoc adjust Tfbe here
         if work_df['superstructure_system'].item() == 'MF':
             work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
         else:
             work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
         
-        
-    # if regression dictionary exists, use it for Tfbe prediction
-    else:
-        if work_df['superstructure_system'].item() == 'MF':
-            Tfbe_reg = Tfbe_reg_dict['mf']
-        else:
-            Tfbe_reg = Tfbe_reg_dict['cbf']
-        work_df['T_fbe'] = Tfbe_reg.predict(np.c_[config_dict['h_bldg'], design_dict['RI']]).item()
-        
-    # for TFPs, T_m is the "unadjusted" design period for effect of vertical live load
-    work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+    
     work_df['moat_ampli'] = work_df['gap_ratio']
     
     all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=False)
@@ -1975,26 +1972,20 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         print('Structure design failed.')
         return
     
-    # recalculate Tfbe
     
-    # if work_df['superstructure_system'].item() == 'MF':
-    #     work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
-    # else:
-    #     work_df['T_fbe'] = estimate_period(work_df.iloc[0])
-        
-    # if no regression dictionary is seen, use the old method
-    if Tfbe_reg_dict is None:
+    if 'T_fbe' in config_dict:
+        work_df['T_fbe'] = config_dict['T_fbe']
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+    else:
+        from loads import estimate_period
+        # ad-hoc adjust Tfbe here
         if work_df['superstructure_system'].item() == 'MF':
             work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
         else:
             work_df['T_fbe'] = estimate_period(work_df.iloc[0])
-    # if regression dictionary exists, use it for Tfbe prediction
-    else:
-        if work_df['superstructure_system'].item() == 'MF':
-            Tfbe_reg = Tfbe_reg_dict['mf']
-        else:
-            Tfbe_reg = Tfbe_reg_dict['cbf']
-        work_df['T_fbe'] = Tfbe_reg.predict(np.c_[config_dict['h_bldg'], design_dict['RI']]).item()
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+    
+    
     
     from gms import scale_ground_motion
     gm_dir = db_string+'/ground_motions/gm_db.csv'
