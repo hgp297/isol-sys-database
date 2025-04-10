@@ -1861,6 +1861,11 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                                  'S_s' : 2.2815},
                      db_string='../resource/'):
     
+    # this is here because val_ida_thread needs to see ida_levels
+    # ida levels should already have been stored in `levels`
+    if 'ida_levels' in config_dict:
+        # remove ida levels from config dict because indexed df can't handle lists
+        config_dict.pop('ida_levels')
     
         
     work_df = pd.DataFrame(config_dict, index=[0])
