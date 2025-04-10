@@ -56,10 +56,10 @@ def agg_data(run_case):
         pickle.dump(dummy_obj, f)
         
 
-agg_data('mf_tfp_collapse_10')
-agg_data('mf_tfp_collapse_5')
-agg_data('mf_tfp_collapse_2_5')
-# agg_data('cbf_lrb_annual_func_hazard')
+agg_data('mf_tfp_annual_loss_regress')
+agg_data('mf_lrb_annual_loss_regress')
+agg_data('cbf_tfp_annual_loss_regress')
+agg_data('cbf_lrb_annual_loss_regress')
 # agg_data('mf_tfp_enhanced')
 # agg_data('cbf_tfp_enhanced')
 # agg_data('mf_lrb_enhanced')
