@@ -181,8 +181,15 @@ def show_selection(final_GM, target_spectrum, H1s,
     plt.close('all')
     fig= plt.figure(figsize=(7,6))
     ax1=fig.add_subplot(1, 1, 1)
-    plt.plot(target_spectrum['Period (sec)'], target_spectrum['Target pSa (g)'], color='blue',
+    
+    Tn = target_spectrum['Period (sec)']
+    Sa = target_spectrum['Target pSa (g)']
+    
+    # acceleration spectrum
+    plt.plot(Tn, Sa, color='blue',
              label='Target design spectrum')
+    
+    # running average of GM suite
     running_sum = np.zeros(target_spectrum.shape[0])
     for idx, row in final_GM.iterrows():
         new_str = 'RSN-'+str(row['RSN'])+' Horizontal-1 pSa (g)'
@@ -192,7 +199,9 @@ def show_selection(final_GM, target_spectrum, H1s,
         plt.plot(target_spectrum['Period (sec)'], scaled_row, color='black',
                  linewidth=0.5, alpha=0.1)
     running_average = running_sum / final_GM.shape[0]
-    plt.plot(target_spectrum['Period (sec)'], running_average, linestyle='--', color='black',
+    
+    
+    plt.plot(Tn, running_average, linestyle='--', color='black',
              label='Average of GM spectra')
     plt.axvline(t_lower, linestyle=':', color='blue')
     plt.axvline(t_upper, linestyle=':', color='blue')
@@ -222,6 +231,52 @@ def show_selection(final_GM, target_spectrum, H1s,
     plt.legend(fontsize=subt_font, loc='center right')
     fig.tight_layout()
     plt.show()
+    
+    
+    # Displacement spectrum
+    fig= plt.figure(figsize=(7,6))
+    ax1=fig.add_subplot(1, 1, 1)
+    omega_n = 2*3.14159/Tn
+    Sd = Sa/(omega_n**2) * 384.6
+    plt.plot(Tn, Sd, color='blue',
+             label='Target design spectrum')
+    
+    running_sum = np.zeros(target_spectrum.shape[0])
+    for idx, row in final_GM.iterrows():
+        new_str = 'RSN-'+str(row['RSN'])+' Horizontal-1 pSa (g)'
+        
+        # sa
+        row_spectrum = H1s[new_str]
+        scaled_row_Sa = row_spectrum * row['sf_average_spectral']
+        
+        # sd
+        scaled_row_Sd = scaled_row_Sa/(omega_n**2) * 384.6
+        running_sum = running_sum + np.array(scaled_row_Sd)
+        plt.plot(Tn, scaled_row_Sd, color='black',
+                 linewidth=0.5, alpha=0.1)
+    running_average = running_sum / final_GM.shape[0]
+    
+    plt.plot(Tn, running_average, linestyle='--', color='black',
+             label='Average of GM spectra')
+    plt.axvline(t_lower, linestyle=':', color='blue')
+    plt.axvline(t_upper, linestyle=':', color='blue')
+    plt.axvline(T_m, linestyle='--', color='blue')
+    
+    ax1.text(T_m-0.3, 20, r'$T_M$', rotation=90,
+              fontsize=subt_font, color='blue')
+    ax1.text(t_lower-0.3, 20, r'$0.2T_M$', rotation=90,
+              fontsize=subt_font, color='blue')
+    ax1.text(t_upper-0.3, 20, r'$1.5T_M$', rotation=90,
+              fontsize=subt_font, color='blue')
+    
+    plt.xlabel(r'$T_n$ (s)', fontsize = axis_font)
+    plt.ylabel(r'$Sd$ (in)', fontsize = axis_font)
+    plt.xlim([0, 5])
+    plt.ylim([0, 100.0])
+    plt.grid(True)
+    plt.title(r'MCE level', fontsize=axis_font)
+    plt.legend(fontsize=subt_font, loc='upper right')
+    fig.tight_layout()
 
 # this creates a damped spectrum based on real zeta e value and extracts value
 def get_gm_ST(input_df, T_query):
