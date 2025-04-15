@@ -27,7 +27,7 @@ class Database:
     
     def __init__(self, n_points=400, seed=985, n_buffer=15,
                  struct_sys_list=['MF', 'CBF'], isol_sys_list=['TFP','LRB'],
-                 isol_wts=[1,2]):
+                 isol_wts=[1,2.5]):
         
         from scipy.stats import qmc
         
