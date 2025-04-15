@@ -368,7 +368,7 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
 
 #%% inverse designer
 
-def calc_upfront_cost(X, config_dict, steel_cost_dict,
+def calc_upfront_cost(X, config_dict, steel_cost_dict, tfbe_reg_dict=None,
                       land_cost_per_sqft=2837/(3.28**2)):
     
     from scipy.interpolate import interp1d
@@ -392,17 +392,39 @@ def calc_upfront_cost(X, config_dict, steel_cost_dict,
     X_query = X.copy()
     X_query['h_bldg'] = config_dict['num_stories'] * config_dict['h_story']
     
-    # estimate periods
-    X_mf = X_query.copy()
-    X_mf['superstructure_system'] = 'MF'
-    X_mf['T_fbe'] = X_mf.apply(lambda row: estimate_period(row),
-                                                     axis='columns', result_type='expand')
+    # estimate periods using new method
+    if tfbe_reg_dict is None:
+        X_mf = X_query.copy()
+        X_mf['superstructure_system'] = 'MF'
+        X_mf['T_fbe'] = X_mf.apply(lambda row: 
+            estimate_period(row), axis='columns', result_type='expand')
+        
+        X_cbf = X_query.copy()
+        X_cbf['superstructure_system'] = 'CBF'
+        X_cbf['T_fbe'] = X_cbf.apply(lambda row: 
+            estimate_period(row), axis='columns', result_type='expand')
+        
+    else:
+        X_mf = X_query.copy()
+        X_mf['superstructure_system'] = 'MF'
+        reg_mf_Tfbe = tfbe_reg_dict['mf']
+        X_mf['T_fbe'] = reg_mf_Tfbe.predict(np.c_[X_query['h_bldg'], X_query['RI']])
+        
+        X_cbf = X_query.copy()
+        X_cbf['superstructure_system'] = 'CBF'
+        reg_cbf_Tfbe = tfbe_reg_dict['cbf']
+        X_cbf['T_fbe'] = reg_cbf_Tfbe.predict(np.c_[X_query['h_bldg'], X_query['RI']])
+        
+    # # estimate periods
+    # X_mf = X_query.copy()
+    # X_mf['superstructure_system'] = 'MF'
+    # X_mf['T_fbe'] = X_mf.apply(lambda row: estimate_period(row),
+    #                                                  axis='columns', result_type='expand')
     
-    X_cbf = X_query.copy()
-    X_cbf['superstructure_system'] = 'CBF'
-    X_cbf['h_bldg'] = config_dict['num_stories'] * config_dict['h_story']
-    X_cbf['T_fbe'] = X_cbf.apply(lambda row: estimate_period(row),
-                                                     axis='columns', result_type='expand')
+    # X_cbf = X_query.copy()
+    # X_cbf['superstructure_system'] = 'CBF'
+    # X_cbf['T_fbe'] = X_cbf.apply(lambda row: estimate_period(row),
+    #                                                  axis='columns', result_type='expand')
     
     
     X_query['T_fbe_mf'] = X_mf['T_fbe']
