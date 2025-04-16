@@ -5,6 +5,8 @@
 */outputs/
 /tfp_mf/data/
 /src/archive/
+/src/inputs/archive/
+/src/inputs/unadjusted_tfp/
 /testing/motions/
 src/paper/*figures/
 src/paper/*_figure/
