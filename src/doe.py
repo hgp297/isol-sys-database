@@ -359,7 +359,7 @@ class GP:
         return y_pred, gp_std
     
     # Train GP regression
-    def fit_gpr(self, kernel_name, noise_bound=None):
+    def fit_gpr(self, kernel_name, noise_bound=None, const_lower_bound=None):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.gaussian_process import GaussianProcessRegressor
@@ -368,21 +368,44 @@ class GP:
         import numpy as np
         n_vars = self.X.shape[1]
         
+        # each kernel has iso vs ard choice, and also a choice to expand the bound
+        # of the leading scaling coefficient
         if kernel_name=='rbf_ard':
-            kernel_base = 1.0 * krn.RBF(np.ones(n_vars))
+            if const_lower_bound is None:
+                kernel_base = 1.0 * krn.RBF(np.ones(n_vars))
+            else:
+                kernel_base = krn.Product(
+                    krn.ConstantKernel(constant_value_bounds=(const_lower_bound,1e5)),
+                    krn.RBF(np.ones(n_vars)))
         elif kernel_name=='rbf_iso':
-            kernel_base = 1.0 * krn.RBF(1.0)
+            if const_lower_bound is None:
+                kernel_base = 1.0 * krn.RBF(1.0)
+            else:
+                kernel_base = krn.Product(
+                    krn.ConstantKernel(constant_value_bounds=(const_lower_bound,1e5)),
+                    krn.RBF(1.0))
         elif kernel_name=='rq':
-            kernel_base = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
-                                                    alpha=1.0)
+            if const_lower_bound is None:
+                kernel_base = 0.5**2 * krn.RationalQuadratic(length_scale=1.0,
+                                                        alpha=1.0)
+            else:
+                kernel_base = krn.Product(
+                    krn.ConstantKernel(constant_value_bounds=(const_lower_bound,1e5)),
+                    krn.RationalQuadratic(length_scale=1.0, alpha=1.0))
         elif kernel_name == 'matern_iso':
-            kernel_base = 1.0 * krn.Matern(
-                    length_scale=1.0, 
-                    nu=1.5)
+            if const_lower_bound is None:
+                kernel_base = 1.0 * krn.Matern(length_scale=1.0, nu=1.5)
+            else:
+                kernel_base = krn.Product(
+                    krn.ConstantKernel(constant_value_bounds=(const_lower_bound,1e5)),
+                    krn.Matern(length_scale=1.0, nu=1.5))
         elif kernel_name == 'matern_ard':
-            kernel_base = 1.0 * krn.Matern(
-                    length_scale=np.ones(n_vars), 
-                    nu=1.5)
+            if const_lower_bound is None:
+                kernel_base = 1.0 * krn.Matern(length_scale=np.ones(n_vars), nu=1.5)
+            else:
+                kernel_base = krn.Product(
+                    krn.ConstantKernel(constant_value_bounds=(const_lower_bound,1e5)),
+                    krn.Matern(length_scale=np.ones(n_vars), nu=1.5))
             
         if noise_bound is None:
             noise_bound = (1e-8, 1e2)
