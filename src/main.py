@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(400, isol_wts=[1,2])
+main_obj = Database(1200, isol_wts=[1,2.2])
 
 main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)
@@ -56,34 +56,34 @@ main_obj.scale_gms()
 
 #%% calculate maximum pelicun losses
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db_drift_allow.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_ta.pickle")
 
-main_obj.calc_cmp_max(main_obj.ops_analysis,
-                cmp_dir='../resource/loss/')
+# main_obj.calc_cmp_max(main_obj.ops_analysis,
+#                 cmp_dir='../resource/loss/')
 
-import pickle
-loss_path = '../data/loss/'
-with open(loss_path+'structural_db_drift_allow_max_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_ta_max_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%% run pelicun
 
-import pandas as pd
-pickle_path = '../data/'
-main_obj = pd.read_pickle(pickle_path+"structural_db_drift_allow.pickle")
+# import pandas as pd
+# pickle_path = '../data/'
+# main_obj = pd.read_pickle(pickle_path+"structural_db_ta.pickle")
 
-max_obj = pd.read_pickle(pickle_path+"loss/structural_db_drift_allow_max_loss.pickle")
-df_loss_max = max_obj.max_loss
+# max_obj = pd.read_pickle(pickle_path+"loss/structural_db_ta_max_loss.pickle")
+# df_loss_max = max_obj.max_loss
 
-main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
-                cmp_dir='../resource/loss/', max_loss_df=df_loss_max)
+# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+#                 cmp_dir='../resource/loss/', max_loss_df=df_loss_max)
 
-import pickle
-loss_path = '../data/loss/'
-with open(loss_path+'structural_db_drift_allow_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# import pickle
+# loss_path = '../data/loss/'
+# with open(loss_path+'structural_db_ta_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
 
 #%% validate design
 
@@ -97,7 +97,7 @@ with open(loss_path+'structural_db_drift_allow_loss.pickle', 'wb') as f:
 # import pickle
 
 # #### cbf tfp
-# run_case = 'cbf_tfp_annual_func_hazard'
+# run_case = 'cbf_tfp_ta'
 # validation_path = '../data/validation/'+run_case+'/'
 # loss_path = '../data/validation/'+run_case+'/'
 
@@ -121,7 +121,7 @@ with open(loss_path+'structural_db_drift_allow_loss.pickle', 'wb') as f:
 
     
 # #### mf tfp
-# run_case = 'mf_tfp_annual_func_hazard'
+# run_case = 'mf_tfp_ta'
 # validation_path = '../data/validation/'+run_case+'/'
 # loss_path = '../data/validation/'+run_case+'/'
 
@@ -145,7 +145,7 @@ with open(loss_path+'structural_db_drift_allow_loss.pickle', 'wb') as f:
     
     
 # #### cbf lrb
-# run_case = 'cbf_lrb_annual_func_hazard'
+# run_case = 'cbf_lrb_ta'
 # validation_path = '../data/validation/'+run_case+'/'
 # loss_path = '../data/validation/'+run_case+'/'
 
@@ -169,7 +169,7 @@ with open(loss_path+'structural_db_drift_allow_loss.pickle', 'wb') as f:
     
     
 # #### mf lrb
-# run_case = 'mf_lrb_annual_func_hazard'
+# run_case = 'mf_lrb_ta'
 # validation_path = '../data/validation/'+run_case+'/'
 # loss_path = '../data/validation/'+run_case+'/'
 

@@ -891,7 +891,6 @@ class Building:
                 
         else:
             # LRB modeling
-            
             # dimensions. Material parameters should not be edited without 
             # modifying design script
             K_bulk = 290.0*ksi
@@ -2275,7 +2274,6 @@ class Building:
             # LRB modeling
             # dimensions. Material parameters should not be edited without 
             # modifying design script
-            # TODO: check if D_outer should be -1.0...
             K_bulk = 290.0*ksi
             G_r = 0.060*ksi
             D_inner = self.d_lead

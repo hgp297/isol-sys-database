@@ -78,7 +78,6 @@ def preprocess_data(main_obj, max_obj, db_string='../../resource/'):
     '''
     
     df = loss_percentages(df, df_loss, df_loss_max)
-
     brace_db = pd.read_csv(db_string+'braceShapes.csv', index_col=None, header=0)  
 
     df['steel_cost'] = df.apply(
@@ -215,6 +214,7 @@ def loss_percentages(df_main, df_loss, df_max):
 
     df_main['replacement_cost'] = 600.0*(df_main['bldg_area'])
     df_main['total_cmp_cost'] = df_max['cost_50%']
+    df_main['total_cmp_cost_ub'] = df_max['cost_90%']
     df_main['cmp_replace_cost_ratio'] = df_main['total_cmp_cost']/df_main['replacement_cost']
     df_main['median_cost_ratio'] = df_loss['cost_50%']/df_main['replacement_cost']
     df_main['cmp_cost_ratio'] = df_loss['cost_50%']/df_main['total_cmp_cost']
@@ -222,6 +222,7 @@ def loss_percentages(df_main, df_loss, df_max):
     # but working in parallel (2x faster)
     df_main['replacement_time'] = df_main['bldg_area']/1000*365
     df_main['total_cmp_time'] = df_max['time_l_50%']
+    df_main['total_cmp_time_ub'] = df_max['time_l_90%']
     df_main['cmp_replace_time_ratio'] = df_main['total_cmp_time']/df_main['replacement_time']
     df_main['median_time_ratio'] = df_loss['time_l_50%']/df_main['replacement_time']
     df_main['cmp_time_ratio'] = df_loss['time_l_50%']/df_main['total_cmp_time']
@@ -238,6 +239,19 @@ def loss_percentages(df_main, df_loss, df_max):
     df_main['C_50%'].loc[mask] = df_max['C_50%'].loc[mask]
     df_main['D_50%'].loc[mask] = df_max['D_50%'].loc[mask]
     df_main['E_50%'].loc[mask] = df_max['E_50%'].loc[mask]
+    
+    # old data doesn't have distribution
+    try:
+        copied_vars = ['cost_theta', 'cost_beta', 'time_l_theta', 'time_l_beta',
+                    'cost_lam', 'cost_k', 'time_l_k', 'time_l_lam',
+                    'cost_weibull_ks_pvalue', 'cost_lognormal_ks_pvalue',
+                    'time_l_weibull_ks_pvalue', 'time_l_lognormal_ks_pvalue',
+                    'cost_weibull_aic', 'cost_lognormal_aic',
+                    'time_l_weibull_aic', 'time_l_lognormal_aic']
+        
+        df_main[copied_vars] = df_loss[copied_vars]
+    except:
+        pass
     
     return(df_main)
 
@@ -356,7 +370,7 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
 
 #%% inverse designer
 
-def calc_upfront_cost(X, config_dict, steel_cost_dict,
+def calc_upfront_cost(X, config_dict, steel_cost_dict, tfbe_reg_dict=None,
                       land_cost_per_sqft=2837/(3.28**2)):
     
     from scipy.interpolate import interp1d
@@ -380,17 +394,39 @@ def calc_upfront_cost(X, config_dict, steel_cost_dict,
     X_query = X.copy()
     X_query['h_bldg'] = config_dict['num_stories'] * config_dict['h_story']
     
-    # estimate periods
-    X_mf = X_query.copy()
-    X_mf['superstructure_system'] = 'MF'
-    X_mf['T_fbe'] = X_mf.apply(lambda row: estimate_period(row),
-                                                     axis='columns', result_type='expand')
+    # estimate periods using new method
+    if tfbe_reg_dict is None:
+        X_mf = X_query.copy()
+        X_mf['superstructure_system'] = 'MF'
+        X_mf['T_fbe'] = X_mf.apply(lambda row: 
+            estimate_period(row), axis='columns', result_type='expand')
+        
+        X_cbf = X_query.copy()
+        X_cbf['superstructure_system'] = 'CBF'
+        X_cbf['T_fbe'] = X_cbf.apply(lambda row: 
+            estimate_period(row), axis='columns', result_type='expand')
+        
+    else:
+        X_mf = X_query.copy()
+        X_mf['superstructure_system'] = 'MF'
+        reg_mf_Tfbe = tfbe_reg_dict['mf']
+        X_mf['T_fbe'] = reg_mf_Tfbe.predict(np.c_[X_query['h_bldg'], X_query['RI']])
+        
+        X_cbf = X_query.copy()
+        X_cbf['superstructure_system'] = 'CBF'
+        reg_cbf_Tfbe = tfbe_reg_dict['cbf']
+        X_cbf['T_fbe'] = reg_cbf_Tfbe.predict(np.c_[X_query['h_bldg'], X_query['RI']])
+        
+    # # estimate periods
+    # X_mf = X_query.copy()
+    # X_mf['superstructure_system'] = 'MF'
+    # X_mf['T_fbe'] = X_mf.apply(lambda row: estimate_period(row),
+    #                                                  axis='columns', result_type='expand')
     
-    X_cbf = X_query.copy()
-    X_cbf['superstructure_system'] = 'CBF'
-    X_cbf['h_bldg'] = config_dict['num_stories'] * config_dict['h_story']
-    X_cbf['T_fbe'] = X_cbf.apply(lambda row: estimate_period(row),
-                                                     axis='columns', result_type='expand')
+    # X_cbf = X_query.copy()
+    # X_cbf['superstructure_system'] = 'CBF'
+    # X_cbf['T_fbe'] = X_cbf.apply(lambda row: estimate_period(row),
+    #                                                  axis='columns', result_type='expand')
     
     
     X_query['T_fbe_mf'] = X_mf['T_fbe']
@@ -456,6 +492,59 @@ def calc_upfront_cost(X, config_dict, steel_cost_dict,
            'land_cbf': land_cost_cbf,
            'Vs_cbf': Vs_cbf,
            'Vs_mf': Vs_mf})
+    
+    
+    
+def calc_upfront_cost_legacy(X_test, steel_coefs,
+                      land_cost_per_sqft=2837/(3.28**2),
+                      W=3037.5, Ws=2227.5):
+    
+    from scipy.interpolate import interp1d
+    zeta_ref = [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    Bm_ref = [0.8, 1.0, 1.2, 1.5, 1.7, 1.9, 2.0]
+    interp_f = interp1d(zeta_ref, Bm_ref)
+    Bm = interp_f(X_test['zeta_e'])
+    
+    # estimate Tm
+    
+    from loads import estimate_period
+    
+    # current dummy structure: 4 bays, 4 stories
+    # 13 ft stories, 30 ft bays
+    X_query = X_test.copy()
+    X_query['superstructure_system'] = 'MF'
+    X_query['h_bldg'] = 4*13.0
+    X_query['T_fbe'] = X_query.apply(lambda row: estimate_period(row),
+                                                     axis='columns', result_type='expand')
+    
+    X_query['T_m'] = X_query['T_fbe'] * X_query['T_ratio']
+    
+    # calculate moat gap
+    pi = 3.14159
+    g = 386.4
+    S1 = 1.017
+    SaTm = S1/X_query['T_m']
+    moat_gap = X_query['gap_ratio'] * (g*(SaTm/Bm)*X_query['T_m']**2)/(4*pi**2)
+    
+    # calculate design base shear
+    kM = (1/g)*(2*pi/X_query['T_m'])**2
+    Dm = g*S1*X_query['T_m']/(4*pi**2*Bm)
+    Vb = Dm * kM * Ws / 2
+    Vst = Vb*(Ws/W)**(1 - 2.5*X_query['zeta_e'])
+    Vs = Vst/X_query['RI']
+    
+    # steel coefs now represent cost/sf as a function of Vs
+    steel_cost_per_sf = steel_coefs['intercept'] + steel_coefs['coef']*Vs
+    # land_area = 2*(90.0*12.0)*moat_gap - moat_gap**2
+    
+    bldg_area = 4 * (30*4)**2
+    steel_cost = steel_cost_per_sf * bldg_area
+    land_area = (4*30*12.0 + moat_gap)**2
+    land_cost = land_cost_per_sqft/144.0 * land_area
+    
+    return({'total': steel_cost + land_cost,
+            'steel': steel_cost,
+            'land': land_cost})
 
 #%% Testing the design space
 def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
@@ -472,7 +561,7 @@ def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
     fixed_val = {
         'gap_ratio': 1.0,
         'RI': 2.0,
-        'T_ratio': 4.0,
+        'T_ratio': 2.6,
         'zeta_e': 0.15,
         'k_ratio': 10.0
         }
@@ -489,6 +578,7 @@ def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                              var_list[3]:vv.ravel()})
     else:
         fixed_val_single = fixed_val[fixed_var]
+        
         excluded_idx = var_list.index(fixed_var)
         my_args = tuple(np.linspace(*bound_dict[var_list[i]], res) 
                                     for i in range(len(var_list)) 
@@ -498,11 +588,15 @@ def make_design_space(res, var_list=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                                      fixed_val_single)
         
         var_list.pop(excluded_idx)
+        var_list.append(fixed_var)
+        X_space = pd.DataFrame([xx.ravel(), 
+                                yy.ravel(), 
+                                uu.ravel(), 
+                                vv.ravel()]).T
         
-        X_space = pd.DataFrame({var_list[0]:xx.ravel(),
-                             var_list[1]:yy.ravel(),
-                             var_list[2]:uu.ravel(),
-                             fixed_var:vv.ravel()})
+        X_space.columns = var_list
+        print(X_space.head())
+        X_space = X_space[['gap_ratio', 'RI', 'T_ratio', 'zeta_e']]
     return(X_space)
 
 def grid_search_inverse_design(res, system_name, targets_dict, config_dict, reg_dict,
@@ -681,3 +775,120 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict, reg_
           f'{inv_repl_risk:.2%}')
     
     return(inv_design, inv_performance, X_design)
+
+def make_2D_plotting_space(X, res, x_var='gap_ratio', y_var='RI', 
+                           all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
+                           third_var_set = None, fourth_var_set = None,
+                           x_bounds=None, y_bounds=None):
+    
+    if x_bounds == None:
+        x_min = min(X[x_var])
+        x_max = max(X[x_var])
+    else:
+        x_min = x_bounds[0]
+        x_max = x_bounds[1]
+    if y_bounds == None:
+        y_min = min(X[y_var])
+        y_max = max(X[y_var])
+    else:
+        y_min = y_bounds[0]
+        y_max = y_bounds[1]
+    xx, yy = np.meshgrid(np.linspace(x_min,
+                                     x_max,
+                                     res),
+                         np.linspace(y_min,
+                                     y_max,
+                                     res))
+
+    rem_vars = [i for i in all_vars if i not in [x_var, y_var]]
+    third_var = rem_vars[0]
+    fourth_var = rem_vars[-1]
+       
+    xx = xx
+    yy = yy
+    
+    if third_var_set is None:
+        third_var_val= X[third_var].median()
+    else:
+        third_var_val = third_var_set
+    if fourth_var_set is None:
+        fourth_var_val = X[fourth_var].median()
+    else:
+        fourth_var_val = fourth_var_set
+    
+    
+    X_pl = pd.DataFrame({x_var:xx.ravel(),
+                         y_var:yy.ravel(),
+                         third_var:np.repeat(third_var_val,
+                                             res*res),
+                         fourth_var:np.repeat(fourth_var_val, 
+                                              res*res)})
+    X_plot = X_pl[all_vars]
+                         
+    return(X_plot)
+
+# Pareto front code
+def simple_cull_df(input_df, dominates, *args):
+    pareto_df = pd.DataFrame(columns=input_df.columns)
+    candidateRowNr = 0
+    dominated_df = pd.DataFrame(columns=input_df.columns)
+    while True:
+        candidateRow = input_df.iloc[[candidateRowNr]]
+        input_df = input_df.drop(index=candidateRow.index)
+        rowNr = 0
+        nonDominated = True
+        while input_df.shape[0] != 0 and rowNr < input_df.shape[0]:
+            row = input_df.iloc[[rowNr]]
+            if dominates(candidateRow, row, *args):
+                # If it is worse on all features remove the row from the array
+                input_df = input_df.drop(index=row.index)
+                dominated_df = dominated_df.append(row)
+            elif dominates(row, candidateRow, *args):
+                nonDominated = False
+                dominated_df = dominated_df.append(candidateRow)
+                rowNr += 1
+            else:
+                rowNr += 1
+
+        if nonDominated:
+            # add the non-dominated point to the Pareto frontier
+            pareto_df = pareto_df.append(candidateRow)
+
+        if input_df.shape[0] == 0:
+            break
+    return pareto_df, dominated_df
+
+def dominates_pd(row, candidate_row, mdl, cost, coefs):
+    row_pr = mdl.predict(row).item()
+    cand_pr = mdl.predict(candidate_row).item()
+    
+    row_cost = cost(row, coefs).item()
+    cand_cost = cost(candidate_row, coefs).item()
+    
+    return ((row_pr < cand_pr) and (row_cost < cand_cost))
+
+# Faster than is_pareto_efficient_simple, but less readable.
+def is_pareto_efficient(costs, return_mask = True):
+    """
+    Find the pareto-efficient points
+    :param costs: An (n_points, n_costs) array
+    :param return_mask: True to return a mask
+    :return: An array of indices of pareto-efficient points.
+        If return_mask is True, this will be an (n_points, ) boolean array
+        Otherwise it will be a (n_efficient_points, ) integer array of indices.
+    """
+    is_efficient = np.arange(costs.shape[0])
+    n_points = costs.shape[0]
+    next_point_index = 0  # Next index in the is_efficient array to search for
+    while next_point_index<len(costs):
+        nondominated_point_mask = np.any(costs<costs[next_point_index], axis=1)
+        nondominated_point_mask[next_point_index] = True
+        is_efficient = is_efficient[nondominated_point_mask]  # Remove dominated points
+        costs = costs[nondominated_point_mask]
+        next_point_index = np.sum(nondominated_point_mask[:next_point_index])+1
+    if return_mask:
+        is_efficient_mask = np.zeros(n_points, dtype = bool)
+        is_efficient_mask[is_efficient] = True
+        return is_efficient_mask
+    else:
+        return is_efficient

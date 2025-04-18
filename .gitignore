@@ -5,7 +5,12 @@
 */outputs/
 /tfp_mf/data/
 /src/archive/
+/src/inputs/archive/
+/src/inputs/unadjusted_tfp/
 /testing/motions/
+src/paper/*figures/
+src/paper/*_figure/
+tools/normative_quantity_estimation_tool/
 /outputs/
 /data/
 /taccdata/
@@ -16,6 +21,8 @@
 */figures*
 ./tfp_mf/data/val/
 ./tfp_mf/data/pushover/
+tfp_mf/inputs/
+testing/inputs/
 old/
 *temp_save.csv
 *.zip

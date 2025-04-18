@@ -27,7 +27,7 @@ class Database:
     
     def __init__(self, n_points=400, seed=985, n_buffer=15,
                  struct_sys_list=['MF', 'CBF'], isol_sys_list=['TFP','LRB'],
-                 isol_wts=[1,3]):
+                 isol_wts=[1,2.5]):
         
         from scipy.stats import qmc
         
@@ -153,95 +153,7 @@ class Database:
         df_raw = self.raw_input
         self.tfp_designs, self.lrb_designs = design_bearing_util(
             df_raw, filter_designs=filter_designs)
-        '''
-        # get loading conditions
-        from loads import define_gravity_loads
-        df_raw[['W', 
-               'W_s', 
-               'w_fl', 
-               'P_lc',
-               'all_w_cases',
-               'all_Plc_cases']] = df_raw.apply(lambda row: define_gravity_loads(row),
-                                                axis='columns', result_type='expand')
         
-        # separate df into isolator systems
-        import design as ds
-        df_tfp = df_raw[df_raw['isolator_system'] == 'TFP']
-        
-        
-        # attempt to design all TFPs
-        if df_tfp.shape[0] > 0:
-            t0 = time.time()
-            all_tfp_designs = df_tfp.apply(lambda row: ds.design_TFP_legacy(row),
-                                           axis='columns', result_type='expand')
-            
-            all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
-                                       'T_e', 'k_e', 'zeta_e', 'D_m']
-            
-            if filter_designs == False:
-                tfp_designs = all_tfp_designs
-            else:
-                # keep the designs that look sensible
-                tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
-                                                  (all_tfp_designs['R_1'] <= 50.0) &
-                                                  (all_tfp_designs['R_2'] <= 180.0) &
-                                                  (all_tfp_designs['zeta_e'] <= 0.25)]
-            
-            tp = time.time() - t0
-            
-            print("Designs completed for %d TFPs in %.2f s" %
-                  (tfp_designs.shape[0], tp))
-            
-            # get the design params of those bearings
-            a = df_tfp[df_tfp.index.isin(tfp_designs.index)]
-        
-            self.tfp_designs = pd.concat([a, tfp_designs], axis=1)
-        else:
-            self.tfp_designs = None
-        
-        df_lrb = df_raw[df_raw['isolator_system'] == 'LRB']
-            
-        
-        # attempt to design all LRBs
-        if df_lrb.shape[0] > 0:
-            t0 = time.time()
-            all_lrb_designs = df_lrb.apply(lambda row: ds.design_LRB_legacy(row),
-                                           axis='columns', result_type='expand')
-            
-            
-            all_lrb_designs.columns = ['d_bearing', 'd_lead', 't_r', 't', 'n_layers',
-                                       'N_lb', 'S_pad', 'S_2',
-                                       'T_e', 'k_e', 'zeta_e', 'D_m', 'buckling_fail']
-            
-            if filter_designs == False:
-                lrb_designs = all_lrb_designs
-            else:
-                # keep the designs that look sensible
-                # limits from design example CE 223
-                lrb_designs = all_lrb_designs.loc[(all_lrb_designs['d_bearing'] >=
-                                                   3*all_lrb_designs['d_lead']) &
-                                                  (all_lrb_designs['d_bearing'] <=
-                                                   6*all_lrb_designs['d_lead']) &
-                                                  (all_lrb_designs['d_lead'] <= 
-                                                    all_lrb_designs['t_r']) &
-                                                  (all_lrb_designs['t_r'] > 4.0) &
-                                                  (all_lrb_designs['t_r'] < 35.0) &
-                                                  (all_lrb_designs['buckling_fail'] == 0) &
-                                                  (all_lrb_designs['zeta_e'] <= 0.25)]
-                
-                lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
-                
-            tp = time.time() - t0
-            
-            print("Designs completed for %d LRBs in %.2f s" %
-                  (lrb_designs.shape[0], tp))
-            
-            b = df_lrb[df_lrb.index.isin(lrb_designs.index)]
-            
-            self.lrb_designs = pd.concat([b, lrb_designs], axis=1)
-        else:
-            self.lrb_designs = None
-        '''
             
     def design_structure(self, filter_designs=True):
         import pandas as pd
@@ -251,80 +163,6 @@ class Database:
         
         self.mf_designs, self.cbf_designs = design_structure_util(
             df_in, filter_designs=filter_designs)
-        
-        '''
-        from loads import define_lateral_forces
-        
-        # assumes that there is at least one design
-        df_in[['wx', 
-               'hx', 
-               'h_col', 
-               'hsx', 
-               'Fx', 
-               'Vs',
-               'T_fbe']] = df_in.apply(lambda row: define_lateral_forces(row),
-                                    axis='columns', result_type='expand')
-        
-        # separate by superstructure systems
-        smrf_df = df_in[df_in['superstructure_system'] == 'MF']
-        cbf_df = df_in[df_in['superstructure_system'] == 'CBF']
-        
-        # attempt to design all moment frames
-        if smrf_df.shape[0] > 0:
-            t0 = time.time()
-            import design as ds
-            
-            all_mf_designs = smrf_df.apply(lambda row: ds.design_MF(row),
-                                           axis='columns', 
-                                           result_type='expand')
-            
-            all_mf_designs.columns = ['beam', 'column', 'flag']
-            
-            if filter_designs == False:
-                mf_designs = all_mf_designs
-            else:
-                # keep the designs that look sensible
-                mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
-                mf_designs = mf_designs.dropna(subset=['beam','column'])
-             
-            mf_designs = mf_designs.drop(['flag'], axis=1)
-            tp = time.time() - t0
-          
-            # get the design params of those bearings
-            a = smrf_df[smrf_df.index.isin(mf_designs.index)]
-            
-            self.mf_designs = pd.concat([a, mf_designs], axis=1)
-            
-            print("Designs completed for %d moment frames in %.2f s" %
-                  (smrf_df.shape[0], tp))
-        else:
-            self.mf_designs = None
-            
-        # attempt to design all CBFs
-        if cbf_df.shape[0] > 0:
-            t0 = time.time()
-            all_cbf_designs = cbf_df.apply(lambda row: ds.design_CBF(row),
-                                            axis='columns', 
-                                            result_type='expand')
-            all_cbf_designs.columns = ['brace', 'beam', 'column']
-            if filter_designs == False:
-                cbf_designs = all_cbf_designs
-            else:
-                # keep the designs that look sensible
-                cbf_designs = all_cbf_designs.dropna(subset=['beam','column','brace'])
-                
-            
-            tp = time.time() - t0
-            
-            # get the design params of those bearings
-            a = cbf_df[cbf_df.index.isin(cbf_designs.index)]
-            self.cbf_designs = pd.concat([a, cbf_designs], axis=1)
-            
-            print("Designs completed for %d braced frames in %.2f s" %
-                  (cbf_df.shape[0], tp))
-        else:
-            self.cbf_designs = None
-        '''
         
         # join both systems (assumes that there's at least one design)
         all_des = pd.concat([self.mf_designs, self.cbf_designs], 
@@ -1862,25 +1700,41 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
                                  'S_s' : 2.2815},
                      db_string='../resource/'):
     
+    # this is here because val_ida_thread needs to see ida_levels
+    # ida levels should already have been stored in `levels`
+    if 'ida_levels' in config_dict:
+        # remove ida levels from config dict because indexed df can't handle lists
+        config_dict.pop('ida_levels')
+    
+        
     work_df = pd.DataFrame(config_dict, index=[0])
     design_df = pd.DataFrame(design_dict, index=[0])
     work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
                         axis=1)
-    
-    # ad-hoc adjust Tfbe here? Cu = 1.8?
-    from loads import estimate_period
-    if work_df['superstructure_system'].item() == 'MF':
-        work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
-    else:
-        work_df['T_fbe'] = estimate_period(work_df.iloc[0])
-    
-    from gms import scale_ground_motion
+
     
     # for TFPs, T_m is the "unadjusted" design period for effect of vertical live load
-    work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+    # if pre-calculated Tfbe passed, use it (from regression)
+    try:
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+     # if no pre-calculated Tfbe is seen, use the Cu Ta method
+    except:
+        from loads import estimate_period
+        # ad-hoc adjust Tfbe here
+        if work_df['superstructure_system'].item() == 'MF':
+            work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
+        else:
+            work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+        
+    
     work_df['moat_ampli'] = work_df['gap_ratio']
     
+    # initially, do not filter designs to allow for bearing reduction
+    # this is only used for IDA inverse design, where bearing design is finicky
     all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=False)
+    
+    # manually perform bearing design filters
     if work_df['isolator_system'].item() == 'TFP':
         # keep the designs that look sensible
         tfp_designs = all_tfps.loc[(all_tfps['R_1'] >= 10.0) &
@@ -1915,7 +1769,8 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
             return
         
         work_df = tfp_designs.copy()
-        
+    
+    # manually perform bearing design filters    
     else:
         lrb_designs = all_lrbs.loc[(all_lrbs['d_bearing'] >=
                                            3*all_lrbs['d_lead']) &
@@ -1930,6 +1785,7 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         
         lrb_designs = lrb_designs.drop(columns=['buckling_fail'])
         
+        # filter_designs flag allows for design util to enter reduction loop
         # retry if design didn't work, reducing bearings
         if lrb_designs.shape[0] == 0:
             all_tfps, all_lrbs = design_bearing_util(work_df, filter_designs=True)
@@ -1966,12 +1822,22 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
         print('Structure design failed.')
         return
     
-    # recalculate Tfbe
-    if work_df['superstructure_system'].item() == 'MF':
-        work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
-    else:
-        work_df['T_fbe'] = estimate_period(work_df.iloc[0])
     
+    if 'T_fbe' in config_dict:
+        work_df['T_fbe'] = config_dict['T_fbe']
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+    else:
+        from loads import estimate_period
+        # ad-hoc adjust Tfbe here
+        if work_df['superstructure_system'].item() == 'MF':
+            work_df['T_fbe'] = estimate_period(work_df.iloc[0]) / 1.4*1.8
+        else:
+            work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+        work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+    
+    
+    
+    from gms import scale_ground_motion
     gm_dir = db_string+'/ground_motions/gm_db.csv'
     spec_dir = db_string+'/ground_motions/gm_spectra.csv'
     gm_series, sf_series, sa_avg = scale_ground_motion(work_df.iloc[0], return_list=True,
@@ -2002,6 +1868,140 @@ def prepare_ida_util(design_dict, levels=[1.0, 1.5, 2.0],
     ida_df = pd.concat([ida_df, ida_gms], axis=1)
     return(ida_df)
 
+
+def prepare_ida_legacy_util(design_dict, levels=[1.0, 1.5, 2.0], 
+                            config_dict=None, db_string='../resource/'):
+    
+    if config_dict is None:    
+        config_dict = {
+            'S_1' : 1.017,
+            'k_ratio' : 10,
+            'Q': 0.06,
+            'L_bldg': 120.0,
+            'h_bldg': 52.0,
+            'num_frames' : 2,
+            'num_bays' : 4,
+            'num_stories' : 4,
+            'L_bay': 30.0,
+            'h_story': 13.0,
+            'isolator_system' : 'TFP',
+            'superstructure_system' : 'MF',
+            'S_s' : 2.2815
+        }
+    
+    work_df = pd.DataFrame(config_dict, index=[0])
+    design_df = pd.DataFrame(design_dict, index=[0])
+    work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
+                        axis=1)
+    
+    
+    from loads import estimate_period
+    work_df['T_fbe'] = estimate_period(work_df.iloc[0])
+    
+    # work_df = pd.concat([work_df, design_df.set_index(work_df.index)], 
+    #                     axis=1)
+    
+    import design as ds
+    from loads import define_lateral_forces, define_gravity_loads
+    from gms import scale_ground_motion
+    
+    work_df['T_m'] = work_df['T_fbe']*work_df['T_ratio']
+    work_df['moat_ampli'] = work_df['gap_ratio']
+    
+    # design
+    work_df[['W', 
+            'W_s', 
+            'w_fl', 
+            'P_lc',
+            'all_w_cases',
+            'all_Plc_cases']] = work_df.apply(lambda row: define_gravity_loads(row),
+                                            axis='columns', result_type='expand')
+                    
+    try:
+        all_tfp_designs = work_df.apply(lambda row: ds.design_TFP_legacy(row),
+                                        axis='columns', result_type='expand')
+    except:
+        print('Bearing design failed.')
+        return
+    
+    all_tfp_designs.columns = ['mu_1', 'mu_2', 'R_1', 'R_2', 
+                                'T_e', 'k_e', 'Q', 'zeta_e', 'D_m']
+    
+    tfp_designs = all_tfp_designs.loc[(all_tfp_designs['R_1'] >= 10.0) &
+                                        (all_tfp_designs['R_1'] <= 50.0) &
+                                        (all_tfp_designs['R_2'] <= 190.0) &
+                                        (all_tfp_designs['zeta_e'] <= 0.27)]
+    
+    # retry if design didn't work
+    if tfp_designs.shape[0] == 0:
+        print('Bearing design failed.')
+        return
+    
+    tfp_designs = tfp_designs.drop(columns=['zeta_e'])
+    work_df = pd.concat([work_df, tfp_designs.set_index(work_df.index)], 
+                        axis=1)
+    
+    # get lateral force and design structures
+    work_df[['wx', 
+            'hx', 
+            'h_col', 
+            'hsx', 
+            'Fx', 
+            'Vs',
+            'T_fbe']] = work_df.apply(lambda row: define_lateral_forces(row),
+                                axis='columns', result_type='expand')
+                                        
+    all_mf_designs = work_df.apply(lambda row: ds.design_MF(row, db_string=db_string),
+                                        axis='columns', 
+                                        result_type='expand')
+        
+    all_mf_designs.columns = ['beam', 'column', 'flag']
+    
+    # keep the designs that look sensible
+    mf_designs = all_mf_designs.loc[all_mf_designs['flag'] == False]
+    mf_designs = mf_designs.dropna(subset=['beam','column'])
+        
+    mf_designs = mf_designs.drop(['flag'], axis=1)
+    
+    if mf_designs.shape[0] == 0:
+        print('Bearing design failed.')
+        return
+    
+    # get the design params of those bearings
+    work_df = pd.concat([work_df, mf_designs.set_index(work_df.index)], 
+                        axis=1)
+    
+    gm_dir = db_string+'/ground_motions/gm_db.csv'
+    spec_dir = db_string+'/ground_motions/gm_spectra.csv'
+    gm_series, sf_series, sa_avg = scale_ground_motion(work_df.iloc[0], return_list=True,
+                                                       db_dir=gm_dir, spec_dir=spec_dir)
+    ida_base = pd.concat([gm_series, sf_series], axis=1)
+    ida_base['sa_avg'] = sa_avg
+    ida_base.columns = ['gm_selected', 'scale_factor', 'sa_avg']
+    ida_base = ida_base.reset_index(drop=True)
+    
+    ida_gms = None
+    # prepare the sets of ida levels
+    for lvl in levels:
+        ida_level = ida_base[['scale_factor', 'sa_avg']].copy()
+        ida_level = ida_level*lvl
+        ida_level['ida_level'] = lvl
+        ida_level['gm_selected'] = ida_base['gm_selected']
+        if ida_gms is None:
+            ida_gms = ida_level.copy()
+        else:
+            ida_gms = pd.concat([ida_gms, ida_level], axis=0)
+        
+    ida_gms = ida_gms.reset_index(drop=True)
+    
+    ida_df = pd.DataFrame(np.repeat(work_df.values, ida_gms.shape[0], axis=0))
+    ida_df.columns = work_df.columns
+    
+    ida_df = pd.concat([ida_df, ida_gms], axis=1)
+    
+    return(ida_df)
+        
+        
 #%% PBE fitting tools
 
 # function to optimize weibull k

@@ -791,6 +791,78 @@ repl_regression_mdls = {'mdl_repl_cbf_lrb_i': mdl_repl_cbf_lrb_i,
                         'mdl_repl_mf_tfp_i': mdl_repl_mf_tfp_i,
                         'mdl_repl_mf_tfp_o': mdl_repl_mf_tfp_o}
 
+#%% plots for troubleshooting
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(1, 1, 1, projection='3d')
+# df_plot = df_doe[df_doe['impacted'] == 1]
+df_plot = df.copy()
+ax.scatter(df_plot['h_bldg']**0.8, df_plot['RI'], df_plot['T_fb'], c=df_plot['T_m'], alpha=0.4, edgecolors='black', s=15)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('$T_{fb}$', fontsize=axis_font)
+ax.set_xlabel('Building height', fontsize=axis_font)
+# ax.set_xlim([0, 0.1])
+# ax.set_ylim([0, 0.2])
+plt.show()
+#%%
+
+# linear regress cost as f(base shear)
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    df_mf[['h_bldg', 'RI']], df_mf[['T_fb']], test_size=0.2, random_state=985)
+reg_mf_Tfbe = LinearRegression(fit_intercept=False)
+reg_mf_Tfbe.fit(X=X_train, y=y_train)
+y_pred = reg_mf_Tfbe.predict(X_test)
+print(f"Mean squared error: {mean_squared_error(y_test, y_pred):.2f}")
+print(f"Coefficient of determination: {r2_score(y_test, y_pred):.2f}")
+
+X_train, X_test, y_train, y_test = train_test_split(
+    df_cbf[['h_bldg', 'RI']], df_cbf[['T_fb']], test_size=0.2, random_state=985)
+reg_cbf_Tfbe = LinearRegression(fit_intercept=False)
+reg_cbf_Tfbe.fit(X=X_train, y=y_train)
+y_pred = reg_cbf_Tfbe.predict(X_test)
+print(f"Mean squared error: {mean_squared_error(y_test, y_pred):.2f}")
+print(f"Coefficient of determination: {r2_score(y_test, y_pred):.2f}")
+
+reg_dict_Tfbe = {
+    'mf':reg_mf_Tfbe,
+    'cbf':reg_cbf_Tfbe
+    }
+
+#%%
+
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+
+fig = plt.figure(figsize=(8,6))
+ax = fig.add_subplot(1, 1, 1, projection='3d')
+# df_plot = df_doe[df_doe['impacted'] == 1]
+df_plot = df_mf.copy()
+
+x_min, x_max = 30.0, 100.0
+y_min, y_max = 0.5, 2.25
+xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02), np.arange(y_min, y_max, 0.02))
+
+# 4. Predict the class for each grid point
+Z = reg_mf_Tfbe.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+
+ax.scatter(df_plot['h_bldg'], df_plot['RI'], df_plot['T_fb'], c=df_plot['T_m'], alpha=0.4, edgecolors='black', s=15)
+ax.plot_surface(xx, yy, Z, alpha=0.5)
+ax.set_ylabel('$R_y$', fontsize=axis_font)
+ax.set_zlabel('$T_{fb}$', fontsize=axis_font)
+ax.set_xlabel('Building height', fontsize=axis_font)
+# ax.set_xlim([0, 0.1])
+# ax.set_ylim([0, 0.2])
+plt.show()
 
 #%% load scenario
 
@@ -1219,6 +1291,7 @@ def calculate_lifetime_loss(row, impact_clfs, cost_regs, time_regs, beta_regs,
     
     # for the set of "new" design variables, use GP to calculate loss ratio
     # assumes GPC/GPR, predict the outcome for the design space
+    # TODO: change this to simple GP?
     cost_ratio_bins = predict_DV(X_bins, 
                                    mdl_impact.gpc, 
                                    mdl_cost_hit.gpr, 
@@ -1497,7 +1570,7 @@ mcat_regression_mdls = {'mdl_mcat_cbf_lrb': mdl_mcat_cbf_lrb,
 #%% sample for CBF-LRB
 
 annual_cost_var = 'annual_cost_ratio'
-mdl_mcat = mcat_regression_mdls['mdl_mcat_cbf_lrb']
+mdl_mcac = mcac_regression_mdls['mdl_mcac_cbf_lrb']
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "dejavuserif"
@@ -1517,7 +1590,7 @@ X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yva
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 5.0, fourth_var_set = 0.15)
 
-Z = mdl_mcat.gpr.predict(X_plot)
+Z = mdl_mcac.gpr.predict(X_plot)
 
 
 xx = X_plot[xvar]
@@ -1560,7 +1633,7 @@ X_plot = make_2D_plotting_space(mdl_impact_cbf_lrb.X, res, x_var=xvar, y_var=yva
                             all_vars=['gap_ratio', 'RI', 'T_ratio', 'zeta_e'],
                             third_var_set = 1.0, fourth_var_set = 2.0)
 
-Z = mdl_mcat.gpr.predict(X_plot)
+Z = mdl_mcac.gpr.predict(X_plot)
 
 xx = X_plot[xvar]
 yy = X_plot[yvar]
@@ -1891,17 +1964,17 @@ def grid_search_inverse_design(res, system_name, targets_dict, config_dict,
     # # ax1.set_xlim([0, row['replacement_cost']])
     
     
-    cheapest_idx = upgrade_value.idxmax()
+    design_idx = upgrade_value.idxmax()
     inv_upfront_cost = worth_costs[upgrade_value.idxmax()]
     
     # cheapest_idx = worth_costs.idxmin()
     # inv_upfront_cost = worth_costs.min()
     
     # least upfront cost of the viable designs
-    inv_design = X_worth.loc[cheapest_idx]
-    inv_mcat = space_mcat[cheapest_idx]
-    inv_mcac = space_mcac[cheapest_idx]
-    inv_upgrade_cost = upgrade_cost[cheapest_idx]
+    inv_design = X_worth.loc[design_idx]
+    inv_mcat = space_mcat[design_idx]
+    inv_mcac = space_mcac[design_idx]
+    inv_upgrade_cost = upgrade_cost[design_idx]
     inv_avoided_cost = (mcac_baseline - inv_mcac)*config_dict['comparable_cost_'+structural_system]
     inv_avoided_time = (mcat_baseline - inv_mcat)*config_dict['comparable_time_'+structural_system]
     inv_avoided_consequence = inv_avoided_cost + inv_avoided_time * (
