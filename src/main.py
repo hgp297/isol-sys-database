@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(1200, isol_wts=[1,2.2])
+main_obj = Database(24)
 
 main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)
@@ -58,23 +58,23 @@ main_obj.scale_gms()
 
 # import pandas as pd
 # pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_ta.pickle")
+# main_obj = pd.read_pickle(pickle_path+"structural_db_ta_balanced.pickle")
 
 # main_obj.calc_cmp_max(main_obj.ops_analysis,
 #                 cmp_dir='../resource/loss/')
 
 # import pickle
 # loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_ta_max_loss.pickle', 'wb') as f:
+# with open(loss_path+'structural_db_ta_balanced_max_loss.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
 
 #%% run pelicun
 
 # import pandas as pd
 # pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_ta.pickle")
+# main_obj = pd.read_pickle(pickle_path+"structural_db_ta_balanced.pickle")
 
-# max_obj = pd.read_pickle(pickle_path+"loss/structural_db_ta_max_loss.pickle")
+# max_obj = pd.read_pickle(pickle_path+"loss/structural_db_ta_balanced_max_loss.pickle")
 # df_loss_max = max_obj.max_loss
 
 # main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
@@ -82,7 +82,7 @@ main_obj.scale_gms()
 
 # import pickle
 # loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_ta_loss.pickle', 'wb') as f:
+# with open(loss_path+'structural_db_ta_balanced_loss.pickle', 'wb') as f:
 #     pickle.dump(main_obj, f)
 
 #%% validate design
