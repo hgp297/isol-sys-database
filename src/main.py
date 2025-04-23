@@ -14,7 +14,7 @@
 
 from db import Database
 
-main_obj = Database(12)
+main_obj = Database(12, seed=1)
 
 main_obj.design_bearings(filter_designs=True)
 main_obj.design_structure(filter_designs=True)

@@ -21,7 +21,7 @@ ops_analysis = None
 dummy_obj = Database(10)
 
 # how many seeds used?
-seed_num = 120
+seed_num = 100
 
 for i in range(seed_num):
     file_str = 'structural_db_seed_'+ str(i+1) +'.pickle'
