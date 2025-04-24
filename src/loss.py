@@ -1124,7 +1124,7 @@ class Loss_Analysis:
         PAL.repair.calculate()
         print('Loss estimation done!')
         
-        # TODO: PAL._sample is NoneType if there's no damage
+        # NOTE: PAL._sample is NoneType if there's no damage
         # loss estimates
         loss_sample = PAL.repair.save_sample()
         
