@@ -27,7 +27,7 @@ class Database:
     
     def __init__(self, n_points=400, seed=985, n_buffer=15,
                  struct_sys_list=['MF', 'CBF'], isol_sys_list=['TFP','LRB'],
-                 isol_wts=[1,2.5]):
+                 isol_wts=[1.0,2.5]):
         
         from scipy.stats import qmc
         
@@ -169,13 +169,15 @@ class Database:
                                      axis=0)
         # retained designs
         # ensure even distribution between number of systems
-        n_systems = len(pd.unique(df_in['superstructure_system']))
+        all_des['combined_system'] = all_des['superstructure_system'] + '-' + all_des['isolator_system']
+        n_systems = len(pd.unique(all_des['combined_system']))
                 
         # add a duplicate struct_system column to facilitate groupby dropping (whY???)
-        all_des['supersystem_drop'] = all_des['superstructure_system'].copy()
+        all_des['system_drop'] = all_des['combined_system'].copy()
+        # all_des['supersystem_drop'] = all_des['superstructure_system'].copy()
         
         self.retained_designs = all_des.groupby(
-            'supersystem_drop', group_keys=False).apply(
+            'system_drop', group_keys=False).apply(
             lambda x: x.sample(n=int(self.n_points/n_systems), random_state=985), include_groups=False)
         self.generated_designs = all_des
         

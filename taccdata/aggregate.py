@@ -3,7 +3,7 @@ import sys
 # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(1, '../src/')
 
-pickle_path = './data/initial/time_anly_regen/'
+pickle_path = './data/initial/time_anly_balanced/'
 
 from db import Database
 
@@ -21,7 +21,7 @@ ops_analysis = None
 dummy_obj = Database(10)
 
 # how many seeds used?
-seed_num = 120
+seed_num = 100
 
 for i in range(seed_num):
     file_str = 'structural_db_seed_'+ str(i+1) +'.pickle'
@@ -65,5 +65,5 @@ dummy_obj.n_generated = generated_designs.shape[0]
 
 import pickle
 final_path = '../data/'
-with open(final_path+'structural_db_ta.pickle', 'wb') as f:
+with open(final_path+'structural_db_ta_balanced.pickle', 'wb') as f:
     pickle.dump(dummy_obj, f)

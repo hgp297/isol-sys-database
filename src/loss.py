@@ -1124,9 +1124,9 @@ class Loss_Analysis:
         PAL.repair.calculate()
         print('Loss estimation done!')
         
+        # NOTE: PAL._sample is NoneType if there's no damage
         # loss estimates
         loss_sample = PAL.repair.save_sample()
-        
         
         # group components and ensure that all components and replacement are present
         loss_by_cmp = loss_sample.groupby(level=[0, 2], axis=1).sum()['Cost']
