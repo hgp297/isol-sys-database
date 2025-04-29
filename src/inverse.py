@@ -245,7 +245,8 @@ def loss_percentages(df_main, df_loss, df_max):
                     'cost_weibull_ks_pvalue', 'cost_lognormal_ks_pvalue',
                     'time_l_weibull_ks_pvalue', 'time_l_lognormal_ks_pvalue',
                     'cost_weibull_aic', 'cost_lognormal_aic',
-                    'time_l_weibull_aic', 'time_l_lognormal_aic']
+                    'time_l_weibull_aic', 'time_l_lognormal_aic', 
+                    'cost_quantiles', 'time_l_quantiles']
         
         df_main[copied_vars] = df_loss[copied_vars]
     except:
