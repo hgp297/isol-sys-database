@@ -52,12 +52,24 @@ class Database:
             # T_m = 
             # k_ratio = [ < 100.0]
             
+        # self.param_ranges   = {
+        #     'S_1' : [0.8, 1.3],
+        #     'T_m' : [2.5, 5.0],
+        #     'k_ratio' :[5.0, 18.0],
+        #     'moat_ampli' : [0.5, 1.2],
+        #     'RI' : [0.5, 2.25],
+        #     'L_bldg': [75.0, 250.0],
+        #     'h_bldg': [30.0, 100.0],
+        #     'zeta_e': [0.1, 0.25]
+        # }
+        
+        # expanded bounds
         self.param_ranges   = {
             'S_1' : [0.8, 1.3],
             'T_m' : [2.5, 5.0],
             'k_ratio' :[5.0, 18.0],
-            'moat_ampli' : [0.5, 1.2],
-            'RI' : [0.5, 2.25],
+            'moat_ampli' : [0.3, 1.5],
+            'RI' : [0.3, 2.5],
             'L_bldg': [75.0, 250.0],
             'h_bldg': [30.0, 100.0],
             'zeta_e': [0.1, 0.25]
@@ -987,53 +999,6 @@ class Database:
             weibull_time_aic_list.append(AIC_weibull_time)
             weibull_trunc_time_aic_list.append(AIC_weibull_trunc_time)
             lognormal_time_aic_list.append(AIC_ln_time)
-            
-            # plot lognormal fits
-            
-            # import matplotlib.pyplot as plt
-            # plt.close('all')
-            # fig = plt.figure(figsize=(7, 6))
-            # ax1=fig.add_subplot(1, 1, 1)
-            # res = ecdf(agg['repair_cost'])
-            # ecdf_prob = res.cdf.probabilities
-            # ecdf_values = res.cdf.quantiles
-            # ax1.plot([ecdf_values], [ecdf_prob], 
-            #           marker='x', markersize=1, color="red")
-            # x = loss_quantiles['repair_cost']
-            # y = loss_quantiles.index
-            # # ax1.plot([x], [y], 
-            # #           marker='x', markersize=5, color="red")
-            # xx_pr = np.linspace(1e-4, 50*x[0.50], 400)
-            # p = lognorm_f(xx_pr, theta_cost, beta_cost)
-            # ax1.plot(xx_pr, p, label='lognormal fit')
-            # p = weibull_f(xx_pr, k_cost, lam_cost, 0)
-            # ax1.plot(xx_pr, p, label='weibull fit')  
-            # p = weibull_f(xx_pr, k_trunc_cost, lam_trunc_cost, loc_trunc_cost)
-            # ax1.plot(xx_pr, p, label='weibull truncated fit') 
-            # ax1.set_xlim([0, 50*x[0.50]])
-            # ax1.legend()
-            
-            
-            # fig = plt.figure(figsize=(7, 6))
-            # ax1=fig.add_subplot(1, 1, 1)
-            # res = ecdf(agg['repair_time']['parallel'])
-            # ecdf_prob = res.cdf.probabilities
-            # ecdf_values = res.cdf.quantiles
-            # ax1.plot([ecdf_values], [ecdf_prob], 
-            #           marker='x', markersize=1, color="red")
-            # x = loss_quantiles['repair_time']['parallel']
-            # y = loss_quantiles.index
-            # # ax1.plot([x], [y], 
-            # #           marker='x', markersize=5, color="red")
-            # xx_pr = np.linspace(1e-4, 50*x[0.50], 400)
-            # p = lognorm_f(xx_pr, theta_time, beta_time, 0)
-            # ax1.plot(xx_pr, p, label='lognormal fit')
-            # p = weibull_f(xx_pr, k_time, lam_time)
-            # ax1.plot(xx_pr, p, label='weibull fit')  
-            # p = weibull_f(xx_pr, k_trunc_time, lam_trunc_time, loc_trunc_time)
-            # ax1.plot(xx_pr, p, label='weibull truncated fit') 
-            # ax1.set_xlim([0, 50*x[0.50]])
-            # ax1.legend()
             
             if collect_IDA:
                 IDA_list.append(run_data['ida_level'])
