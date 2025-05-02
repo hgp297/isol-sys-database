@@ -179,8 +179,8 @@ def show_selection(final_GM, target_spectrum, H1s,
     mpl.rcParams['ytick.labelsize'] = label_size 
     
     plt.close('all')
-    fig= plt.figure(figsize=(7,6))
-    ax1=fig.add_subplot(1, 1, 1)
+    fig= plt.figure(figsize=(14,6))
+    ax1=fig.add_subplot(1, 2, 1)
     
     Tn = target_spectrum['Period (sec)']
     Sa = target_spectrum['Target pSa (g)']
@@ -224,18 +224,16 @@ def show_selection(final_GM, target_spectrum, H1s,
                     arrowprops=dict(arrowstyle='<-', color='red'))
     plt.xlabel(r'$T_n$ (s)', fontsize = axis_font)
     plt.ylabel(r'$Sa$ (g)', fontsize = axis_font)
-    plt.xlim([0, 5])
+    plt.xlim([0, 6])
     plt.ylim([0, 2*2.5])
     plt.grid(True)
     plt.title(r'MCE level', fontsize=axis_font)
     plt.legend(fontsize=subt_font, loc='center right')
     fig.tight_layout()
-    plt.show()
     
     
     # Displacement spectrum
-    fig= plt.figure(figsize=(7,6))
-    ax1=fig.add_subplot(1, 1, 1)
+    ax1=fig.add_subplot(1, 2, 2)
     omega_n = 2*3.14159/Tn
     Sd = Sa/(omega_n**2) * 384.6
     plt.plot(Tn, Sd, color='blue',
@@ -271,7 +269,7 @@ def show_selection(final_GM, target_spectrum, H1s,
     
     plt.xlabel(r'$T_n$ (s)', fontsize = axis_font)
     plt.ylabel(r'$Sd$ (in)', fontsize = axis_font)
-    plt.xlim([0, 5])
+    plt.xlim([0, 6])
     plt.ylim([0, 100.0])
     plt.grid(True)
     plt.title(r'MCE level', fontsize=axis_font)

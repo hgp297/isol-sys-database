@@ -71,34 +71,34 @@
 
 #%% calculate maximum pelicun losses
 
-# import pandas as pd
-# pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_ta_balanced.pickle")
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"structural_db_ta_expanded.pickle")
 
-# main_obj.calc_cmp_max(main_obj.ops_analysis,
-#                 cmp_dir='../resource/loss/')
+main_obj.calc_cmp_max(main_obj.ops_analysis,
+                cmp_dir='../resource/loss/')
 
-# import pickle
-# loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_ta_balanced_max_loss.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'structural_db_ta_expanded_max_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 #%% run pelicun
 
-# import pandas as pd
-# pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_ta_balanced.pickle")
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"structural_db_ta_expanded.pickle")
 
-# max_obj = pd.read_pickle(pickle_path+"loss/structural_db_ta_balanced_max_loss.pickle")
-# df_loss_max = max_obj.max_loss
+max_obj = pd.read_pickle(pickle_path+"loss/structural_db_ta_expanded_max_loss.pickle")
+df_loss_max = max_obj.max_loss
 
-# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
-#                 cmp_dir='../resource/loss/', max_loss_df=df_loss_max)
+main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+                cmp_dir='../resource/loss/', max_loss_df=df_loss_max)
 
-# import pickle
-# loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_ta_balanced_loss.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'structural_db_ta_expanded_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 #%% validate design
 
