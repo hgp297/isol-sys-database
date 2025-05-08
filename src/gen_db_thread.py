@@ -1,6 +1,6 @@
 def generate_db(num, seed):
     from db import Database
-    main_obj = Database(n_points=num, seed=seed)
+    main_obj = Database(n_points=num, seed=seed, isol_wts=[1,2])
     main_obj.design_bearings(filter_designs=True)
     main_obj.design_structure(filter_designs=True)
     main_obj.scale_gms()

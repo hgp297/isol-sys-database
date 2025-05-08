@@ -771,8 +771,8 @@ def iterate_on_Q_tfp(Q_guess, mu_1, S_1, T_m, zeta_target, rho_k):
     D_m = g*S_1*T_m/(4*pi**2*B_m)
     
     # specify sliders
-    h_1 = 1.0
-    h_2 = 4.0
+    h_1 = 0.0
+    h_2 = 0.0
     
     k_M = (2*pi/T_m)**2 * (1/g)
     
@@ -829,8 +829,8 @@ def design_TFP(param_df, mu_1=None):
     k_M = (2*pi/T_m)**2 * (1/g)
     
     # specify sliders
-    h_1 = 1.0
-    h_2 = 4.0
+    h_1 = 0.0
+    h_2 = 0.0
     
     if mu_1 is None:
         mu_1 = random.uniform(0.02, 0.05)
@@ -859,8 +859,8 @@ def design_TFP(param_df, mu_1=None):
     k_M = (2*pi/T_m)**2 * (1/g)
     
     # specify sliders
-    h_1 = 1.0
-    h_2 = 4.0
+    h_1 = 0.0
+    h_2 = 0.0
     
     # W_m = zeta_M*(2*pi*k_M*D_m**2)
     
@@ -1084,7 +1084,7 @@ def calculate_strength(shape, L_bay):
     Vpr         = 2*Mpr/(L_bay)
     return(Mn, Mpr, Vpr)
 
-def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
+def get_MRF_element_forces(hsx, Fx, R_y, n_bays, thetaMax=0.015):
     import numpy as np
     
     nFloor      = len(hsx)
@@ -1093,7 +1093,7 @@ def get_MRF_element_forces(hsx, Fx, R_y, n_bays):
     Ry_code = 8.0
     Cd          = (Cd_code/Ry_code)*R_y
 
-    thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
+    # thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits
     delx        = thetaMax*hsx
     delxe       = delx*(1/Cd)   # assumes Ie = 1.0
 
@@ -1478,6 +1478,7 @@ def design_MF(input_df, db_string='../resource/'):
     # ensure everything is in inches, kip/in
     ft = 12.0
     R_y = input_df['RI']
+    delta_a = input_df['delta_a']
     n_bays = input_df['num_bays']
     L_bay = input_df['L_bay']*ft 
     hsx = input_df['hsx']
@@ -1496,7 +1497,7 @@ def design_MF(input_df, db_string='../resource/'):
 
     # ASCE 7-22: Story forces
 
-    delxe, q = get_MRF_element_forces(hsx, Fx, R_y, n_bays)
+    delxe, q = get_MRF_element_forces(hsx, Fx, R_y, n_bays, thetaMax=delta_a)
     
     # get required section specs
     Ib, Ic, Zb, Mu = get_required_modulus(q, h_col, hsx, delxe, L_bay, w_load)
@@ -1603,7 +1604,7 @@ def design_MF(input_df, db_string='../resource/'):
 #              ASCE 7-22: Capacity design for braced frame
 ############################################################################
 
-def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
+def get_CBF_element_forces(hsx, Fx, R_y, thetaMax=0.015, n_bay_braced=2):
     import numpy as np
     
     nFloor      = len(hsx)
@@ -1612,7 +1613,7 @@ def get_CBF_element_forces(hsx, Fx, R_y, n_bay_braced=2):
     Ry_code = 6.0
     Cd          = (Cd_code/Ry_code)*R_y
 
-    thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits (risk cat III)
+    # thetaMax    = 0.015         # ASCE Table 12.12-1 drift limits (risk cat III)
     delx        = thetaMax*hsx
     delxe       = delx*(1/Cd)   # assumes Ie = 1.0
     
@@ -1932,6 +1933,7 @@ def design_CBF(input_df, db_string='../resource/'):
     # ensure everything is in inches, kip/in
     ft = 12.0
     R_y = input_df['RI']
+    delta_a = input_df['delta_a']
     n_bays = input_df['num_bays']
     L_bay = input_df['L_bay']*ft 
     hsx = input_df['hsx']
@@ -1953,7 +1955,8 @@ def design_CBF(input_df, db_string='../resource/'):
     
     # ASCE 7-22: Story forces
     n_braced = round(n_bays/2.25)
-    delxe, Q_per_bay = get_CBF_element_forces(hsx, Fx, R_y, n_braced)
+    delxe, Q_per_bay = get_CBF_element_forces(
+        hsx, Fx, R_y, n_bay_braced=n_braced, thetaMax=delta_a)
     
     
     

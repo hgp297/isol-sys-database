@@ -846,8 +846,8 @@ class Building:
             dSlider2    = 11*inch
             d1      = 10*inch   - dSlider1  # displacement capacities
             d2      = 37.5*inch - dSlider2
-            h1      = 1*inch                # half-height of sliders
-            h2      = 4*inch
+            h1 = 0.0*inch                # half-height of sliders
+            h2 = 0.0*inch
             
             L1      = R1 - h1
             L2      = R2 - h2
@@ -896,7 +896,7 @@ class Building:
             K_bulk = 290.0*ksi
             G_r = 0.060*ksi
             D_inner = self.d_lead
-            D_outer = self.d_bearing
+            D_outer = self.d_bearing - 1.0
             t_shim = 0.13*inch
             t_rubber_whole = self.t_r
             n_layers = int(self.n_layers)
@@ -2228,8 +2228,8 @@ class Building:
             dSlider2    = 11*inch
             d1      = 10*inch   - dSlider1  # displacement capacities
             d2      = 37.5*inch - dSlider2
-            h1      = 1*inch                # half-height of sliders
-            h2      = 4*inch
+            h1 = 0.0*inch                # half-height of sliders
+            h2 = 0.0*inch
             
             L1      = R1 - h1
             L2      = R2 - h2
@@ -2277,7 +2277,7 @@ class Building:
             K_bulk = 290.0*ksi
             G_r = 0.060*ksi
             D_inner = self.d_lead
-            D_outer = self.d_bearing
+            D_outer = self.d_bearing - 1.0
             t_shim = 0.13*inch
             t_rubber_whole = self.t_r
             n_layers = int(self.n_layers)
@@ -2597,11 +2597,21 @@ class Building:
         truss_elems = self.elem_tags['truss']
         lc_elems = self.elem_tags['leaning'] + self.elem_tags['lc_spring']
         diaph_elems = self.elem_tags['diaphragm']
-        non_damped_elems = (wall_elems + isol_elems + truss_elems + 
-                            lc_elems + diaph_elems)
         
+        if self.superstructure_system == 'CBF':
+            spring_elems = (self.node_tags['brace_beam_spring'] +
+                            self.node_tags['brace_top_spring'] +
+                            self.node_tags['brace_bottom_spring'])
+        else:
+            spring_elems = self.node_tags['spring']
+            
+        
+        non_damped_elems = (wall_elems + isol_elems + truss_elems + 
+                            lc_elems + diaph_elems + spring_elems)
         damped_elems = [elem for elem in all_elems 
                         if elem not in non_damped_elems]
+        
+        
         
         # stiffness proportional
         if method == 'SP':

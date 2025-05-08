@@ -57,6 +57,7 @@ def preprocess_data(main_obj, max_obj, db_string='../../resource/'):
 
     df['T_ratio'] = pd.to_numeric(df['T_M_adj']/df['T_fb'])
 
+    '''
     from gms import get_ST
 
 
@@ -74,6 +75,7 @@ def preprocess_data(main_obj, max_obj, db_string='../../resource/'):
         
     df['GR_shift_coef'] = pd.to_numeric(df['gap_ratio'])/pd.to_numeric(df['GR_OG'])
     df['sa_tm_shift'] = pd.to_numeric(df['sa_tm_adj']/df['sa_tm'])
+    '''
     
     df = loss_percentages(df, df_loss, df_loss_max)
     brace_db = pd.read_csv(db_string+'braceShapes.csv', index_col=None, header=0)  
