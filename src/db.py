@@ -819,12 +819,19 @@ class Database:
             run_max_cost = max_costs.loc[run_idx]
             run_max_time = max_time.loc[run_idx]
             
-            [cmp, dmg, loss, loss_cmp, agg, 
-             collapse_rate, irr_rate] = loss.estimate_damage(
-                 custom_fragility_db=additional_frag_db, mode='generate',
-                 cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
+            # if collect_IDA, a validation run is indicated, treat EDP as deterministic
+            if collect_IDA:
+                [cmp, dmg, loss, loss_cmp, agg, 
+                  collapse_rate, irr_rate] = loss.estimate_damage(
+                      custom_fragility_db=additional_frag_db, mode='generate',
+                      cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
+            # else, try to fit lognormal around edp
+            else:
+                [cmp, dmg, loss, loss_cmp, agg, 
+                 collapse_rate, irr_rate] = loss.estimate_damage(
+                     custom_fragility_db=additional_frag_db, mode='sample_lognormal',
+                     cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
                  
-            
             # Collect quantiles
             loss_summary = agg.describe([0.1, 0.5, 0.9])
             cost = loss_summary['repair_cost']['50%']
