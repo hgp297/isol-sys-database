@@ -1478,7 +1478,10 @@ def design_MF(input_df, db_string='../resource/'):
     # ensure everything is in inches, kip/in
     ft = 12.0
     R_y = input_df['RI']
-    delta_a = input_df['delta_a']
+    try:
+        delta_a = input_df['delta_a']
+    except:
+        delta_a = 0.015
     n_bays = input_df['num_bays']
     L_bay = input_df['L_bay']*ft 
     hsx = input_df['hsx']
@@ -1933,7 +1936,10 @@ def design_CBF(input_df, db_string='../resource/'):
     # ensure everything is in inches, kip/in
     ft = 12.0
     R_y = input_df['RI']
-    delta_a = input_df['delta_a']
+    try:
+        delta_a = input_df['delta_a']
+    except:
+        delta_a = 0.015
     n_bays = input_df['num_bays']
     L_bay = input_df['L_bay']*ft 
     hsx = input_df['hsx']
