@@ -218,6 +218,7 @@ def loss_percentages(df_main, df_loss, df_max):
     df_main['cmp_replace_cost_ratio'] = df_main['total_cmp_cost']/df_main['replacement_cost']
     df_main['median_cost_ratio'] = df_loss['cost_50%']/df_main['replacement_cost']
     df_main['cmp_cost_ratio'] = df_loss['cost_50%']/df_main['total_cmp_cost']
+    df_main['cmp_cost_theta_ratio'] = df_loss['cost_theta']/df_main['total_cmp_cost']
 
     # but working in parallel (2x faster)
     df_main['replacement_time'] = df_main['bldg_area']/1000*365
@@ -226,6 +227,7 @@ def loss_percentages(df_main, df_loss, df_max):
     df_main['cmp_replace_time_ratio'] = df_main['total_cmp_time']/df_main['replacement_time']
     df_main['median_time_ratio'] = df_loss['time_l_50%']/df_main['replacement_time']
     df_main['cmp_time_ratio'] = df_loss['time_l_50%']/df_main['total_cmp_time']
+    df_main['cmp_time_theta_ratio'] = df_loss['time_l_theta']/df_main['total_cmp_time']
 
     df_main['replacement_freq'] = df_loss['replacement_freq']
 
