@@ -515,8 +515,6 @@ class GP:
         from sklearn.kernel_ridge import KernelRidge
         from sklearn.model_selection import GridSearchCV
         
-        
-        
         kr_pipe = Pipeline([('scaler', StandardScaler()),
                              ('kr', KernelRidge(kernel=kernel_name))])
         
