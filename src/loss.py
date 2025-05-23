@@ -647,6 +647,21 @@ class Loss_Analysis:
             edp_df = edp_df.sort_values("new").drop('new', axis=1)
     
             self.edp = edp_df
+            
+    # identify the edp type, then sample around the provided median
+    def sample_around(self, full_index, median, betas):
+        edp_type = full_index.split('-')[0]
+        
+        if edp_type == 'PID':
+            beta = betas[0]
+        elif edp_type == 'PFV':
+            beta = betas[1]
+        elif edp_type == 'PFA':
+            beta = betas[2]
+        
+        from scipy.stats import lognorm
+        edp_samples = lognorm.rvs(beta, scale=median, size=11, random_state=985)
+        return edp_samples
     
     def estimate_damage(self, mode='generate', custom_fragility_db=None,
                         cmp_replacement_cost=None, cmp_replacement_time=None):
@@ -671,6 +686,41 @@ class Loss_Analysis:
             raw_demands = self.edp.transpose()
             raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
             raw_demands.index.names = ['type','loc','dir']
+       # if mode is sample_lognormal, sample lognormal with assumed beta around the singular point
+       # Reference FEMA P-58 Table 5-6, which is actually for simplified analysis
+        elif mode=='sample_lognormal':
+            raw_demands = self.edp.transpose()
+            raw_demands.columns = ['Units', 'Value']
+            # raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
+            # raw_demands.index.names = ['type','loc','dir']
+            Sa_Tm = self.sa_tm
+            W = self.W
+            V_ym = self.Vs
+            S = Sa_Tm * W / V_ym
+            S_ref = [1.0, 2.0, 4.0, 6.0, 8.0]
+            ad_ref = [0.25, 0.35, 0.40, 0.45, 0.45]
+            aa_ref = [0.50, 0.45, 0.45, 0.40, 0.35]
+            av_ref = [0.28, 0.21, 0.25, 0.26, 0.26]
+            beta_ad = np.interp(S, S_ref, ad_ref, left=ad_ref[0], right=ad_ref[-1])
+            beta_aa = np.interp(S, S_ref, aa_ref, left=aa_ref[0], right=aa_ref[-1])
+            beta_av = np.interp(S, S_ref, av_ref, left=av_ref[0], right=av_ref[-1])
+            
+            betas = [beta_ad, beta_av, beta_aa]
+            
+            # #  do not add modeling uncertainty because our model is not simplified
+            # m_ref = [0.25, 0.25, 0.35, 0.50, 0.50]
+            # beta_m = np.interp(S, S_ref, m_ref, left=m_ref[0], right=m_ref[-1])
+            
+            # beta_SD = np.linalg.norm([beta_ad, beta_m])
+            # beta_FV = np.linalg.norm([beta_av, beta_m])
+            # beta_FA = np.linalg.norm([beta_aa, beta_m])
+            
+            # append 11 samples to the original median
+            sampled_demands = raw_demands.apply(lambda x: self.sample_around(
+                x.name, x['Value'], betas), axis=1, result_type='expand')
+            raw_demands = pd.concat([raw_demands, sampled_demands], axis=1)
+            raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
+            raw_demands.index.names = ['type','loc','dir']
             
         # if mode is maximize, add high EDPs to maximize loss
         elif mode=='maximize':
@@ -693,7 +743,7 @@ class Loss_Analysis:
         ###########################################################################
         # DEMANDS
         ###########################################################################
-        if mode=='validation':
+        if mode=='validation' or mode=='sample_lognormal':
             PAL.demand.load_sample(raw_demands.T)
             PAL.demand.calibrate_model(
                 {
@@ -730,7 +780,6 @@ class Loss_Analysis:
         # sample attribute from the demand object because the save_sample method converts
         # demand units back to the ones you specified when loading in the demands.
         demand_sample = PAL.demand.save_sample()
-
 
         # get residual drift estimates 
         superstructure_system = self.superstructure_system
@@ -1198,7 +1247,7 @@ class Loss_Analysis:
         
         return(cmp_sample, damage_sample, loss_sample, loss_groups, agg_DF,
                 collapse_freq, irreparable_freq)
-    
+   
 #%% test
 
 # # run info
