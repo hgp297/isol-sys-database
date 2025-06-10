@@ -480,6 +480,7 @@ land_cost_per_sf = 2837/(3.28**2)
 df['land_area'] = (df['L_bldg']*12 + df['constructed_moat'])**2
 df['land_cost'] = land_cost_per_sf/144.0 * df['land_area']
 
+# TODO: change this to a higher steel cost
 df['steel_cost'] = df.apply(
        lambda row: calc_steel_cost(
            row, brace_db=brace_db,

@@ -83,7 +83,7 @@ def preprocess_data(main_obj, max_obj, db_string='../../resource/'):
     df['steel_cost'] = df.apply(
            lambda row: calc_steel_cost(
                row, brace_db=brace_db,
-               steel_per_unit=1.25),
+               steel_per_unit=2.0),
            axis='columns', result_type='expand')
 
     df['steel_cost_per_sf'] = df['steel_cost'] / df['bldg_area']
