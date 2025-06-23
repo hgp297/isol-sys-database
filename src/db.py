@@ -63,17 +63,30 @@ class Database:
         #     'zeta_e': [0.1, 0.25]
         # }
         
-        # expanded bounds
+        # # expanded bounds, with allowable drift
+        # self.param_ranges   = {
+        #     'S_1' : [0.5, 1.3],
+        #     'T_m' : [2.5, 5.0],
+        #     'k_ratio' :[5.0, 18.0],
+        #     'moat_ampli' : [0.5, 1.5],
+        #     'RI' : [0.3, 2.5],
+        #     'L_bldg': [75.0, 250.0],
+        #     'h_bldg': [30.0, 100.0],
+        #     'zeta_e': [0.1, 0.25],
+        #     'delta_a': [0.005, 0.02]
+        # }
+        
+        # expanded bounds using S1_ampli
         self.param_ranges   = {
-            'S_1' : [0.5, 1.3],
+            'S_1' : [0.8, 1.3],
+            'S_1_ampli': [0.25, 2.0],
             'T_m' : [2.5, 5.0],
             'k_ratio' :[5.0, 18.0],
             'moat_ampli' : [0.5, 1.5],
             'RI' : [0.3, 2.5],
             'L_bldg': [75.0, 250.0],
             'h_bldg': [30.0, 100.0],
-            'zeta_e': [0.1, 0.25],
-            'delta_a': [0.005, 0.02]
+            'zeta_e': [0.1, 0.25]
         }
 
         # create array of limits, then run LHS

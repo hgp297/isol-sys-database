@@ -24,7 +24,15 @@ def scale_ground_motion(input_df, return_list=False,
     import pandas as pd
     import numpy as np
     
-    S_1 = input_df['S_1']
+    # if S1_ampli was passed in, scale up the spectrum
+    try:
+        S_1 = input_df['S_1'] * input_df['S_1_ampli']
+        # info from building class
+        S_s = 2.2815 * input_df['S_1_ampli']
+    except:
+        S_1 = input_df['S_1']
+        S_s = 2.2815
+        
     T_m = input_df['T_m']
     
     # default='warn', ignore SettingWithCopyWarning
@@ -33,8 +41,7 @@ def scale_ground_motion(input_df, return_list=False,
     gm_info = pd.read_csv(db_dir)
     unscaled_spectra = pd.read_csv(spec_dir)
     
-    # info from building class
-    S_s = 2.2815
+    
     
     # Scale both Ss and S1
     # Create design spectrum
