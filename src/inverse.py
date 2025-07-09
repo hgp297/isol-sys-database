@@ -13,7 +13,8 @@
 import pandas as pd
 import numpy as np
 
-def preprocess_data(main_obj, max_obj, db_string='../../resource/'):
+def preprocess_data(main_obj, max_obj, db_string='../../resource/',
+                    steel_per_unit=2.0):
     
         
     main_obj.calculate_collapse()
@@ -83,7 +84,7 @@ def preprocess_data(main_obj, max_obj, db_string='../../resource/'):
     df['steel_cost'] = df.apply(
            lambda row: calc_steel_cost(
                row, brace_db=brace_db,
-               steel_per_unit=2.0),
+               steel_per_unit=steel_per_unit),
            axis='columns', result_type='expand')
 
     df['steel_cost_per_sf'] = df['steel_cost'] / df['bldg_area']
