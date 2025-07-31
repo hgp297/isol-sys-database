@@ -214,6 +214,7 @@ dependencies:
   - rpds-py=0.18.0=py39hf21820d_0
   - rtree=1.2.0=py39h09fdee3_0
   - scikit-learn=1.4.0=py39h7c199eb_0
+  - seaborn
   - scipy=1.13.0=py39hddb5d58_0
   - setuptools=69.5.1=pyhd8ed1ab_0
   - sip=6.7.12=py39h99910a6_0
