@@ -185,6 +185,9 @@ def collapse_fragility(run, mf_drift_mu_plus_std=0.1, cbf_drift_90=0.05):
         beta_drift = 0.55
         mean_log_drift = exp(log(cbf_drift_90) - beta_drift*inv_norm) 
         
+    # here, mean_log_drift is in linear space, i.e. exp(mu)
+    # where mu is mean in logspace
+    # beta_drift is the standard deviation in logspace
     ln_dist = lognorm(s=beta_drift, scale=mean_log_drift)
     collapse_prob = ln_dist.cdf(peak_drift)
     

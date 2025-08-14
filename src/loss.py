@@ -660,6 +660,8 @@ class Loss_Analysis:
             beta = betas[2]
         
         from scipy.stats import lognorm
+        # here beta is standard deviation in logspace
+        # scale=median is exp(mu), median in linear space, mu is mean in logspace
         edp_samples = lognorm.rvs(beta, scale=median, size=11, random_state=985)
         return edp_samples
     
