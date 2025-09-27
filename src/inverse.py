@@ -209,9 +209,49 @@ def calc_steel_cost(df, brace_db, steel_per_unit=1.25):
     else:
         return braced_frame_cost(df, brace_db, steel_per_unit=steel_per_unit)
     
+# complicated replacement time regression
+# nkado 1992
+def calc_replacement_time(df):
+
+    ft_to_m = 0.3048
+    # 15 ft story to m
+    ht = df['num_stories']*15*ft_to_m
+    area = df['bldg_area']*(ft_to_m**2)
+    area_grd = df['L_bldg']**2 * (ft_to_m**2)
+    vol = ht*area_grd
+    # 2 meters underground
+    vol_excav = area_grd*2
+
+    
+    # in weeks
+    sub_st_time = 0.000561*vol_excav + 0.00208*area_grd + 30 + 8.852
+    sup_st_time = 0.491*ht-11.056*1+0.000663*area + 14.827
+
+    # assumes prefab cladding
+    cladding_time = 20 + 0.000663*area -11.5 + 7.071 - 5.046*df['num_stories'] + 0.658*ht + 21.52
+
+    # finish
+    finish_time = -0.00015*vol -3.822*15*ft_to_m - 38.5 -19.171*df['num_stories'] + 4.817*ht + 74.88
+    ratio_sub = sub_st_time/area_grd
+    ratiosp = sup_st_time/df['num_stories']
+    grdspred = area/area_grd
+
+    b = 656.25*ratio_sub + 0.000401 * area + 0.178
+    c = -3.82*df['num_stories'] - 3.414 - 0.656*ratiosp - 0.39*b + 0.561*sup_st_time + 3.485*grdspred + 5.083
+    d = 8.464 - 0.94*c - 0.616*sub_st_time + 0.000707*area + 0.413*cladding_time - 0.677*ht + 14.577
+
+    total_time = b+c+d+finish_time
+    return(total_time*7)
+    
 #%% loss DVs
 def loss_percentages(df_main, df_loss, df_max):
     df_main['bldg_area'] = df_main['L_bldg']**2 * (df_main['num_stories'] + 1)
+    df_main['num_worker'] = df_main['bldg_area'] / 1000
+
+    df_main['real_repl_time'] =df_main.apply(
+           lambda row: calc_replacement_time(row),
+           axis='columns', result_type='expand')
+    df_main['real_repl_workerday'] = df_main['real_repl_time']*df_main['num_worker']
 
     df_main['replacement_cost'] = 600.0*(df_main['bldg_area'])
     df_main['total_cmp_cost'] = df_max['cost_50%']
@@ -229,6 +269,7 @@ def loss_percentages(df_main, df_loss, df_max):
     df_main['median_time_ratio'] = df_loss['time_l_50%']/df_main['replacement_time']
     df_main['cmp_time_ratio'] = df_loss['time_l_50%']/df_main['total_cmp_time']
     df_main['cmp_time_theta_ratio'] = df_loss['time_l_theta']/df_main['total_cmp_time']
+    df_main['real_downtime_theta_ratio'] = df_loss['time_l_theta']/df_main['real_repl_workerday']
 
     df_main['replacement_freq'] = df_loss['replacement_freq']
 
