@@ -148,7 +148,9 @@ def scale_ground_motion(input_df, return_list=False,
                         'earthquake_name', 'lowest_frequency', 'filename']
     
     # filter excessively scaled GMs
-    final_GM = final_GM[final_GM['sf_average_spectral'] < 20.0]
+    # sf_limit original submission: 20.0
+    sf_limit = 10.0
+    final_GM = final_GM[final_GM['sf_average_spectral'] < sf_limit]
     final_GM = final_GM[final_GM['scaled_peak_Sa'] < 3*S_s]
     if plot_me:
         show_selection(final_GM, target_spectrum, H1s, 

@@ -791,6 +791,7 @@ class Loss_Analysis:
             delta_y = 0.005
         PID = demand_sample['PID']
 
+        # TODO: switch this over to manual RID
         RID = PAL.demand.estimate_RID(PID, {'yield_drift': delta_y}) 
 
         # and join them with the demand_sample
