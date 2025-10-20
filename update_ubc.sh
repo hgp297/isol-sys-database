@@ -23,7 +23,7 @@ then
 		--exclude="/data/*.pickle" \
         "$from" "$to"
 else
-	to="/mnt/c/Users/hpham09/OneDrive\ -\ UBC/Documents/bezerkeley/research/isol-sys-database/taccdata/"
+	to="/mnt/c/Users/hpham09/OneDrive - UBC/Documents/bezerkeley/research/isol-sys-database/taccdata/"
     echo "Synchronizing from tacc to local!"
     rsync -zarvm --include "/" \
 		--include "/data/" \
