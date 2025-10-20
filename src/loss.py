@@ -812,14 +812,12 @@ class Loss_Analysis:
         PID = demand_sample['PID']
 
         # TODO: switch this over to manual RID
-        
         '''
         # Option A, initial submission: use P-58's RID estimation
         RID = PAL.demand.estimate_RID(PID, {'yield_drift': delta_y}) 
         # and join them with the demand_sample
         demand_sample_ext = pd.concat([demand_sample, RID], axis=1)
         '''
-
         # Option B, comments: manually use our own's RID estimation
         demand_sample_ext = pd.concat([demand_sample], axis=1)
 
