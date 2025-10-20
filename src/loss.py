@@ -577,11 +577,15 @@ class Loss_Analysis:
             PFV = self.PFV
             PFA = self.PFA
             
+            # add RID
+            RID = self.RID
+            
             if type(PID) == str:
                 from ast import literal_eval
                 PID = literal_eval(self.PID)
                 PFV = literal_eval(self.PFV)
                 PFA = literal_eval(self.PFA)
+                RID = literal_eval(self.RID)
             # max_isol_disp = self.max_isol_disp
             
             PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
@@ -592,11 +596,14 @@ class Loss_Analysis:
             
             PFV_names_1 = ['PFV-'+str(fl+1)+'-1' for fl in range(len(PFV))]
             PFV_names_2 = ['PFV-'+str(fl+1)+'-2' for fl in range(len(PFV))]
+
+            RID_names_1 = ['RID-'+str(fl+1)+'-1' for fl in range(len(RID))]
+            RID_names_2 = ['RID-'+str(fl+1)+'-2' for fl in range(len(RID))]
             
             import pandas as pd
-            all_edps = PFA + PFV + PID + PFA + PFV + PID
-            all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
-                         PFA_names_2 + PFV_names_2 + PID_names_2)
+            all_edps = PFA + PFV + PID + RID + PFA + PFV + PID + RID
+            all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 + RID_names_1 +
+                         PFA_names_2 + PFV_names_2 + PID_names_2 + RID_names_2)
             
             edp_df = pd.DataFrame([all_edps], columns = all_names)
             
@@ -615,6 +622,10 @@ class Loss_Analysis:
             PID = df_edp['PID'].iloc[0]
             PFV = df_edp['PFV'].iloc[0]
             PFA = df_edp['PFA'].iloc[0]
+
+            # add RID
+            RID = df_edp['RID'].iloc[0]
+
             
             PID_names_1 = ['PID-'+str(fl+1)+'-1' for fl in range(len(PID))]
             PID_names_2 = ['PID-'+str(fl+1)+'-2' for fl in range(len(PID))]
@@ -624,18 +635,20 @@ class Loss_Analysis:
             
             PFV_names_1 = ['PFV-'+str(fl+1)+'-1' for fl in range(len(PFV))]
             PFV_names_2 = ['PFV-'+str(fl+1)+'-2' for fl in range(len(PFV))]
+
+            RID_names_1 = ['RID-'+str(fl+1)+'-1' for fl in range(len(RID))]
+            RID_names_2 = ['RID-'+str(fl+1)+'-2' for fl in range(len(RID))]
             
-            all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 +
-                         PFA_names_2 + PFV_names_2 + PID_names_2)
+            all_names = (PFA_names_1 + PFV_names_1 + PID_names_1 + RID_names_1 +
+                         PFA_names_2 + PFV_names_2 + PID_names_2 + RID_names_2)
             
             import pandas as pd
             pid_df = pd.DataFrame(df_edp['PID'].to_list())
             pfv_df = pd.DataFrame(df_edp['PFV'].to_list())
             pfa_df = pd.DataFrame(df_edp['PFA'].to_list())
+            rid_df = pd.DataFrame(df_edp['RID'].to_list())
             
-            
-            
-            edp_df = pd.concat([pfa_df, pfv_df, pid_df, pfa_df, pfv_df, pid_df],
+            edp_df = pd.concat([pfa_df, pfv_df, pid_df, rid_df, pfa_df, pfv_df, pid_df, rid_df],
                           axis=1)
             edp_df.columns = all_names
             edp_df.loc['Units'] = ['g' if edp.startswith('PFA') else
@@ -658,6 +671,8 @@ class Loss_Analysis:
             beta = betas[1]
         elif edp_type == 'PFA':
             beta = betas[2]
+        elif edp_type == 'RID':
+            beta = betas[3]
         
         from scipy.stats import lognorm
         # here beta is standard deviation in logspace
@@ -706,8 +721,13 @@ class Loss_Analysis:
             beta_ad = np.interp(S, S_ref, ad_ref, left=ad_ref[0], right=ad_ref[-1])
             beta_aa = np.interp(S, S_ref, aa_ref, left=aa_ref[0], right=aa_ref[-1])
             beta_av = np.interp(S, S_ref, av_ref, left=av_ref[0], right=av_ref[-1])
+
+            # for RID, see Equation 5-26 if response history analysis is used
+            # but for consistency, can use "simplified analysis" number, set 0.8
+            # (Ruiz-Garcia and Miranda, 2005)
+            beta_ar = 0.8
             
-            betas = [beta_ad, beta_av, beta_aa]
+            betas = [beta_ad, beta_av, beta_aa, beta_ar]
             
             # #  do not add modeling uncertainty because our model is not simplified
             # m_ref = [0.25, 0.25, 0.35, 0.50, 0.50]
@@ -792,10 +812,17 @@ class Loss_Analysis:
         PID = demand_sample['PID']
 
         # TODO: switch this over to manual RID
+        
+        '''
+        # Option A, initial submission: use P-58's RID estimation
         RID = PAL.demand.estimate_RID(PID, {'yield_drift': delta_y}) 
-
         # and join them with the demand_sample
         demand_sample_ext = pd.concat([demand_sample, RID], axis=1)
+        '''
+
+        # Option B, comments: manually use our own's RID estimation
+        demand_sample_ext = pd.concat([demand_sample], axis=1)
+
 
         # add spectral acceleration at fundamental period (BEARING EFFECTIVE PERIOD)
         # does Sa(T) characterize this well considering impact? for now, try using peak acceleration
