@@ -406,8 +406,15 @@ def predict_DV(X, impact_pred_mdl, hit_loss_mdl, miss_loss_mdl,
         nonimpact_side_var = np.multiply(miss_loss_min, miss_prob)**2*(
             (miss_var/miss_loss_min**2) + (prob_var/miss_prob**2) + 0)
         
-        # propagate uncertainty (f = A + B)
-        total_var = impact_side_var + nonimpact_side_var + 0
+        # # propagate uncertainty (f = A + B)
+        # total_var = impact_side_var + nonimpact_side_var + 0
+
+        # Law of Total Variance approach
+        delta_term = (hit_loss - miss_loss_min)**2
+        cross_p_term = np.multiply(hit_prob, miss_prob)
+        total_var = (np.multiply(hit_prob, hit_var) + 
+                     np.multiply(miss_prob, miss_var) + 
+                     np.multiply(cross_p_term, delta_term))
         
         return(expected_DV, total_var)
     else:
