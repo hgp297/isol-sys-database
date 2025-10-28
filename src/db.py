@@ -201,9 +201,11 @@ class Database:
         all_des['system_drop'] = all_des['combined_system'].copy()
         # all_des['supersystem_drop'] = all_des['superstructure_system'].copy()
         
+        # this fails if there are not enough points to be balanced
         self.retained_designs = all_des.groupby(
             'system_drop', group_keys=False).apply(
-            lambda x: x.sample(n=int(self.n_points/n_systems), random_state=985), include_groups=False)
+            lambda x: x.sample(n=int(self.n_points/n_systems), random_state=985), 
+            include_groups=False)
         self.generated_designs = all_des
         
         print('======================================')
