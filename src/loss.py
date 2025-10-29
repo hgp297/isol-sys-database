@@ -694,7 +694,8 @@ class Loss_Analysis:
 
         from scipy.stats import multivariate_normal
         mvn = multivariate_normal(mean=mu, cov=cov, seed=985)
-        edp_samples = mvn.rvs(size=11)
+        Z = mvn.rvs(size=11)
+        edp_samples = np.exp(Z)
         
         # from scipy.stats import lognorm
         # # here beta is standard deviation in logspace
