@@ -661,7 +661,44 @@ class Loss_Analysis:
     
             self.edp = edp_df
             
+    def sample_ln_with_corr(self, edp_type, median, betas, rho=0.8):
+        '''
+        median: median EDP in linear space (mu is logspace)
+        beta: lognormal standard deviation (of ln(X))
+        rho: correlation efficient set to 0.8
+        '''
+        import numpy as np
+        
+        if edp_type == 'PID':
+            beta = betas[0]
+        elif edp_type == 'PFV':
+            beta = betas[1]
+        elif edp_type == 'PFA':
+            beta = betas[2]
+        elif edp_type == 'RID':
+            beta = betas[3]
+
+        # here beta is standard deviation in logspace
+        # scale=median is exp(mu), median in linear space, mu is mean in logspace
+        # enforce story-to-story correlation
+        # assume 0.8
+        n_stories = len(median)
+        mu = np.log(median)
+        idx = np.arange(n_stories)
+        rho = 0.8
+        corr = rho ** np.abs(np.subtract.outer(idx, idx))
+        cov = (beta**2)*corr
+
+        from scipy.stats import multivariate_normal
+        mvn = multivariate_normal(mean=mu, cov=cov, seed=985)
+        Z = mvn.rvs(size=11)
+        edp_samples = np.exp(Z) 
+
+        return edp_samples
+
+
     # identify the edp type, then sample around the provided median
+    # no story corr
     def sample_around(self, full_index, median, betas):
         '''
         median: median EDP in linear space (mu is logspace)
@@ -681,26 +718,26 @@ class Loss_Analysis:
             beta = betas[3]
 
         
-        # here beta is standard deviation in logspace
-        # scale=median is exp(mu), median in linear space, mu is mean in logspace
-        # enforce story-to-story correlation
-        # assume 0.8
-        n_stories = len(median)
-        mu = np.log(median)
-        idx = np.arange(n_stories)
-        rho = 0.8
-        corr = rho ** np.abs(np.subtract.outer(idx, idx))
-        cov = (beta**2)*corr
-
-        from scipy.stats import multivariate_normal
-        mvn = multivariate_normal(mean=mu, cov=cov, seed=985)
-        Z = mvn.rvs(size=11)
-        edp_samples = np.exp(Z)
-        
-        # from scipy.stats import lognorm
         # # here beta is standard deviation in logspace
         # # scale=median is exp(mu), median in linear space, mu is mean in logspace
-        # edp_samples = lognorm.rvs(beta, scale=median, size=11, random_state=985)
+        # # enforce story-to-story correlation
+        # # assume 0.8
+        # n_stories = len(median)
+        # mu = np.log(median)
+        # idx = np.arange(n_stories)
+        # rho = 0.8
+        # corr = rho ** np.abs(np.subtract.outer(idx, idx))
+        # cov = (beta**2)*corr
+
+        # from scipy.stats import multivariate_normal
+        # mvn = multivariate_normal(mean=mu, cov=cov, seed=985)
+        # Z = mvn.rvs(size=11)
+        # edp_samples = np.exp(Z)
+        
+        from scipy.stats import lognorm
+        # here beta is standard deviation in logspace
+        # scale=median is exp(mu), median in linear space, mu is mean in logspace
+        edp_samples = lognorm.rvs(beta, scale=median, size=11, random_state=985)
 
         return edp_samples
     
@@ -767,6 +804,58 @@ class Loss_Analysis:
             raw_demands = pd.concat([raw_demands, sampled_demands], axis=1)
             raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
             raw_demands.index.names = ['type','loc','dir']
+
+        # if mode is sample_ln_with_corr, sample lognormal with assumed beta around the singular point
+        # additionally enforce a correlation between floors
+        # Reference FEMA P-58 Table 5-6, which is actually for simplified analysis
+        elif mode=='sample_ln_with_corr':
+            raw_demands = self.edp.transpose()
+            raw_demands.columns = ['Units', 'Value']
+            # raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
+            # raw_demands.index.names = ['type','loc','dir']
+            Sa_Tm = self.sa_tm
+            W = self.W
+            V_ym = self.Vs
+            S = Sa_Tm * W / V_ym
+            S_ref = [1.0, 2.0, 4.0, 6.0, 8.0]
+            ad_ref = [0.25, 0.35, 0.40, 0.45, 0.45]
+            aa_ref = [0.50, 0.45, 0.45, 0.40, 0.35]
+            av_ref = [0.28, 0.21, 0.25, 0.26, 0.26]
+            beta_ad = np.interp(S, S_ref, ad_ref, left=ad_ref[0], right=ad_ref[-1])
+            beta_aa = np.interp(S, S_ref, aa_ref, left=aa_ref[0], right=aa_ref[-1])
+            beta_av = np.interp(S, S_ref, av_ref, left=av_ref[0], right=av_ref[-1])
+
+            # for RID, see Equation 5-26 if response history analysis is used
+            # but for consistency, can use "simplified analysis" number, set 0.8
+            # (Ruiz-Garcia and Miranda, 2005)
+            beta_ar = 0.8
+            
+            betas = [beta_ad, beta_av, beta_aa, beta_ar]
+            
+            # #  do not add modeling uncertainty because our model is not simplified
+            # m_ref = [0.25, 0.25, 0.35, 0.50, 0.50]
+            # beta_m = np.interp(S, S_ref, m_ref, left=m_ref[0], right=m_ref[-1])
+            
+            # beta_SD = np.linalg.norm([beta_ad, beta_m])
+            # beta_FV = np.linalg.norm([beta_av, beta_m])
+            # beta_FA = np.linalg.norm([beta_aa, beta_m])
+
+            # assumes story-to-story correlation = 0.8
+            sampled_PFA = self.sample_ln_with_corr('PFA', self.PFA, betas)
+            sampled_PFV = self.sample_ln_with_corr('PFV', self.PFV, betas)
+            sampled_PID = self.sample_ln_with_corr('PID', self.PID, betas)
+            sampled_RID = self.sample_ln_with_corr('RID', self.RID, betas)
+
+            # append 11 samples to the original median
+            # preserve order: PFA - PFV - PID - RID
+            sampled_EDP = np.hstack((
+                sampled_PFA, sampled_PFV, sampled_PID, sampled_RID,
+                sampled_PFA, sampled_PFV, sampled_PID, sampled_RID))
+            sampled_EDP_df = pd.DataFrame(sampled_EDP, columns=self.edp.columns)
+
+            raw_demands = pd.concat([raw_demands, sampled_EDP_df.transpose()], axis=1)
+            raw_demands = convert_to_MultiIndex(raw_demands, axis=0)
+            raw_demands.index.names = ['type','loc','dir']
             
         # if mode is maximize, add high EDPs to maximize loss
         elif mode=='maximize':
@@ -789,7 +878,7 @@ class Loss_Analysis:
         ###########################################################################
         # DEMANDS
         ###########################################################################
-        if mode=='validation' or mode=='sample_lognormal':
+        if mode=='validation' or mode=='sample_lognormal' or mode =='sample_ln_with_corr':
             PAL.demand.load_sample(raw_demands.T)
             PAL.demand.calibrate_model(
                 {
