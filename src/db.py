@@ -842,10 +842,11 @@ class Database:
                       cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
             # else, try to fit lognormal around edp
             # for Spectra Inv loss paper (WATCH THE BRANCH), keep as generate
+            # update oct 29: use sample lognormal, enforce story corr 0.8
             else:
                 [cmp, dmg, loss, loss_cmp, agg, 
                  collapse_rate, irr_rate] = loss.estimate_damage(
-                     custom_fragility_db=additional_frag_db, mode='generate',
+                     custom_fragility_db=additional_frag_db, mode='sample_lognormal',
                      cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
                  
             # Collect quantiles

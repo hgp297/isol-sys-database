@@ -663,6 +663,12 @@ class Loss_Analysis:
             
     # identify the edp type, then sample around the provided median
     def sample_around(self, full_index, median, betas):
+        '''
+        median: median EDP in linear space (mu is logspace)
+        beta: lognormal standard deviation (of ln(X))
+        rho: correlation efficient set to 0.8
+        '''
+        import numpy as np
         edp_type = full_index.split('-')[0]
         
         if edp_type == 'PID':
@@ -673,11 +679,28 @@ class Loss_Analysis:
             beta = betas[2]
         elif edp_type == 'RID':
             beta = betas[3]
+
         
-        from scipy.stats import lognorm
         # here beta is standard deviation in logspace
         # scale=median is exp(mu), median in linear space, mu is mean in logspace
-        edp_samples = lognorm.rvs(beta, scale=median, size=11, random_state=985)
+        # enforce story-to-story correlation
+        # assume 0.8
+        n_stories = len(median)
+        mu = np.log(median)
+        idx = np.arange(n_stories)
+        rho = 0.8
+        corr = rho ** np.abs(np.subtract.outer(idx, idx))
+        cov = (beta**2)*corr
+
+        from scipy.stats import multivariate_normal
+        mvn = multivariate_normal(mean=mu, cov=cov, seed=985)
+        edp_samples = mvn.rvs(size=11)
+        
+        # from scipy.stats import lognorm
+        # # here beta is standard deviation in logspace
+        # # scale=median is exp(mu), median in linear space, mu is mean in logspace
+        # edp_samples = lognorm.rvs(beta, scale=median, size=11, random_state=985)
+
         return edp_samples
     
     def estimate_damage(self, mode='generate', custom_fragility_db=None,
