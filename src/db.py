@@ -708,7 +708,8 @@ class Database:
     # this runs Pelicun in the deterministic style. collect_IDA flag used if running
     # validation IDAs
     def run_pelicun(self, df, collect_IDA=False,
-                    cmp_dir='../resource/loss/', max_loss_df=None):
+                    cmp_dir='../resource/loss/', max_loss_df=None,
+                    edp_mode=None):
         # run info
 
         # and import pelicun classes and methods
@@ -836,17 +837,21 @@ class Database:
             
             # if collect_IDA, a validation run is indicated, treat EDP as deterministic
             if collect_IDA:
+                if edp_mode is None:
+                    edp_mode = 'generate'
                 [cmp, dmg, loss, loss_cmp, agg, 
                   collapse_rate, irr_rate] = loss.estimate_damage(
-                      custom_fragility_db=additional_frag_db, mode='generate',
+                      custom_fragility_db=additional_frag_db, mode=edp_mode,
                       cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
             # else, try to fit lognormal around edp
             # for Spectra Inv loss paper (WATCH THE BRANCH)
             # update oct 29: use sample lognormal, enforce story corr 0.8
             else:
+                if edp_mode is None:
+                    edp_mode = 'sample_ln_with_corr'
                 [cmp, dmg, loss, loss_cmp, agg, 
                  collapse_rate, irr_rate] = loss.estimate_damage(
-                     custom_fragility_db=additional_frag_db, mode='sample_ln_with_corr',
+                     custom_fragility_db=additional_frag_db, mode=edp_mode,
                      cmp_replacement_cost=run_max_cost, cmp_replacement_time=run_max_time)
                  
             # Collect quantiles
