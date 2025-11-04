@@ -56,12 +56,12 @@ def agg_data(run_case):
         pickle.dump(dummy_obj, f)
         
 
-agg_data('mf_tfp_moderate_spectracomments_fixededp')
-agg_data('mf_lrb_moderate_spectracomments_fixededp')
-agg_data('cbf_tfp_moderate_spectracomments_fixededp')
-agg_data('cbf_lrb_moderate_spectracomments_fixededp')
+# agg_data('mf_tfp_moderate_spectracomments_fixededp')
+# agg_data('mf_lrb_moderate_spectracomments_fixededp')
+# agg_data('cbf_tfp_moderate_spectracomments_fixededp')
+# agg_data('cbf_lrb_moderate_spectracomments_fixededp')
 
-agg_data('mf_tfp_enhanced_spectracomments_fixededp')
-agg_data('mf_lrb_enhanced_spectracomments_fixededp')
+# agg_data('mf_tfp_enhanced_spectracomments_fixededp')
+# agg_data('mf_lrb_enhanced_spectracomments_fixededp')
 agg_data('cbf_tfp_enhanced_spectracomments_fixededp')
 agg_data('cbf_lrb_enhanced_spectracomments_fixededp')
