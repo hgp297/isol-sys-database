@@ -46,9 +46,17 @@ def agg_data(run_case):
     import pickle
     final_path = '../data/validation/'+run_case+'/'
     
-    import os
+    import os, shutil
     if os.path.exists(final_path):
-        pass
+        for filename in os.listdir(final_path):
+            file_path = os.path.join(final_path, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
     else:
         os.makedirs(final_path)
         
@@ -63,5 +71,5 @@ def agg_data(run_case):
 
 # agg_data('mf_tfp_enhanced_spectracomments_fixededp')
 # agg_data('mf_lrb_enhanced_spectracomments_fixededp')
-agg_data('cbf_tfp_enhanced_spectracomments_fixededp')
+# agg_data('cbf_tfp_enhanced_spectracomments_fixededp')
 agg_data('cbf_lrb_enhanced_spectracomments_fixededp')
