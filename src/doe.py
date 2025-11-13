@@ -359,7 +359,7 @@ class GP:
         return y_pred, gp_std
     
     # Train GP regression
-    def fit_gpr(self, kernel_name, noise_bound=None, const_lower_bound=None):
+    def fit_gpr(self, kernel_name, noise_bound=None, const_lower_bound=None, noiseless=False):
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
         from sklearn.gaussian_process import GaussianProcessRegressor
@@ -410,7 +410,10 @@ class GP:
         if noise_bound is None:
             noise_bound = (1e-8, 1e2)
             
-        kernel_obj = kernel_base + krn.WhiteKernel(noise_level=0.1, noise_level_bounds=noise_bound)
+        if noiseless:
+            kernel_obj = kernel_base
+        else:
+            kernel_obj = kernel_base + krn.WhiteKernel(noise_level=0.1, noise_level_bounds=noise_bound)
         
         # pipeline to scale -> GPR
         gp_pipe = Pipeline([
