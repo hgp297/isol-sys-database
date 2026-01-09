@@ -2839,7 +2839,7 @@ class Building:
         seconds = tp - 60*minutes
         print('Pushover complete. Time elapsed %dm %ds.' % (minutes, seconds))
 
-    def run_ground_motion(self, gm_name, scale_factor, dt_transient, T_end=60.0,
+    def run_ground_motion(self, gm_name, scale_factor, dt_transient, T_end=240.0,
                           gm_dir='../resource/ground_motions/PEERNGARecords_Unscaled/',
                           data_dir='./outputs/'):
         
