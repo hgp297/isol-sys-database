@@ -2839,7 +2839,7 @@ class Building:
         seconds = tp - 60*minutes
         print('Pushover complete. Time elapsed %dm %ds.' % (minutes, seconds))
 
-    def run_ground_motion(self, gm_name, scale_factor, dt_transient, T_end=240.0,
+    def run_ground_motion(self, gm_name, scale_factor, dt_transient, T_end=None,
                           gm_dir='../resource/ground_motions/PEERNGARecords_Unscaled/',
                           data_dir='./outputs/'):
         
@@ -3118,7 +3118,14 @@ class Building:
                      '-timeSeries', eq_series_tag, '-time',
                      '-node', *inner_col_nds, '-dof', 1, 'accel')
         
+        # if no T_end passed in, run until end of GM
         import numpy as np
+        default_T_end = nPts * dt
+        if T_end is None:
+            T_end = default_T_end
+        assert isinstance(T_end, float), 'End time is not a float.'
+
+        
         n_steps = int(np.floor(T_end/dt_transient))
         
         # actually perform analysis; returns ok=0 if analysis was successful
