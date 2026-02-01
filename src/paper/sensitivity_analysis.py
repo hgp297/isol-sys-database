@@ -616,8 +616,8 @@ ax.set_yticks(np.arange(0.0, 0.5, 0.1))
 
 ax.grid()
 fig.tight_layout()
+plt.savefig('./overview_figures/baseline_sensitivity.png', transparent=True)
 plt.show()
-# plt.savefig('./figures/baseline_sensitivity.pdf')
 #%%
 '''
 plt.rcParams["text.usetex"] = True
