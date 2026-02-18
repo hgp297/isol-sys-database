@@ -3,7 +3,7 @@ import sys
 # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(1, '../src/')
 
-pickle_path = './data/initial/spectracomments/'
+pickle_path = './data/initial/longer_time/'
 
 from db import Database
 
@@ -65,5 +65,5 @@ dummy_obj.n_generated = generated_designs.shape[0]
 
 import pickle
 final_path = '../data/'
-with open(final_path+'structural_db_complete_spectracomments.pickle', 'wb') as f:
+with open(final_path+'structural_db_complete_longertime.pickle', 'wb') as f:
     pickle.dump(dummy_obj, f)

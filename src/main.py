@@ -71,35 +71,35 @@
 
 #%% calculate maximum pelicun losses
 
-# import pandas as pd
-# pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_complete_spectracomments.pickle")
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"structural_db_complete_longertime.pickle")
 
-# main_obj.calc_cmp_max(main_obj.ops_analysis,
-#                 cmp_dir='../resource/loss/')
+main_obj.calc_cmp_max(main_obj.ops_analysis,
+                cmp_dir='../resource/loss/')
 
-# import pickle
-# loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_complete_spectracomments_max_loss.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'structural_db_complete_longertime_max_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 #%% run pelicun
 
-# import pandas as pd
-# pickle_path = '../data/'
-# main_obj = pd.read_pickle(pickle_path+"structural_db_complete_spectracomments.pickle")
+import pandas as pd
+pickle_path = '../data/'
+main_obj = pd.read_pickle(pickle_path+"structural_db_complete_longertime.pickle")
 
-# max_obj = pd.read_pickle(pickle_path+"loss/structural_db_complete_spectracomments_max_loss.pickle")
-# df_loss_max = max_obj.max_loss
+max_obj = pd.read_pickle(pickle_path+"loss/structural_db_complete_longertime_max_loss.pickle")
+df_loss_max = max_obj.max_loss
 
-# main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
-#                 cmp_dir='../resource/loss/', max_loss_df=df_loss_max,
-#                 edp_mode='generate')
+main_obj.run_pelicun(main_obj.ops_analysis, collect_IDA=False,
+                cmp_dir='../resource/loss/', max_loss_df=df_loss_max,
+                edp_mode='generate')
 
-# import pickle
-# loss_path = '../data/loss/'
-# with open(loss_path+'structural_db_complete_spectracomments_fixededp_loss.pickle', 'wb') as f:
-#     pickle.dump(main_obj, f)
+import pickle
+loss_path = '../data/loss/'
+with open(loss_path+'structural_db_complete_longertime_loss.pickle', 'wb') as f:
+    pickle.dump(main_obj, f)
 
 #%% validate design
 
@@ -109,8 +109,8 @@
 
 
 # %% run pelicun on validation (deterministic on the IDA) and calculate max loss
-import pandas as pd
-import pickle
+# import pandas as pd
+# import pickle
 
 # #### cbf tfp
 # run_case = 'cbf_tfp_moderate_spectracomments_fixededp'
@@ -259,28 +259,28 @@ import pickle
 #     pickle.dump(main_obj, f)
     
     
-#### cbf lrb
-run_case = 'cbf_lrb_enhanced_spectracomments_fixededp'
-validation_path = '../data/validation/'+run_case+'/'
-loss_path = '../data/validation/'+run_case+'/'
+# #### cbf lrb
+# run_case = 'cbf_lrb_enhanced_spectracomments_fixededp'
+# validation_path = '../data/validation/'+run_case+'/'
+# loss_path = '../data/validation/'+run_case+'/'
 
-main_obj = pd.read_pickle(validation_path+run_case+".pickle")
-df_val = main_obj.ida_results
+# main_obj = pd.read_pickle(validation_path+run_case+".pickle")
+# df_val = main_obj.ida_results
 
-main_obj.calc_cmp_max(main_obj.ida_results,
-                cmp_dir='../resource/loss/',
-                validation_run=True)
+# main_obj.calc_cmp_max(main_obj.ida_results,
+#                 cmp_dir='../resource/loss/',
+#                 validation_run=True)
 
-with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# with open(loss_path+run_case+'_max_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
     
-df_loss_max = main_obj.max_loss
+# df_loss_max = main_obj.max_loss
     
-main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
-                cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
+# main_obj.run_pelicun(main_obj.ida_results, collect_IDA=True,
+#                 cmp_dir='../resource/loss/', max_loss_df = df_loss_max)
 
-with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
-    pickle.dump(main_obj, f)
+# with open(loss_path+run_case+'_loss.pickle', 'wb') as f:
+#     pickle.dump(main_obj, f)
     
     
 # #### mf lrb
