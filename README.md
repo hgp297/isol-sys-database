@@ -2,6 +2,9 @@
 
 A database of isolated steel frames and their performance under earthquakes.
 
+## Sunset notice
+Hi! If you're currently following this repo, please know that I am no longer maintaining this actively. However, I am continuing to slowly migrate things over to a new repo with better package managing, easier environment installation, and a more structured code layout. This is located at, `github.com/hgp297/hazy-ipa`, although it will remain private until I can publish the more recent results and findings. Thank you! - Huy
+
 ## Description
 
 This repository is aimed at generating and analyzing isolated steel frames for their performance.
